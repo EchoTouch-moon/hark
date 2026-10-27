@@ -1,0 +1,15 @@
+{
+  "capturedAt": "2026-10-28T03:50:00Z",
+  "transport": "real HTTP on 127.0.0.1:4399 (tsx server, temp DB)",
+  "flow": ["GET /health -> ok", "GET /auth/session -> csrf+cookie", "autoseed on boot -> 3 cards", "POST /cards/card-a685751cb677/execute?sync=1"],
+  "run": {
+    "id": "run-a685751cb677-907182b1",
+    "state": "completed",
+    "verificationVerdict": "pass",
+    "resultArtifactRefs": ["report/ci-42.json"],
+    "steps": ["diagnose.read_event", "diagnose.summarize_failures", "report.write_json"],
+    "evidence": "sha256(json_schema) recorded in evidence table; artifact on disk .hearth-demo-artifacts/report/ci-42.json"
+  },
+  "restart_persistence": "server killed & restarted -> run still completed, chat history 2 msgs preserved",
+  "chat": "mock adapter reply (adapter=mock, live=false, label=离线演示 · 不连接模型)"
+}

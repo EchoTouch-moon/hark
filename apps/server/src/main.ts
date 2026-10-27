@@ -45,8 +45,9 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
     },
   };
 
-  // first-run convenience: seed demo data automatically so Home is never an empty shell
-  if (config.demoMode && storage.listProjects().length === 0) {
+  // first-run convenience: seed demo data automatically so Home is never an
+  // empty shell (E2E disables this via HEARTH_AUTOSEED=0 to test the empty state)
+  if (config.demoMode && storage.listProjects().length === 0 && process.env['HEARTH_AUTOSEED'] !== '0') {
     await deps.services.seedDemo();
     await discovery.discover();
   }
