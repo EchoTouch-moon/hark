@@ -1,11 +1,11 @@
-# Morning Report — 2026-10-28 夜间运行（主交付 HEAD: 145213c）
+# Morning Report — 2026-10-28 夜间运行（主交付 HEAD: f076cb4，前序 145213c）
 
 **状态**：M0 ✅ GREEN · M1 ✅ GREEN · M2 ✅ GREEN（P1 范围；precision@3 诚实标注 NOT_MEASURED）
 
 ## 1. 真实环境
 - OS：macOS darwin 27.0.0 arm64；Node v22.23.2；pnpm 11.9.0；git 2.49.0；python3 3.9.6
 - 仓库：`/Users/v/new-idea/hark`（本仓库内 git init，未推任何远端）
-- 主交付 HEAD：`145213c`（本报告与其余 handoff 文档在其后一个收尾 commit）
+- 主交付 HEAD：`f076cb4`（收尾含首启 seed 修复；14 个本地 commit，未推送任何远端）
 - 运行命令与端口：
   - API/一体化运行：`pnpm dev:server` → **http://127.0.0.1:4317**（首启自动 seed+discover；同端口伺服已构建 UI）
   - 纯前端开发：`pnpm dev:web` → http://localhost:5173（/api 代理到 4317）
@@ -38,7 +38,7 @@
 8. **Settings**：安静时段/预算/时区可保存；「重置 Demo 数据」需二次确认且只清 demo DB
 
 ## 5. Git / 证据
-- 12 个本地 commit（eadc0d7 → 145213c + 收尾），未推送任何远端
+- 14 个本地 commit（eadc0d7 → f076cb4），未推送任何远端
 - 截图：`handoff/EVIDENCE/ui-{home,chat,projects,activity,settings}.png`（Playwright 实拍）
 - 闭环 trace：`demo-run.json`；审计快照：`morning-audit-snapshot.json`；每任务证据 txt 共 12 份
 
