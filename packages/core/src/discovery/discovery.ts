@@ -36,11 +36,17 @@ export class DiscoveryService {
     },
   ) {}
 
-  async discover(): Promise<DiscoverResult> {
+  /**
+   * @param opts.userInitiated true when the scan was explicitly requested by
+   * the user (UI button). Quiet hours never block a user-initiated scan —
+   * silence rules govern *proactive* disturbance, not explicit commands.
+   * The daily budget applies to both paths.
+   */
+  async discover(opts: { userInitiated?: boolean } = {}): Promise<DiscoverResult> {
     const now = this.deps.clock();
     const nowDate = new Date(now);
     const suppression = this.deps.suppression;
-    const quietActive = suppression ? isWithinQuietHours(nowDate, suppression.quietHours) : false;
+    const quietActive = suppression ? isWithinQuietHours(nowDate, suppression.quietHours) && !opts.userInitiated : false;
     const events = this.deps.storage.listEvents({ limit: 100 });
     const result: DiscoverResult = {
       scannedEvents: events.length,

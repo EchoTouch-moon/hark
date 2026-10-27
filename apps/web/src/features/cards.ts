@@ -98,7 +98,6 @@ export const RUNGED_TERMINAL_STATUSES: ReadonlySet<CardStatus> = new Set([
   'completed',
   'failed',
   'blocked',
-  'cancelled',
 ]);
 
 /** 轮询间隔（docs 要求 900ms） */

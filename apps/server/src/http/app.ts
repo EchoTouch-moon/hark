@@ -32,8 +32,10 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     }
   });
 
-  // --- Auth gate: /health and /auth/session are open; everything else needs a session.
+  // --- Auth gate: only guards /api/v1/* (static pages stay public);
+  //     /health and /auth/session are open.
   app.addHook('preHandler', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!req.url.startsWith('/api/v1/')) return;
     if (req.url === '/api/v1/health' || req.url.split('?')[0] === '/api/v1/auth/session') return;
     const token = parseSessionCookie(req.headers['cookie']);
     if (!sessions.isValidToken(token)) {

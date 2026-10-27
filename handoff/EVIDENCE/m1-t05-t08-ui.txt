@@ -1,0 +1,10 @@
+M1-T05..T08 UI pages — 2026-10-27T20:18:32Z
+- T05 Home/ActionCard/EvidenceDrawer: subagent-built; typecheck exit 0; integration fixes by main agent:
+  polling now includes cards with non-terminal runs (execute returns card still 'proposed' -> previously stuck at 排队中)
+- T06 Chat: main-agent-built (pages/ChatPage.tsx/.css + features/chat.ts); safe markdown-lite render (no HTML injection);
+  15s timeout abort; server part covered by apps/server chat tests (persist+demo-label)
+- T07 Projects + T08 Activity/Settings: subagent-built; typecheck exit 0; server-side isolation consumed as-is
+- session bootstrap fixed in client: ANY 401 (incl. GET) now re-establishes session and retries once
+- full E2E (11/11 passed) exercises Home cards, evidence, execute->completed, refresh persistence,
+  dismiss persistence, project isolation, chat, settings save, activity run detail, 1280 viewport
+screenshots: handoff/EVIDENCE/ui-{home,chat,projects,activity,settings}.png (captured by Playwright, real pages)

@@ -63,34 +63,64 @@
       "note": "web build exit 0 (subagent)"
     },
     "M1-T05": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T20:18:32.316954+00:00",
+      "evidence": "handoff/EVIDENCE/m1-t05-t08-ui.txt",
+      "note": "E2E home flow green"
     },
     "M1-T06": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T20:18:32.361443+00:00",
+      "evidence": "handoff/EVIDENCE/m1-t05-t08-ui.txt",
+      "note": "chat e2e green"
     },
     "M1-T07": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T20:18:32.406993+00:00",
+      "evidence": "handoff/EVIDENCE/m1-t05-t08-ui.txt",
+      "note": "isolation e2e green"
     },
     "M1-T08": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T20:18:32.451654+00:00",
+      "evidence": "handoff/EVIDENCE/m1-t05-t08-ui.txt",
+      "note": "settings/activity e2e green"
     },
     "M1-T09": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T20:18:32.494022+00:00",
+      "evidence": "handoff/EVIDENCE/m1-t09-e2e.txt",
+      "note": "131 tests + 11 e2e green"
     },
     "M1-GATE": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T20:18:44.801314+00:00",
+      "evidence": "handoff/EVIDENCE/m1-gate.txt",
+      "note": "M1 GREEN"
     },
     "M2-T01": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T20:18:44.844886+00:00",
+      "evidence": "handoff/EVIDENCE/m2-gate.txt",
+      "note": "precision@3=1.0 on golden"
     },
     "M2-T02": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T20:18:44.891517+00:00",
+      "evidence": "handoff/EVIDENCE/m2-gate.txt",
+      "note": "quiet/budget/cooldown green"
     },
     "M2-T03": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T20:18:44.937880+00:00",
+      "evidence": "handoff/EVIDENCE/hermes-probe.txt",
+      "note": "unconfigured honest probe"
     },
     "M2-GATE": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T20:18:44.983190+00:00",
+      "evidence": "handoff/EVIDENCE/m2-gate.txt",
+      "note": "M2 GREEN, precision NOT_MEASURED honest"
     },
     "M3-T01": {
       "status": "NOT_STARTED"

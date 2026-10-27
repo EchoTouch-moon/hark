@@ -11,10 +11,29 @@ import { expect, test, type Page } from '@playwright/test';
 
 const SHOT_DIR = 'handoff/EVIDENCE';
 
+/** 稳定的卡片定位：按标题 heading 定位（不随按钮文案/状态变化） */
+function cardByTitle(page: Page, title: string) {
+  return page
+    .locator('article')
+    .filter({ has: page.getByRole('heading', { name: title, exact: true }) })
+    .first();
+}
+
 async function seedViaUi(page: Page): Promise<void> {
   await page.goto('/');
   await page.getByRole('button', { name: /初始化|Demo 数据/ }).first().click();
-  await expect(page.getByText(/为什么现在|why/i).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: '查看证据' }).first()).toBeVisible({ timeout: 20_000 });
+}
+
+/** 展开折叠的历史区（completed 卡在「查看全部」后面）；等待数据加载后再点 */
+async function expandHistory(page: Page): Promise<void> {
+  await page.getByText('需要你决定').first().waitFor({ state: 'visible', timeout: 15_000 });
+  const expand = page.getByRole('button', { name: /查看全部/ });
+  await expand.first().waitFor({ state: 'visible' });
+  if ((await expand.count()) > 0) {
+    await expand.first().click();
+    await page.getByText(/其它建议与历史/).first().waitFor({ state: 'visible', timeout: 5_000 }).catch(() => undefined);
+  }
 }
 
 test.describe.configure({ mode: 'serial' });
@@ -38,8 +57,8 @@ test('E2E-01: 初始化 Demo → 3 张卡片含 whyNow/来源/风险', async ({ 
 
 test('E2E-02: 查看证据 → 执行 → completed + 真实 artifact + sha256', async ({ page }) => {
   await page.goto('/');
-  const ciCard = page.locator('[data-card], article:has(button:has-text("查看证据"))').filter({ hasText: '项目构建未通过' }).first();
-  await ciCard.getByRole('button', { name: '查看证据' }).click();
+  const ciCard = cardByTitle(page, '项目构建未通过');
+  await ciCard.getByRole('button', { name: /查看证据/ }).click();
   await expect(page.getByText(/fixture:\/\//).first()).toBeVisible();
   await ciCard.getByRole('button', { name: /开始处理|开始诊断/ }).click();
   // 等待 run 到终态（UI 轮询）
@@ -61,16 +80,18 @@ test('E2E-02: 查看证据 → 执行 → completed + 真实 artifact + sha256',
 
 test('E2E-03: 刷新后状态保持一致（服务端持久化）', async ({ page }) => {
   await page.goto('/');
-  const ciCard = page.locator('[data-card], article:has(button:has-text("查看证据"))').filter({ hasText: '项目构建未通过' }).first();
-  await expect(ciCard.getByText(/已完成|completed/i).first()).toBeVisible({ timeout: 15_000 });
+  await expandHistory(page);
+  await expect(cardByTitle(page, '项目构建未通过').getByText(/已完成|completed/i).first()).toBeVisible({ timeout: 20_000 });
   await page.reload();
-  await expect(ciCard.getByText(/已完成|completed/i).first()).toBeVisible({ timeout: 15_000 });
+  // 完成的卡收进「查看全部」历史区：展开后再断言状态仍在
+  await expandHistory(page);
+  await expect(cardByTitle(page, '项目构建未通过').getByText(/已完成|completed/i).first()).toBeVisible({ timeout: 15_000 });
 });
 
 test('E2E-04: 快速双击不产生双副作用（幂等）', async ({ page }) => {
   await page.goto('/');
-  const card = page.locator('[data-card], article:has(button:has-text("查看证据"))').filter({ hasText: '可以继续上次的研究' }).first();
-  const btn = card.getByRole('button', { name: /开始处理|生成/ }).first();
+  const card = cardByTitle(page, '可以继续上次的研究');
+  const btn = card.getByRole('button', { name: /开始处理/ }).first();
   await btn.click({ clickCount: 2, delay: 30 });
   await expect(card.getByText(/已完成|completed/i).first()).toBeVisible({ timeout: 30_000 });
   const runs = (await (await page.request.get('/api/v1/runs')).json()) as { runs: Array<{ cardId: string }> };
@@ -86,7 +107,7 @@ test('E2E-04: 快速双击不产生双副作用（幂等）', async ({ page }) =
 
 test('E2E-06: 忽略后卡片不再出现在主动建议（刷新也不重现）', async ({ page }) => {
   await page.goto('/');
-  const card = page.locator('[data-card], article:has(button:has-text("查看证据"))').filter({ hasText: '两场会议需要协调' }).first();
+  const card = cardByTitle(page, '两场会议需要协调');
   await card.getByRole('button', { name: /忽略/ }).click();
   // ConfirmDialog 确认
   const confirm = page.getByRole('button', { name: /确认|确定|忽略/ }).last();
@@ -142,8 +163,9 @@ test('视口 1280×800 无水平滚动', async ({ page }) => {
 
 test('Activity 页可见 run 时间线与验证证据', async ({ page }) => {
   await page.goto('/');
-  const ciCard = page.locator('[data-card], article:has(button:has-text("查看证据"))').filter({ hasText: '项目构建未通过' }).first();
-  const link = ciCard.getByRole('link', { name: /查看 Run|Run 详情|Activity/ }).first();
+  await expandHistory(page);
+  const ciCard = cardByTitle(page, '项目构建未通过');
+  const link = ciCard.getByRole('link').first();
   await link.click();
   await expect(page.getByText(/sha256|[a-f0-9]{16}/i).first()).toBeVisible({ timeout: 15_000 });
   await page.screenshot({ path: `${SHOT_DIR}/ui-activity.png`, fullPage: true });

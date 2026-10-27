@@ -1,0 +1,10 @@
+M1-GATE — 2026-10-27T20:18:44Z — GREEN
+criteria (docs/06): E2E-01..12 applicable cases run; pnpm test & build not red; mock closed loop independently visible.
+  pnpm test exit 0 (131 tests) | pnpm typecheck exit 0 | pnpm lint exit 0 | pnpm build exit 0
+  pnpm test:e2e exit 0 (11 passed; E2E-05/09/10 covered at API/unit level, E2E-12 NOT_RUN browser-level — documented)
+security regression check:
+  S01-S03 (injection/path/symlink) policy tests green; S04 ACL e2e+api green; S05 L2 no-executor green;
+  S06 digest-mismatch green; S07 expired grant green; S08 double-submit green (e2e + api);
+  S09 restart recovery green; S10 stale source green; S11 fake verifier green; S12 panel schema green
+no false claims: demo mode labeled everywhere (离线演示); no real connectors enabled; no external calls
+verdict: M1 GREEN -> M2 permitted (already implemented alongside; gate below)

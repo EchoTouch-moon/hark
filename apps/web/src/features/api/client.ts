@@ -211,6 +211,23 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       cause instanceof Error ? `网络请求失败：${cause.message}` : '网络请求失败',
     );
   }
+  if (response.status === 401) {
+    // 读请求也可能先于会话建立（首次加载）：建立会话后重试一次
+    try {
+      await fetchSessionToken();
+      if (WRITE_METHODS.has(method)) headers.set('x-csrf-token', getCsrfToken() ?? '');
+    } catch {
+      throw await toApiError(response);
+    }
+    try {
+      const retried = await doFetch();
+      if (!retried.ok) throw await toApiError(retried);
+      return parseResponseBody<T>(retried);
+    } catch (cause) {
+      if (cause instanceof ApiError) throw cause;
+      throw new ApiError(0, 'network_error', '重试请求失败');
+    }
+  }
   if (!response.ok) throw await toApiError(response);
   return parseResponseBody<T>(response);
 }

@@ -73,7 +73,7 @@ export function registerCardRoutes(app: FastifyInstance, deps: AppDeps): void {
       return reply.status(429).send({ error: { code: 'RATE_LIMITED', message: 'discover rate limited; retry shortly' } });
     }
     lastDiscoverAtByStorage.set(deps.storage, now);
-    const result = await deps.services.discovery.discover();
+    const result = await deps.services.discovery.discover({ userInitiated: true });
     return reply.send(result);
   });
 }

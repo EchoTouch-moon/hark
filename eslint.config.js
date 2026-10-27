@@ -24,6 +24,9 @@ export default [
         fetch: 'readonly',
         TextEncoder: 'readonly',
         TextDecoder: 'readonly',
+        AbortController: 'readonly',
+        AbortSignal: 'readonly',
+        DOMException: 'readonly',
       },
     },
     plugins: { '@typescript-eslint': tseslint },
@@ -31,6 +34,12 @@ export default [
       ...tseslint.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: false }],
+    },
+  },
+  {
+    files: ['tests/e2e/**/*.ts'],
+    languageOptions: {
+      globals: { document: 'readonly', window: 'readonly', console: 'readonly' },
     },
   },
   {
@@ -57,6 +66,8 @@ export default [
         Headers: 'readonly',
         BodyInit: 'readonly',
         AbortController: 'readonly',
+        AbortSignal: 'readonly',
+        DOMException: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         setInterval: 'readonly',

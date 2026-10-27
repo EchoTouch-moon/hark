@@ -1,0 +1,17 @@
+M1-T09 E2E + build — 2026-10-27T20:18:32Z
+pnpm test      -> 12 files / 131 tests passed, exit 0
+pnpm typecheck -> exit 0
+pnpm lint      -> exit 0
+pnpm build     -> exit 0 (vite web + esbuild server bundle)
+pnpm test:e2e  -> 11 passed, 0 failed, exit 0 (Playwright 1.64.1, chromium-1248, 1280/1440 viewports)
+E2E coverage map (docs/06):
+  E2E-01 seed->3 cards PASS | E2E-02 evidence->execute->completed+sha256+artifact PASS
+  E2E-03 refresh persistence PASS | E2E-04 double-click idempotent PASS | E2E-06 dismiss respected PASS
+  E2E-07 project isolation PASS | E2E-08 chat mock+persist+label PASS | E2E-11 empty state PASS
+  E2E-05 expired card 410: covered at API level (apps/server app.test) — no browser path to expire a card honestly
+  E2E-09 L2 no-executor: covered at API + policy level (awaiting_approval, zero steps)
+  E2E-10 fake verifier: covered at unit level (S11 verifier independence, 6 tests)
+  E2E-12 server-unavailable: covered by UI ErrorState + client retry design; browser-level kill not simulated (NOT_RUN, honest)
+smoke trace: handoff/EVIDENCE/demo-run.json (real HTTP loop + restart persistence)
+integration fixes this phase: session bootstrap on GET 401; auth hook scoped to /api/v1/*; E2E absolute DB path;
+user-initiated discover bypasses quiet-hours deferral (ADR-006); stable card selectors.

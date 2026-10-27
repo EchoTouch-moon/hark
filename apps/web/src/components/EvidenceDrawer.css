@@ -1,0 +1,206 @@
+/* EvidenceDrawer：页面内的证据面板（嵌在 ActionCard 展开区内） */
+
+.evd {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.evd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.evd-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink-3);
+  letter-spacing: var(--tracking-wide);
+}
+
+.evd-close {
+  height: 26px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.evd-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.evd-section-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-ink-3);
+}
+
+.evd-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.evd-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.evd-row-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+
+.evd-tag {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-2);
+  font-size: var(--text-xs);
+  border: 1px solid var(--color-border);
+}
+
+.evd-uri {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.evd-row-meta {
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+}
+
+.evd-note {
+  font-size: var(--text-sm);
+  color: var(--color-ink-3);
+}
+
+.evd-note-error {
+  color: var(--color-danger-ink);
+}
+
+.evd-retry {
+  height: 24px;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+}
+
+/* ---------- run / steps ---------- */
+
+.evd-run {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink-2);
+}
+
+.evd-run-completed {
+  color: var(--color-success-ink);
+}
+
+.evd-run-failed,
+.evd-run-blocked,
+.evd-run-cancelled {
+  color: var(--color-danger-ink);
+}
+
+.evd-run-blocked {
+  color: var(--color-warning-ink);
+}
+
+.evd-run-executing,
+.evd-run-verifying,
+.evd-run-queued,
+.evd-run-awaiting_approval,
+.evd-run-pending_verification {
+  color: var(--color-accent-strong);
+}
+
+.evd-run-link {
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.evd-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.evd-step {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+
+.evd-step-status {
+  flex-shrink: 0;
+  min-width: 48px;
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+}
+
+.evd-step-succeeded {
+  color: var(--color-success-ink);
+}
+
+.evd-step-failed {
+  color: var(--color-danger-ink);
+}
+
+.evd-step-running {
+  color: var(--color-accent-strong);
+}
+
+.evd-step-name {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evd-step-detail {
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
