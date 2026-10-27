@@ -60,10 +60,12 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
   };
 
   // first-run convenience: seed demo data automatically so Home is never an
-  // empty shell (E2E disables this via HEARTH_AUTOSEED=0 to test the empty state)
+  // empty shell (E2E disables this via HEARTH_AUTOSEED=0 to test the empty state).
+  // First boot counts as a user action: quiet hours govern background scans,
+  // not the explicit moment the user set the system up (docs/02 first-run matrix).
   if (config.demoMode && storage.listProjects().length === 0 && process.env['HEARTH_AUTOSEED'] !== '0') {
     await deps.services.seedDemo();
-    await discovery.discover();
+    await discovery.discover({ userInitiated: true });
   }
 
   // S09: reconcile interrupted runs before serving traffic (never blindly re-execute)
