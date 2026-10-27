@@ -1,0 +1,12 @@
+M0-GATE — 2026-10-27T19:30:10Z — GREEN
+gate criteria (docs/06): contracts schema + state machine + policy negatives + migrations tests pass; AGENTS.md & threat model exist.
+evidence:
+  pnpm typecheck -> exit 0
+  pnpm test      -> exit 0 (5 files / 78 tests: contracts 32, policy 17, storage 13, eval 16)
+  pnpm lint      -> exit 0
+  policy safety assertions: S02/S03/S04/S05/S06/S07/S08/S10 unit-negatives green (packages/core policy.test.ts)
+  AGENTS.md present; docs/05-SECURITY.md threat model present
+  pnpm build -> exit 1 EXPECTED at M0 (apps/web placeholder + server not yet implemented; build is an M1 acceptance item)
+per-task evidence: handoff/EVIDENCE/m0-t0{1..5}-*.txt
+commits: eadc0d7 bootstrap / 0a158f4 contracts / bce3e7e policy / a6cee0f storage+eval
+verdict: M0 GREEN -> proceed to M1

@@ -27,10 +27,16 @@
       "note": "13 storage tests pass"
     },
     "M0-T05": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T19:29:55.072473+00:00",
+      "evidence": "handoff/EVIDENCE/m0-t05-fixtures.txt",
+      "note": "subagent: 16 eval tests pass"
     },
     "M0-GATE": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T19:30:10.299320+00:00",
+      "evidence": "handoff/EVIDENCE/m0-gate.txt",
+      "note": "M0 GREEN: 78 tests, typecheck/lint clean"
     },
     "M1-T01": {
       "status": "NOT_STARTED"
