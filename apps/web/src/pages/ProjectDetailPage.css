@@ -1,0 +1,219 @@
+/* U03 项目详情（M1-T07） */
+
+.pd-skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.skeleton {
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    100deg,
+    var(--color-surface-sunken) 40%,
+    var(--color-border) 50%,
+    var(--color-surface-sunken) 60%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.2s ease-in-out infinite;
+}
+
+.skeleton-block {
+  height: 96px;
+  border: 1px solid var(--color-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
+.pd-error-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.pd-back-btn {
+  align-self: flex-start;
+}
+
+/* 项目目的 */
+.pd-purpose {
+  padding: var(--space-5);
+  color: var(--color-ink-2);
+  line-height: var(--leading-normal);
+}
+
+/* 最近事件 */
+.pd-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.pd-event {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+}
+
+.pd-event-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.pd-event-time {
+  font-size: var(--text-sm);
+  color: var(--color-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.pd-event-type {
+  color: var(--color-ink-2);
+  background: var(--color-surface-sunken);
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+}
+
+.pd-event-summary {
+  color: var(--color-ink);
+}
+
+.pd-event-source {
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* 建议卡片 */
+.pd-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.pd-action-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+}
+
+.pd-action-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.pd-action-card-title {
+  font-weight: 600;
+}
+
+.pd-action-card-why {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+}
+
+/* 执行历史 */
+.pd-run-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.pd-run-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-ink);
+  flex-wrap: wrap;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.pd-run-row:hover {
+  color: var(--color-ink);
+  border-color: var(--color-border-strong);
+}
+
+.pd-run-time {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.pd-run-verdict-none {
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+}
+
+.pd-run-open {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--color-accent);
+}
+
+/* 状态徽标（与其它页面保持同一份规则） */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  line-height: 1;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.status-badge.is-neutral {
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-2);
+  border-color: var(--color-border);
+}
+
+.status-badge.is-info {
+  background: var(--color-info-soft);
+  color: var(--color-info-ink);
+}
+
+.status-badge.is-success {
+  background: var(--color-success-soft);
+  color: var(--color-success-ink);
+}
+
+.status-badge.is-warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-ink);
+}
+
+.status-badge.is-danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-ink);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,7 @@
+Hermes probe (M2-T03) — 2026-10-27T19:51:56Z
+status: UNCONFIGURED on this machine (HEARTH_HERMES_URL not set)
+behavior verified by unit tests (packages/agent-adapters/src/hermes.test.ts):
+- unconfigured => honest status, zero network calls, never asks for credentials
+- reachable => capabilities list parsed strictly (string[] only)
+- connection refused / HTTP error / malformed payload => unreachable (never success)
+probe is read-only GET /capabilities on loopback; no tool runs are ever submitted
