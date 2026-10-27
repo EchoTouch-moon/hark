@@ -1,0 +1,19 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# Local runtime state (never commit DBs or artifacts)
+data/
+.hearth-demo-artifacts/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Env: only .example is committed
+.env
+.env.local
+
+.DS_Store
+*.log

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "apps/server/src/**/*.ts",
+    "vitest.config.ts",
+    "tests/unit/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "apps/web"]
+}

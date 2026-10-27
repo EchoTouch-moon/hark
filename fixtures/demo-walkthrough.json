@@ -1,0 +1,38 @@
+{
+  "contractVersion": "1",
+  "scenarios": [
+    {
+      "id": "demo-A",
+      "name": "CI 诊断",
+      "eventId": "ev-atlas-ci-001",
+      "cardTitle": "项目构建未通过",
+      "whyNow": "演示的 CI 失败状态会阻断下一步合入",
+      "actionType": "report.generate",
+      "expectedArtifact": "report/atlas-ci-42.json",
+      "verification": "json_schema+sha256",
+      "risk": "L1"
+    },
+    {
+      "id": "demo-B",
+      "name": "实验清单",
+      "eventId": "ev-beacon-study-001",
+      "cardTitle": "可以继续上次的研究",
+      "whyNow": "用户确认过的下一步还没有完成",
+      "actionType": "checklist.generate",
+      "expectedArtifact": "checklists/beacon-experiment.md",
+      "verification": "sha256+nonempty",
+      "risk": "L1"
+    },
+    {
+      "id": "demo-C",
+      "name": "会议草稿",
+      "eventId": "ev-beacon-calendar-001",
+      "cardTitle": "两场会议需要协调",
+      "whyNow": "合成的两个时间段发生冲突",
+      "actionType": "draft.generate",
+      "expectedArtifact": "drafts/meeting-adjustment.md",
+      "verification": "sha256+nonempty",
+      "risk": "L1"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+M0-T01 workspace bootstrap — 2026-10-27T19:16:04Z
+node v22.23.2 / pnpm 11.9.0 / git 2.49.0 / python3 3.9.6
+commands (exit codes):
+  pnpm install             -> 0 (esbuild postinstall approved via allowBuilds)
+  pnpm typecheck           -> 0 (root + @hearth/web)
+  pnpm lint                -> 0 (eslint 9 flat config)
+  pnpm test                -> 0 (vitest, 1 smoke test)
+deliverables: package.json, pnpm-workspace.yaml, tsconfig.base.json, .gitignore, README-dev.md
+plus skeletons: packages/{contracts,core,storage,connectors,agent-adapters,panels,eval}, apps/{server,web}, tests/e2e

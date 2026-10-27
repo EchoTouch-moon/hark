@@ -1,0 +1,23 @@
+{
+  "name": "@hearth/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/main.ts" },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/server.mjs",
+    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs --external:fsevents",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hearth/agent-adapters": "workspace:*",
+    "@hearth/connectors": "workspace:*",
+    "@hearth/contracts": "workspace:*",
+    "@hearth/core": "workspace:*",
+    "@hearth/storage": "workspace:*",
+    "esbuild": "^0.25.0",
+    "fastify": "^5.2.0",
+    "zod": "^3.25.0"
+  }
+}
