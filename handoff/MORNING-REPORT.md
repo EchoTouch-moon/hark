@@ -1,43 +1,52 @@
-# Morning Report — 2026-10-29 (TEMPLATE / NO DEVELOPMENT YET)
+# Morning Report — 2026-10-28 夜间运行（主交付 HEAD: 145213c）
 
-**状态**：NOT_STARTED — 这是规划包初始模板，不能理解成已经运行。
+**状态**：M0 ✅ GREEN · M1 ✅ GREEN · M2 ✅ GREEN（P1 范围；precision@3 诚实标注 NOT_MEASURED）
 
 ## 1. 真实环境
-- OS / Node / pnpm / Git：NOT_CHECKED
-- 仓库路径：NOT_PROVIDED
-- 当前 Git HEAD：NOT_AVAILABLE
-- 运行端口与命令：NOT_AVAILABLE
+- OS：macOS darwin 27.0.0 arm64；Node v22.23.2；pnpm 11.9.0；git 2.49.0；python3 3.9.6
+- 仓库：`/Users/v/new-idea/hark`（本仓库内 git init，未推任何远端）
+- 主交付 HEAD：`145213c`（本报告与其余 handoff 文档在其后一个收尾 commit）
+- 运行命令与端口：
+  - API/一体化运行：`pnpm dev:server` → **http://127.0.0.1:4317**（首启自动 seed+discover；同端口伺服已构建 UI）
+  - 纯前端开发：`pnpm dev:web` → http://localhost:5173（/api 代理到 4317）
+  - E2E：`pnpm test:e2e`（自起 4321 端口独立实例 + 独立 DB `data/e2e.sqlite`）
 
-## 2. 实际交付
-- M0：NOT_STARTED
-- M1：NOT_STARTED
-- M2：NOT_STARTED
-- 可运行 UI：NOT_VERIFIED
-- Mock 完整闭环：NOT_VERIFIED
-- Hermes 实际连接：NOT_CONFIGURED
+## 2. 实际交付（20/20 overnight 任务 DONE，progress.json 同步）
+- **M0**：Zod 严格合同（DTO+状态机+canonical/sha256 纯 TS）、策略引擎（动作注册表/digest 审批/路径防逃逸）、SQLite（node:sqlite，显式 migration/WAL/FK）、fixtures/eval 复放框架
+- **M1**：Fastify localhost API（会话+CSRF+Origin、SSE 端点）、规则发现/去重/抑制、Run 编排（MockExecutor 真实写 `.hearth-demo-artifacts`、独立 Verifier、重启恢复）、React UI 全五页（Home/Chat/Projects/Activity/Settings，中文、空/错/加载态、1280/1440 无横滚）
+- **M2**：确定性评分（golden precision@3=1.0）、静默时段（IANA 时区+DST 测试）/每日预算/忽略冷却（用户显式扫描不被静默拦截，ADR-006）、Hermes 只读 probe（未配置→诚实 unconfigured）
+- **并行方式**：4 个子 Agent（eval、UI shell、Home、Projects/Activity/Settings），合同/存储/权限/编排由主 Agent 串行收口；子 Agent 不 commit，主 Agent 统一验证合并
 
-## 3. 测试摘要
-| 命令 | exit code | 结果 | 证据 |
-|---|---|---|---|
-| `pnpm typecheck` | — | NOT_RUN | — |
-| `pnpm test` | — | NOT_RUN | — |
-| `pnpm build` | — | NOT_RUN | — |
-| `pnpm test:e2e` | — | NOT_RUN | — |
-| 安全负例 | — | NOT_RUN | — |
+## 3. 测试摘要（全部真实 exit code，证据在 handoff/EVIDENCE/）
+| 命令 | exit code | 结果 |
+|---|---|---|
+| `pnpm typecheck` | 0 | 全仓 strict 通过（含 web 独立检查） |
+| `pnpm test` | 0 | **12 files / 131 tests**（contracts 32、policy 17、storage 13、eval 16、verifier 6、orchestrator 8、discovery 15、scoring 7、server api 20…） |
+| `pnpm lint` | 0 | eslint 9 flat config |
+| `pnpm build` | 0 | web vite build（341KB js）+ server esbuild bundle |
+| `pnpm test:e2e` | 0 | **11 passed / 0 failed**（Playwright 1.64.1 + chromium-1248） |
+| 安全负例 | 0 | S01–S12 全部有真实断言（policy/api/e2e 分层，见 m1-gate.txt 映射） |
 
-## 4. Demo 演示
-- Home：NOT_VERIFIED
-- Chat：NOT_VERIFIED
-- Projects：NOT_VERIFIED
-- Card→run→artifact→verifier：NOT_VERIFIED
-- 双击幂等与刷新恢复：NOT_VERIFIED
-- 安全越权拒绝：NOT_VERIFIED
+## 4. Demo 演示路径（明早照此点击）
+1. `pnpm build && pnpm dev:server` → 打开 http://127.0.0.1:4317
+2. **Home**：3 张合成卡（CI 诊断/实验清单/会议草稿），每张有 whyNow/来源/风险/TTL
+3. **硬闭环**：CI 卡「查看证据」→ 见 fixture 来源与事件 → 「开始处理」→ queued→executing→verifying→completed（步骤实时轮询）→「查看 Run」进 Activity：3 个步骤、sha256、artifact 路径
+4. **验证产物**：`.hearth-demo-artifacts/report/ci-42.json`（真实文件，Verifier 独立重算 hash 才置 completed）
+5. **刷新/重启**：状态保留（E2E-03 + demo-run.json 里真实 kill-restart 记录）
+6. **负例**：双击同卡幂等（同 run）；忽略后不再重现；跨项目查询服务端隔离；未审批 L2 零执行器步骤（API 级断言）
+7. **Chat**：输入即回（明确「离线演示 · 不连接模型」），记录持久化
+8. **Settings**：安静时段/预算/时区可保存；「重置 Demo 数据」需二次确认且只清 demo DB
 
-## 5. Git / files / screenshots
-待由实际执行者按证据填写。
+## 5. Git / 证据
+- 12 个本地 commit（eadc0d7 → 145213c + 收尾），未推送任何远端
+- 截图：`handoff/EVIDENCE/ui-{home,chat,projects,activity,settings}.png`（Playwright 实拍）
+- 闭环 trace：`demo-run.json`；审计快照：`morning-audit-snapshot.json`；每任务证据 txt 共 12 份
 
-## 6. 已知 blocker 和下一阶段优先项
-1. 本机 Coding Agent 尚未执行；用户需启动会话。
+## 6. 已知边界与下一阶段优先项
+1. E2E-12 浏览器级断服模拟未做（client 重试+ErrorState 已覆盖路径）；SSE 端点已备、UI 暂用轮询
+2. 50 条标注基准集未建 → precision@3 NOT_MEASURED（现有 golden 5 条 = 1.0）
+3. Hermes 未配置（不请求密钥、不假装在线）；真实 connector 全 OFF
+4. 下一步建议顺序：真实 connector 只读接入评审（M2 文档）→ 50 条基准集 → SSE UI 消费 → M3 browser handoff（人工评审后）
 
-## 7. 用户审批事项
-首晚不需要真实账号、私人库写入或远端推送权限；如请求则等明早明确批准。
+## 7. 用户审批事项（今晚零越权）
+未访问 personal-vault/memory-vault；未碰 Hermes 配置；无 sudo/Docker/远端推送/邮件/支付；所有密钥类操作为零（PROVIDER_BUDGET=0，无付费 API）。真实副作用接入一律等你明早批准。

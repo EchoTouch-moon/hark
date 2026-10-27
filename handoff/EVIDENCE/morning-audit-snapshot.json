@@ -1,0 +1,65 @@
+{
+  "generated_at": "2026-10-27T20:18:51.623269+00:00",
+  "warning": "This is an observational snapshot, NOT a development completion report",
+  "files_present": {
+    "package.json": true,
+    "pnpm-lock.yaml": true,
+    "pnpm-workspace.yaml": true,
+    "apps/web": true,
+    "apps/server": true,
+    "packages/contracts": true,
+    "packages/storage": true,
+    "handoff/EVIDENCE": true,
+    "README-dev.md": true
+  },
+  "environment": {
+    "node": {
+      "path": "/usr/local/bin/node",
+      "version": {
+        "command": "node --version",
+        "exit_code": 0,
+        "output_tail": "v22.23.2\n",
+        "status": "PASS"
+      }
+    },
+    "pnpm": {
+      "path": "/opt/homebrew/bin/pnpm",
+      "version": {
+        "command": "pnpm --version",
+        "exit_code": 0,
+        "output_tail": "11.9.0\n",
+        "status": "PASS"
+      }
+    },
+    "git": {
+      "path": "/opt/homebrew/bin/git",
+      "version": {
+        "command": "git --version",
+        "exit_code": 0,
+        "output_tail": "git version 2.49.0\n",
+        "status": "PASS"
+      }
+    }
+  },
+  "git": {
+    "head": {
+      "command": "git rev-parse HEAD",
+      "exit_code": 0,
+      "output_tail": "145213c7a1494ef19fec8410ff32b3c4d98ca856\n",
+      "status": "PASS"
+    },
+    "status": {
+      "command": "git status --short",
+      "exit_code": 0,
+      "output_tail": "",
+      "status": "PASS"
+    },
+    "last_commits": {
+      "command": "git log -5 --oneline",
+      "exit_code": 0,
+      "output_tail": "145213c feat(m1): UI pages integration, e2e green (11/11), auth/session fixes\n0149b1b feat(m2): deterministic scoring + golden precision test\n4db20d7 feat(m2): hermes read-only probe adapter\n29b8307 feat(m2): quiet hours, daily budget, dismissal suppression in discovery\n7faf809 feat(m1): chat page UI, e2e specs, smoke-verified closed loop\n",
+      "status": "PASS"
+    }
+  },
+  "quality_commands": []
+}
