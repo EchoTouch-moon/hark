@@ -22,7 +22,21 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
     clock: () => new Date().toISOString(),
     stepDelayMs: Number(process.env['HEARTH_STEP_DELAY_MS'] ?? 120),
   });
-  const discovery = new DiscoveryService({ storage, clock: () => new Date().toISOString() });
+  const suppressionForDiscovery = () => {
+    const s = storage.getSetting<{ quietHours: { start: string; end: string }; maxCardsPerDay: number; timezone?: string }>('settings');
+    return {
+      quietHours: { ...(s?.quietHours ?? { start: '22:00', end: '08:00' }), timezone: s?.timezone ?? 'Asia/Shanghai' },
+      maxCardsPerDay: s?.maxCardsPerDay ?? 3,
+      dismissCooldownHours: 72,
+    };
+  };
+  const discovery = new DiscoveryService({
+    storage,
+    clock: () => new Date().toISOString(),
+    get suppression() {
+      return suppressionForDiscovery();
+    },
+  });
   const chat = new MockAgentAdapter();
   const connector = new FixtureConnector(config.repoRoot);
 

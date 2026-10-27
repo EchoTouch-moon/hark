@@ -2,6 +2,12 @@ import type { ActionCard, Candidate, Event } from '@hearth/contracts';
 import { sha256Hex } from '@hearth/contracts';
 import type { Storage } from '@hearth/storage';
 import { buildCandidate, isNoise } from './rules.js';
+import {
+  dailyBudgetRemaining,
+  isWithinQuietHours,
+  localDayKey,
+  type SuppressionSettings,
+} from './suppression.js';
 
 export interface DiscoverResult {
   scannedEvents: number;
@@ -10,20 +16,31 @@ export interface DiscoverResult {
   duplicatesSuppressed: number;
   cardsCreated: number;
   dismissedRespected: number;
+  quietHoursActive: boolean;
+  budgetExhausted: boolean;
 }
 
 /**
  * Rule-first discovery over persisted events (R-02). Deterministic for a
  * fixed clock: duplicate dedupe_keys never create a second card, dismissed
  * suppression keys are never re-surfaced, unexpired cards are not duplicated.
+ * During quiet hours or after the daily budget is exhausted, NEW cards are
+ * deferred (existing cards remain actionable).
  */
 export class DiscoveryService {
   constructor(
-    private readonly deps: { storage: Storage; clock: () => string; maxCardsPerDay?: number },
+    private readonly deps: {
+      storage: Storage;
+      clock: () => string;
+      suppression?: SuppressionSettings;
+    },
   ) {}
 
   async discover(): Promise<DiscoverResult> {
     const now = this.deps.clock();
+    const nowDate = new Date(now);
+    const suppression = this.deps.suppression;
+    const quietActive = suppression ? isWithinQuietHours(nowDate, suppression.quietHours) : false;
     const events = this.deps.storage.listEvents({ limit: 100 });
     const result: DiscoverResult = {
       scannedEvents: events.length,
@@ -32,7 +49,16 @@ export class DiscoveryService {
       duplicatesSuppressed: 0,
       cardsCreated: 0,
       dismissedRespected: 0,
+      quietHoursActive: quietActive,
+      budgetExhausted: false,
     };
+
+    const tz = suppression?.quietHours.timezone ?? 'Asia/Shanghai';
+    const todayKey = localDayKey(nowDate, tz);
+    const createdToday = this.deps.storage
+      .listCards({ limit: 200 })
+      .filter((c) => localDayKey(new Date(c.createdAt), tz) === todayKey).length;
+    let budgetLeft = suppression ? dailyBudgetRemaining(createdToday, suppression.maxCardsPerDay) : Number.POSITIVE_INFINITY;
 
     for (const event of events) {
       if (isNoise(event)) {
@@ -54,15 +80,23 @@ export class DiscoveryService {
         result.duplicatesSuppressed += 1;
         continue;
       }
-
-      const up = this.deps.storage.upsertCandidate(candidate);
-      if (up.existing) {
+      if (existingCards.length > 0) {
+        // terminal cards exist for this suppression key (completed/failed/expired):
+        // already actioned — never re-nag the same deduped event
         result.duplicatesSuppressed += 1;
+        continue;
+      }
+
+      this.deps.storage.upsertCandidate(candidate); // dedupes storage; deferred candidates pass through here later
+      if (quietActive || budgetLeft <= 0) {
+        // Keep the candidate record (audit) but defer surfacing a card.
+        result.budgetExhausted = result.budgetExhausted || budgetLeft <= 0;
         continue;
       }
       result.candidatesCreated += 1;
       this.createCard(candidate, now);
       result.cardsCreated += 1;
+      budgetLeft -= 1;
     }
 
     this.deps.storage.audit('discover.run', 'system', 'discovery', { ...result });
