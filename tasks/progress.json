@@ -15,7 +15,10 @@
       "note": "32 tests pass"
     },
     "M0-T03": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T19:25:22.000574+00:00",
+      "evidence": "handoff/EVIDENCE/m0-t03-policy.txt",
+      "note": "17 policy tests pass incl S02-S07/S10 negatives"
     },
     "M0-T04": {
       "status": "NOT_STARTED"

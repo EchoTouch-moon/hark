@@ -1,0 +1,13 @@
+M0-T03 policy engine — 2026-10-27T19:25:21Z
+pnpm vitest run packages/core -> 1 file, 17 tests passed, exit 0
+typecheck exit 0, lint exit 0 (0 errors)
+coverage:
+- ACTION_REGISTRY static floors (4 P0 action types; effect/risk server-authoritative)
+- unknown actionType (e.g. shell.execute / mail.send) => deny UNKNOWN_ACTION (no executor channel)
+- L3 always denied even WITH a matching grant
+- S04 project ACL deny; S02 path traversal + absolute path deny; S03 real-fs symlink escape deny
+- S05 L2/external_write without grant => await_approval (never permit, never executor)
+- S06 params/target tampering => GRANT_DIGEST_MISMATCH => await_approval again
+- S07 expired / consumed / capability-missing grants rejected
+- S10 stale or missing source version => deny STALE_SOURCE
+- risk floor escalation: client L0 claim on L1-floor action escalates to L1
