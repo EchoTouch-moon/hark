@@ -1,0 +1,41 @@
+M0-T05 fixtures + eval framework — 2026-10-28 (UTC offset +08:00 local)
+
+Scope: packages/eval/src/{fixture-loader,clock,replay,index,eval.test}.ts (new/updated).
+fixtures/*.json untouched (read-only inputs).
+
+[1] pnpm vitest run packages/eval   -> exit 0
+    Test Files  1 passed (1)
+         Tests  16 passed (16)   (packages/eval/src/eval.test.ts, no snapshots)
+    Coverage of required acceptance points:
+    - all 5 fixture events pass strict EventSchema after goldenAction/goldenUseful
+      are stripped (also asserted the meta keys are absent from the contract object)
+    - duplicate dedupeKey (atlas:ci:42:failed) -> replayIngest accepted=4,
+      duplicates=[{ id: 'ev-atlas-duplicate-001', dedupeKey: 'atlas:ci:42:failed' }]
+    - goldenUseful=false noise (ev-atlas-noise-001, ev-atlas-duplicate-001) excluded
+      from goldenUsefulEventIds set
+    - adversarial.json loads 12 cases (S01..S12), ids unique
+    - demo-walkthrough 3 scenarios: eventIds exist, actionType === event
+      goldenAction (report.generate / checklist.generate / draft.generate), risk L1
+    - FixedClock: same-arg constructions identical; tick() advances exactly ms;
+      now() matches IsoDateTimeSchema (normalized UTC); invalid args rejected
+    - replayScoring: scores 0.9/0.8/0.7/0.6 with golden true/true/false/true ->
+      precisionAt3 = 2/3 (usefulInTop3=2, denominator min(3,4)=3); empty input ->
+      precisionAt3 = null
+    - loader error aggregation: parse failure message contains offending
+      `id=ev-bad-001`; wrong contractVersion rejected; demo scenario referencing
+      unknown eventId rejected
+
+[2] pnpm typecheck                  -> exit 0
+    (tsc -p tsconfig.json --noEmit && pnpm --filter @hearth/web typecheck)
+
+[3] pnpm lint                       -> exit 1, NO problems from packages/eval
+    Full-repo output:
+      packages/contracts/src/contracts.test.ts  71:24  warning  '_drop' unused (pre-existing)
+      packages/storage/src/migrations.ts        194:7  error    preserve-caught-error (pre-existing,
+                                                             untracked file from another task, outside
+                                                             M0-T05 write boundary)
+    npx eslint packages/eval         -> exit 0 (0 problems)
+
+Environment: pnpm workspace, vitest 3.2.7, node >=22.13, TypeScript strict.
+fixtures validated: contractVersion==='1' via CONTRACT_VERSION from @hearth/contracts;
+events split into { event: Event, meta: { goldenAction, goldenUseful } }.

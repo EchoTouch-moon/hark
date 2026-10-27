@@ -1,0 +1,14 @@
+M0-T04 storage — 2026-10-27T19:29:46Z
+pnpm vitest run packages/storage -> 1 file, 13 tests passed, exit 0
+full pnpm test -> 5 files (contracts x2, core, storage, eval), 78 tests passed, exit 0
+typecheck exit 0, lint exit 0
+coverage:
+- explicit versioned migration (v1 core schema, schema_version table); repeated migrate() applies nothing (idempotent)
+- node:sqlite DatabaseSync; WAL + busy_timeout=5000 + foreign_keys=ON on every open
+- events dedupe_key UNIQUE: duplicate ingest collapses (R-02)
+- runs idempotency_key UNIQUE: double submit returns same run (S08)
+- run state transitions atomic in-transaction with contract assertRunTransition; illegal move rolls back
+- FK enforced: run_steps->runs, events->projects rejects bogus parents
+- restart persistence: reopen DB keeps run state + audit rows (E2E-03 base)
+- approvals one-shot consume; settings JSON round-trip; audit append-only API
+- resetDemoData wipes demo tables only, refuses if any non-demo project exists
