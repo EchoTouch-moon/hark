@@ -39,16 +39,28 @@
       "note": "M0 GREEN: 78 tests, typecheck/lint clean"
     },
     "M1-T01": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T19:44:19.151354+00:00",
+      "evidence": "handoff/EVIDENCE/m1-t01-server.txt",
+      "note": "20 api tests pass"
     },
     "M1-T02": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T19:44:19.198546+00:00",
+      "evidence": "handoff/EVIDENCE/m1-t02-discovery.txt",
+      "note": "seed/discover/suppression green"
     },
     "M1-T03": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T19:44:19.241951+00:00",
+      "evidence": "handoff/EVIDENCE/m1-t03-orchestration.txt",
+      "note": "closed loop + S05/S08/S09/S11 green"
     },
     "M1-T04": {
-      "status": "NOT_STARTED"
+      "status": "DONE",
+      "updatedAt": "2026-10-27T19:44:19.283820+00:00",
+      "evidence": "handoff/EVIDENCE/m1-t04-ui-shell.txt",
+      "note": "web build exit 0 (subagent)"
     },
     "M1-T05": {
       "status": "NOT_STARTED"

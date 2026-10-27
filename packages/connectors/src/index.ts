@@ -1,1 +1,1 @@
-export const PACKAGE = 'connectors';
+export * from './fixture-connector.js';

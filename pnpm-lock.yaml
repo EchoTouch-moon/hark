@@ -50,6 +50,9 @@ importers:
       '@hearth/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@hearth/panels':
+        specifier: workspace:*
+        version: link:../../packages/panels
       '@hearth/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -102,6 +105,9 @@ importers:
       '@hearth/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@hearth/eval':
+        specifier: workspace:*
+        version: link:../eval
 
   packages/contracts:
     dependencies:
@@ -114,9 +120,16 @@ importers:
       '@hearth/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@hearth/storage':
+        specifier: workspace:*
+        version: link:../storage
       zod:
         specifier: 3.24.1
         version: 3.24.1
+    devDependencies:
+      '@hearth/connectors':
+        specifier: workspace:*
+        version: link:../connectors
 
   packages/eval:
     dependencies:

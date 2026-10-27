@@ -1,0 +1,8 @@
+M1-T02 event ingest / rule discovery / cards / suppression — 2026-10-27T19:44:19Z
+evidence: apps/server tests (M1-T02 describe block) + packages/core discovery via orchestrator tests
+- POST /demo/seed: 2 projects, 4 events ingested (duplicate dedupe collapses: 5 -> 4)
+- POST /discover: exactly 3 cards created, 1 noise skipped; every card has whyNow + evidence[0] + 64-hex idempotencyKey
+- repeat discover idempotent: 0 new cards (active-card suppression + candidate upsert dedupe)
+- dismiss persists (feedback recorded) and later discovery respects it (E2E-06): no re-surfacing
+- snooze: past time => 400; valid => status snoozed with snoozedUntil
+- server-side project isolation (E2E-07): /events?projectId filters in SQL; /projects/:id snapshot only same-project cards

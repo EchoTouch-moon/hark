@@ -1,0 +1,52 @@
+import {
+  createBrowserRouter,
+  Navigate,
+  useRouteError,
+} from 'react-router-dom';
+import { AppShell } from './AppShell';
+import { ErrorState } from '../components';
+import { HomePage } from '../pages/HomePage';
+import { ChatPage } from '../pages/ChatPage';
+import { ProjectsPage } from '../pages/ProjectsPage';
+import { ProjectDetailPage } from '../pages/ProjectDetailPage';
+import { ActivityPage } from '../pages/ActivityPage';
+import { SettingsPage } from '../pages/SettingsPage';
+
+/** 路由级错误兜底：如实展示错误并提供重载入口 */
+function RouteError() {
+  const error = useRouteError();
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : '页面加载出现未知错误';
+  return (
+    <section className="page">
+      <ErrorState message={message} onRetry={() => window.location.reload()} />
+    </section>
+  );
+}
+
+/**
+ * 路由表（docs/02-UX）：
+ * / , /chat , /projects , /projects/:id , /activity/:runId , /settings
+ * /activity 是缺少 runId 时的列表落点；未知路径回到 Home。
+ */
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <AppShell />,
+    errorElement: <RouteError />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: 'chat', element: <ChatPage /> },
+      { path: 'projects', element: <ProjectsPage /> },
+      { path: 'projects/:id', element: <ProjectDetailPage /> },
+      { path: 'activity', element: <ActivityPage /> },
+      { path: 'activity/:runId', element: <ActivityPage /> },
+      { path: 'settings', element: <SettingsPage /> },
+      { path: '*', element: <Navigate to="/" replace /> },
+    ],
+  },
+]);

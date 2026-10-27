@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@hearth/contracts": "workspace:*"
+    "@hearth/contracts": "workspace:*",
+    "@hearth/eval": "workspace:*"
   }
 }

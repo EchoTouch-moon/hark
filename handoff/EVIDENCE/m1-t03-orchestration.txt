@@ -1,0 +1,13 @@
+M1-T03 orchestration / MockExecutor / Verifier — 2026-10-27T19:44:19Z
+packages/core: verifier 6 tests + orchestrator 8 tests pass; apps/server M1-T03 5 tests pass
+- golden path queued->executing->verifying->completed with REAL artifact written under .hearth-demo-artifacts,
+  sha256 evidence row (kind json_schema / artifact_sha256), 3 named steps all succeeded
+- all three demo scenarios (CI report / experiment checklist / meeting draft) close the loop
+- double-click idempotent (S08): same run returned, single run row, no double artifact
+- L2 without grant => awaiting_approval, ZERO executor steps (S05); deny => blocked; approve writes digest-bound
+  10-min grant then completes; wrong-params grant never unlocks (S06)
+- expired card execute => 410 CARD_EXPIRED, no run created (E2E-05)
+- S11 verifier independence: missing artifact / hash mismatch / empty file / json-schema violation all => fail (never completed)
+- S09 recovery: interrupted executing + valid artifact => completed via readback; no artifact => pending_verification (no blind re-run)
+- cancel: run cancelled terminal; card returns to proposed (contract has no cancelled card status)
+- discover rate limit per storage instance (429)

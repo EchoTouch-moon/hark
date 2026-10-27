@@ -1,1 +1,1 @@
-export const PACKAGE = 'agent-adapters';
+export * from './mock-adapter.js';

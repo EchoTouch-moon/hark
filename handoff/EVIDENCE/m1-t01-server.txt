@@ -1,0 +1,11 @@
+M1-T01 localhost API server + auth boundary — 2026-10-27T19:44:19Z
+pnpm vitest run apps/server -> 20 tests passed, exit 0 (auth/discovery/execute/chat suites)
+pnpm typecheck exit 0; pnpm lint exit 0
+coverage:
+- GET /api/v1/health public, truthful (db/demoMode/provider=mock), no secrets
+- session: GET /auth/session issues HttpOnly SameSite=Strict cookie + csrf token (persisted in settings; never baked into static assets)
+- API without session => 401; disallowed Origin => 403 ORIGIN_DENIED
+- write without x-csrf-token => 403 CSRF_DENIED; originless write => 403 ORIGIN_REQUIRED
+- Zod .strict() on bodies: invalid quiet-hours => 400, unknown fields => 400
+- GET /projects/:id unknown => 404
+- server binds 127.0.0.1:4317 only; no CORS headers (same-origin via vite proxy/static)

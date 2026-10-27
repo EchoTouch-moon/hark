@@ -1,0 +1,11 @@
+M1-T04 UI framework / routes / design tokens — 2026-10-27T19:44:19Z (subagent)
+pnpm --filter @hearth/web build -> tsc --noEmit + vite build exit 0 (CSS 11.29kB, JS 218.31kB)
+root pnpm typecheck exit 0
+- AppShell: 240px NavRail (Home/Chat/Projects/Activity/Settings), sticky topbar with Demo badge + ConnectionBadge,
+  >=1440px Detail Drawer slot (useDetailDrawer), skip-link, NavLink aria-current
+- routes: / /chat /projects /projects/:id /activity/:runId /settings + fallback; route-level ErrorState
+- tokens.css (warm-paper palette, charcoal-orange accent, 4px spacing, 160-220ms ease-out, reduced-motion)
+- components: PageHeader/EmptyState/ErrorState/ConnectionBadge/ConfirmDialog (focus trap, default=deny)
+- api client: same-origin /api/v1, credentials same-origin, auto csrf header via GET /auth/session bootstrap, ApiError typed
+- vite proxy /api -> 127.0.0.1:4317 (cookie-preserving); @hearth/contracts aliased to TS source
+details: apps/web/BUILD-NOTES.md
