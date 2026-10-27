@@ -60,8 +60,8 @@ importers:
         specifier: ^5.2.0
         version: 5.12.7
       zod:
-        specifier: ^3.25.0
-        version: 3.25.0
+        specifier: 3.24.1
+        version: 3.24.1
 
   apps/web:
     dependencies:
@@ -95,7 +95,11 @@ importers:
 
   packages/connectors: {}
 
-  packages/contracts: {}
+  packages/contracts:
+    dependencies:
+      zod:
+        specifier: 3.24.1
+        version: 3.24.1
 
   packages/core: {}
 
@@ -1810,8 +1814,8 @@ packages:
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
 
-  zod@3.25.0:
-    resolution: {integrity: sha512-ficnZKUW0mlNivqeJkosTEkGbJ6NKCtSaOHGx5aXbtfeWMdRyzXLbAIn19my4C/KB7WPY/p9vlGPt+qpOp6c4Q==}
+  zod@3.24.1:
+    resolution: {integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==}
 
 snapshots:
 
@@ -3417,4 +3421,4 @@ snapshots:
 
   yallist@3.1.1: {}
 
-  zod@3.25.0: {}
+  zod@3.24.1: {}

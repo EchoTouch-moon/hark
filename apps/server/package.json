@@ -18,6 +18,6 @@
     "@hearth/storage": "workspace:*",
     "esbuild": "^0.25.0",
     "fastify": "^5.2.0",
-    "zod": "^3.25.0"
+    "zod": "3.24.1"
   }
 }

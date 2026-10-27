@@ -1,0 +1,11 @@
+M0-T02 contracts — 2026-10-27T19:19:27Z (revised after TS18048 fix)
+pnpm vitest run packages/contracts -> 2 files, 32 tests passed, exit 0
+pnpm typecheck -> exit 0; pnpm lint -> exit 0
+coverage: Event/ActionSpec/Candidate/ActionCard/TaskRun/ApprovalGrant/PanelSpec strict schemas
+(unknown-field, missing-field, enum, datetime-tz, digest-shape negatives),
+run state machine table (queued->executing->verifying->completed happy path;
+queued->completed / executing->completed / blocked->completed /
+pending_verification->executing forbidden; terminal states frozen),
+pure-TS sha256 verified against node:crypto vectors, canonical JSON key-order stability,
+idempotency/action/target digest derivation (params change => key change).
+zod pinned 3.24.1 (mirror's 3.25.0 tarball ships without dist/; see handoff/DECISIONS.md).
