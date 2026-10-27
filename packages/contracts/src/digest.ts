@@ -1,5 +1,5 @@
 import type { ActionSpec, ActionTarget } from './action.js';
-import { canonicalize, canonicalDigest, sha256Hex } from './canonical.js';
+import { canonicalDigest, sha256Hex } from './canonical.js';
 
 /**
  * idempotencyKey is stably bound to
