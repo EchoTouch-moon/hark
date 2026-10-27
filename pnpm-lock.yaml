@@ -133,6 +133,9 @@ importers:
       '@hearth/connectors':
         specifier: workspace:*
         version: link:../connectors
+      '@hearth/eval':
+        specifier: workspace:*
+        version: link:../eval
 
   packages/eval:
     dependencies:
