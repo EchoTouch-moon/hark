@@ -25,10 +25,13 @@ pnpm dev:web            # Vite UI，代理 /api 到 127.0.0.1:4317
 - `packages/agent-adapters` — MockAgentAdapter（P0）、Hermes probe（M2）
 - `packages/panels` — 只读 Panel 渲染白名单
 - `packages/eval` — replay/scoring/trace evidence
+- `packages/project-observer` — 本地 Git / JUnit 只读观察器（独立 SQLite `data/observer.sqlite`）
 - `apps/server` — Fastify localhost API + SSE
 - `apps/web` — React UI（Home/Chat/Projects/Activity/Settings）
 - `fixtures/` — 纯合成数据；`tests/e2e/` — Playwright
-- `data/`（gitignored）— dev.sqlite；`.hearth-demo-artifacts/`（gitignored）— 执行产物根
+- `data/`（gitignored）— `dev.sqlite` 与 `observer.sqlite`；`.hearth-demo-artifacts/`（gitignored）— 执行产物根
+
+Project Observer 说明见 `docs/14-PROJECT-OBSERVER.md`。
 
 ## 关键工程决策
 见 `docs/11-ADR.md` 与 `handoff/DECISIONS.md`。要点：

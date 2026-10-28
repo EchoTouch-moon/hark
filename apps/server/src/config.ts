@@ -4,6 +4,7 @@ export interface ServerConfig {
   host: string;
   port: number;
   dbPath: string;
+  observerDbPath: string;
   artifactRoot: string;
   demoMode: boolean;
   allowedOrigins: string[];
@@ -19,6 +20,8 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     host,
     port,
     dbPath: process.env['HEARTH_DB'] ?? path.join(repoRoot, 'data', 'dev.sqlite'),
+    observerDbPath:
+      process.env['HEARTH_OBSERVER_DB'] ?? path.join(repoRoot, 'data', 'observer.sqlite'),
     artifactRoot: process.env['HEARTH_ARTIFACTS'] ?? path.join(repoRoot, '.hearth-demo-artifacts'),
     demoMode: (process.env['HEARTH_DEMO'] ?? '1') !== '0',
     allowedOrigins: [

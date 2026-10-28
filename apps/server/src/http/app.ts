@@ -2,18 +2,21 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import type { ZodError } from 'zod';
 import type { ServerConfig } from '../config.js';
 import type { Storage } from '@hearth/storage';
+import type { ProjectObserver } from '@hearth/project-observer';
 import { SessionManager, parseSessionCookie } from './session.js';
 import { registerCoreRoutes } from './routes/core.js';
 import { registerProjectRoutes } from './routes/projects.js';
 import { registerCardRoutes } from './routes/cards.js';
 import { registerRunRoutes } from './routes/runs.js';
 import { registerChatRoutes } from './routes/chat.js';
+import { registerObserverRoutes } from './routes/observer.js';
 import type { Services } from './services.js';
 
 export interface AppDeps {
   config: ServerConfig;
   storage: Storage;
   services: Services;
+  observer?: ProjectObserver;
 }
 
 export function buildApp(deps: AppDeps): FastifyInstance {
@@ -77,6 +80,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerCardRoutes(app, deps);
   registerRunRoutes(app, deps);
   registerChatRoutes(app, deps);
+  registerObserverRoutes(app, deps);
 
   return app;
 }

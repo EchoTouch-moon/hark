@@ -1,0 +1,22 @@
+# Project Observer P0.5 Gate Review
+
+- Commit / branch: `117f412` (dirty working tree with observer hardening; not auto-committed)
+- Node / pnpm / Git / SQLite / macOS: Node v22.23.2, Git 2.49.0, SQLite 3.51.3, darwin 27 arm64 M1 16 GB
+- DB migration & backup: v2 applied; `VACUUM INTO` restore PASS; WAL-reset addressed by 3.51.3 + single writer lock
+- Typecheck / observer tests / full tests / browser regression: `pnpm typecheck` PASS; observer+HTTP 54 PASS; `pnpm test` 185 PASS
+- G0: PASS
+- G1: PASS (ID-01..07)
+- G2: PASS (RE-01..08)
+- G3: PASS (SE-01..08)
+- G4: PASS (DB-01..07)
+- G5: PASS with disclosed limits (12 samples not 30; idle 120 s not 30 min; large = synthetic 8k)
+- G6: CONDITIONAL_PASS — pindou + prototype-skill-lab PASS read-only; agent-internet-lab `BLOCKED_PATH_UNAVAILABLE`
+- G7: PASS
+- G8: PASS — this directory
+- Real pilots: see `observer-p05-pilots.md`
+- Performance dataset: `data/observer-p05-bench-2026-10-28T12-22-23-535Z.json`
+- Safety: malicious fixture tests in `observer.h03.test.ts`; SE-08 fingerprint
+- Known blockers, waivers and next actions:
+  - Third pilot path not provided; do not search the homedir
+  - Re-run bench with `OBSERVER_BENCH_ITERS=30 OBSERVER_BENCH_IDLE_MS=1800000` on a quiet machine
+- Overall: **CONDITIONAL_PASS**

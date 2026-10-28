@@ -13,6 +13,7 @@ export default defineConfig({
       '@hearth/agent-adapters': r('./packages/agent-adapters/src/index.ts'),
       '@hearth/panels': r('./packages/panels/src/index.ts'),
       '@hearth/eval': r('./packages/eval/src/index.ts'),
+      '@hearth/project-observer': r('./packages/project-observer/src/index.ts'),
     },
   },
   test: {

@@ -4,6 +4,7 @@ import { Storage } from '@hearth/storage';
 import { DiscoveryService, Orchestrator } from '@hearth/core';
 import { MockAgentAdapter } from '@hearth/agent-adapters';
 import { FixtureConnector } from '@hearth/connectors';
+import { ProjectObserver } from '@hearth/project-observer';
 import { existsSync } from 'node:fs';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -40,9 +41,15 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
   const chat = new MockAgentAdapter();
   const connector = new FixtureConnector(config.repoRoot);
 
+  const observer = new ProjectObserver({
+    dbPath: config.observerDbPath,
+    watchEnabled: process.env['HEARTH_OBSERVER_WATCH'] !== '0',
+  });
+
   const deps: AppDeps = {
     config,
     storage,
+    observer,
     services: {
       discovery,
       orchestrator,
@@ -75,6 +82,10 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
   }
 
   const app = buildApp(deps);
+  app.addHook('onClose', async () => {
+    await observer.stop();
+    observer.close();
+  });
 
   // serve the built SPA when present (same-origin for E2E/demo)
   if (config.staticDir && existsSync(path.join(config.staticDir, 'index.html'))) {
@@ -103,7 +114,10 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
   }
 
   await app.listen({ host: config.host, port: config.port });
-  return { app, config, storage, orchestrator, discovery };
+  void observer.start().catch((cause) => {
+    console.error('[hearth-server] observer start failed:', cause);
+  });
+  return { app, config, storage, orchestrator, discovery, observer };
 }
 
 // CLI entry
