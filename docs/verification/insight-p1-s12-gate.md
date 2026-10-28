@@ -4,6 +4,7 @@
 - Workspace: `/Users/v/new-idea/hark`
 - Base HEAD: `17aa2ed`
 - S1.1 feature: `57191f9`
+- S1.2 commit: `f3ec3a3 feat(insight): add durable signal inbox and consumption checkpoints`
 - ADR: `docs/adr/ADR-INSIGHT-004.md`
 
 ## Overall
