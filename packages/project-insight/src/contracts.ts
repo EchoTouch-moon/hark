@@ -125,6 +125,7 @@ export const SignalBatchSchema = z
     extractorVersion: z.string().min(1).max(64),
     resetReason: SourceResetReasonSchema.optional(),
     reasonCode: z.string().min(1).max(64).optional(),
+    eventsRead: z.number().int().nonnegative(),
   })
   .strict();
 export type SignalBatch = z.infer<typeof SignalBatchSchema>;

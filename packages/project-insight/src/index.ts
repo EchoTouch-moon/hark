@@ -51,3 +51,24 @@ export {
 } from './observer-read-port.js';
 export { extractSignalsFromEvent, signalKeyFor } from './signals/extractor.js';
 export { extractSignalBatch, type ExtractBatchInput } from './signals/batch.js';
+export { InsightError, isInsightError } from './errors.js';
+export {
+  InsightStore,
+  type CommitFault,
+  type ConsumerCheckpoint,
+  type InboxRow,
+  type SourceInterruption,
+} from './store/store.js';
+export {
+  INSIGHT_SCHEMA_VERSION,
+  defaultInsightDbPath,
+  migrateInsight,
+  openInsightDatabase,
+} from './store/schema.js';
+export {
+  DEFAULT_CONSUME_LIMIT,
+  InsightConsumer,
+  MAX_CONSUME_LIMIT,
+  type ConsumeProjectInput,
+  type ConsumeResult,
+} from './consume.js';

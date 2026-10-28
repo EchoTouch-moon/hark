@@ -33,6 +33,9 @@
 ## ADR-INSIGHT-003 S1.1 只读端口与 Signal
 详见 `docs/adr/ADR-INSIGHT-003.md`。**Decision**：进程内 `ObserverReadPort` 只读；冻结 highWatermark；源重置映射 `SOURCE_RESET_REQUIRED`；Signal 身份可重放；不持久化 `proposedCursor`。**Status**：S1.1 已落地。
 
+## ADR-INSIGHT-004 Signal Inbox 与 Checkpoint
+详见 `docs/adr/ADR-INSIGHT-004.md`。**Decision**：独立 `insights.sqlite`；`signalKey` 去重；同事务写入 inbox 与 CAS 游标；`NO_SIGNAL` 可推进；源重置冻结且不跨库 exactly-once。**Status**：S1.2 已落地。
+
 ## 需在真机记录的 OPEN 决议
 - Node 22 vs 24：以实际环境和兼容 lockfile 决定。
 - pnpm/sqlite 驱动：视编译工具链与跨平台安装风险选择 `better-sqlite3` / `node:sqlite`（须评估 Node 版本支持），写 ADR。

@@ -31,6 +31,7 @@ function emptyBatch(
     hasMore: false,
     legacyOrderReconstructed: extra.legacyOrderReconstructed ?? false,
     extractorVersion: EXTRACTOR_VERSION,
+    eventsRead: extra.eventsRead ?? 0,
     ...extra,
   });
 }
@@ -92,6 +93,7 @@ export function extractSignalBatch(port: ObserverReadPort, input: ExtractBatchIn
         legacyOrderReconstructed,
         extractorVersion: EXTRACTOR_VERSION,
         reasonCode: 'SNAPSHOT_MISSING',
+        eventsRead: read.events.indexOf(event),
       });
     }
     signals.push(
@@ -115,6 +117,7 @@ export function extractSignalBatch(port: ObserverReadPort, input: ExtractBatchIn
     hasMore: read.hasMore,
     legacyOrderReconstructed,
     extractorVersion: EXTRACTOR_VERSION,
+    eventsRead: read.events.length,
   });
 }
 
