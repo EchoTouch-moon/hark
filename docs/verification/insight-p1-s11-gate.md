@@ -3,6 +3,7 @@
 - Date: 2026-10-28
 - Workspace: `/Users/v/new-idea/hark`
 - Base HEAD before this work: `483b999`
+- S1.1 commit: `57191f9 feat(insight): add read-only observer port and signal extractor`
 - Spec: `docs/16-HEARTH_PROJECT_INSIGHT_P1.md`
 - ADRs: `docs/adr/ADR-INSIGHT-001.md`, `ADR-INSIGHT-002.md`, `ADR-INSIGHT-003.md`
 
