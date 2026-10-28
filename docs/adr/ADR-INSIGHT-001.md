@@ -10,7 +10,7 @@
 
 2. **Do not consume `GET /api/v1/observer/projects/:id/events` as an append log.** That API is `ORDER BY occurred_at DESC, id DESC` with cursor `observedAt|eventId`. Response is `{ events, nextCursor }` with **no `hasMore`**. Event IDs are `evt_` + 8 random hex bytes. Same-millisecond order follows lexical id, not insert order.
 
-3. **Required P0 compatibility work before S1 consumption (not implemented in S0):** add observer schema **v3** `observer_events.append_seq INTEGER NOT NULL UNIQUE` populated by SQLite `AUTOINCREMENT` (or an explicit counter table) and `ProjectObserver.listEventsForward({ projectId, afterSeq, limit })` returning ASC by `append_seq` plus `hasMore`. Do **not** document implicit `rowid` as the public cursor: live `VACUUM` can renumber implicit rowids. `VACUUM INTO` backup does not rewrite the live file.
+3. **Required P0 compatibility work before S1 consumption:** implemented in S1.0 as observer schema **v3**. See `docs/adr/ADR-INSIGHT-002.md`. `append_seq` comes from `observer_meta`, not implicit `rowid`. `listEventsForward` is the consume API; UI DESC `listEvents` is unchanged.
 
 4. **In-process snapshot lookup exists only on `observer.store.getSnapshot(id)`.** The facade has no `getSnapshot`. HTTP `GET .../snapshot` returns the **latest** snapshot only. S1 adapter may call the store method in-process; HTTP evidence links go to `/observe/:id`, never raw filesystem paths.
 
@@ -45,8 +45,8 @@ Logical names only; physical migration is S1:
 
 ## Consequences
 
-- S1 must not start full consumption until `listEventsForward` exists **or** an equivalent documented integer sequence is merged and tested against **insert order**, not `observedAt`.
-- SQLite `rowid` on `observer_events` currently increases with inserts; that is an implementation accident, not the frozen cursor.
+- S1.1 Signal extraction may consume `listEventsForward`. It must honor `streamEpoch` and treat hard-delete / rewind statuses as `SOURCE_RESET_REQUIRED`.
+- SQLite `rowid` is still not a public cursor.
 - Multiple declared JUnit files: the latest snapshot `test` object is the last scanned source only.
 - Do not say “current HEAD regression” or “tests are green” from P0 JUnit.
 

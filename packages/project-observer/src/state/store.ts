@@ -9,6 +9,8 @@ import {
   WorktreeSummarySchema,
   TestSummarySchema,
   type EventType,
+  type ForwardEventPage,
+  type ListEventsForwardQuery,
   type ObservationRun,
   type ObserverEvent,
   type ObserverHealth,
@@ -22,6 +24,14 @@ import { openObserverDatabase } from './schema.js';
 import { WriterLock } from './lock.js';
 
 type Row = Record<string, unknown>;
+
+export interface EventStreamRow {
+  projectId: string;
+  epoch: number;
+  createdAt: string;
+  retiredAt: string | null;
+  lastSeq: number | null;
+}
 
 function asString(value: unknown): string {
   return String(value);
@@ -153,6 +163,7 @@ export class ObserverStore {
          VALUES (?, NULL, NULL, NULL, ?, 'UNAVAILABLE', NULL, NULL, NULL, 0, NULL)`,
       )
       .run(project.id, project.enabled ? 'polling' : 'paused');
+    this.ensureLiveStream(project.id, project.createdAt);
   }
 
   getProject(id: string): RegisteredProject | null {
@@ -182,6 +193,7 @@ export class ObserverStore {
 
   deleteProject(id: string): void {
     this.transaction(() => {
+      this.retireStream(id);
       this.db.prepare('DELETE FROM observer_events WHERE project_id = ?').run(id);
       this.db.prepare('DELETE FROM observer_snapshots WHERE project_id = ?').run(id);
       this.db.prepare('DELETE FROM observation_runs WHERE project_id = ?').run(id);
@@ -276,10 +288,11 @@ export class ObserverStore {
   insertEvents(events: ObserverEvent[]): void {
     const stmt = this.db.prepare(
       `INSERT INTO observer_events
-       (id, project_id, run_id, type, before_snapshot_id, after_snapshot_id, occurred_at, payload_json, evidence_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, project_id, run_id, type, before_snapshot_id, after_snapshot_id, occurred_at, payload_json, evidence_json, append_seq)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     for (const event of events) {
+      const appendSeq = this.allocateAppendSeq();
       stmt.run(
         event.eventId,
         event.projectId,
@@ -290,7 +303,9 @@ export class ObserverStore {
         event.observedAt,
         JSON.stringify(event.payload ?? {}),
         JSON.stringify(event.evidence),
+        appendSeq,
       );
+      event.appendSeq = appendSeq;
     }
   }
 
@@ -334,6 +349,75 @@ export class ObserverStore {
     return {
       events: page,
       nextCursor: extra !== undefined && last !== undefined ? `${last.observedAt}|${last.eventId}` : null,
+    };
+  }
+
+  allocatedAppendSeq(): number {
+    const row = this.db.prepare(`SELECT value FROM observer_meta WHERE key = 'append_seq'`).get() as
+      | { value: number }
+      | undefined;
+    if (row === undefined) {
+      throw new ObserverError('INTERNAL', 'observer_meta append_seq counter is missing');
+    }
+    return asInt(row.value);
+  }
+
+  getEventStream(projectId: string): EventStreamRow | null {
+    const row = this.db.prepare('SELECT * FROM observer_event_stream WHERE project_id = ?').get(projectId) as
+      | Row
+      | undefined;
+    return row ? rowToStream(row) : null;
+  }
+
+  listEventsForward(projectId: string, options: ListEventsForwardQuery = {}): ForwardEventPage {
+    const afterSeq = options.afterSeq ?? 0;
+    if (!Number.isInteger(afterSeq) || afterSeq < 0) {
+      throw new ObserverError('INVALID_CURSOR', 'afterSeq must be a non-negative integer');
+    }
+    const requestedWatermark = options.highWatermark;
+    if (requestedWatermark !== undefined && (!Number.isInteger(requestedWatermark) || requestedWatermark < 0)) {
+      throw new ObserverError('INVALID_CURSOR', 'highWatermark must be a non-negative integer');
+    }
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+    const allocated = this.allocatedAppendSeq();
+    const highWatermark = Math.min(requestedWatermark ?? allocated, allocated);
+    const stream = this.getEventStream(projectId);
+    const project = this.getProject(projectId);
+
+    if (afterSeq > allocated) {
+      return emptyForwardPage(afterSeq, allocated, stream?.epoch ?? 0, 'CURSOR_AHEAD_OF_STREAM');
+    }
+    if (project === null && stream === null) {
+      return emptyForwardPage(afterSeq, allocated, 0, 'PROJECT_NOT_FOUND');
+    }
+    if (project === null && stream !== null) {
+      const status =
+        options.expectedEpoch !== undefined && options.expectedEpoch !== stream.epoch
+          ? 'STREAM_EPOCH_MISMATCH'
+          : 'PROJECT_REMOVED';
+      return emptyForwardPage(afterSeq, stream.lastSeq ?? allocated, stream.epoch, status);
+    }
+    if (stream !== null && options.expectedEpoch !== undefined && options.expectedEpoch !== stream.epoch) {
+      return emptyForwardPage(afterSeq, highWatermark, stream.epoch, 'STREAM_EPOCH_MISMATCH');
+    }
+
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM observer_events
+         WHERE project_id = ? AND append_seq > ? AND append_seq <= ?
+         ORDER BY append_seq ASC LIMIT ?`,
+      )
+      .all(projectId, afterSeq, highWatermark, limit + 1) as Row[];
+    const page = rows.slice(0, limit).map((row) => this.rowToEvent(row));
+    const extra = rows[limit];
+    const last = page[page.length - 1];
+    return {
+      events: page,
+      nextCursor: last?.appendSeq ?? afterSeq,
+      hasMore: extra !== undefined,
+      highWatermark,
+      streamEpoch: stream?.epoch ?? 1,
+      status: 'OK',
     };
   }
 
@@ -491,7 +575,59 @@ export class ObserverStore {
       toSnapshotId: asNullableString(row['after_snapshot_id']),
       payload: JSON.parse(asString(row['payload_json'])),
       evidence: JSON.parse(asString(row['evidence_json'])),
+      appendSeq: asInt(row['append_seq']),
     });
+  }
+
+  private allocateAppendSeq(): number {
+    const result = this.db.prepare(`UPDATE observer_meta SET value = value + 1 WHERE key = 'append_seq'`).run();
+    if (Number(result.changes) !== 1) {
+      throw new ObserverError('INTERNAL', 'failed to allocate append_seq');
+    }
+    return this.allocatedAppendSeq();
+  }
+
+  private ensureLiveStream(projectId: string, createdAt: string): void {
+    const existing = this.getEventStream(projectId);
+    if (existing === null) {
+      this.db
+        .prepare(
+          `INSERT INTO observer_event_stream (project_id, epoch, created_at, retired_at, last_seq)
+           VALUES (?, 1, ?, NULL, NULL)`,
+        )
+        .run(projectId, createdAt);
+      return;
+    }
+    if (existing.retiredAt !== null) {
+      this.db
+        .prepare(
+          `UPDATE observer_event_stream
+           SET epoch = epoch + 1, created_at = ?, retired_at = NULL, last_seq = NULL
+           WHERE project_id = ?`,
+        )
+        .run(createdAt, projectId);
+    }
+  }
+
+  private retireStream(projectId: string): void {
+    const last = this.db
+      .prepare('SELECT MAX(append_seq) AS seq FROM observer_events WHERE project_id = ?')
+      .get(projectId) as { seq: number | null };
+    const lastSeq = last.seq === null ? this.allocatedAppendSeq() : asInt(last.seq);
+    const now = new Date().toISOString();
+    const existing = this.getEventStream(projectId);
+    if (existing === null) {
+      this.db
+        .prepare(
+          `INSERT INTO observer_event_stream (project_id, epoch, created_at, retired_at, last_seq)
+           VALUES (?, 1, ?, ?, ?)`,
+        )
+        .run(projectId, now, now, lastSeq);
+      return;
+    }
+    this.db
+      .prepare('UPDATE observer_event_stream SET retired_at = ?, last_seq = ? WHERE project_id = ?')
+      .run(now, lastSeq, projectId);
   }
 
   private rowToReport(row: Row): ReportSource {
@@ -544,6 +680,32 @@ export class ObserverStore {
       fingerprint: asNullableString(row['fingerprint']),
     });
   }
+}
+
+function rowToStream(row: Row): EventStreamRow {
+  return {
+    projectId: asString(row['project_id']),
+    epoch: asInt(row['epoch']),
+    createdAt: asString(row['created_at']),
+    retiredAt: asNullableString(row['retired_at']),
+    lastSeq: row['last_seq'] === null || row['last_seq'] === undefined ? null : asInt(row['last_seq']),
+  };
+}
+
+function emptyForwardPage(
+  afterSeq: number,
+  highWatermark: number,
+  streamEpoch: number,
+  status: ForwardEventPage['status'],
+): ForwardEventPage {
+  return {
+    events: [],
+    nextCursor: afterSeq,
+    hasMore: false,
+    highWatermark,
+    streamEpoch,
+    status,
+  };
 }
 
 function splitCursor(cursor: string): [string, string] {

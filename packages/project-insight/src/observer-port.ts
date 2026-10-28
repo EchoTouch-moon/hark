@@ -24,15 +24,15 @@ export interface ObserverReader {
 
 /** Inventory frozen against packages/project-observer at S0. Do not treat wished fields as present. */
 export const P0_CAPABILITIES = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   publicListEventsOrder: 'occurred_at DESC, id DESC',
   publicEventCursor: 'observedAt|eventId',
   publicListEventsHasMore: false,
   eventIdGenerator: 'evt_ + 8 random hex bytes',
   snapshotIdGenerator: 'snap_ + 8 random hex bytes',
   reportSourceIdGenerator: 'rpt_ + 8 random hex bytes',
-  appendSeqColumn: false,
-  listEventsForward: false,
+  appendSeqColumn: true,
+  listEventsForward: true,
   getSnapshotByIdOnFacade: false,
   getSnapshotByIdOnStore: true,
   storeDbExposed: true,

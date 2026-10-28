@@ -138,9 +138,41 @@ export const ObserverEventSchema = z
     toSnapshotId: IdSchema.nullable(),
     payload: z.unknown(),
     evidence: EvidenceSchema,
+    appendSeq: z.number().int().positive().optional(),
   })
   .strict();
 export type ObserverEvent = z.infer<typeof ObserverEventSchema>;
+
+export const ForwardConsumeStatusSchema = z.enum([
+  'OK',
+  'PROJECT_NOT_FOUND',
+  'PROJECT_REMOVED',
+  'STREAM_EPOCH_MISMATCH',
+  'CURSOR_AHEAD_OF_STREAM',
+]);
+export type ForwardConsumeStatus = z.infer<typeof ForwardConsumeStatusSchema>;
+
+export const ForwardEventPageSchema = z
+  .object({
+    events: z.array(ObserverEventSchema),
+    nextCursor: z.number().int().nonnegative(),
+    hasMore: z.boolean(),
+    highWatermark: z.number().int().nonnegative(),
+    streamEpoch: z.number().int().nonnegative(),
+    status: ForwardConsumeStatusSchema,
+  })
+  .strict();
+export type ForwardEventPage = z.infer<typeof ForwardEventPageSchema>;
+
+export const ListEventsForwardQuerySchema = z
+  .object({
+    afterSeq: z.number().int().nonnegative().optional(),
+    limit: z.number().int().positive().max(200).optional(),
+    highWatermark: z.number().int().nonnegative().optional(),
+    expectedEpoch: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+export type ListEventsForwardQuery = z.infer<typeof ListEventsForwardQuerySchema>;
 
 export const ObservationRunSchema = z
   .object({

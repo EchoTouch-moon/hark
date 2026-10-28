@@ -27,14 +27,14 @@ describe('P0 capability audit (S0 facts, not P1 engine)', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it('schema is v2 and has no append_seq; public listEvents is reverse-time', async () => {
+  it('schema is v3 with append_seq; public listEvents stays reverse-time', async () => {
     const version = observer.store.db.prepare('SELECT MAX(version) AS v FROM schema_version').get() as { v: number };
     expect(version.v).toBe(P0_CAPABILITIES.schemaVersion);
     const cols = observer.store.db.prepare('PRAGMA table_info(observer_events)').all() as Array<{ name: string }>;
-    expect(cols.map((col) => col.name)).not.toContain('append_seq');
-    expect(P0_CAPABILITIES.appendSeqColumn).toBe(false);
-    expect(P0_CAPABILITIES.listEventsForward).toBe(false);
-    expect(typeof (observer as { listEventsForward?: unknown }).listEventsForward).toBe('undefined');
+    expect(cols.map((col) => col.name)).toContain('append_seq');
+    expect(P0_CAPABILITIES.appendSeqColumn).toBe(true);
+    expect(P0_CAPABILITIES.listEventsForward).toBe(true);
+    expect(typeof observer.listEventsForward).toBe('function');
 
     const root = await createGitRepo(dir, 'seq');
     const project = await observer.registerProject(root);

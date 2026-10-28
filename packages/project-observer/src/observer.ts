@@ -4,6 +4,8 @@ import {
   type EventType,
   type ObservationRun,
   type ObserverHealth,
+  type ForwardEventPage,
+  type ListEventsForwardQuery,
   type PagedEvents,
   type ProjectSnapshot,
   type ProjectSummary,
@@ -203,6 +205,14 @@ export class ProjectObserver {
   ): PagedEvents {
     this.getProject(projectId);
     return this.store.listEvents(projectId, query);
+  }
+
+  /**
+   * Append-order consume API. Does not require a live project so callers can
+   * observe PROJECT_REMOVED / STREAM_EPOCH_MISMATCH after hard delete.
+   */
+  listEventsForward(projectId: string, query: ListEventsForwardQuery = {}): ForwardEventPage {
+    return this.store.listEventsForward(projectId, query);
   }
 
   getObserverHealth(projectId: string): ObserverHealth {

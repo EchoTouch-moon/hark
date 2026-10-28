@@ -25,7 +25,10 @@
 **Decision**：不修改 Hermes / personal-vault / 其他现有项目，不自动推送远程仓库、不访问系统 keychain。**Why**：无人值守最小化不可逆操作。
 
 ## ADR-INSIGHT-001 P1 只读消费与存储隔离
-详见 `docs/adr/ADR-INSIGHT-001.md`。**Decision**：P1 使用独立 `insights.sqlite`；不得把 P0 `listEvents`（`occurred_at DESC`）当作追加日志；S1 前需要 P0 v3 `append_seq` + `listEventsForward`；JUnit `headBound` 恒为 false，规则按 `UNDETERMINED` 降级。**Status**：S0 已冻结，消费 API 仍 BLOCKED。
+详见 `docs/adr/ADR-INSIGHT-001.md`。**Decision**：P1 使用独立 `insights.sqlite`；不得把 P0 `listEvents`（`occurred_at DESC`）当作追加日志；JUnit `headBound` 恒为 false。**Status**：S0 契约冻结。
+
+## ADR-INSIGHT-002 Observer v3 正序消费
+详见 `docs/adr/ADR-INSIGHT-002.md`。**Decision**：全局 `observer_meta.append_seq` 与事件同事务发号；`listEventsForward` 按 `append_seq ASC`；项目硬删除保留 stream tombstone/`streamEpoch`；已删除事件不可回放。**Status**：S1.0 已落地。
 
 ## 需在真机记录的 OPEN 决议
 - Node 22 vs 24：以实际环境和兼容 lockfile 决定。

@@ -51,7 +51,7 @@ describe('H04 sqlite', () => {
     const first = openObserverDatabase(dbPath);
     const again = migrateObserver(first);
     expect(again.applied).toEqual([]);
-    expect(again.currentVersion).toBe(2);
+    expect(again.currentVersion).toBe(3);
     first.close();
   });
 
