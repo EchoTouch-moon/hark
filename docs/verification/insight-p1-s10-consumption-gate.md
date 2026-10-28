@@ -5,7 +5,7 @@
 - Spec: `docs/16-HEARTH_PROJECT_INSIGHT_P1.md`
 - ADRs: `docs/adr/ADR-INSIGHT-001.md`, `docs/adr/ADR-INSIGHT-002.md`
 - S0 commit: `b59d380 feat(insight): freeze P1 S0 contracts and observer consume audit`
-- S1.0 commit: `5beff58 feat(observer): add schema v3 append_seq and listEventsForward`
+- S1.0 commit: `0c6ca4f feat(observer): add schema v3 append_seq and listEventsForward`
 
 ## Overall
 
