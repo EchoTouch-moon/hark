@@ -10,9 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@hearth/project-observer": "workspace:*",
     "zod": "3.24.1"
-  },
-  "devDependencies": {
-    "@hearth/project-observer": "workspace:*"
   }
 }

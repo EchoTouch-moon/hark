@@ -26,27 +26,17 @@ export const SignalKindSchema = z.enum([
   'TEST_EVIDENCE_NOT_CURRENT',
   'OBSERVATION_GAP_DETECTED',
   'OBSERVER_HEALTH_DEGRADED',
+  'ADAPTER_ERROR_OBSERVED',
   'REPOSITORY_UNAVAILABLE_PERSISTENT',
+  'REPOSITORY_UNAVAILABLE_OBSERVED',
   'REPOSITORY_RECOVERED',
+  'REPOSITORY_HEAD_CHANGED',
+  'REPOSITORY_BRANCH_CHANGED',
+  'WORKTREE_STATE_CHANGED',
 ]);
 export type SignalKind = z.infer<typeof SignalKindSchema>;
 
-export const SignalSchema = z
-  .object({
-    signalKey: z.string().min(16).max(128),
-    projectId: InsightIdSchema,
-    kind: SignalKindSchema,
-    observedAt: IsoDateTimeSchema,
-    sourceEventIds: z.array(InsightIdSchema).max(32),
-    fromSnapshotId: InsightIdSchema.optional(),
-    toSnapshotId: InsightIdSchema.optional(),
-    evidenceQuality: EvidenceQualitySchema,
-    comparable: z.boolean(),
-    headBinding: HeadBindingSchema,
-    facts: z.record(z.string(), z.unknown()),
-  })
-  .strict();
-export type Signal = z.infer<typeof SignalSchema>;
+export const EXTRACTOR_VERSION = 'insight-signal-extractor/1';
 
 export const EvidenceKindSchema = z.enum(['observer_event', 'observer_snapshot', 'observation_run']);
 export const EvidenceRoleSchema = z.enum(['trigger', 'baseline', 'context', 'resolution']);
@@ -62,6 +52,82 @@ export const EvidenceRefSchema = z
   })
   .strict();
 export type EvidenceRef = z.infer<typeof EvidenceRefSchema>;
+
+export const SignalSchema = z
+  .object({
+    signalKey: z.string().min(16).max(128),
+    projectId: InsightIdSchema,
+    kind: SignalKindSchema,
+    observedAt: IsoDateTimeSchema,
+    sourceEventIds: z.array(InsightIdSchema).max(32),
+    fromSnapshotId: InsightIdSchema.optional(),
+    toSnapshotId: InsightIdSchema.optional(),
+    evidenceQuality: EvidenceQualitySchema,
+    comparable: z.boolean(),
+    headBinding: HeadBindingSchema,
+    facts: z.record(z.string(), z.unknown()),
+    streamEpoch: z.number().int().nonnegative().optional(),
+    appendSeq: z.number().int().positive().optional(),
+    subject: z.string().min(1).max(256).optional(),
+    extractorVersion: z.string().min(1).max(64).optional(),
+    evidenceRefs: z.array(EvidenceRefSchema).max(12).optional(),
+  })
+  .strict();
+export type Signal = z.infer<typeof SignalSchema>;
+
+/** S1.1 extracted signal: S0 Signal plus identity/evidence fields always populated. */
+export const ExtractedSignalSchema = SignalSchema.superRefine((value, ctx) => {
+  if (value.streamEpoch === undefined) ctx.addIssue({ code: 'custom', message: 'streamEpoch required' });
+  if (value.appendSeq === undefined) ctx.addIssue({ code: 'custom', message: 'appendSeq required' });
+  if (value.subject === undefined) ctx.addIssue({ code: 'custom', message: 'subject required' });
+  if (value.extractorVersion === undefined) ctx.addIssue({ code: 'custom', message: 'extractorVersion required' });
+  if (value.evidenceRefs === undefined || value.evidenceRefs.length < 1) {
+    ctx.addIssue({ code: 'custom', message: 'evidenceRefs required' });
+  }
+  if (value.sourceEventIds.length < 1) ctx.addIssue({ code: 'custom', message: 'sourceEventIds required' });
+});
+export type ExtractedSignal = Signal & {
+  streamEpoch: number;
+  appendSeq: number;
+  subject: string;
+  extractorVersion: string;
+  evidenceRefs: EvidenceRef[];
+};
+
+export const SignalBatchOutcomeSchema = z.enum([
+  'OK',
+  'NO_SIGNAL',
+  'SOURCE_RESET_REQUIRED',
+  'EVIDENCE_UNAVAILABLE',
+]);
+export type SignalBatchOutcome = z.infer<typeof SignalBatchOutcomeSchema>;
+
+export const SourceResetReasonSchema = z.enum([
+  'PROJECT_REMOVED',
+  'STREAM_EPOCH_MISMATCH',
+  'CURSOR_AHEAD_OF_STREAM',
+]);
+export type SourceResetReason = z.infer<typeof SourceResetReasonSchema>;
+
+export const SignalBatchSchema = z
+  .object({
+    signals: z.array(SignalSchema),
+    proposedCursor: z
+      .object({
+        afterSeq: z.number().int().nonnegative(),
+        streamEpoch: z.number().int().nonnegative(),
+      })
+      .strict(),
+    highWatermark: z.number().int().nonnegative(),
+    outcome: SignalBatchOutcomeSchema,
+    hasMore: z.boolean(),
+    legacyOrderReconstructed: z.boolean(),
+    extractorVersion: z.string().min(1).max(64),
+    resetReason: SourceResetReasonSchema.optional(),
+    reasonCode: z.string().min(1).max(64).optional(),
+  })
+  .strict();
+export type SignalBatch = z.infer<typeof SignalBatchSchema>;
 
 export const TemplateValueSchema = z.union([z.string().max(500), z.number(), z.boolean(), z.null()]);
 

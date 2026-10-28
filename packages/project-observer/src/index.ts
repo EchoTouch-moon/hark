@@ -17,6 +17,7 @@ export {
   ProjectSummarySchema,
   RegisterProjectOptionsSchema,
   TestResultSchema,
+  TestSummarySchema,
   type CollectionStatus,
   type EventType,
   type ForwardConsumeStatus,

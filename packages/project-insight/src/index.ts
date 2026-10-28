@@ -1,8 +1,10 @@
 export {
   DEFAULT_RULE_POLICY,
+  EXTRACTOR_VERSION,
   EvidenceQualitySchema,
   EvidenceRefSchema,
   EvaluationResultSchema,
+  ExtractedSignalSchema,
   HeadBindingSchema,
   INSIGHT_RULE_IDS,
   InsightCandidateSchema,
@@ -13,13 +15,17 @@ export {
   ObserverEventViewSchema,
   P0_EVIDENCE_QUALITY,
   REPORT_SOURCE_SUBJECT_PREFIX,
+  SignalBatchOutcomeSchema,
+  SignalBatchSchema,
   SignalKindSchema,
   SignalSchema,
+  SourceResetReasonSchema,
   mapP0EvidenceQuality,
   reportSourceSubjectKey,
   type EvidenceQuality,
   type EvidenceRef,
   type EvaluationResult,
+  type ExtractedSignal,
   type HeadBinding,
   type Insight,
   type InsightCandidate,
@@ -30,7 +36,18 @@ export {
   type ObserverEventView,
   type P0EvidenceQuality,
   type Signal,
+  type SignalBatch,
+  type SignalBatchOutcome,
   type SignalKind,
+  type SourceResetReason,
 } from './contracts.js';
 export { canonicalSerialize, insightDedupKey, sha256Hex } from './canonical.js';
 export { P0_CAPABILITIES, type ObserverReader } from './observer-port.js';
+export {
+  InProcessObserverReadPort,
+  type ForwardReadResult,
+  type ObserverReadPort,
+  type SourceInspection,
+} from './observer-read-port.js';
+export { extractSignalsFromEvent, signalKeyFor } from './signals/extractor.js';
+export { extractSignalBatch, type ExtractBatchInput } from './signals/batch.js';

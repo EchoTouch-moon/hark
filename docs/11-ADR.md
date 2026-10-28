@@ -30,6 +30,9 @@
 ## ADR-INSIGHT-002 Observer v3 正序消费
 详见 `docs/adr/ADR-INSIGHT-002.md`。**Decision**：全局 `observer_meta.append_seq` 与事件同事务发号；`listEventsForward` 按 `append_seq ASC`；项目硬删除保留 stream tombstone/`streamEpoch`；已删除事件不可回放。**Status**：S1.0 已落地。
 
+## ADR-INSIGHT-003 S1.1 只读端口与 Signal
+详见 `docs/adr/ADR-INSIGHT-003.md`。**Decision**：进程内 `ObserverReadPort` 只读；冻结 highWatermark；源重置映射 `SOURCE_RESET_REQUIRED`；Signal 身份可重放；不持久化 `proposedCursor`。**Status**：S1.1 已落地。
+
 ## 需在真机记录的 OPEN 决议
 - Node 22 vs 24：以实际环境和兼容 lockfile 决定。
 - pnpm/sqlite 驱动：视编译工具链与跨平台安装风险选择 `better-sqlite3` / `node:sqlite`（须评估 Node 版本支持），写 ADR。

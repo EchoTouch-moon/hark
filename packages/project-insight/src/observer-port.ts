@@ -2,15 +2,10 @@ import type { ObserverEventView } from './contracts.js';
 
 /**
  * Target P0 read port for P1 (spec §3.1, frozen in ADR-INSIGHT-001).
- * Methods marked "P0 today" exist on ProjectObserver / ObserverStore.
- * `listEventsForward` is required before S1 consumption and is not on the P0 facade.
+ * S0 sketch. S1.1 runtime adapter is `ObserverReadPort` in observer-read-port.ts.
  */
 export interface ObserverReader {
   listProjectIds(): Promise<string[]>;
-  /**
-   * Forward consumption. `afterSeq` is an opaque monotonic append cursor from P0 v3.
-   * **Not implemented by P0 public API as of S0.**
-   */
   listEventsForward(input: {
     projectId: string;
     afterSeq?: string;

@@ -160,13 +160,12 @@ importers:
 
   packages/project-insight:
     dependencies:
-      zod:
-        specifier: 3.24.1
-        version: 3.24.1
-    devDependencies:
       '@hearth/project-observer':
         specifier: workspace:*
         version: link:../project-observer
+      zod:
+        specifier: 3.24.1
+        version: 3.24.1
 
   packages/project-observer:
     dependencies:
