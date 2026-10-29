@@ -3,6 +3,7 @@ import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { EMBER_CUE_EVENT, emitEmberCue, isEmberMotionPaused, readEmberCue } from '../features/ember-cues';
 import { createFlameRenderer, type FlameFrame } from '../features/flameRenderer';
+import type { ProjectFlameStage } from '../features/projectEmber';
 import flameTextureUrl from '../assets/living-fire.png';
 import type { HearthPeriod } from '../features/hearthPeriod';
 import './EmberAtmosphere.css';
@@ -13,6 +14,9 @@ export interface EmberAtmosphereProps {
   band?: 'cool' | 'warm' | 'hot';
   paused?: boolean;
   heat?: number;
+  golden?: number;
+  dormant?: number;
+  stage?: ProjectFlameStage;
   period?: HearthPeriod;
   size?: number;
 }
@@ -24,10 +28,30 @@ function isWritingSurface(target: globalThis.EventTarget | null): target is HTML
 }
 
 /** One living light source; only confirmed conversation changes its base heat. */
-export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false, period = 'day', size = 1 }: EmberAtmosphereProps) {
+export function EmberAtmosphere({
+  band = 'cool',
+  heat = 0.12,
+  golden = 0,
+  dormant = 0,
+  stage = 'spark',
+  paused = false,
+  period = 'day',
+  size = 1,
+}: EmberAtmosphereProps) {
   const root = useRef<HTMLDivElement>(null);
   const canvas = useRef<globalThis.HTMLCanvasElement>(null);
-  const frame = useRef<FlameFrame>({ time: 3.1, heat, size, attention: 0, pulse: 0, waiting: 0, day: period === 'day' ? 1 : 0 });
+  const frame = useRef<FlameFrame>({
+    time: 3.1,
+    heat,
+    size,
+    attention: 0,
+    pulse: 0,
+    waiting: 0,
+    day: period === 'day' ? 1 : 0,
+    golden,
+    dormant,
+    surge: 0,
+  });
   const timelines = useRef<gsap.core.Animation[]>([]);
   const drawRef = useRef<(force?: boolean) => void>(() => {});
   const [preferencePaused, setPreferencePaused] = useState(isEmberMotionPaused);
@@ -116,9 +140,17 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false, pe
         .to(frame.current, { pulse: 0, duration: .8, ease: 'sine.inOut', onUpdate: () => draw(true) });
       pulse.restart();
     };
+    const surge = gsap.timeline({ paused: true });
+    const triggerStoke = () => {
+      surge.clear();
+      surge.to(frame.current, { surge: 0.55, duration: 0.22, ease: 'power2.out', onUpdate: () => draw(true) })
+        .to(frame.current, { surge: 0, duration: 1.35, ease: 'sine.inOut', onUpdate: () => draw(true) });
+      surge.restart();
+      renderer?.triggerSparks(32);
+    };
     const waiting = gsap.timeline({ paused: true })
       .to(frame.current, { waiting: .16, duration: 1.8, repeat: -1, yoyo: true, ease: 'sine.inOut', onUpdate: () => draw(true) });
-    timelines.current = [clock, fallback, focus, pulse, waiting];
+    timelines.current = [clock, fallback, focus, pulse, waiting, surge];
     let lastTyping = -Infinity;
     const cue = (event: Event) => {
       const detail = readEmberCue(event);
@@ -129,10 +161,11 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false, pe
       else if (detail.kind === 'chapter') node.dataset.phase = 'rest';
       else if (detail.kind === 'acknowledged') node.dataset.phase = 'acknowledged';
       else if (detail.kind === 'request-failed') node.dataset.phase = 'failed';
+      else if (detail.kind === 'stoke') node.dataset.phase = 'stoke';
       else if (!wasWaiting) node.dataset.phase = detail.kind === 'release' ? 'rest' : detail.kind;
       if (detail.kind === 'acknowledged' || detail.kind === 'request-failed' || detail.kind === 'chapter') waiting.pause(0);
       if (stillRef.current || document.hidden) return;
-      if (wasWaiting && !['waiting', 'acknowledged', 'request-failed', 'chapter'].includes(detail.kind)) return;
+      if (wasWaiting && !['waiting', 'acknowledged', 'request-failed', 'chapter', 'stoke'].includes(detail.kind)) return;
       if (detail.kind === 'focus') focus.play();
       else if (detail.kind === 'release') focus.reverse();
       else if (detail.kind === 'typing') {
@@ -142,7 +175,11 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false, pe
         triggerPulse();
       } else if (detail.kind === 'waiting') {
         focus.pause(0); pulse.pause(0); waiting.restart();
-      } else if (detail.kind === 'acknowledged' || detail.kind === 'project-added' || detail.kind === 'chapter') {
+      } else if (detail.kind === 'stoke') {
+        triggerStoke();
+      } else if (detail.kind === 'project-added') {
+        triggerStoke();
+      } else if (detail.kind === 'acknowledged' || detail.kind === 'chapter') {
         triggerPulse();
       } else if (detail.kind === 'declined' || detail.kind === 'failed' || detail.kind === 'request-failed') {
         pulse.pause(0); focus.reverse();
@@ -195,14 +232,17 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false, pe
       heat: Number.isFinite(heat) ? Math.max(0, Math.min(1, heat)) : 0.12,
       size: Number.isFinite(size) ? Math.max(.65, Math.min(1.4, size)) : 1,
       day: period === 'day' ? 1 : 0,
+      golden: Number.isFinite(golden) ? Math.max(0, Math.min(1, golden)) : 0,
+      dormant: Number.isFinite(dormant) ? Math.max(0, Math.min(1, dormant)) : 0,
       duration: still ? 0 : 1.1,
       ease: 'sine.inOut', overwrite: 'auto', onUpdate: () => drawRef.current(true),
     });
-  }, { scope: root, dependencies: [heat, size, period, still] });
+  }, { scope: root, dependencies: [heat, size, period, golden, dormant, still] });
 
   return (
     <div ref={root} className="ember-atmosphere" data-band={band} data-still={still}
-      data-cue="rest" data-phase="rest" data-period={period} data-heat={heat.toFixed(2)}
+      data-cue="rest" data-phase="rest" data-flame-stage={stage} data-period={period}
+      data-heat={heat.toFixed(2)} data-golden={golden.toFixed(2)} data-dormant={dormant.toFixed(2)}
       data-size={size.toFixed(2)} data-renderer="pending" data-motion-engine="gsap" aria-hidden="true">
       <canvas ref={canvas} className="ember-atmosphere__canvas" />
       <div className="ember-atmosphere__fallback" style={{ transform: `scale(${size * (0.9 + heat * 0.25)})` }}>

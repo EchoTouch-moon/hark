@@ -17,6 +17,7 @@ import {
   COLLECTION_LABELS,
   fetchObserverProjects,
   registerObserverProject,
+  scanObserverProject,
   setObserverEnabled,
   testLabel,
   worktreeLabel,
@@ -26,6 +27,7 @@ import { useRuntimeMode } from '../features/runtime-mode';
 import { formatDateTime } from '../features/runs';
 import { fetchInsightSummary } from '../features/insights';
 import { emitEmberCue } from '../features/ember-cues';
+import { deriveProjectFlame } from '../features/projectEmber';
 import './ProjectsPage.css';
 
 export function ProjectsPage() {
@@ -142,6 +144,16 @@ export function ProjectsPage() {
     }
   }
 
+  async function onScanProject(project: ObserverProjectSummary): Promise<void> {
+    try {
+      emitEmberCue('stoke');
+      await scanObserverProject(project.id);
+      setReloadKey((key) => key + 1);
+    } catch (cause) {
+      setObserverError(cause instanceof Error ? cause.message : '扫描失败');
+    }
+  }
+
   const showLoading = projects === null && error === null;
 
   return (
@@ -218,15 +230,27 @@ export function ProjectsPage() {
           <ul className="project-grid">
             {observed.map((project) => {
               const test = testLabel(project.test);
+              const flame = deriveProjectFlame({
+                project: {
+                  enabled: project.enabled,
+                  lastObservedAt: project.lastSuccessAt,
+                  testStatus: project.test?.result,
+                  openInsightCount: insightCounts[project.id] ?? 0,
+                  unborn: project.unborn,
+                },
+              });
               return (
                 <li key={project.id}>
-                  <article className="project-tile card obs-tile">
+                  <article className="project-tile card obs-tile" data-flame-stage={flame.stage}>
                     <Link to={`/observe/${encodeURIComponent(project.id)}`} className="obs-tile-link">
                       <span className="project-tile-name">{project.name}</span>
                       <span className="obs-tile-meta mono">
                         {project.detached ? 'detached' : project.branch ?? '—'} · {project.shortSha ?? (project.unborn ? 'UNBORN' : '—')}
                       </span>
                       <span className="obs-tile-badges">
+                        <span className={`status-badge is-${flame.stageBadgeTone}`} title={flame.stagePoetry}>
+                          {flame.stageLabel}
+                        </span>
                         <span className={`status-badge is-${collectionTone(project.collectionStatus)}`}>
                           {COLLECTION_LABELS[project.collectionStatus]}
                         </span>
@@ -242,16 +266,26 @@ export function ProjectsPage() {
                         待关注洞察 {insightCounts[project.id] ?? 0} · 详情见洞察页
                       </span>
                     </Link>
-                    <button
-                      type="button"
-                      className="btn btn-ghost obs-tile-toggle"
-                      onClick={() => void onToggle(project, !project.enabled)}
-                    >
-                      {project.enabled ? '暂停观察' : '恢复观察'}
-                    </button>
-                    <Link className="btn btn-ghost" to={`/insights?projectId=${encodeURIComponent(project.id)}`}>
-                      查看洞察
-                    </Link>
+                    <div className="obs-tile-actions">
+                      <button
+                        type="button"
+                        className="btn btn-ghost obs-tile-stoke"
+                        onClick={() => void onScanProject(project)}
+                        title="扫描仓库并添一把柴，激荡火舌与飞升火星"
+                      >
+                        🔥 添柴扫描
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost obs-tile-toggle"
+                        onClick={() => void onToggle(project, !project.enabled)}
+                      >
+                        {project.enabled ? '暂停观察' : '恢复观察'}
+                      </button>
+                      <Link className="btn btn-ghost" to={`/insights?projectId=${encodeURIComponent(project.id)}`}>
+                        查看洞察
+                      </Link>
+                    </div>
                   </article>
                 </li>
               );

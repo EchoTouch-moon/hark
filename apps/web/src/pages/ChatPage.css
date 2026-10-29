@@ -79,6 +79,80 @@
   color: var(--color-ink-3);
 }
 
+/* ---------- 炉火生命态卡片 ---------- */
+
+.flame-life-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 30%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 75%, transparent);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast);
+}
+
+.flame-life-card[data-flame-stage='golden'] {
+  border-color: rgba(220, 168, 62, 0.45);
+  background: color-mix(in srgb, #fdf8ed 80%, transparent);
+}
+
+.flame-life-card[data-flame-stage='dormant'] {
+  opacity: 0.88;
+  border-color: rgba(120, 105, 95, 0.35);
+}
+
+.flame-life-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.flame-life-card__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.flame-life-card__stoke {
+  border: 1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-ink);
+  font-size: var(--text-xs);
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-left: auto;
+  font-weight: 500;
+  transition: background var(--duration-fast), transform var(--duration-fast);
+}
+
+.flame-life-card__stoke:hover {
+  background: color-mix(in srgb, var(--color-accent) 26%, transparent);
+  transform: translateY(-1px);
+}
+
+.flame-life-card__poetry {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  line-height: var(--leading-relaxed);
+}
+
+.flame-life-card__hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+}
+
 .ember-seed__composer-slot {
   position: relative;
   z-index: 1;

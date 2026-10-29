@@ -24,6 +24,20 @@
   overflow-wrap: anywhere;
 }
 
+.obs-stat--flame {
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
+}
+
+.obs-stat--flame[data-flame-stage='golden'] {
+  border-color: rgba(220, 168, 62, 0.45);
+  background: color-mix(in srgb, #fdf8ed 70%, transparent);
+}
+
+.obs-stat--flame[data-flame-stage='dormant'] {
+  opacity: 0.85;
+}
+
 .obs-section-head {
   display: flex;
   justify-content: space-between;

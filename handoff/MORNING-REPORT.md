@@ -134,3 +134,26 @@ UI-02 完成（UI-02.1、UI-02.2、UI-02.3 全部交付）：
   5. 清理欢迎组件废弃的纸面与呼吸样式，完善火势大小（0.65–1.40）键盘控制与本地持久化。
 - 自动化验收与证据：全套单元测试 375 PASS、类型检查 PASS、ESLint 0 错误、Web build 成功；Playwright 真实浏览器 `scripts/qa/glass-fire.mjs`（7 项全绿）、`day-night-hearth.mjs` 与 `conversation-hearth.mjs` 历史全套回归通过；证据归档于 `handoff/EVIDENCE/living-fire/`。
 - 依然遵循安全红线：无远端推送、无真实外部大模型或真实隐私目录访问。
+
+## 2026-10-30 完工：火焰生命赋予与项目全周期联动 (Living Flame Lifecycle)
+- **核心理念**：将火焰赋予生命，让整个项目跟着火焰状态走。
+  - **初火星 (spark)**：项目/话题刚创立，微火核 (0.12 heat)，轻柔静谧，正如夜空初绽的一粒火星；
+  - **初生火苗 (sprout)**：随着交流逐步展开（1-2条有效消息），火苗起伏抽芽 (0.42-0.53 heat)；
+  - **繁盛之火 (blaze)**：持续深入对话与代码推进（3+有效消息），一团旺盛翻腾之火 (0.64-0.75+ heat)；
+  - **常明金火 (golden)**：项目卡片/任务圆满达成，转为澄澈温润的金黄色调 (`u_golden=1.0`)，平稳安宁守护成果；
+  - **静卧余烬 (dormant)**：项目被搁置/暂停观察或长期未活动，收敛于炉底深红炭火低态呼吸 (`u_dormant=1.0`)；
+  - **添柴激荡与火星散发 (stoke & sparks)**：每次扫描项目或手动添柴，触发 `stoke` 事件，火舌激荡上涌 (`u_surge`)，32 颗点精灵上升气流火星粒子喷薄飞升！
+- **全链路实现**：
+  1. `projectEmber.ts`：纯函数生命态推演引擎，结合会话消息量、最近活跃度、项目启用状态及卡片完成率；
+  2. `flameRenderer.ts`：升级 WebGL Fragment Shader 与 Point-Sprite 火星粒子系统，支持微小环境火星与上升气流粒子群；
+  3. `EmberAtmosphere`：GSAP 多参数平滑过渡与双层磨砂玻璃色温漫射折射；
+  4. `ChatPage`：空态卡片实时展示当前生命态阶段（徽标、诗意引言、行动指引与添柴按钮）；
+  5. `AppShell`：顶栏菜单展示项目生命态与添柴快捷按钮，`ProjectsPane` 展示中央炉火横幅与项目生命态徽标；
+  6. `ProjectsPage` & `ObserverDetailPage`：项目卡片展示生命态徽标，立即扫描动作绑定添柴激荡与火星飞升。
+- **全量测试与验证**：
+  - 自动化浏览器测试：`scripts/qa/living-flame-lifecycle.mjs` (ALL PASS)；
+  - 全套回归：`glass-fire.mjs`、`day-night-hearth.mjs`、`conversation-hearth.mjs`、`conversation-hearth-motion.mjs` (ALL PASS)；
+  - 单元测试：`npm test` 50 文件 / 381 用例全绿；
+  - 静态检查：`npm run typecheck` 0 错误，`npm run lint` 0 错误；
+  - 证据归档：截图与录屏存入 `handoff/EVIDENCE/living-flame/`。
+- 绝无远端推送、无外部未授权调用，遵循 AGENTS.md 全部红线。

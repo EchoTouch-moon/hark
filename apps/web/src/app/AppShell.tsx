@@ -21,7 +21,7 @@ import {
   setActiveThreadId,
   type ThreadSummary,
 } from '../features/threads';
-import { fetchChatHistory, preferLiveApi } from '../features/chat';
+import { fetchChatHistory, preferLiveApi, type ConfirmedUserMessage } from '../features/chat';
 import {
   applyEmberHeatCss,
   computeEmberHeat,
@@ -29,6 +29,8 @@ import {
   confirmedInteractionTimes,
   type EmberBand,
 } from '../features/emberHeat';
+import { deriveProjectFlame, type ProjectFlameInfo } from '../features/projectEmber';
+import { fetchProjectSnapshot } from '../features/projects';
 import { EmberAtmosphere } from '../components/EmberAtmosphere';
 import { getHearthPeriod, type HearthPeriod } from '../features/hearthPeriod';
 import { readFlameSize, saveFlameSize } from '../features/flameSize';
@@ -70,6 +72,7 @@ export interface ThreadContextValue {
   setShellMode: (m: ShellMode) => void;
   emberBand: EmberBand;
   emberHeat: number;
+  flameLife: ProjectFlameInfo;
   hearthPeriod: HearthPeriod;
   refreshThreads: () => Promise<void>;
   selectThread: (id: string) => void;
@@ -252,29 +255,128 @@ export function AppShell() {
   }, [location.pathname]);
 
 
-  const [confirmedAt, setConfirmedAt] = useState<{threadId: string; at: string | null; times: string[]} | null>(null);
+  const [confirmedState, setConfirmedState] = useState<{
+    threadId: string;
+    at: string | null;
+    times: string[];
+    confirmedUserMessages: ConfirmedUserMessage[];
+  } | null>(null);
+  const [projectFlameContext, setProjectFlameContext] = useState<{
+    project: {
+      enabled?: boolean;
+      createdAt?: string;
+      lastObservedAt?: string | null;
+      testStatus?: string;
+      openInsightCount?: number;
+      unborn?: boolean;
+    } | null;
+    cardsSummary: {
+      total: number;
+      completed: number;
+      active: number;
+      failed: number;
+    } | null;
+  }>({ project: null, cardsSummary: null });
   const [nowMs, setNowMs] = useState(Date.now);
+
   useEffect(() => {
     const controller = new AbortController();
-    if (activeThreadId) void fetchChatHistory(activeThreadId, controller.signal).then(history => {
-      if (!controller.signal.aborted) { setConfirmedAt({threadId: activeThreadId, at: latestConfirmedInteraction(history.confirmedUserMessages), times: confirmedInteractionTimes(history.confirmedUserMessages)}); setNowMs(Date.now()); }
-    }).catch(() => { if (!controller.signal.aborted) setConfirmedAt(null); });
+    if (activeThreadId) {
+      void fetchChatHistory(activeThreadId, controller.signal)
+        .then((history) => {
+          if (!controller.signal.aborted) {
+            setConfirmedState({
+              threadId: activeThreadId,
+              at: latestConfirmedInteraction(history.confirmedUserMessages),
+              times: confirmedInteractionTimes(history.confirmedUserMessages),
+              confirmedUserMessages: history.confirmedUserMessages,
+            });
+            setNowMs(Date.now());
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setConfirmedState(null);
+        });
+    }
     return () => controller.abort();
   }, [activeThreadId, emberTick]);
+
+  const activeThread = useMemo(
+    () => threads.find((t) => t.id === activeThreadId),
+    [threads, activeThreadId],
+  );
+
   useEffect(() => {
-    const update = () => { document.documentElement.dataset.pageHidden = String(document.hidden); if (!document.hidden) setNowMs(Date.now()); };
+    const controller = new AbortController();
+    const projectId = activeThread?.projectId;
+    if (projectId) {
+      void fetchProjectSnapshot(projectId, controller.signal)
+        .then((snap) => {
+          if (!controller.signal.aborted) {
+            setProjectFlameContext({
+              project: {
+                enabled: true,
+                lastObservedAt: snap.events[0]?.occurredAt ?? snap.events[0]?.source.observedAt ?? null,
+                testStatus: snap.runs[0]?.state,
+                openInsightCount: snap.events.length,
+                unborn: false,
+              },
+              cardsSummary: {
+                total: snap.cards.length,
+                completed: snap.cards.filter((c) => c.status === 'completed').length,
+                active: snap.cards.filter((c) =>
+                  ['executing', 'ready', 'awaiting_approval', 'verifying'].includes(c.status),
+                ).length,
+                failed: snap.cards.filter((c) => c.status === 'failed').length,
+              },
+            });
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setProjectFlameContext({ project: null, cardsSummary: null });
+          }
+        });
+    } else {
+      setProjectFlameContext({ project: null, cardsSummary: null });
+    }
+    return () => controller.abort();
+  }, [activeThread?.projectId, emberTick]);
+
+  useEffect(() => {
+    const update = () => {
+      document.documentElement.dataset.pageHidden = String(document.hidden);
+      if (!document.hidden) setNowMs(Date.now());
+    };
     update();
     document.addEventListener('visibilitychange', update);
     const timer = window.setInterval(update, 60000);
-    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', update); };
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', update);
+    };
   }, []);
+
   const hearthPeriod = getHearthPeriod(new Date(nowMs));
   const ember = computeEmberHeat({
-    lastConfirmedAt: confirmedAt?.threadId === activeThreadId ? confirmedAt.at : null,
-    interactionTimes: confirmedAt?.threadId === activeThreadId ? confirmedAt.times : [],
+    lastConfirmedAt: confirmedState?.threadId === activeThreadId ? confirmedState.at : null,
+    interactionTimes: confirmedState?.threadId === activeThreadId ? confirmedState.times : [],
     nowMs,
   });
-  useEffect(() => { applyEmberHeatCss(ember.heat); }, [ember.heat]);
+
+  const flameLife = useMemo(() => {
+    return deriveProjectFlame({
+      project: projectFlameContext.project,
+      confirmedUserMessages:
+        confirmedState?.threadId === activeThreadId ? confirmedState.confirmedUserMessages : [],
+      cardsSummary: projectFlameContext.cardsSummary,
+      nowMs,
+    });
+  }, [projectFlameContext, confirmedState, activeThreadId, nowMs]);
+
+  useEffect(() => {
+    applyEmberHeatCss(flameLife.heat);
+  }, [flameLife.heat]);
 
   const recomputeEmber = useCallback(() => {
     setEmberTick((n) => n + 1);
@@ -314,6 +416,7 @@ export function AppShell() {
       setShellMode,
       emberBand: ember.band,
       emberHeat: ember.heat,
+      flameLife,
       hearthPeriod,
       refreshThreads,
       selectThread,
@@ -333,6 +436,7 @@ export function AppShell() {
       shellMode,
       ember.band,
       ember.heat,
+      flameLife,
       hearthPeriod,
       refreshThreads,
       selectThread,
@@ -369,10 +473,21 @@ export function AppShell() {
           data-hearth-period={hearthPeriod}
           data-motion-paused={motionPaused}
           data-ember-band={ember.band}
-          data-flame-state={ember.band === 'hot' ? 'lively' : ember.band === 'warm' ? 'warm' : 'dim'}
-          data-ember-heat={ember.heat.toFixed(2)}
+          data-flame-stage={flameLife.stage}
+          data-golden={flameLife.golden.toFixed(2)}
+          data-dormant={flameLife.dormant.toFixed(2)}
+          data-flame-state={flameLife.stage === 'blaze' ? 'lively' : flameLife.stage === 'sprout' ? 'warm' : 'dim'}
+          data-ember-heat={flameLife.heat.toFixed(2)}
         >
-          <EmberAtmosphere band={ember.band} heat={ember.heat} period={hearthPeriod} size={flameSize} />
+          <EmberAtmosphere
+            band={ember.band}
+            heat={flameLife.heat}
+            golden={flameLife.golden}
+            dormant={flameLife.dormant}
+            stage={flameLife.stage}
+            period={hearthPeriod}
+            size={flameSize}
+          />
           <ThreadRail
             threads={threads}
             activeThreadId={activeThreadId}
@@ -394,6 +509,23 @@ export function AppShell() {
                   }}>
                     <summary aria-label="打开菜单" title="菜单"><span aria-hidden="true">···</span></summary>
                     <div className="hearth-menu__panel">
+                      <div className="hearth-menu__flame-status" data-flame-stage={flameLife.stage}>
+                        <div className="hearth-menu__flame-row">
+                          <span className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
+                          <span className="hearth-menu__heat-label">{Math.round(flameLife.heat * 100)}% 活力</span>
+                        </div>
+                        <p className="hearth-menu__flame-poetry">{flameLife.stagePoetry}</p>
+                        <button
+                          type="button"
+                          className="hearth-menu__stoke-action"
+                          onClick={() => {
+                            emitEmberCue('stoke');
+                            menuRef.current?.removeAttribute('open');
+                          }}
+                        >
+                          🔥 添一把柴（散发火星）
+                        </button>
+                      </div>
                       <button type="button" onClick={() => { setRailCollapsed(false); menuRef.current?.removeAttribute('open'); }}>历史对话</button>
                       <button type="button" onClick={() => { setShellMode('projects'); menuRef.current?.removeAttribute('open'); }}>项目与话题</button>
                       <button type="button" onClick={() => { setMotionPaused(!motionPaused); menuRef.current?.removeAttribute('open'); }}>{motionPaused ? '开启动效' : '暂停动效'}</button>
@@ -404,7 +536,7 @@ export function AppShell() {
                         <input id="hearth-flame-size" type="range" min="0.65" max="1.4" step="0.05" value={flameSize}
                           onChange={(event) => { const value = Number(event.currentTarget.value); setFlameSize(value); saveFlameSize(value); }} />
                       </div>
-                      <p className="hearth-menu__hint">火光随本话题中已保存的交流变化。</p>
+                      <p className="hearth-menu__hint">火光伴随项目的创立、推进与成果，赋予生命活力。</p>
                     </div>
                   </details>
                 </div>
@@ -422,6 +554,7 @@ export function AppShell() {
                 <ProjectsPane
                   threads={threads}
                   activeThreadId={activeThreadId}
+                  flameLife={flameLife}
                   filter={searchQuery}
                   onSelect={selectThread}
                   onCreate={() => void addThread()}
@@ -445,12 +578,14 @@ export function AppShell() {
 function ProjectsPane({
   threads,
   activeThreadId,
+  flameLife,
   filter,
   onSelect,
   onCreate,
 }: {
   threads: ThreadSummary[];
   activeThreadId: string | null;
+  flameLife: ProjectFlameInfo;
   filter: string;
   onSelect: (id: string) => void;
   onCreate: () => void;
@@ -469,6 +604,31 @@ function ProjectsPane({
           新线程
         </button>
       </header>
+
+      <div className="projects-pane__flame-banner" data-flame-stage={flameLife.stage}>
+        <div className="projects-pane__flame-head">
+          <div className="projects-pane__flame-meta">
+            <span className="projects-pane__flame-icon" aria-hidden="true">
+              {flameLife.stage === 'spark' ? '✨' : flameLife.stage === 'sprout' ? '🌱' : flameLife.stage === 'blaze' ? '🔥' : flameLife.stage === 'golden' ? '🌟' : '🪵'}
+            </span>
+            <div>
+              <span className="projects-pane__flame-title">炉火生命态：{flameLife.stageLabel}</span>
+              <span className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stage}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost projects-pane__stoke-btn"
+            onClick={() => emitEmberCue('stoke')}
+            title="添一把柴，激荡火舌并飞升散发火星粒子"
+          >
+            🔥 添柴激荡
+          </button>
+        </div>
+        <p className="projects-pane__flame-poetry">{flameLife.stagePoetry}</p>
+        <p className="projects-pane__flame-hint">{flameLife.fuelHint}</p>
+      </div>
+
       <Link to="/projects" className="projects-pane__manage">管理本地项目与观察范围 ↗</Link>
       <ul className="projects-pane__list">
         {visible.map((t) => (
@@ -478,7 +638,12 @@ function ProjectsPane({
               className={`projects-pane__item${t.id === activeThreadId ? ' is-active' : ''}`}
               onClick={() => onSelect(t.id)}
             >
-              <span className="projects-pane__item-title">{t.title}</span>
+              <div className="projects-pane__item-header">
+                <span className="projects-pane__item-title">{t.title}</span>
+                {t.id === activeThreadId ? (
+                  <span className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
+                ) : null}
+              </div>
               {t.preview ? (
                 <span className="projects-pane__item-preview">{t.preview}</span>
               ) : null}

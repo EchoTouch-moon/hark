@@ -55,9 +55,28 @@ M2-GATE（全部 20 个 overnight 任务完成）。
 
 工程闭环 PASS；建议有用性待人审。真实 Pi `stepfun-plan/step-5-preview` 经页面点击生成建议卡；Git HEAD/index/status 与 611 个文件指纹不变（不覆盖 ignored 文件）。306 tests、typecheck、改动文件 eslint、web build 通过。证据：`docs/verification/hearth-p2a-live-verification.md`、`handoff/EVIDENCE/p2a-live-*`。此前总表为历史快照，不代表当前最新范围。
 
-## 2026-10-29 · GitHub 同步准备
+## 2026-10-30 · 炉火生命历程与项目活力具象化 (Living Flame Lifecycle & Project Vitality)
 
-已创建私有仓库 EchoTouch-moon/hark 并配置 origin；源码/测试/验收文档快照纳入同步提交，未跟踪截图保留本地。全仓 306 tests/typecheck 复用本次 P2-A 验证（同一源码工作区），本次新增验证完整 web+server build exit 0，证据 handoff/EVIDENCE/github-sync-build.txt。提交内容密钥特征扫描无命中；历史唯一特征命中是 assemble.test.ts 的合成测试字符串。远端是否最新以 git rev-parse HEAD 与 git ls-remote origin refs/heads/master 对比为准。多端使用说明见 README-dev.md。
+### 状态：COMPLETED · PASS
+- **核心目标**：将火焰与项目生命周期深度绑定，赋予火焰生命活力。
+  1. **初火星 (spark)**：项目/话题刚创立，微火核 (0.12 heat)，轻柔静谧；
+  2. **初生火苗 (sprout)**：随着交流逐步展开（1-2条有效消息），火苗起伏抽芽 (0.42-0.53 heat)；
+  3. **繁盛之火 (blaze)**：持续深入对话与代码推进（3+有效消息），一团旺盛翻腾之火 (0.64-0.75+ heat)；
+  4. **常明金火 (golden)**：项目卡片/任务圆满达成，转为澄澈温润的金黄色调 (`u_golden=1.0`)，平稳安宁守护成果；
+  5. **静卧余烬 (dormant)**：项目被搁置/暂停观察或长期未活动，收敛于炉底深红炭火低态呼吸 (`u_dormant=1.0`)；
+  6. **添柴激荡与火星散发 (stoke & sparks)**：每次扫描项目或手动添柴，触发 `stoke` 事件，火舌激荡上涌 (`u_surge`)，32 颗点精灵上升气流火星粒子喷薄飞升！
+- **全链路页面覆盖**：
+  - `AppShell`：中央状态计算与传参、顶栏菜单「炉火生命态卡片」与「🔥 添一把柴」快捷操作、`ProjectsPane` 中央炉火横幅与项目生命态徽标；
+  - `EmberAtmosphere` & `flameRenderer`：GSAP 状态平滑过渡、WebGL Point-Sprite 上升气流火星粒子系统、双层磨砂玻璃色温与漫射折射；
+  - `ChatPage`：空态 `ember-seed` 展示当前生命态卡片（阶段、诗意引言、行动建议、添柴按钮）；
+  - `ProjectsPage` & `ObserverDetailPage`：项目卡片展示生命态徽标，添加「🔥 添柴扫描」交互。
+- **验证证据**：
+  - 自动化浏览器测试：`scripts/qa/living-flame-lifecycle.mjs` (全部 PASS)
+  - 核心回归测试：`glass-fire.mjs` (PASS)、`day-night-hearth.mjs` (PASS)、`conversation-hearth.mjs` (PASS)、`conversation-hearth-motion.mjs` (PASS)
+  - 单元测试：`npm test` 50 文件 / 381 用例全绿（含 `tests/unit/project-ember.test.ts`、`tests/unit/ember-cues.test.ts`）
+  - 类型检查与代码规范：`npm run typecheck` (0 errors), `npm run lint` (0 errors)
+  - 视觉与录屏证据：`handoff/EVIDENCE/living-flame/`（包含 6 张截图、全过程 webm 录屏与 test-summary.txt）
+
 
 ## 2026-10-29 · R0 PASS
 

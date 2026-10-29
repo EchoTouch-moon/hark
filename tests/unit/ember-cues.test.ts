@@ -20,3 +20,7 @@ it('foreign events without valid detail are ignored', () => {
  expect(readEmberCue(new Event('other'))).toBeNull();
  expect(readEmberCue(new CustomEvent(EMBER_CUE_EVENT,{detail:{kind:'typing',message:'x'}}))).toBeNull();
 });
+it('supports stoke cue for fuel/scan visual excitation without carrying project payloads', () => {
+ expect(EmberCueSchema.safeParse({kind:'stoke'}).success).toBe(true);
+ expect(EmberCueSchema.safeParse({kind:'stoke',payload:'data'}).success).toBe(false);
+});

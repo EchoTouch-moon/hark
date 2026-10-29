@@ -585,3 +585,139 @@
 .canvas-shell[data-motion-paused='true'] .thread-rail {
   transition: none;
 }
+
+/* ---------- 活火生命态菜单与项目面板样式 ---------- */
+
+.hearth-menu__flame-status {
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-surface-sunken) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hearth-menu__flame-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hearth-menu__heat-label {
+  font-size: 11px;
+  color: var(--color-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.hearth-menu__flame-poetry {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-ink-2);
+}
+
+.hearth-menu__stoke-action {
+  margin-top: 4px;
+  padding: 6px 10px !important;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border)) !important;
+  border-radius: 8px !important;
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)) !important;
+  color: var(--color-ink) !important;
+  font-size: 12px !important;
+  text-align: center !important;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out), background var(--duration-fast);
+}
+
+.hearth-menu__stoke-action:hover {
+  background: color-mix(in srgb, var(--color-accent) 24%, var(--color-surface)) !important;
+  transform: translateY(-1px);
+}
+
+.projects-pane__flame-banner {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 40%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-1);
+}
+
+.projects-pane__flame-banner[data-flame-stage='golden'] {
+  border-color: rgba(224, 172, 70, 0.45);
+  background: color-mix(in srgb, #fef8eb 75%, transparent);
+}
+
+.projects-pane__flame-banner[data-flame-stage='dormant'] {
+  opacity: 0.85;
+  border-color: rgba(120, 110, 100, 0.3);
+}
+
+.projects-pane__flame-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.projects-pane__flame-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.projects-pane__flame-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.projects-pane__flame-title {
+  font-weight: 600;
+  font-size: var(--text-base);
+  margin-right: var(--space-2);
+}
+
+.projects-pane__stoke-btn {
+  border: 1px solid color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out), transform var(--duration-fast);
+}
+
+.projects-pane__stoke-btn:hover {
+  background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  transform: translateY(-1px);
+}
+
+.projects-pane__flame-poetry {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+  line-height: var(--leading-relaxed);
+}
+
+.projects-pane__flame-hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+}
+
+.projects-pane__item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+}
+

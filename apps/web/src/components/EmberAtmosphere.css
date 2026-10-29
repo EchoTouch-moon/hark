@@ -28,6 +28,10 @@
   transition: background-color 600ms ease;
 }
 .ember-atmosphere[data-period='night'] .ember-atmosphere__glass { background: rgba(0,0,0,.25); }
+.ember-atmosphere[data-flame-stage='golden'] .ember-atmosphere__glass { background: rgba(250,246,238,.28); }
+.ember-atmosphere[data-period='night'][data-flame-stage='golden'] .ember-atmosphere__glass { background: rgba(8,6,2,.24); }
+.ember-atmosphere[data-flame-stage='dormant'] .ember-atmosphere__glass { background: rgba(248,245,239,.45); }
+.ember-atmosphere[data-period='night'][data-flame-stage='dormant'] .ember-atmosphere__glass { background: rgba(0,0,0,.40); }
 .ember-atmosphere[data-still='true'] .ember-atmosphere__glass { transition: none; }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .ember-atmosphere__canvas, .ember-atmosphere__fallback { filter: blur(38px); }

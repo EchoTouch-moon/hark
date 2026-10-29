@@ -273,6 +273,7 @@ export function ChatPage() {
     refreshThreads,
     recomputeEmber,
     emberBand,
+    flameLife,
     hearthPeriod,
     motionPaused,
     welcomeReplay,
@@ -595,7 +596,25 @@ export function ChatPage() {
             正在加载…
           </div>
         ) : showSeed ? (
-          <div className="ember-seed" data-ember-band={seedCopy.band}>
+          <div className="ember-seed" data-ember-band={seedCopy.band} data-flame-stage={flameLife.stage}>
+            <div className="flame-life-card" data-flame-stage={flameLife.stage}>
+              <div className="flame-life-card__head">
+                <span className="flame-life-card__icon" aria-hidden="true">
+                  {flameLife.stage === 'spark' ? '✨' : flameLife.stage === 'sprout' ? '🌱' : flameLife.stage === 'blaze' ? '🔥' : flameLife.stage === 'golden' ? '🌟' : '🪵'}
+                </span>
+                <span className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
+                <button
+                  type="button"
+                  className="flame-life-card__stoke"
+                  onClick={() => emitEmberCue('stoke')}
+                  title="添一把柴，激荡火舌并飞升火星"
+                >
+                  添柴 +
+                </button>
+              </div>
+              <p className="flame-life-card__poetry">{flameLife.stagePoetry}</p>
+              <p className="flame-life-card__hint">{flameLife.fuelHint}</p>
+            </div>
             <p className="seed-eyebrow">在这里，慢慢向前</p>
             <h1 className="ember-seed__greeting">{displayName && seedCopy.reason === 'no-interaction' ? `${displayName}，想从哪里开始？` : seedCopy.reason === 'no-interaction' ? (hearthPeriod === 'night' ? '今晚，想聊些什么？' : '今天，想聊些什么？') : seedCopy.greeting}</h1>
             {seedCopy.subline ? (
