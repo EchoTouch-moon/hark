@@ -77,6 +77,25 @@ M2-GATE（全部 20 个 overnight 任务完成）。
   - 类型检查与代码规范：`npm run typecheck` (0 errors), `npm run lint` (0 errors)
   - 视觉与录屏证据：`handoff/EVIDENCE/living-flame/`（包含 6 张截图、全过程 webm 录屏与 test-summary.txt）
 
+## 2026-10-30 · Teamwork 多代理系统级 GSAP 动效重构 (GSAP Full Overhaul & Specification)
+
+### 状态：COMPLETED · VICTORY CONFIRMED
+- **核心成果**：
+  1. **权威规范文档落地 (`docs/MOTION-SPECIFICATION.md`)**：756 行详尽规范，完整定义动作隐喻、多代理矩阵、五重生命形态映射、GSAP 时间线分层体系与 WCAG 2.2 AA 降级；
+  2. **动效核心引擎库 (`apps/web/src/motion/`)**：交付 `easing.ts`（物理缓动）、`emberMotion.ts`（门闩防护、插值与防孤儿补间）、`useHearthTimeline.ts`（React 18 / `contextSafe` 作用域生命周期 Hook）；
+  3. **四大核心业务组件纯 GSAP 重构**：
+     - `EmberAtmosphere.tsx`：统一 GSAP 控制器驱动 WebGL Shader uniforms 与点精灵粒子；
+     - `flameRenderer.ts`：160 粒子 FIFO 淘汰、空气上升气流与微晃动模拟，上下文丢失/卸载拦截保护；
+     - `ChatPage.tsx`：清除所有 CSS `@keyframes`，重写为 GSAP 物理弹性入场时间线、Seed 呼吸、FLIP 转换与添柴脉冲；
+     - `AppShell.tsx`：炉火状态深度绑定至顶栏菜单，数值平滑插值、徽标 Flare 微光与无障碍瞬时吸附；
+  4. **全量极限破坏性测试**：新增 `adversarial-lifecycle.test.ts`、`adversarial-deep-stress.test.ts`、`challenger-r2-2-stress.test.ts`，覆盖高频挂载/卸载、500 次并发销毁、10,000 粒子压力；
+  5. **法医级独立胜利审计**：独立审计员通过 3 阶段审查，确认零作弊零伪造，裁决 **VICTORY CONFIRMED**！
+- **验证指标**：
+  - 单元/集成测试：**55 文件 / 438 测试用例 100% 全部通过 (0 失败，0 跳过)**；
+  - 静态分析：`pnpm typecheck` 0 错误，`pnpm lint` 0 错误；
+  - Web 应用构建：`pnpm --filter @hearth/web build` 顺利通过；
+  - 真实浏览器自动化 E2E：`living-flame-lifecycle.mjs` 验证全链路通过。
+
 
 ## 2026-10-29 · R0 PASS
 

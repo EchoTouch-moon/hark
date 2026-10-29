@@ -93,8 +93,8 @@ export function deriveProjectFlame(input: ProjectFlameInput): ProjectFlameInfo {
   const hasActiveWork = Boolean((cards && cards.active > 0) || (input.project?.openInsightCount ?? 0) > 0);
 
   if (confirmedCount >= 3 || (confirmedCount >= 2 && isRecent24h && hasActiveWork)) {
-    const steps = Math.max(1, Math.min(4, confirmedCount)) - 1;
-    const intensity = 0.42 + steps * 0.11;
+    const steps = Math.max(0, Math.min(3, confirmedCount - 2));
+    const intensity = 0.65 + steps * 0.08;
     return {
       stage: 'blaze',
       heat: intensity,

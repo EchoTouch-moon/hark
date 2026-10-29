@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 export default defineConfig({
@@ -16,6 +18,8 @@ export default defineConfig({
       '@hearth/project-observer': r('./packages/project-observer/src/index.ts'),
       '@hearth/project-insight': r('./packages/project-insight/src/index.ts'),
       '@hearth/project-analysis': r('./packages/project-analysis/src/index.ts'),
+      'gsap': path.resolve(__dirname, 'apps/web/node_modules/gsap'),
+      '@gsap/react': path.resolve(__dirname, 'apps/web/node_modules/@gsap/react'),
     },
   },
   test: {

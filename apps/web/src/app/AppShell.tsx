@@ -35,6 +35,8 @@ import { EmberAtmosphere } from '../components/EmberAtmosphere';
 import { getHearthPeriod, type HearthPeriod } from '../features/hearthPeriod';
 import { readFlameSize, saveFlameSize } from '../features/flameSize';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
+import { useHearthTimeline, HEARTH_EASE } from '../motion';
+import { gsap } from 'gsap';
 import './AppShell.css';
 
 /* ------------------------------------------------------------------ */
@@ -210,16 +212,31 @@ export function AppShell() {
   const [activeThreadId, setActiveId] = useState<string | null>(null);
   const [shellMode, setShellMode] = useState<ShellMode>('chat');
   const [motionPaused, setMotionPaused] = useState(isEmberMotionPaused);
+  const [reducedMotion, setReducedMotion] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handler = () => {
+      setReducedMotion(media.matches);
+    };
+    media.addEventListener('change', handler);
+    return () => media.removeEventListener('change', handler);
+  }, []);
   const [flameSize, setFlameSize] = useState(readFlameSize);
   const [welcomeReplay, setWelcomeReplay] = useState(false);
   const menuRef = useRef<ElementRef<'details'>>(null);
   useEffect(() => {
-    document.documentElement.dataset.motionPaused = String(motionPaused);
+    document.documentElement.dataset.motionPaused = String(motionPaused || reducedMotion || isEmberMotionPaused());
     emitEmberCue('motion-preference', motionPaused);
     return () => {
       delete document.documentElement.dataset.motionPaused;
     };
-  }, [motionPaused]);
+  }, [motionPaused, reducedMotion]);
   const [searchQuery, setSearchQuery] = useState('');
   const [emberTick, setEmberTick] = useState(0);
   // History is always an on-demand surface; re-entering opens the conversation.
@@ -378,6 +395,102 @@ export function AppShell() {
     applyEmberHeatCss(flameLife.heat);
   }, [flameLife.heat]);
 
+  const shellRef = useRef<HTMLDivElement>(null);
+  const { contextSafe } = useHearthTimeline({ scope: shellRef });
+
+  const topVitalityBarRef = useRef<globalThis.HTMLDivElement>(null);
+  const menuVitalityBarRef = useRef<globalThis.HTMLDivElement>(null);
+  const topStageBadgeRef = useRef<globalThis.HTMLSpanElement>(null);
+  const menuStageBadgeRef = useRef<globalThis.HTMLSpanElement>(null);
+  const menuHeatLabelRef = useRef<globalThis.HTMLSpanElement>(null);
+  const prevStageRef = useRef(flameLife.stage);
+
+  // Smooth GSAP animation for vitality bars, numeric % counter, and stage badge flares
+  useHearthTimeline(() => {
+    const isPaused = motionPaused || reducedMotion || isEmberMotionPaused();
+    const targetPct = Math.round(flameLife.heat * 100);
+    const duration = isPaused ? 0 : 0.85;
+
+    if (topVitalityBarRef.current) {
+      gsap.to(topVitalityBarRef.current, {
+        width: `${targetPct}%`,
+        duration,
+        ease: HEARTH_EASE.gentle,
+      });
+    }
+
+    if (menuVitalityBarRef.current) {
+      gsap.to(menuVitalityBarRef.current, {
+        width: `${targetPct}%`,
+        duration,
+        ease: HEARTH_EASE.gentle,
+      });
+    }
+
+    if (menuHeatLabelRef.current) {
+      if (isPaused) {
+        menuHeatLabelRef.current.textContent = `${targetPct}% 活力`;
+      } else {
+        const currentText = menuHeatLabelRef.current.textContent ?? '';
+        const match = /(\d+)/.exec(currentText);
+        const startVal = match ? parseInt(match[1]!, 10) : targetPct;
+        const counter = { val: startVal };
+        gsap.to(counter, {
+          val: targetPct,
+          duration,
+          ease: HEARTH_EASE.gentle,
+          onUpdate: () => {
+            if (menuHeatLabelRef.current) {
+              menuHeatLabelRef.current.textContent = `${Math.round(counter.val)}% 活力`;
+            }
+          },
+        });
+      }
+    }
+
+    if (prevStageRef.current !== flameLife.stage) {
+      prevStageRef.current = flameLife.stage;
+      if (!isPaused) {
+        if (topStageBadgeRef.current) {
+          gsap.fromTo(
+            topStageBadgeRef.current,
+            { scale: 1.18, opacity: 0.8 },
+            { scale: 1, opacity: 1, duration: 0.45, ease: 'back.out(1.6)' }
+          );
+        }
+        if (menuStageBadgeRef.current) {
+          gsap.fromTo(
+            menuStageBadgeRef.current,
+            { scale: 1.18, opacity: 0.8 },
+            { scale: 1, opacity: 1, duration: 0.45, ease: 'back.out(1.6)' }
+          );
+        }
+      }
+    }
+  }, { dependencies: [flameLife.heat, flameLife.stage, motionPaused, reducedMotion] });
+
+  const handleTopBarStoke = useCallback(
+    contextSafe((btn?: HTMLElement) => {
+      emitEmberCue('stoke');
+      const isPaused = motionPaused || reducedMotion || isEmberMotionPaused();
+      if (btn && !isPaused) {
+        gsap.timeline()
+          .to(btn, { scale: 0.94, duration: 0.08, ease: 'power2.in' })
+          .to(btn, { scale: 1.06, duration: 0.16, ease: 'back.out(2)' })
+          .to(btn, {
+            scale: 1,
+            duration: 0.12,
+            onComplete: () => {
+              menuRef.current?.removeAttribute('open');
+            },
+          });
+      } else {
+        menuRef.current?.removeAttribute('open');
+      }
+    }),
+    [contextSafe, motionPaused, reducedMotion]
+  );
+
   const recomputeEmber = useCallback(() => {
     setEmberTick((n) => n + 1);
   }, []);
@@ -405,6 +518,8 @@ export function AppShell() {
     [drawerContent],
   );
 
+  const isPaused = motionPaused || reducedMotion || isEmberMotionPaused();
+
   const threadValue = useMemo<ThreadContextValue>(
     () => ({
       threads,
@@ -422,7 +537,7 @@ export function AppShell() {
       selectThread,
       addThread,
       recomputeEmber,
-      motionPaused,
+      motionPaused: isPaused,
       setMotionPaused,
       welcomeReplay,
       setWelcomeReplay,
@@ -442,7 +557,8 @@ export function AppShell() {
       selectThread,
       addThread,
       recomputeEmber,
-      motionPaused,
+      isPaused,
+      setMotionPaused,
       welcomeReplay,
     ],
   );
@@ -462,6 +578,7 @@ export function AppShell() {
           跳到主要内容
         </a>
         <div
+          ref={shellRef}
           className={[
             'canvas-shell',
             railCollapsed ? 'canvas-shell--rail-collapsed' : '',
@@ -471,7 +588,7 @@ export function AppShell() {
             .filter(Boolean)
             .join(' ')}
           data-hearth-period={hearthPeriod}
-          data-motion-paused={motionPaused}
+          data-motion-paused={isPaused}
           data-ember-band={ember.band}
           data-flame-stage={flameLife.stage}
           data-golden={flameLife.golden.toFixed(2)}
@@ -503,6 +620,15 @@ export function AppShell() {
               <header className="canvas-chrome">
                 <button type="button" className="hearth-wordmark" onClick={() => { setShellMode('chat'); setRailCollapsed(true); }} aria-label="返回对话">Hearth<span aria-hidden="true">.</span></button>
                 <div className="hearth-header-actions">
+                  <div className="hearth-flame-pill" data-flame-stage={flameLife.stage} title={`炉火生命态：${flameLife.stageLabel} (${Math.round(flameLife.heat * 100)}% 活力)`}>
+                    <span className="hearth-flame-pill__icon" aria-hidden="true">
+                      {flameLife.stage === 'spark' ? '✨' : flameLife.stage === 'sprout' ? '🌱' : flameLife.stage === 'blaze' ? '🔥' : flameLife.stage === 'golden' ? '🌟' : '🪵'}
+                    </span>
+                    <span ref={topStageBadgeRef} className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
+                    <div className="hearth-vitality-track" aria-hidden="true" title={`${Math.round(flameLife.heat * 100)}% 活力`}>
+                      <div ref={topVitalityBarRef} className="hearth-vitality-fill" style={{ width: `${Math.round(flameLife.heat * 100)}%` }} />
+                    </div>
+                  </div>
                   <span className="hearth-mode-label" title="回复由本机模拟生成，不连接真实模型">离线演示</span>
                   <details className="hearth-menu" ref={menuRef} onKeyDown={(event) => {
                     if (event.key === 'Escape') { menuRef.current?.removeAttribute('open'); menuRef.current?.querySelector('summary')?.focus(); }
@@ -511,17 +637,17 @@ export function AppShell() {
                     <div className="hearth-menu__panel">
                       <div className="hearth-menu__flame-status" data-flame-stage={flameLife.stage}>
                         <div className="hearth-menu__flame-row">
-                          <span className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
-                          <span className="hearth-menu__heat-label">{Math.round(flameLife.heat * 100)}% 活力</span>
+                          <span ref={menuStageBadgeRef} className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
+                          <span ref={menuHeatLabelRef} className="hearth-menu__heat-label">{Math.round(flameLife.heat * 100)}% 活力</span>
+                        </div>
+                        <div className="hearth-vitality-track hearth-vitality-track--menu" aria-hidden="true">
+                          <div ref={menuVitalityBarRef} className="hearth-vitality-fill" style={{ width: `${Math.round(flameLife.heat * 100)}%` }} />
                         </div>
                         <p className="hearth-menu__flame-poetry">{flameLife.stagePoetry}</p>
                         <button
                           type="button"
                           className="hearth-menu__stoke-action"
-                          onClick={() => {
-                            emitEmberCue('stoke');
-                            menuRef.current?.removeAttribute('open');
-                          }}
+                          onClick={(e) => handleTopBarStoke(e.currentTarget)}
                         >
                           🔥 添一把柴（散发火星）
                         </button>
@@ -558,6 +684,7 @@ export function AppShell() {
                   filter={searchQuery}
                   onSelect={selectThread}
                   onCreate={() => void addThread()}
+                  onStoke={handleTopBarStoke}
                 />
               ) : (
                 <Outlet />
@@ -582,6 +709,7 @@ function ProjectsPane({
   filter,
   onSelect,
   onCreate,
+  onStoke,
 }: {
   threads: ThreadSummary[];
   activeThreadId: string | null;
@@ -589,6 +717,7 @@ function ProjectsPane({
   filter: string;
   onSelect: (id: string) => void;
   onCreate: () => void;
+  onStoke?: (btn: HTMLElement) => void;
 }) {
   const q = filter.trim().toLowerCase();
   const visible = q
@@ -619,7 +748,13 @@ function ProjectsPane({
           <button
             type="button"
             className="btn btn-sm btn-ghost projects-pane__stoke-btn"
-            onClick={() => emitEmberCue('stoke')}
+            onClick={(e) => {
+              if (onStoke) {
+                onStoke(e.currentTarget);
+              } else {
+                emitEmberCue('stoke');
+              }
+            }}
             title="添一把柴，激荡火舌并飞升散发火星粒子"
           >
             🔥 添柴激荡

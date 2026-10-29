@@ -8,7 +8,17 @@ export const EmberCueSchema = z.object({
 }).strict();
 export type EmberCue = z.infer<typeof EmberCueSchema>;
 let motionPaused = false;
-export function isEmberMotionPaused(): boolean { return motionPaused; }
+export function isEmberMotionPaused(): boolean {
+  if (motionPaused) return true;
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    try {
+      return Boolean(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
 export function emitEmberCue(kind: EmberCue['kind'], paused?: boolean): void {
   if (kind === 'motion-preference' && paused !== undefined) motionPaused = paused;
   if (typeof window === 'undefined') return;

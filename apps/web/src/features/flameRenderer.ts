@@ -5,7 +5,8 @@ export interface FlameFrame {
   time: number;
   heat: number;
   size: number;
-  attention: number;
+  attention?: number;
+  focus?: number;
   pulse: number;
   waiting: number;
   day: number;
@@ -307,35 +308,42 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
   }
 
   // Sparks particle state
-  const MAX_SPARKS = 80;
+  const MAX_SPARKS = 160;
   const sparks: Spark[] = [];
   const sparkData = new Float32Array(MAX_SPARKS * 7); // [x, y, size, alpha, r, g, b]
   let lastTime = 0;
   let lastAmbientSpark = 0;
 
-  const triggerSparks = (count = 28) => {
+  const triggerSparks = (count = 32) => {
     if (disposed || gl.isContextLost()) return;
-    const addCount = Math.min(count, MAX_SPARKS - sparks.length);
+    const requested = Math.max(1, count);
+    if (sparks.length + requested > MAX_SPARKS) {
+      sparks.splice(0, (sparks.length + requested) - MAX_SPARKS);
+    }
+    const addCount = Math.min(requested, MAX_SPARKS - sparks.length);
     for (let i = 0; i < addCount; i++) {
-      const isGold = Math.random() > 0.4;
+      const type = Math.random();
+      const isGold = type < 0.45;
+      const isWhiteHot = type > 0.85;
       sparks.push({
-        x: (Math.random() - 0.5) * 0.22,
-        y: -0.62 + (Math.random() - 0.5) * 0.18,
-        vx: (Math.random() - 0.5) * 0.16,
-        vy: 0.52 + Math.random() * 0.65,
-        size: 7.0 + Math.random() * 9.0,
-        alpha: 0.85 + Math.random() * 0.15,
+        x: (Math.random() - 0.5) * 0.26,
+        y: -0.62 + (Math.random() - 0.5) * 0.16,
+        vx: (Math.random() - 0.5) * 0.28,
+        vy: 0.58 + Math.random() * 0.78,
+        size: 7.0 + Math.random() * 10.0,
+        alpha: 0.90 + Math.random() * 0.10,
         life: 1.4 + Math.random() * 0.8,
         maxLife: 1.4 + Math.random() * 0.8,
-        r: isGold ? 1.0 : 0.98,
-        g: isGold ? 0.85 + Math.random() * 0.12 : 0.48 + Math.random() * 0.25,
-        b: isGold ? 0.32 : 0.08,
+        r: 1.0,
+        g: isWhiteHot ? 0.96 : isGold ? 0.86 + Math.random() * 0.10 : 0.48 + Math.random() * 0.22,
+        b: isWhiteHot ? 0.82 : isGold ? 0.32 : 0.08,
         sway: Math.random() * Math.PI * 2,
       });
     }
   };
 
   const resize = () => {
+    if (disposed || gl.isContextLost()) return;
     const factor = Math.min(1, 900 / Math.max(1, canvas.clientWidth));
     const width = Math.max(1, Math.round(canvas.clientWidth * factor));
     const height = Math.max(1, Math.round(canvas.clientHeight * factor));
@@ -344,7 +352,7 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
   };
 
   const draw = (frame: FlameFrame) => {
-    if (gl.isContextLost()) return;
+    if (disposed || gl.isContextLost()) return;
 
     // 1. Draw Living Fire Quad
     gl.useProgram(program);
@@ -352,11 +360,12 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
     gl.enableVertexAttribArray(position);
     gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
+    const focusVal = frame.attention ?? frame.focus ?? 0;
     gl.uniform2f(resolution, canvas.width, canvas.height);
     gl.uniform1f(time, frame.time);
     gl.uniform1f(heat, frame.heat);
     gl.uniform1f(size, frame.size);
-    gl.uniform1f(response, Math.max(0, Math.min(1, frame.attention + frame.pulse + frame.waiting)));
+    gl.uniform1f(response, Math.max(0, Math.min(1, focusVal + frame.pulse + frame.waiting)));
     gl.uniform1f(day, frame.day);
     gl.uniform1f(goldenUniform, frame.golden ?? 0);
     gl.uniform1f(dormantUniform, frame.dormant ?? 0);
@@ -407,8 +416,8 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
         s.x += s.vx * dt + Math.sin(frame.time * 3.8 + s.sway) * 0.003;
         s.vy *= 0.985;
         s.vx *= 0.98;
-        const fade = s.life / s.maxLife;
-        s.alpha = fade * Math.min(1.0, (s.maxLife - s.life) / 0.18);
+        const fade = Math.pow(Math.max(0, s.life / s.maxLife), 1.4);
+        s.alpha = fade * Math.min(1.0, (s.maxLife - s.life) / 0.15);
 
         const offset = activeCount * 7;
         sparkData[offset + 0] = s.x;
@@ -459,6 +468,11 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
     dispose: () => {
       disposed = true;
       image.onload = null;
+      image.onerror = null;
+      sparks.length = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.useProgram(null);
       gl.deleteTexture(texture);
       gl.deleteBuffer(buffer);
       gl.deleteProgram(program);
@@ -468,6 +482,8 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
       if (sparksBuffer) gl.deleteBuffer(sparksBuffer);
       if (sVs) gl.deleteShader(sVs);
       if (sFs) gl.deleteShader(sFs);
+      const loseContext = gl.getExtension('WEBGL_lose_context');
+      if (loseContext) loseContext.loseContext();
     },
   };
 }

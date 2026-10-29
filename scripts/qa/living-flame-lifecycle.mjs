@@ -120,10 +120,12 @@ try {
   const menuStoke = page.locator('.hearth-menu__stoke-action');
   await menuStoke.click();
   await expect(room).toHaveAttribute('data-cue', 'stoke');
+  await expect(page.locator('.hearth-menu')).not.toHaveAttribute('open', '');
   log('PASS 4.1: 顶栏菜单中完整展示项目生命态与添一把柴快捷操作。');
 
   // 切换到项目与话题面板
   await menu.click();
+  await expect(page.locator('.hearth-menu')).toHaveAttribute('open', '');
   await page.getByRole('button', { name: '项目与话题' }).click();
   const banner = page.locator('.projects-pane__flame-banner');
   await expect(banner).toBeVisible();

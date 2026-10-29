@@ -588,6 +588,55 @@
 
 /* ---------- 活火生命态菜单与项目面板样式 ---------- */
 
+.hearth-flame-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-surface) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.hearth-flame-pill__icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.hearth-vitality-track {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-border) 45%, transparent);
+  overflow: hidden;
+  position: relative;
+}
+
+.hearth-vitality-track--menu {
+  width: 100%;
+  height: 5px;
+  margin: 3px 0;
+}
+
+.hearth-vitality-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f4a261, #e76f51);
+  will-change: width;
+}
+
+.hearth-menu__flame-status[data-flame-stage='golden'] .hearth-vitality-fill,
+.hearth-flame-pill[data-flame-stage='golden'] .hearth-vitality-fill {
+  background: linear-gradient(90deg, #e9c46a, #f4a261);
+}
+
+.hearth-menu__flame-status[data-flame-stage='dormant'] .hearth-vitality-fill,
+.hearth-flame-pill[data-flame-stage='dormant'] .hearth-vitality-fill {
+  background: linear-gradient(90deg, #8d7460, #a8866b);
+}
+
 .hearth-menu__flame-status {
   padding: 10px 12px;
   margin-bottom: 6px;

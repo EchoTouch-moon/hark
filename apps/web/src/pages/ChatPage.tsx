@@ -4,9 +4,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { gsap } from 'gsap';
-import { useGSAP } from '@gsap/react';
 import { HearthWelcome } from '../components/HearthWelcome';
-import { emitEmberCue } from '../features/ember-cues';
+import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import { readWelcomePreference } from '../features/welcome';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useThreads } from '../app/AppShell';
@@ -26,9 +25,12 @@ import {
   computeEmberHeat,
   latestConfirmedInteraction,
 } from '../features/emberHeat';
+import {
+  useHearthTimeline,
+  HEARTH_EASE,
+  COMPOSER_FLIP_DURATION,
+} from '../motion';
 import './ChatPage.css';
-
-gsap.registerPlugin(useGSAP);
 
 // Unsaved drafts stay in memory only and are scoped to their own conversation.
 const threadDrafts = new Map<string, string>();
@@ -151,12 +153,12 @@ function AgentActions({
 
 function MessageTurn({
   msg,
-  index,
+  _index,
   onAction,
   actionBusy,
 }: {
   msg: CanvasMessage;
-  index: number;
+  _index?: number;
   onAction: (action: MessageAction) => void;
   actionBusy: boolean;
 }) {
@@ -170,7 +172,6 @@ function MessageTurn({
   return (
     <article
       className={`chat-msg ${isUser ? 'chat-msg--user' : 'chat-msg--assistant'}`}
-      style={{ animationDelay: `${Math.min(index, 8) * 80}ms` }}
     >
       <header className="chat-msg__meta">
         <span className="chat-msg__role">{isUser ? '你' : 'Hearth'}</span>
@@ -268,6 +269,7 @@ export function ChatPage() {
   const [displayName, setDisplayName] = useState(welcomePreference.name);
   const [arrival, setArrival] = useState(false);
   const columnRef = useRef<HTMLDivElement>(null);
+  const { contextSafe } = useHearthTimeline({ scope: columnRef });
   const {
     activeThreadId,
     refreshThreads,
@@ -524,7 +526,83 @@ export function ChatPage() {
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [updateDraft]);
 
-  useGSAP(() => {
+  const handleStoke = useCallback(
+    contextSafe((btn: HTMLElement) => {
+      emitEmberCue('stoke');
+      if (!motionPaused && !isEmberMotionPaused()) {
+        gsap.timeline()
+          .to(btn, { scale: 0.90, duration: 0.08, ease: 'power2.in' })
+          .to(btn, { scale: 1.08, duration: 0.16, ease: 'back.out(2)' })
+          .to(btn, { scale: 1, duration: 0.12 });
+        const card = btn.closest<HTMLElement>('.flame-life-card');
+        if (card) {
+          gsap.fromTo(
+            card,
+            { boxShadow: '0 0 28px rgba(244, 162, 97, 0.5)', borderColor: 'rgba(244, 162, 97, 0.85)' },
+            { boxShadow: '0 4px 18px rgba(0, 0, 0, 0.04)', borderColor: '', duration: 0.8, ease: 'power2.out', clearProps: 'boxShadow,borderColor' }
+          );
+        }
+      }
+    }),
+    [contextSafe, motionPaused]
+  );
+
+  // GSAP animation for new message entrance
+  useHearthTimeline(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const unentered = list.querySelectorAll<HTMLElement>('.chat-msg:not([data-msg-enter="ready"])');
+    if (unentered.length === 0) return;
+
+    if (motionPaused || isEmberMotionPaused()) {
+      unentered.forEach((el) => {
+        el.dataset.msgEnter = 'ready';
+      });
+      return;
+    }
+
+    gsap.fromTo(
+      unentered,
+      { opacity: 0, y: 14 },
+      {
+        opacity: 1,
+        y: 0,
+        duration: 0.4,
+        stagger: 0.06,
+        ease: HEARTH_EASE.snap,
+        clearProps: 'transform,opacity',
+        onComplete: () => {
+          unentered.forEach((el) => {
+            el.dataset.msgEnter = 'ready';
+          });
+        },
+      }
+    );
+  }, { scope: listRef, dependencies: [messages, motionPaused] });
+
+  // GSAP animation for empty state seed glow breathing
+  useHearthTimeline(() => {
+    if (!showSeed || motionPaused || isEmberMotionPaused()) return;
+    const glow = columnRef.current?.querySelector<HTMLElement>('.ember-seed__glow');
+    if (!glow) return;
+    const tween = gsap.fromTo(
+      glow,
+      { opacity: 0.70, scale: 0.98 },
+      {
+        opacity: 1.0,
+        scale: 1.04,
+        duration: 3.8,
+        ease: HEARTH_EASE.breath,
+        repeat: -1,
+        yoyo: true,
+      }
+    );
+    return () => {
+      tween.kill();
+    };
+  }, { scope: columnRef, dependencies: [showSeed, motionPaused] });
+
+  useHearthTimeline(() => {
     const node = composerRef.current;
     if (!node) return;
     const align = () => {
@@ -540,14 +618,14 @@ export function ChatPage() {
     const rect = node.getBoundingClientRect();
     const previous = previousRect.current;
     const media = gsap.matchMedia();
-    media.add({ full: '(prefers-reduced-motion: no-preference)', reduced: '(prefers-reduced-motion: reduce)' }, context => {
-      const still = motionPaused || context.conditions?.reduced;
-      const timeline = gsap.timeline({ paused: true, defaults: { ease: 'power3.out' } });
+    media.add({ full: '(prefers-reduced-motion: no-preference)', reduced: '(prefers-reduced-motion: reduce)' }, (context) => {
+      const still = motionPaused || isEmberMotionPaused() || context.conditions?.reduced;
+      const timeline = gsap.timeline({ paused: true, defaults: { ease: HEARTH_EASE.snap } });
       if (previous && (Math.abs(previous.x - rect.x) > 1 || Math.abs(previous.y - rect.y) > 1)) {
-        timeline.fromTo(node, { x: previous.x - rect.x, y: previous.y - rect.y }, { x: 0, y: 0, duration: .4, clearProps: 'transform' }, 0);
+        timeline.fromTo(node, { x: previous.x - rect.x, y: previous.y - rect.y }, { x: 0, y: 0, duration: COMPOSER_FLIP_DURATION, clearProps: 'transform' }, 0);
       }
       if (arrival && !welcomeBlocking) {
-        timeline.fromTo(columnRef.current, { opacity: .3 }, { opacity: 1, duration: .7, clearProps: 'opacity' }, 0);
+        timeline.fromTo(columnRef.current, { opacity: 0.3 }, { opacity: 1, duration: 0.7, clearProps: 'opacity' }, 0);
       }
       const visibility = () => {
         if (document.hidden) timeline.pause();
@@ -597,6 +675,7 @@ export function ChatPage() {
           </div>
         ) : showSeed ? (
           <div className="ember-seed" data-ember-band={seedCopy.band} data-flame-stage={flameLife.stage}>
+            <div className="ember-seed__glow" aria-hidden="true" />
             <div className="flame-life-card" data-flame-stage={flameLife.stage}>
               <div className="flame-life-card__head">
                 <span className="flame-life-card__icon" aria-hidden="true">
@@ -606,7 +685,7 @@ export function ChatPage() {
                 <button
                   type="button"
                   className="flame-life-card__stoke"
-                  onClick={() => emitEmberCue('stoke')}
+                  onClick={(e) => handleStoke(e.currentTarget)}
                   title="添一把柴，激荡火舌并飞升火星"
                 >
                   添柴 +
@@ -676,7 +755,7 @@ export function ChatPage() {
               <MessageTurn
                 key={m.id}
                 msg={m}
-                index={i}
+                _index={i}
                 onAction={onAction}
                 actionBusy={actionBusy}
               />

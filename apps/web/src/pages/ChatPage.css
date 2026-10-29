@@ -56,7 +56,7 @@
   filter: blur(8px);
   pointer-events: none;
   z-index: 0;
-  animation: ember-breathe 8s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 .ember-seed__greeting {
@@ -256,7 +256,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  animation: chat-msg-in var(--duration-seed) var(--ease-spring) both;
+  will-change: transform, opacity;
 }
 
 .chat-msg--user {
@@ -498,7 +498,6 @@
     transparent,
     color-mix(in srgb, var(--color-bg) 88%, transparent) 28%
   );
-  animation: composer-dock-in var(--duration-seed) var(--ease-spring) both;
 }
 
 .composer {
@@ -568,39 +567,7 @@
   cursor: not-allowed;
 }
 
-@keyframes chat-msg-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-@keyframes composer-dock-in {
-  from {
-    opacity: 0.6;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes ember-breathe {
-  0%,
-  100% {
-    opacity: 0.72;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.02);
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .chat-msg,
@@ -632,13 +599,8 @@
   translate: -50% 0;
   z-index: 2;
 }
-.narrative-composer.composer-dock { animation: none; }
 .ember-seed__subline { color: var(--color-ink-2); }
 .narrative-mode { text-align: center; color: var(--color-ink-2); font-size: 11px; margin: 10px 0 0; }
-.ember-seed__glow {
-  animation-duration: var(--ember-idle-duration);
-}
-[data-flame-state="dim"] .ember-seed__glow { animation: none; }
 html[data-page-hidden="true"] *, html[data-motion-paused="true"] *, [data-motion-paused="true"] * { animation-play-state: paused !important; }
 .narrative-composer:focus-within .composer { border-color: var(--color-focus); transition: border-color var(--ember-focus-duration); }
 @media(prefers-reduced-motion: reduce) {
