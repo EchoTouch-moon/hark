@@ -60,3 +60,7 @@
 R0 PASS（cca95e0），R1 PASS（1642215）。R2工程本地检查通过：343测试、typecheck、lint零错误、完整build、16项E2E。隐私预览/逐次确认与持久化记录、排除路径、稳定上下文、真实模式与Mock标识、反馈、README及最小CI已实现；远端CI需以新运行确认。R2人工价值门禁NOT_MEASURED，用户定性反馈已保存，未执行新的真实模型请求。数据migration至analysis v4；启动补偿清理任务，不自动重试中断模型。运行方式与限制见README及docs/verification/remediation-r*.md。
 
 远端补充：GitHub CI Run40836527163对00121a2实际通过，job2m31s；完整源码已推送私有仓库。R2仅人工价值门禁未通过，不能用CI替代。后续本批只有验收记录更新，不变更已通过源码。
+
+## UI-REFRESH-01 · 第一块交付
+
+本地分支codex/ui-refresh-01，主题基础与空详情隐藏已完成，web build/typecheck、局部lint、新浏览器1场景与基础对比度检查通过。尚未重构真实首页、导航或分析API，未进入P2-B/C。继续执行从tasks/UI-REFRESH-01.md最新交接开始；本块不推送以保留小步本地交付。

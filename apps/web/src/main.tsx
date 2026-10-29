@@ -1,9 +1,12 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
+import { initializeTheme } from './features/theme';
 import { router } from './app/routes';
 import './styles/tokens.css';
 import './styles/global.css';
+
+initializeTheme();
 
 const container = document.getElementById('root');
 if (container === null) {

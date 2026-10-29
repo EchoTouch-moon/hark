@@ -34,3 +34,7 @@ Analysis中断复用failed+INTERRUPTED，保留旧Run且不自动重试模型。
 ## 2026-10-29 · R1/R2边界与用户质量评价
 
 单一后台协调器只用ObserverReadPort+InsightStore，绝不获得Provider依赖。R2外发每次预览确认绑定稳定内容指纹和接收方，schema v3记录排除路径、v4记录发送确认。默认真实模式不自动混入Demo；Chat仍Mock。用户实际希望建议覆盖项目发展/演进，不能只提供本地检查清单；原样保存定性反馈，不假造逐项评分。仅调整中文/方向提示，不扩大代码采集，不跳至P2-B/C。真实评价基线不足时保持NOT_MEASURED。
+
+## UI-REFRESH-01 · 分块执行
+
+用户要求节省额度与可接班，本轮只交付主题基础+空详情隐藏，不把导航/路由/后端聚合混入同一块。显示偏好仅保存在设备localStorage；默认浅色，用户明确选择system后才跟随系统。未知服务端模式不应暴露Demo seed。完整计划与接班入口固定为tasks/UI-REFRESH-01.md。

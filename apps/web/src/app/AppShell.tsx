@@ -4,9 +4,11 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { getThemePreference, setThemePreference, subscribeTheme, type ThemePreference } from '../features/theme';
 import { apiFetch } from '../features/api/client';
 import { ConnectionBadge } from '../components';
 import './AppShell.css';
@@ -166,6 +168,7 @@ function sectionLabel(pathname: string): string {
 }
 
 function TopBar() {
+  const theme = useSyncExternalStore(subscribeTheme, getThemePreference, () => 'light');
   const location = useLocation();
   const [mode, setMode] = useState<boolean | null>(null);
   useEffect(() => {
@@ -183,6 +186,14 @@ function TopBar() {
         <span className="topbar-section">{sectionLabel(location.pathname)}</span>
       </div>
       <div className="topbar-badges">
+        <label className="theme-control">
+          <span className="visually-hidden">显示主题</span>
+          <select aria-label="显示主题" value={theme} onChange={event => setThemePreference(event.target.value as ThemePreference)}>
+            <option value="light">浅色</option>
+            <option value="dark">深色</option>
+            <option value="system">跟随系统</option>
+          </select>
+        </label>
         <span className="badge badge-notice">{mode === null ? '模式读取中' : mode ? 'Demo 合成数据模式' : '真实项目 · 本地存储'}</span>
         <ConnectionBadge mode="demo" label={location.pathname.startsWith('/chat') ? '对话：离线演示' : '分析来源见建议卡'} />
       </div>
@@ -193,17 +204,6 @@ function TopBar() {
 /* ------------------------------------------------------------------ */
 /* Detail Drawer（桌面宽屏 280px；窄屏隐藏，后续任务以弹层呈现） */
 /* ------------------------------------------------------------------ */
-
-function DetailDrawerPlaceholder() {
-  return (
-    <div className="detail-drawer-placeholder">
-      <p className="detail-drawer-placeholder-title">详情</p>
-      <p className="detail-drawer-placeholder-note">
-        证据（Evidence）与执行轨迹会在这里展开。
-      </p>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* AppShell：NavRail + 主内容 + DetailDrawer 三栏骨架 */
@@ -228,7 +228,7 @@ export function AppShell() {
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
-      <div className="app-shell">
+      <div className={`app-shell${drawerContent ? ' has-detail' : ''}`}>
         <NavRail />
         <div className="app-body">
           <TopBar />
@@ -236,9 +236,7 @@ export function AppShell() {
             <Outlet />
           </main>
         </div>
-        <aside className="detail-drawer" aria-label="详情面板">
-          {drawerContent ?? <DetailDrawerPlaceholder />}
-        </aside>
+        {drawerContent ? <aside className="detail-drawer" aria-label="详情面板">{drawerContent}</aside> : null}
       </div>
     </DetailDrawerContext.Provider>
   );

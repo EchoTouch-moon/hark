@@ -34,3 +34,7 @@
 ## 2026-10-29 · R2价值门禁未满足
 
 工程可继续验证CI；人工价值基线缺少至少第二个真实项目、24条新增用户触发建议和30条逐项人工标签。现有6条历史建议收到“偏本地检查，希望发展/演进且更多元”的定性评价，已记录而未转换为虚构量化分数。恢复：用户触发真实分析并在docs/evaluation/recommendation-ratings.json逐项标注，再运行pnpm exec tsx scripts/score-recommendations.ts。不自动调用Pi补样本/不进入后续阶段。
+
+## UI-REFRESH-01 · 第一块
+
+当前无阻塞。后续导航/真实首页/按需抽屉和异步Run未实施，均明确列为PENDING；已有未跟踪截图与参考包保留。未运行全仓回归或远端CI，不宣称已通过。接班先查看分支codex/ui-refresh-01与tasks/UI-REFRESH-01.md。

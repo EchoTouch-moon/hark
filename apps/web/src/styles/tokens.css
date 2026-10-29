@@ -5,14 +5,14 @@
  */
 :root {
   /* ---------- 色板 · 暖纸 + 墨色 + 炭火点缀 ---------- */
-  --color-bg: #f6f4ef;            /* 页面底色（暖纸灰） */
-  --color-bg-raised: #fbfaf7;     /* 抬升底色（导航/空态） */
+  --color-bg: #f8f7f3;            /* 页面底色（暖纸灰） */
+  --color-bg-raised: #f2f1eb;     /* 抬升底色（导航/空态） */
   --color-surface: #ffffff;       /* 卡片面 */
   --color-surface-sunken: #efede6;/* 下沉面（输入、代码块） */
 
   --color-ink: #26221c;           /* 主文字 */
   --color-ink-2: #5b554b;         /* 次级文字 */
-  --color-ink-3: #8f887b;         /* 弱化文字/占位 */
+  --color-ink-3: #6d7169;         /* 弱化文字/占位 */
 
   --color-border: #e6e1d6;        /* 常规描边 */
   --color-border-strong: #d2ccbe; /* 强描边 */
@@ -87,14 +87,45 @@
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
 
   /* ---------- 布局 ---------- */
-  --nav-width: 240px;        /* 左侧折叠导航 */
-  --drawer-width: 280px;     /* 右侧 Detail Drawer */
+  --nav-width: 200px;        /* 左侧折叠导航 */
+  --drawer-width: 360px;     /* 右侧 Detail Drawer */
   --topbar-height: 56px;
-  --page-max-width: 920px;
+  --page-max-width: 1200px;
 
   /* ---------- 层级 ---------- */
   --z-topbar: 30;
   --z-drawer: 40;
   --z-modal: 60;
   --z-toast: 80;
+}
+
+
+:root { color-scheme: light; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #171b20;
+  --color-bg-raised: #1c2127;
+  --color-surface: #20262d;
+  --color-surface-sunken: #171d23;
+  --color-ink: #eef0ed;
+  --color-ink-2: #c0c8c1;
+  --color-ink-3: #aab2ac;
+  --color-border: #3b454d;
+  --color-border-strong: #69777e;
+  --color-accent: #e2a07f;
+  --color-accent-strong: #f3ba9c;
+  --color-accent-soft: #403027;
+  --color-on-accent: #241b17;
+  --color-focus: #f3ba9c;
+  --color-success-ink: #a2d3b0;
+  --color-success-soft: #23372c;
+  --color-warning-ink: #edcc8b;
+  --color-warning-soft: #3b3222;
+  --color-danger-ink: #f0aaa2;
+  --color-danger-soft: #402a29;
+  --color-info-ink: #b0cdf0;
+  --color-info-soft: #263749;
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, .16);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, .22);
+  --shadow-overlay: 0 12px 40px rgba(0, 0, 0, .4);
 }
