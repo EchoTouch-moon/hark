@@ -30,6 +30,10 @@ import './ChatPage.css';
 
 gsap.registerPlugin(useGSAP);
 
+// Unsaved drafts stay in memory only and are scoped to their own conversation.
+const threadDrafts = new Map<string, string>();
+const interruptedThreads = new Set<string>();
+
 function renderInline(text: string): ReactNode[] {
   const parts: ReactNode[] = [];
   const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
@@ -269,6 +273,7 @@ export function ChatPage() {
     refreshThreads,
     recomputeEmber,
     emberBand,
+    hearthPeriod,
     motionPaused,
     welcomeReplay,
     setWelcomeReplay,
@@ -279,9 +284,15 @@ export function ChatPage() {
   const [sending, setSending] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [draft, setDraft] = useState('');
+  const [interruptedNotice, setInterruptedNotice] = useState(false);
   const [motionScene, setMotionScene] = useState('rest');
+  const pendingRequest = useRef<{ threadId: string; controller: AbortController; raw: string } | null>(null);
   const currentThread = useRef(activeThreadId);
   currentThread.current = activeThreadId;
+  const updateDraft = useCallback((value: string) => {
+    setDraft(value);
+    if (currentThread.current) threadDrafts.set(currentThread.current, value);
+  }, []);
   const slotRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const previousRect = useRef<ReturnType<NonNullable<typeof composerRef.current>['getBoundingClientRect']> | null>(null);
@@ -319,6 +330,30 @@ export function ChatPage() {
       setLoadError(err instanceof ApiError ? err.message : '无法加载聊天记录');
     } finally {
       if (currentThread.current === threadId) setLoading(false);
+    }
+  }, []);
+
+  // Switching conversations cancels only the local wait. Delivery may already
+  // have occurred, so restore the original draft with an explicit warning.
+  useEffect(() => {
+    const pending = pendingRequest.current;
+    if (pending && pending.threadId !== activeThreadId) {
+      threadDrafts.set(pending.threadId, pending.raw);
+      interruptedThreads.add(pending.threadId);
+      pending.controller.abort();
+      pendingRequest.current = null;
+      setSending(false);
+    }
+    setDraft(activeThreadId ? threadDrafts.get(activeThreadId) ?? '' : '');
+    setInterruptedNotice(activeThreadId ? interruptedThreads.has(activeThreadId) : false);
+  }, [activeThreadId]);
+  useEffect(() => () => {
+    const pending = pendingRequest.current;
+    if (pending) {
+      threadDrafts.set(pending.threadId, pending.raw);
+      interruptedThreads.add(pending.threadId);
+      pending.controller.abort();
+      pendingRequest.current = null;
     }
   }, []);
 
@@ -365,7 +400,11 @@ export function ChatPage() {
       if (!activeThreadId || text.length === 0 || sending) return;
       setSending(true);
       setLoadError(null);
+      interruptedThreads.delete(activeThreadId);
+      setInterruptedNotice(false);
       const controller = new AbortController();
+      const request = { threadId: activeThreadId, controller, raw };
+      pendingRequest.current = request;
       const timer = window.setTimeout(() => controller.abort(), 15_000);
       const previousUserIds = new Set(messages.filter((message) => message.role === 'user').map((message) => message.id));
       let requestAccepted = false;
@@ -378,34 +417,38 @@ export function ChatPage() {
         threadId: activeThreadId,
       };
       setMessages((prev) => [...prev, optimistic]);
-      setDraft('');
+      updateDraft('');
 
       try {
+        emitEmberCue('waiting');
         await sendChatMessage(activeThreadId, text, controller.signal);
         requestAccepted = true;
         const confirmed = await fetchChatHistory(activeThreadId, controller.signal);
         if (!confirmed.confirmedUserMessages.some((message) => message.content === text && !previousUserIds.has(message.id))) {
           throw new Error('用户消息尚未确认保存');
         }
-        if (currentThread.current !== activeThreadId) return;
+        if (currentThread.current !== activeThreadId || pendingRequest.current !== request) return;
         setMessages(confirmed.messages);
         emitEmberCue('acknowledged');
         setMotionScene(seedCopy.band === 'hot' ? 'settle' : seedCopy.reason === 'no-interaction' ? 'ignite' : 'rekindle');
         void refreshThreads();
         recomputeEmber();
       } catch (err) {
-        if (currentThread.current !== activeThreadId) return;
+        if (currentThread.current !== activeThreadId || pendingRequest.current !== request) return;
         setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-        setDraft(raw);
-        emitEmberCue('failed');
+        updateDraft(raw);
+        emitEmberCue('request-failed');
         setLoadError(requestAccepted ? '消息已发送，但暂时无法确认是否保存。请先查看会话，再决定是否重试。' : err instanceof ApiError ? `发送失败：${err.message}` : '发送失败，请重试');
       } finally {
         window.clearTimeout(timer);
-        setSending(false);
-        if (currentThread.current === activeThreadId) requestAnimationFrame(() => inputRef.current?.focus());
+        if (pendingRequest.current === request) {
+          pendingRequest.current = null;
+          setSending(false);
+          if (currentThread.current === activeThreadId) requestAnimationFrame(() => inputRef.current?.focus());
+        }
       }
     },
-    [activeThreadId, sending, refreshThreads, recomputeEmber, seedCopy.band, seedCopy.reason, messages],
+    [activeThreadId, sending, refreshThreads, recomputeEmber, seedCopy.band, seedCopy.reason, messages, updateDraft],
   );
 
   const runAction = useCallback(
@@ -476,9 +519,9 @@ export function ChatPage() {
   );
 
   const onChip = useCallback((label: string) => {
-    setDraft(label === '介绍我的项目' ? '我想介绍一下我的项目：' : '我有一个想法：');
+    updateDraft(label === '介绍我的项目' ? '我想介绍一下我的项目：' : '我有一个想法：');
     requestAnimationFrame(() => inputRef.current?.focus());
-  }, []);
+  }, [updateDraft]);
 
   useGSAP(() => {
     const node = composerRef.current;
@@ -554,7 +597,7 @@ export function ChatPage() {
         ) : showSeed ? (
           <div className="ember-seed" data-ember-band={seedCopy.band}>
             <p className="seed-eyebrow">在这里，慢慢向前</p>
-            <h1 className="ember-seed__greeting">{displayName && seedCopy.reason === 'no-interaction' ? `${displayName}，想从哪里开始？` : seedCopy.reason === 'no-interaction' ? '今天，想聊些什么？' : seedCopy.greeting}</h1>
+            <h1 className="ember-seed__greeting">{displayName && seedCopy.reason === 'no-interaction' ? `${displayName}，想从哪里开始？` : seedCopy.reason === 'no-interaction' ? (hearthPeriod === 'night' ? '今晚，想聊些什么？' : '今天，想聊些什么？') : seedCopy.greeting}</h1>
             {seedCopy.subline ? (
               <p className="ember-seed__subline">{seedCopy.subline}</p>
             ) : null}
@@ -630,9 +673,11 @@ export function ChatPage() {
 
         {!loading ? (
           <div ref={composerRef} className={showSeed ? "narrative-composer narrative-composer--seed" : "narrative-composer composer-dock"}>
+            {interruptedNotice && <p className="composer-status composer-status--warning" role="alert">切换时中断了发送，消息可能已经送达。请先检查会话，再决定是否重试。</p>}
+            {sending && <p className="composer-status" role="status">正在等待本机演示回复…</p>}
             <ComposerForm
               draft={draft}
-              setDraft={setDraft}
+              setDraft={updateDraft}
               sending={sending}
               disabled={!activeThreadId}
               onSubmit={() => void sendText(draft)}
@@ -643,7 +688,7 @@ export function ChatPage() {
         ) : null}
       </div>
 
-      {welcomeVisible && <HearthWelcome initialName={displayName} paused={motionPaused} onExitStart={startWelcomeExit} onComplete={finishWelcome} />}
+      {welcomeVisible && <HearthWelcome initialName={displayName} paused={motionPaused} period={hearthPeriod} onExitStart={startWelcomeExit} onComplete={finishWelcome} />}
       <ConfirmSheet
         open={pendingAction !== null}
         title="需要你确认"

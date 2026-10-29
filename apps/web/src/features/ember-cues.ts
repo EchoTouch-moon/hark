@@ -3,7 +3,7 @@ import { z } from 'zod';
 /** Ephemeral visual intent only. No content, identity, authorization or business state. */
 export const EMBER_CUE_EVENT = 'hearth:ember-cue';
 export const EmberCueSchema = z.object({
-  kind: z.enum(['focus','release','typing','acknowledged','chapter','project-added','declined','failed','motion-preference']),
+  kind: z.enum(['focus','release','typing','waiting','request-failed','acknowledged','chapter','project-added','declined','failed','motion-preference']),
   paused: z.boolean().optional(),
 }).strict();
 export type EmberCue = z.infer<typeof EmberCueSchema>;

@@ -30,6 +30,7 @@ import {
   type EmberBand,
 } from '../features/emberHeat';
 import { EmberAtmosphere } from '../components/EmberAtmosphere';
+import { getHearthPeriod, type HearthPeriod } from '../features/hearthPeriod';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import './AppShell.css';
 
@@ -68,6 +69,7 @@ export interface ThreadContextValue {
   setShellMode: (m: ShellMode) => void;
   emberBand: EmberBand;
   emberHeat: number;
+  hearthPeriod: HearthPeriod;
   refreshThreads: () => Promise<void>;
   selectThread: (id: string) => void;
   addThread: () => Promise<void>;
@@ -258,6 +260,7 @@ export function AppShell() {
     const timer = window.setInterval(update, 60000);
     return () => { clearInterval(timer); document.removeEventListener('visibilitychange', update); };
   }, []);
+  const hearthPeriod = getHearthPeriod(new Date(nowMs));
   const ember = computeEmberHeat({
     lastConfirmedAt: confirmedAt?.threadId === activeThreadId ? confirmedAt.at : null,
     interactionTimes: confirmedAt?.threadId === activeThreadId ? confirmedAt.times : [],
@@ -303,6 +306,7 @@ export function AppShell() {
       setShellMode,
       emberBand: ember.band,
       emberHeat: ember.heat,
+      hearthPeriod,
       refreshThreads,
       selectThread,
       addThread,
@@ -321,6 +325,7 @@ export function AppShell() {
       shellMode,
       ember.band,
       ember.heat,
+      hearthPeriod,
       refreshThreads,
       selectThread,
       addThread,
@@ -353,11 +358,13 @@ export function AppShell() {
           ]
             .filter(Boolean)
             .join(' ')}
+          data-hearth-period={hearthPeriod}
+          data-motion-paused={motionPaused}
           data-ember-band={ember.band}
           data-flame-state={ember.band === 'hot' ? 'lively' : ember.band === 'warm' ? 'warm' : 'dim'}
           data-ember-heat={ember.heat.toFixed(2)}
         >
-          <EmberAtmosphere band={ember.band} heat={ember.heat} />
+          <EmberAtmosphere band={ember.band} heat={ember.heat} period={hearthPeriod} />
           <ThreadRail
             threads={threads}
             activeThreadId={activeThreadId}

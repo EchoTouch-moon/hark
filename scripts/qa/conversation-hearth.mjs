@@ -1,7 +1,7 @@
 import { chromium, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 const base = process.env.HEARTH_QA_URL ?? 'http://127.0.0.1:4403';
-const out = 'handoff/EVIDENCE/conversation-hearth';
+const out = process.env.HEARTH_QA_EVIDENCE_DIR ?? 'handoff/EVIDENCE/conversation-hearth';
 mkdirSync(out, {recursive:true});
 const browser = await chromium.launch();
 const context = await browser.newContext({viewport:{width:1440,height:900},recordVideo:{dir:out,size:{width:1440,height:900}}});
@@ -23,7 +23,7 @@ try {
   await expect(room).toHaveAttribute('data-heat','0.12');
   await expect(page.locator('.ember-presence, .ember-mark')).toHaveCount(0);
   await expect(page.getByRole('tablist',{name:'主视图'})).toHaveCount(0);
-  await expect(page.getByRole('heading',{name:'今天，想聊些什么？'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/^(今天|今晚)，想聊些什么？$/})).toBeVisible();
   const current=page.locator('.ember-atmosphere__current').first(); const before=await current.getAttribute('d');await page.waitForTimeout(350);expect(await current.getAttribute('d')).not.toBe(before);
   await screenshot('01-empty');
   const initialLight=Number(await room.evaluate(node=>getComputedStyle(node).getPropertyValue('--hearth-intensity')));

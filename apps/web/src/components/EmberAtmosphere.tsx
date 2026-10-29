@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { EMBER_CUE_EVENT, emitEmberCue, isEmberMotionPaused, readEmberCue } from '../features/ember-cues';
+import type { HearthPeriod } from '../features/hearthPeriod';
 import './EmberAtmosphere.css';
 
 gsap.registerPlugin(useGSAP);
@@ -10,6 +11,7 @@ export interface EmberAtmosphereProps {
   band?: 'cool' | 'warm' | 'hot';
   paused?: boolean;
   heat?: number;
+  period?: HearthPeriod;
 }
 
 // These broad, translucent currents are part of the page, not a flame icon.
@@ -27,7 +29,7 @@ function isWritingSurface(target: globalThis.EventTarget | null): target is HTML
 }
 
 /** A content-free room: temporary attention never changes the relationship band. */
-export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false }: EmberAtmosphereProps) {
+export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false, period = 'day' }: EmberAtmosphereProps) {
   const root = useRef<HTMLDivElement>(null);
   const unique = useId().replace(/:/g, '');
   const timelines = useRef<gsap.core.Animation[]>([]);
@@ -54,6 +56,23 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false }: 
       document.removeEventListener('visibilitychange', visibility);
       window.removeEventListener(EMBER_CUE_EVENT, preference);
     };
+  }, []);
+
+  // Keep semantic feedback even when visual motion is paused or reduced.
+  useEffect(() => {
+    const node = root.current;
+    if (!node) return;
+    const markPhase = (event: Event) => {
+      const cue = readEmberCue(event);
+      if (!cue || cue.kind === 'motion-preference') return;
+      if (cue.kind === 'waiting') node.dataset.phase = 'waiting';
+      else if (cue.kind === 'chapter') node.dataset.phase = 'rest';
+      else if (cue.kind === 'acknowledged') node.dataset.phase = cue.kind;
+      else if (cue.kind === 'request-failed') node.dataset.phase = 'failed';
+      else if (node.dataset.phase !== 'waiting') node.dataset.phase = cue.kind === 'release' ? 'rest' : cue.kind;
+    };
+    window.addEventListener(EMBER_CUE_EVENT, markPhase);
+    return () => window.removeEventListener(EMBER_CUE_EVENT, markPhase);
   }, []);
 
   // Capture only input intent. Never inspect values, text, identity or project data.
@@ -86,21 +105,28 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false }: 
     if (!node || reduced) return;
     const select = gsap.utils.selector(node);
     const ambient = gsap.timeline({ paused: true });
+    const pace = period === 'night' ? 1.4 : 1;
     // Local fire tongues and the room deliberately keep different phases.
     select('.ember-atmosphere__current').forEach((path, index) => {
       const contour = currents[index]?.[1];
       if (!contour) return;
-      ambient.to(path, { attr: { d: contour }, duration: 2.2 + index * .23,
+      ambient.to(path, { attr: { d: contour }, duration: (2.2 + index * .23) * pace,
         repeat: -1, yoyo: true, ease: 'sine.inOut' }, index * .19);
     });
     ambient.to(select('.ember-atmosphere__breath'), { opacity: .84, scaleX: 1.055, scaleY: 1.06,
-      duration: 3.6, repeat: -1, yoyo: true, ease: 'sine.inOut', transformOrigin: '50% 100%' }, 0);
+      duration: 3.6 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut', transformOrigin: '50% 100%' }, 0);
     ambient.to(select('.ember-atmosphere__side--left'), { opacity: .8, yPercent: -3,
-      duration: 3.1, repeat: -1, yoyo: true, ease: 'sine.inOut' }, .7);
+      duration: 3.1 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut' }, .7);
     ambient.to(select('.ember-atmosphere__side--right'), { opacity: .9, yPercent: 3,
-      duration: 3.8, repeat: -1, yoyo: true, ease: 'sine.inOut' }, 1.3);
-    ambient.to(select('.ember-atmosphere__current'), { opacity: .76, duration: 2.7,
+      duration: 3.8 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut' }, 1.3);
+    ambient.to(select('.ember-atmosphere__current'), { opacity: .76, duration: 2.7 * pace,
       repeat: -1, yoyo: true, ease: 'sine.inOut' }, .6);
+
+    // Two broad, independently phased veils make the room itself feel alive.
+    ambient.to(select('.ember-atmosphere__veil--left'), { opacity: .78, xPercent: 5, yPercent: -5,
+      scale: 1.08, duration: 5.2 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut' }, .4);
+    ambient.to(select('.ember-atmosphere__veil--right'), { opacity: .7, xPercent: -4, yPercent: 4,
+      scale: .94, duration: 6.1 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut' }, 1.1);
 
     // Reused, bounded envelopes: events restart a response, never stack brightness.
     const focus = gsap.timeline({ paused: true }).to(select('.ember-atmosphere__attention'),
@@ -111,19 +137,24 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false }: 
     const answer = gsap.timeline({ paused: true })
       .to(select('.ember-atmosphere__reply'), { opacity: .72, scaleX: 1.06, duration: .34, ease: 'power2.out' })
       .to(select('.ember-atmosphere__reply'), { opacity: 0, scaleX: 1.13, duration: .7, ease: 'sine.inOut' });
+    const waiting = gsap.timeline({ paused: true })
+      .to(select('.ember-atmosphere__waiting'), { opacity: .68, scaleX: .92, scaleY: 1.06,
+        duration: 1.8 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut' });
     const chapter = gsap.timeline({ paused: true })
       .to(select('.ember-atmosphere__chapter--left'), { opacity: .7, duration: .22, ease: 'sine.out' }, 0)
       .to(select('.ember-atmosphere__chapter--left'), { opacity: 0, duration: .42, ease: 'sine.inOut' }, .22)
       .to(select('.ember-atmosphere__chapter--right'), { opacity: .65, duration: .22, ease: 'sine.out' }, .14)
       .to(select('.ember-atmosphere__chapter--right'), { opacity: 0, duration: .32, ease: 'sine.inOut' }, .36);
-    const all = [ambient, focus, typing, answer, chapter];
+    const all = [ambient, focus, typing, answer, chapter, waiting];
     timelines.current = all;
     let lastTyping = -Infinity;
     const cue = (event: Event) => {
       const detail = readEmberCue(event);
       if (!detail) return;
       node.dataset.cue = detail.kind;
+      if (detail.kind === 'acknowledged' || detail.kind === 'request-failed' || detail.kind === 'chapter') waiting.pause(0);
       if (stillRef.current || document.hidden || detail.kind === 'motion-preference') return;
+      if (node.dataset.phase === 'waiting' && !['waiting', 'acknowledged', 'request-failed', 'chapter'].includes(detail.kind)) return;
       if (detail.kind === 'focus') focus.play();
       else if (detail.kind === 'release') focus.reverse();
       else if (detail.kind === 'typing') {
@@ -132,23 +163,25 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false }: 
         lastTyping = now;
         answer.pause();
         typing.restart();
+      } else if (detail.kind === 'waiting') {
+        typing.pause(0); answer.pause(0); waiting.restart();
       } else if (detail.kind === 'acknowledged' || detail.kind === 'project-added') {
         typing.pause();
         answer.restart();
       } else if (detail.kind === 'chapter') chapter.restart();
-      else if (detail.kind === 'declined' || detail.kind === 'failed') {
+      else if (detail.kind === 'declined' || detail.kind === 'failed' || detail.kind === 'request-failed') {
         typing.pause(0); answer.pause(0); chapter.pause(0); focus.reverse();
         // Both envelopes share the same zero-opacity rest pose.
         typing.progress(1).pause(); answer.progress(1).pause(); chapter.progress(1).pause();
       }
     };
     window.addEventListener(EMBER_CUE_EVENT, cue);
-    if (!stillRef.current) ambient.play();
+    if (!stillRef.current) { ambient.play(); if (node.dataset.phase === 'waiting') waiting.play(); }
     return () => {
       window.removeEventListener(EMBER_CUE_EVENT, cue);
       timelines.current = [];
     };
-  }, { scope: root, dependencies: [reduced], revertOnUpdate: true });
+  }, { scope: root, dependencies: [reduced, period], revertOnUpdate: true });
 
   useEffect(() => {
     // Preserve each playhead and direction. Completed one-shot cues stay completed.
@@ -160,11 +193,14 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false }: 
       });
     } else {
       animations.forEach((animation, index) => {
-        if (index === 0 || animation.data?.resume) animation.paused(false);
+        if (index === 5) {
+          if (root.current?.dataset.phase === 'waiting') animation.paused(false);
+          else animation.pause(0);
+        } else if (index === 0 || animation.data?.resume) animation.paused(false);
         animation.data = undefined;
       });
     }
-  }, [still, reduced]);
+  }, [still, reduced, period]);
 
   // The continuously varying light is reconstructed from the active thread.
   // It remains a visual expression, never a project progress or success flag.
@@ -180,13 +216,16 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false }: 
 
   return (
     <div ref={root} className="ember-atmosphere" data-band={band} data-still={still}
-      data-cue="rest" data-heat={heat.toFixed(2)} data-motion-engine="gsap" aria-hidden="true">
+      data-cue="rest" data-phase="rest" data-period={period} data-heat={heat.toFixed(2)} data-motion-engine="gsap" aria-hidden="true">
       <div className="ember-atmosphere__core" />
       <div className="ember-atmosphere__breath" />
+      <div className="ember-atmosphere__veil ember-atmosphere__veil--left" />
+      <div className="ember-atmosphere__veil ember-atmosphere__veil--right" />
       <div className="ember-atmosphere__side ember-atmosphere__side--left" />
       <div className="ember-atmosphere__side ember-atmosphere__side--right" />
       <div className="ember-atmosphere__attention" />
       <div className="ember-atmosphere__reply" />
+      <div className="ember-atmosphere__waiting" />
       <div className="ember-atmosphere__chapter ember-atmosphere__chapter--left" />
       <div className="ember-atmosphere__chapter ember-atmosphere__chapter--right" />
       <svg className="ember-atmosphere__currents" viewBox="0 0 900 760" focusable="false">

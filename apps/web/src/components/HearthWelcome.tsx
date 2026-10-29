@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { saveWelcomePreference } from '../features/welcome';
+import type { HearthPeriod } from '../features/hearthPeriod';
 import './HearthWelcome.css';
 
 gsap.registerPlugin(useGSAP);
@@ -9,12 +10,13 @@ gsap.registerPlugin(useGSAP);
 interface Props {
   initialName: string;
   paused: boolean;
+  period: HearthPeriod;
   onExitStart: (name: string) => void;
   onComplete: () => void;
 }
 
 /** A local welcome, not a fictional account-registration flow. */
-export function HearthWelcome({ initialName, paused, onExitStart, onComplete }: Props) {
+export function HearthWelcome({ initialName, paused, period, onExitStart, onComplete }: Props) {
   const [step, setStep] = useState<'arrival' | 'introduce' | 'leaving'>('arrival');
   const [exitFrom, setExitFrom] = useState<'arrival' | 'introduce'>('arrival');
   const visibleStep = step === 'leaving' ? exitFrom : step;
@@ -37,14 +39,14 @@ export function HearthWelcome({ initialName, paused, onExitStart, onComplete }: 
     media.add('(prefers-reduced-motion: no-preference)', () => {
       const breath = gsap.fromTo('.welcome-light__breath',
         { scale: .96, opacity: .65 },
-        { scale: 1.04, opacity: .95, duration: 4, repeat: -1, yoyo: true, ease: 'sine.inOut', paused: true });
+        { scale: 1.04, opacity: .95, duration: period === 'night' ? 5.6 : 4, repeat: -1, yoyo: true, ease: 'sine.inOut', paused: true });
       const visibility = () => { if (paused || document.hidden) breath.pause(); else breath.resume(); };
       document.addEventListener('visibilitychange', visibility);
       visibility();
       return () => document.removeEventListener('visibilitychange', visibility);
     }, rootRef);
     return () => media.revert();
-  }, { scope: rootRef, dependencies: [paused], revertOnUpdate: true });
+  }, { scope: rootRef, dependencies: [paused, period], revertOnUpdate: true });
 
   useGSAP(() => {
     const media = gsap.matchMedia();

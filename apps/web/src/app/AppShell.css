@@ -515,3 +515,53 @@
 .thread-search { display:block; padding:0 var(--space-1); }
 .thread-search input { width:100%; padding:8px 10px; border:1px solid var(--color-border); border-radius:10px; background:var(--color-surface); color:var(--color-ink); font:inherit; font-size:12px; }
 .thread-search input:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }
+
+/* The clock changes the room, not the system theme or the conversation. */
+.canvas-shell {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  transition: background-color 600ms ease, color 600ms ease, grid-template-columns var(--duration-base) var(--ease-out);
+}
+.canvas-shell[data-hearth-period='night'] {
+  --color-bg: #25201c;
+  --color-bg-raised: #302923;
+  --color-surface: rgba(52,44,37,.96);
+  --color-surface-sunken: #40342b;
+  --color-ink: #f6eee3;
+  --color-ink-2: #d8c7b7;
+  --color-ink-3: #bda998;
+  --color-border: #635448;
+  --color-border-strong: #8d7460;
+  --color-accent: #efae7c;
+  --color-accent-strong: #ffc498;
+  --color-accent-soft: #4a3528;
+  --color-focus: #f2bc8c;
+  --color-on-accent: #2e1c12;
+  --color-success-ink: #b5dfbd;
+  --color-success-soft: #263d2f;
+  --color-warning-ink: #f2d29b;
+  --color-warning-soft: #493821;
+  --color-danger-ink: #ffb5a5;
+  --color-danger-soft: #52302a;
+  --color-info-ink: #c0d8f0;
+  --color-info-soft: #293d4f;
+  color-scheme: dark;
+  --shadow-1: 0 2px 12px rgba(0,0,0,.16);
+  --shadow-2: 0 12px 35px rgba(0,0,0,.2);
+}
+.canvas-shell[data-hearth-period='night'] .hearth-menu summary {
+  background: rgba(69,55,44,.65);
+  border-color: rgba(211,171,132,.28);
+}
+.canvas-shell[data-hearth-period='night'] .hearth-menu__panel {
+  background: #302822;
+  box-shadow: 0 20px 50px rgba(0,0,0,.38);
+}
+@media (prefers-reduced-motion: reduce) {
+  .canvas-shell { transition: none; }
+}
+
+.canvas-shell[data-motion-paused='true'] { transition: none; }
+.canvas-shell[data-motion-paused='true'] .hearth-welcome { transition: none; }
+
+.canvas-shell[data-hearth-period='night'] .btn-danger { background: #a64335; color: #fff; }

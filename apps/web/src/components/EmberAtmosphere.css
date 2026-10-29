@@ -47,3 +47,43 @@
 .ember-atmosphere__chapter { top: 10%; bottom: 0; width: 38%; opacity: 0; }
 .ember-atmosphere__chapter--left { left: -15%; background: radial-gradient(ellipse at 0 60%, rgba(225,162,93,.2), transparent 70%); }
 .ember-atmosphere__chapter--right { right: -15%; background: radial-gradient(ellipse at 100% 60%, rgba(225,162,93,.2), transparent 70%); }
+
+/* Light travels across the whole room in slow, overlapping currents. */
+.ember-atmosphere__veil {
+  inset: 8% 4% 0;
+  opacity: .33;
+  transform-origin: 50% 60%;
+}
+.ember-atmosphere__veil--left {
+  background: radial-gradient(ellipse 31% 52% at 38% 66%, rgba(226,152,83,.19), transparent 76%);
+}
+.ember-atmosphere__veil--right {
+  background: radial-gradient(ellipse 30% 48% at 61% 47%, rgba(243,197,144,.2), transparent 75%);
+}
+.ember-atmosphere__waiting {
+  left: 17%; right: 17%; top: 28%; bottom: 8%; opacity: 0;
+  transform-origin: 50% 60%;
+  background: radial-gradient(ellipse at 50% 62%, rgba(226,146,72,.2), transparent 68%);
+}
+.ember-atmosphere[data-period='night'] .ember-atmosphere__core {
+  opacity: calc(.43 + var(--hearth-intensity) * .42);
+  background:
+    radial-gradient(ellipse 37% 42% at 50% 51%, rgba(209,111,49,.4), transparent 73%),
+    radial-gradient(ellipse 64% 72% at 50% 58%, rgba(150,79,38,.27), transparent 74%),
+    radial-gradient(ellipse 85% 65% at 50% 105%, rgba(178,94,45,.2), transparent 76%);
+}
+.ember-atmosphere[data-period='night'] .ember-atmosphere__breath {
+  background: radial-gradient(ellipse at 50% 54%, rgba(236,142,66,.24), transparent 64%);
+}
+.ember-atmosphere[data-period='night'] .ember-atmosphere__veil--left {
+  background: radial-gradient(ellipse 31% 52% at 38% 66%, rgba(219,108,42,.2), transparent 76%);
+}
+.ember-atmosphere[data-period='night'] .ember-atmosphere__veil--right {
+  background: radial-gradient(ellipse 30% 48% at 61% 47%, rgba(224,139,68,.16), transparent 75%);
+}
+.ember-atmosphere[data-period='night'] .ember-atmosphere__currents {
+  opacity: calc(.3 + var(--hearth-intensity) * .5);
+}
+.ember-atmosphere[data-period='night'] .ember-atmosphere__waiting {
+  background: radial-gradient(ellipse at 50% 62%, rgba(255,166,90,.28), transparent 68%);
+}
