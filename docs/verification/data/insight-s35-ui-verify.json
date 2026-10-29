@@ -1,0 +1,20 @@
+{
+  "result": "PASS",
+  "port": 4325,
+  "isolatedDbs": "/tmp/hark-s35-ui",
+  "insightDb": "/tmp/hark-s35-ui/insights.sqlite",
+  "ids": {
+    "liveId": "ins_6ec653ca835bb761",
+    "cycleOpenId": "ins_7bc642ce78ac830d",
+    "cycleResolvedId": "ins_07ba87bd1a939805"
+  },
+  "screenshots": [
+    "insight-s35-feed-open.png",
+    "insight-s35-detail.png",
+    "insight-s35-acknowledged.png",
+    "insight-s35-feedback.png",
+    "insight-s35-dismissed-hidden.png",
+    "insight-s35-resolved-and-new.png",
+    "insight-s35-after-restart.png"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "observerRegistry": {
+    "db": "data/observer.sqlite",
+    "query": "SELECT id, name, canonical_path, enabled FROM observer_projects",
+    "count": 0,
+    "mode": "read-only"
+  },
+  "env": {
+    "HEARTH_PILOT_PINDOU": "unset",
+    "HEARTH_PILOT_SKILL_LAB": "unset",
+    "HEARTH_PILOT_AGENT_INTERNET": "unset"
+  },
+  "homeScan": false,
+  "insightS2Pilot": [
+    { "name": "pindou", "result": "BLOCKED_PATH_UNAVAILABLE", "reason": "unset HEARTH_PILOT_PINDOU" },
+    { "name": "prototype-skill-lab", "result": "BLOCKED_PATH_UNAVAILABLE", "reason": "unset HEARTH_PILOT_SKILL_LAB" },
+    { "name": "agent-internet-lab", "result": "BLOCKED_PATH_UNAVAILABLE", "reason": "unset HEARTH_PILOT_AGENT_INTERNET" }
+  ]
+}

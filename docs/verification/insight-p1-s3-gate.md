@@ -1,88 +1,114 @@
-# S3 Gate Review
+# S3 Gate Review · S3.5 close-out
 
 - Date: 2026-10-29
-- Baseline HEAD: `0001fa0`
-- Spec: `docs/16-HEARTH_PROJECT_INSIGHT_P1.md` §S3, user P1-S3 task
+- Baseline HEAD: `9890ba2`
+- Spec: `docs/16-HEARTH_PROJECT_INSIGHT_P1.md` §S3
 - S3.0 entry: `docs/verification/insight-p1-s30-entry-audit.md`
 - ADR: `docs/adr/ADR-INSIGHT-006.md`
-
-## S3.0 G6 pilots
-
-| Pilot | Env | Result |
-|---|---|---|
-| pindou | `HEARTH_PILOT_PINDOU` | **BLOCKED_PATH_UNAVAILABLE** (unset) |
-| prototype-skill-lab | `HEARTH_PILOT_SKILL_LAB` | **BLOCKED_PATH_UNAVAILABLE** (unset) |
-| agent-internet-lab | `HEARTH_PILOT_AGENT_INTERNET` | **BLOCKED_PATH_UNAVAILABLE** (unset) |
-
-No HOME scan. Feed/API tests use isolated fixture DBs. Playwright uses `HEARTH_INSIGHT_DB=data/e2e-insights.sqlite`.
+- Clean worktree: `/Users/v/new-idea/hark-s35-verify` at `9890ba2` (0 dirty files)
+- Original workspace uncommitted files were left in place and were not used for this close-out
 
 ## Overall
 
 **CONDITIONAL_PASS**
 
-S3 API, persistence, UI, and isolated tests passed. Real-pilot G6 remains blocked. Full-repo `pnpm test` has one pre-existing failure in dirty `cards.ts` snooze schema (`toISOString` vs second-precision regex); that file is not part of S3.
+Positive Insight UI, isolated API/lifecycle tests, and clean-tree typecheck passed. Real-pilot G6 is blocked: Observer Registry has zero projects and `HEARTH_PILOT_*` is unset. Clean-tree `pnpm test` still has one pre-existing snooze-window failure in `9890ba2` itself.
 
-## S3.1 API
-
-| Check | Result | Evidence |
-|---|---|---|
-| Session on GET | PASS | `insights.http.test.ts` 401 without cookie |
-| CSRF on POST | PASS | dismiss without `x-csrf-token` → 403 |
-| Stable pagination | PASS | query + HTTP cursor pages |
-| Default feed hides dismiss | PASS | query + HTTP |
-| acknowledge ≠ resolved | PASS | status stays `ACKNOWLEDGED` |
-| feedback whitelist / idempotent upsert | PASS | useful twice, flip to not_useful, `love-it` → 400 |
-| missing insight | PASS | 404 |
-| invalid cursor / status | PASS | 400 |
-| observeHref relative | PASS | `/observe/{projectId}`; JSON has no `/Users/` |
-| GET does not write | PASS | row counts and `updated_at` unchanged |
-| evidence MISSING | PASS | inbox deleted → `MISSING`, refs remain |
-| unconfigured store | PASS | 503 `UNAVAILABLE` |
-| observer hard delete purges insight | PASS | `purgeProject` + DELETE hook |
-
-## S3.2 UI
+## S3.5-G0 clean baseline
 
 | Check | Result | Evidence |
 |---|---|---|
-| `/insights` empty is not fake-success | PASS | e2e + `handoff/EVIDENCE/insight-feed-empty.png` |
-| missing detail | PASS | `insight-detail-missing.png` |
-| Projects still renders | PASS | `insight-projects-with-summary.png` |
-| Insights nav | PASS | AppShell + screenshots |
-| Filters | PASS | status + severity + project chips |
-| Actions | PASS | acknowledge / dismiss / useful / not_useful |
-| Observe link | PASS | detail `observeHref` |
+| Independent worktree at `9890ba2` | PASS | `git worktree add … 9890ba2`; `git status` empty |
+| `pnpm install --frozen-lockfile` | PASS | lockfile reused, 309 packages |
+| `pnpm typecheck` | **PASS** | root tsc + `@hearth/web` |
+| `pnpm lint` | **PASS** (warnings) | eslint exit 0, 0 errors / 6 warnings, no `--max-warnings=0` |
+| `pnpm test` | **CONDITIONAL** | 289 passed / 1 failed |
 
-Observe detail with a registered repo was not driven in empty e2e (no observer project). The Projects register form and `/insights` navigation still load.
+Failed test on **clean HEAD**: `apps/server/src/http/app.test.ts` `snooze validates window and persists`.
 
-## S3.3 lifecycle
+- Request body `until=2026-10-28T18:00:00Z`
+- Today UTC `2026-10-29`; `cards.ts` in `9890ba2` already requires `until` in the future
+- HTTP 400 `INVALID_SNOOZE_WINDOW`
+- This is **not** caused by the original workspace’s uncommitted `cards.ts`
+- Test expectation was not changed; user files were not deleted
+
+Raw: `docs/verification/data/insight-s35-clean-baseline.json`
+
+## S3.5-G1 API / lifecycle (fixture)
+
+Unchanged from S3 isolated tests; re-run on clean worktree as part of `pnpm test`.
 
 | Check | Result |
 |---|---|
-| dismiss keeps evidence | PASS |
-| useful/not_useful does not change status | PASS |
-| dismiss survives store reopen | PASS |
-| new episode after resolve is OPEN, no inherited feedback | PASS |
-| historical epoch flag | PASS |
-| purgeProject removes feedback | PASS |
+| Session / CSRF | PASS |
+| Empty feed has no fake cards | PASS |
+| Stable pagination | PASS |
+| acknowledge ≠ resolved | PASS |
+| feedback whitelist + idempotent upsert | PASS |
+| GET does not write | PASS |
+| missing / unavailable evidence | PASS |
+| dismiss keeps evidence; survives reopen | PASS |
+| new episode after resolve does not inherit feedback | PASS |
 
-## S3.4 automation
+## S3.5-G2 positive UI (isolated fixture)
 
-| Command | Result |
+Harness: `scripts/insight-s35-ui-verify.ts`  
+DBs: `/tmp/hark-s35-ui/*` only  
+Server: clean worktree `9890ba2` on `127.0.0.1:4325`  
+JSON: `docs/verification/data/insight-s35-ui-verify.json`
+
+| Step | Result | Screenshot |
+|---|---|---|
+| Seed TEST_REPORT_FAILURE_OBSERVED + `processProjectRules` | PASS | live `ins_6ec653ca835bb761` OPEN |
+| Feed shows two real cards, no empty-success wall | PASS | `insight-s35-feed-open.png` |
+| Detail: rule, reason code, evidence pointer, undetermined HEAD | PASS | `insight-s35-detail.png` |
+| acknowledge → 已查看 | PASS | `insight-s35-acknowledged.png` |
+| useful → not_useful, status unchanged | PASS | `insight-s35-feedback.png` |
+| dismiss hidden after refresh | PASS | `insight-s35-dismissed-hidden.png` |
+| 含已处理: OPEN new episode vs RESOLVED vs DISMISSED | PASS | `insight-s35-resolved-and-new.png` |
+| Service restart keeps dismiss + 没用 | PASS | `insight-s35-after-restart.png` |
+
+Resolved episode `ins_07ba87bd1a939805` and new OPEN episode `ins_7bc642ce78ac830d` are different IDs.
+
+## S3.5-G3 real pilots
+
+Read-only. No HOME scan. No Git / report / worktree writes.
+
+| Source | Result |
 |---|---|
-| `pnpm --filter @hearth/web typecheck` | PASS |
-| `pnpm exec tsc -p tsconfig.json --noEmit` | PASS |
-| insight package + `insights.http.test.ts` | **93 passed** |
-| Playwright `insights.spec.ts` | **3 passed** |
-| eslint on S3 files | PASS `--max-warnings=0` |
-| `pnpm test` full repo | **292 passed / 1 failed** (`app.test.ts` snooze; dirty `cards.ts`, not S3) |
+| `data/observer.sqlite` `observer_projects` | **0 rows** |
+| `HEARTH_PILOT_PINDOU` | unset |
+| `HEARTH_PILOT_SKILL_LAB` | unset |
+| `HEARTH_PILOT_AGENT_INTERNET` | unset |
+| `scripts/insight-s2-pilot.ts` | all three **BLOCKED_PATH_UNAVAILABLE** |
+
+| Pilot | Result |
+|---|---|
+| pindou | **BLOCKED_PATH_UNAVAILABLE** |
+| prototype-skill-lab | **BLOCKED_PATH_UNAVAILABLE** |
+| agent-internet-lab | **BLOCKED_PATH_UNAVAILABLE** |
+
+Paths were not guessed. Raw: `docs/verification/data/insight-s35-pilots.json`
+
+## Fixture vs real
+
+| | Fixture | Real pilots |
+|---|---|---|
+| Data | Synthetic signals in `/tmp/hark-s35-ui` | Would be registered local Git repos |
+| Insight cards | Created and driven in UI | Not available this session |
+| Repo mutation | None | N/A (blocked before register) |
+
+## Limits and risks
+
+1. Real G6 cannot run until Observer Registry has projects or `HEARTH_PILOT_*` is set to existing absolute Git paths.
+2. Clean `pnpm test` fails one time-dependent snooze case already present in `9890ba2`.
+3. `pnpm lint` reports 6 existing unused-var warnings; S3 files were not the source.
+4. Observe-detail click-through from an Insight was not driven against a registered observer project (registry empty). Detail still exposes `/observe/{projectId}`.
+5. Original workspace remains dirty with P0.5 / comment files; those files were not part of the clean-tree run.
 
 ## Non-goals kept
 
-No Hermes/Pi, notifications, auto planning/code, `R-TEST-EVIDENCE-GAP`, or new progress-inference rules. No `POST /reconcile` in S3.
-
-## Workspace hygiene
-
-Uncommitted P0.5 docs/bench, `packages/contracts`, `packages/core`, and dirty `config.ts` / `session.ts` / `services.ts` / `cards.ts` / `runs.ts` were left as-is. User-requested source comments outside the S3 commit set remain uncommitted with that work.
+No Hermes/Pi, notifications, auto planning/code, `R-TEST-EVIDENCE-GAP`, new progress rules, or P2.
 
 ## Final result
 

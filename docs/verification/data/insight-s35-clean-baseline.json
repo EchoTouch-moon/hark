@@ -1,0 +1,20 @@
+{
+  "worktree": "/Users/v/new-idea/hark-s35-verify",
+  "head": "9890ba2",
+  "dirtyFiles": 0,
+  "typecheck": "PASS",
+  "lint": {
+    "exit": 0,
+    "errors": 0,
+    "warnings": 6,
+    "maxWarningsZero": false
+  },
+  "pnpmTest": {
+    "passed": 289,
+    "failed": 1,
+    "filesPassed": 32,
+    "filesFailed": 1,
+    "failedTest": "apps/server/src/http/app.test.ts snooze validates window and persists",
+    "failedReason": "HEAD fixture until=2026-10-28T18:00:00Z is in the past on 2026-10-29; cards.ts future-window check returns 400. Same schema is already in 9890ba2. Failure is not caused by uncommitted workspace cards.ts."
+  }
+}
