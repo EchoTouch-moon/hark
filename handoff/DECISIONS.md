@@ -19,6 +19,8 @@
 | 2026-10-28T17:30Z | Observer-P0 | 规格中的四包合并为 `@hearth/project-observer`；独立 `observer.sqlite`；观察详情走 `/observe/:id` | 保留既有 Hearth events/projects 合同与 E2E；观察器可脱离 HTTP 测试 | 无 API Key、无 Docker；UI 不把 UNKNOWN 画成绿色成功 | docs/14-PROJECT-OBSERVER.md |
 | 2026-10-28T17:46Z | Observer-P0 | 扫描事务内不再 prune 仍被 events 引用的 runs；相同 fingerprint 不再重复 ADAPTER_ERROR；STALE 仅在 HEAD 变化时计算；git 沙箱去掉 HOME 全局配置与 fsmonitor | 审查复现持续运行 FK 失败与误标 STALE | T01–T16 仍绿；增加 filter 负例 | observer.p0.test.ts |
 | 2026-10-30T03:00Z | Flame-Lifecycle | 建立 Project Ember 生命态计算模型与 Point-Sprite 火星粒子系统 | 用户希望将火焰赋予生命，让整个项目跟着火焰状态走（刚创立为火星、聊天推进为火苗与大火焰、完成为常明金火、搁置为静卧余烬、扫描为添柴散发火星） | 既保留克制的磨砂炉火美学，又将离散的项目工程状态具象为生生不息的活火世界 | `apps/web/src/features/projectEmber.ts`、`flameRenderer.ts`、`living-flame-lifecycle.mjs` |
+| 2026-10-30T05:30Z | GSAP-Motion-Overhaul | 建立 GSAP 核心时间线分层拓扑与物理缓动引擎，全面替代 CSS 关键帧 | 用户要求使用 GSAP 重构动效，Teamwork 子代理分工出具完整叙事动效规范文档并执行重构 | 采用 GSAP 3.12+ 物理动力学（`apps/web/src/motion/`）驱动 WebGL uniforms 与 DOM；引入销毁门闩与 `useHearthTimeline`，彻底杜绝 React 18 孤儿补间与内存泄漏 | `docs/MOTION-SPECIFICATION.md`、`apps/web/src/motion/`、`tests/unit/ember-motion.test.ts`、`tests/unit/adversarial-lifecycle.test.ts` |
+
 
 ## 2026-10-29 · P2-A live provider
 
