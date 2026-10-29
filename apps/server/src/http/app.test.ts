@@ -167,9 +167,14 @@ describe('M1-T02: seed, discovery, suppression', () => {
     await inject('POST', '/api/v1/demo/seed');
     await inject('POST', '/api/v1/discover');
     const cards = (await inject('GET', '/api/v1/cards')).json().cards;
-    const bad = await inject('POST', `/api/v1/cards/${cards[0].id}/snooze`, { until: '2020-01-01T00:00:00Z' });
+    const toSecondPrecisionIso = (ms: number): string => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const past = toSecondPrecisionIso(Date.now() - 60_000);
+    const future = toSecondPrecisionIso(Date.now() + 2 * 3600_000);
+    const stale = await inject('POST', `/api/v1/cards/${cards[0].id}/snooze`, { until: '2020-01-01T00:00:00Z' });
+    expect(stale.statusCode).toBe(400);
+    const bad = await inject('POST', `/api/v1/cards/${cards[0].id}/snooze`, { until: past });
     expect(bad.statusCode).toBe(400);
-    const good = await inject('POST', `/api/v1/cards/${cards[0].id}/snooze`, { until: '2026-10-28T18:00:00Z' });
+    const good = await inject('POST', `/api/v1/cards/${cards[0].id}/snooze`, { until: future });
     expect(good.statusCode).toBe(200);
     expect(good.json().card.status).toBe('snoozed');
   });
