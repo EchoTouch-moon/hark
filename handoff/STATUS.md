@@ -97,22 +97,22 @@ UI-02 全部完成并通关门禁：
 5. UI-02 门禁验收通过：合成 JUnit 失败测试报告自动生成真实 Insight，首页 3 秒轮询自动感知并呈现，重复扫描不重复，全过程零模型调用。
 6. 验证：全仓 43 文件 / 348 个单测 PASS；全仓 `typecheck` PASS；改动文件与全仓 `eslint` 0 错误；Playwright 全量 **25/25 PASS**。证据：`handoff/EVIDENCE/ui-02-workbench-home.png`、`ui-02-workbench-filter.png`、`ui-02-observations-timeline.png`、`ui-02-gate-insight.png`。下一块：UI-03.1（统一决策详情页面）。
 
-## UI-03 · Phase 1 视觉探索与原型验证 PASS
+## UI-03 · Phase 1 视觉探索与原型验证 PASS（扩展至 6 套全矩阵方案）
 
-1. **审计报告与三套全新视觉概念交付**：
-   - 完成现有 UI 布局、卡片过剩、同质化模板与排版层级的系统性审计；
-   - 建立三套具有本质结构、排版与隐喻差异的高保真原型：
-     - **01 Quiet Observatory**（安静精密的个人观测台）：天幕水平视野、发丝瞄准十字透镜、细线台账，极其克制舒适；
-     - **02 Editorial Workspace**（具有编辑式排版气质的研究工作空间）：古典报头、非对称 63:37 社论双栏、首字下沉、学术引用警句与考据证据板；
-     - **03 Instrument Studio**（现代精密仪器风格的 Agent 工作台）：19寸机架固定螺丝、沉降式示波器液晶视窗、十段式 LED VU 电平表、走带式事件步进器。
+1. **审计报告与六套全新前卫视觉概念交付**：
+   - 保留原先三套经典设计方案（01 Quiet Observatory、02 Editorial Workspace、03 Instrument Studio）；
+   - 根据用户“更加有设计感、风格不拘一格、更为跳脱”的指令，新增三套前卫破界概念并完整重塑首页与项目详情页：
+     - **04 Monolith Architect**（解构巨石与前卫建筑构造）：包豪斯/安藤忠雄野兽派建筑切角、纯正 0px 锋利构造、海报级超大紧缩字阶、工业警示带、荷载剖面图；
+     - **05 Kinetic Cartography**（深场星图与航天测绘工坊）：极坐标动态雷达盘、同心圆轨道偏心率、晒蓝工程底纹、航天飞控蓝图与时空航迹时序；
+     - **06 Luminescent Gallery**（前卫暗房与数字发光艺廊）：通透发光展柜、35mm 齿孔胶片带式提交历史、光学光圈与曝光指标、纯白立方留白艺术。
 2. **源码与运行产物**：
-   - 原型源码完整落地在 `prototypes/` 目录（15 个独立文件：3 套 CSS + 12 套独立 HTML 原型页面）；
+   - 原型源码完整落地在 `prototypes/` 目录（30 个独立文件：6 套专属 CSS + 24 套独立 HTML 原型页面）；
    - 真实数据驱动：绑定真实 `hark`（Vitest 348 PASS）、`pindou`（JUnit 1 FAIL / 2 TOTAL）、真实 Git 散列（`c18faa1`）与真实规则（`R-TEST-FAILURE`）；
-   - 严禁假数据与虚假模型思考态，完整支持浅色与深色主题切换。
+   - 完整支持浅色与深色主题切换，每套方案均具备内容态与空态。
 3. **真实浏览器自动化截图验收**：
-   - 编写 `scripts/capture-prototypes.ts`，由 Playwright 在 1440px 真实视口下完成全矩阵捕获；
-   - 24 张高清全页面截图全部入库 `docs/design/screenshots/`；
+   - 更新 `scripts/capture-prototypes.ts`，由 Playwright 在 1440px 真实视口下完成全矩阵捕获；
+   - 48 张高清全页面截图全部入库 `docs/design/screenshots/`；
    - 交付系统性设计报告 `docs/design/UI-03-CONCEPTS.md`，包含无色骨架对比图、独特性/使用舒适度/可维护性/实现成本四维对比矩阵与 Phase 2 实施路线图。
 4. **门禁与状态**：
-   - Phase 1 验收完成，所有原型及截图已生成；严禁在人工确认视觉方向前替换 `apps/web` 生产代码；
-   - 下一步：等待用户选择视觉方向后，正式开启 Phase 2 生产组件重塑。
+   - Phase 1 验收完成，所有原型及 48 张截图已生成；严禁在人工确认视觉方向前替换 `apps/web` 生产代码；
+   - 下一步：等待用户从 6 套方案中选择最终视觉方向后，正式开启 Phase 2 生产组件重构。

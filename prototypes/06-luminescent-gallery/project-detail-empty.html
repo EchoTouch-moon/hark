@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luminescent Gallery — 展品总目 // sandbox-empty (待曝光初展)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 艺廊顶部策展条 -->
+  <header class="gallery-masthead">
+    <div class="gallery-masthead-inner">
+      <div class="gallery-logo-group">
+        <span class="gallery-logo">Hearth Lumina</span>
+        <span class="gallery-edition">CATALOGUE RAISONNÉ // sandbox-empty (CH-03)</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:20px;">
+        <ul class="gallery-nav-pills">
+          <li><a href="home.html">主展厅 (Main Hall)</a></li>
+          <li><a href="project-detail.html" class="active">馆藏图录 (Catalogue)</a></li>
+          <li><a href="#">策展发现 (Insights)</a></li>
+          <li><a href="#">暗房日志 (Darkroom)</a></li>
+        </ul>
+        <button type="button" class="gallery-theme-btn" onclick="toggleTheme()">ROOM: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 策展主容器 -->
+  <main class="gallery-hall">
+    <!-- 展品档案头部光箱 -->
+    <section class="gallery-lightbox-vitrine">
+      <div>
+        <div class="gallery-curatorial-label">EXHIBIT ACCESSION NO. PENDING FIRST LIGHT</div>
+        <h1 class="gallery-exhibition-title">
+          sandbox-empty <span style="font-size:20px;font-family:var(--font-sans);color:var(--ink-secondary);font-weight:normal;">// main</span>
+        </h1>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--ink-subtle);margin-top:6px;">
+          PROVENANCE: /Users/v/new-idea/sandbox-empty · COMMITS: 0000000 (UNEXPOSED)
+        </div>
+      </div>
+
+      <div style="text-align:right;">
+        <span style="font-family:var(--font-mono);font-size:12px;background:var(--accent-lumina-glow);color:var(--accent-lumina);padding:4px 10px;border-radius:999px;">
+          UNEXPOSED VITRINE
+        </span>
+      </div>
+    </section>
+
+    <!-- 纯白立体展台空态 -->
+    <div class="gallery-pristine-cube">
+      <div style="font-family:var(--font-serif);font-size:24px;font-style:italic;color:var(--ink-subtle);">
+        Tabula Vitrine · 虚堂待展
+      </div>
+      <h2 style="font-family:var(--font-serif);font-size:22px;font-weight:700;">
+        展位已陈列，等待首次代码显影
+      </h2>
+      <p style="max-width:540px;color:var(--ink-secondary);font-size:14px;line-height:1.7;">
+        该展台尚未收录任何测试报告或提交底片。请在终端执行一次 <code>pnpm test</code>，或保存一次代码修改，暗房将自动为您冲洗并在本页展出。
+      </p>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.gallery-theme-btn').textContent = 'ROOM: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

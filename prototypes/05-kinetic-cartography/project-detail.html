@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kinetic Cartography — 轨道航迹蓝图 // hark</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部飞行测控标定头 -->
+  <header class="carto-topbar">
+    <div class="carto-topbar-inner">
+      <div class="carto-coords-badge">
+        <span class="carto-pulse-beacon" style="background:var(--radar-green);box-shadow:0 0 8px var(--radar-green);"></span>
+        <span style="font-weight:700;">HEARTH KINETIC // ORBITAL BLUEPRINT // hark</span>
+        <span style="color:var(--ink-dim);">NODE ID: CH-01 · ORBIT LOCK: 100%</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;">
+        <ul class="carto-nav-links">
+          <li><a href="home.html">01 // 星图态势</a></li>
+          <li><a href="project-detail.html" class="active">02 // 航迹蓝图</a></li>
+          <li><a href="#">03 // 测控拦截</a></li>
+          <li><a href="#">04 // 遥测流水</a></li>
+        </ul>
+        <button type="button" class="carto-theme-toggle" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主画廊容器 -->
+  <main class="carto-container">
+    <!-- 航迹蓝图头部 -->
+    <section class="carto-blueprint-header">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--radar-cyan);letter-spacing:0.1em;">
+          ORBITAL TRAJECTORY DOSSIER // CH-01
+        </div>
+        <h1 style="font-size:32px;font-weight:700;letter-spacing:-0.01em;margin-top:4px;">
+          hark <span style="font-size:18px;color:var(--ink-secondary);font-weight:normal;">// codex/ui-refresh-01</span>
+        </h1>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--ink-dim);margin-top:6px;">
+          PATH: /Users/v/new-idea/hark · CURRENT WAYPOINT: c18faa1
+        </div>
+      </div>
+
+      <div style="text-align:right;">
+        <div style="font-family:var(--font-mono);font-size:24px;font-weight:700;color:var(--radar-green);">
+          348 / 348 PASS
+        </div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);margin-top:2px;">
+          SIGNAL LOCK INTEGRITY: 100.0%
+        </div>
+      </div>
+    </section>
+
+    <!-- 航天双栏分析 HUD -->
+    <div class="carto-tactical-grid">
+      <!-- 航迹与轨道参数 -->
+      <section class="carto-panel-hud">
+        <div class="carto-panel-title">
+          <span>01 // GIT ORBITAL TELEMETRY · 轨道动力学参数</span>
+          <span>CALIBRATED</span>
+        </div>
+
+        <table class="carto-orbit-table">
+          <tbody>
+            <tr>
+              <td style="color:var(--ink-dim);width:130px;">ACTIVE BRANCH</td>
+              <td style="font-weight:700;">codex/ui-refresh-01</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-dim);">TRACKING VECTOR</td>
+              <td>origin/codex/ui-refresh-01</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-dim);">CURRENT WAYPOINT</td>
+              <td style="color:var(--radar-cyan);font-weight:700;">c18faa1 (PUSH RECORDED)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-dim);">WORKTREE DRIFT</td>
+              <td style="color:var(--radar-green);font-weight:700;">0 DIRTY (CLEAN ORBIT)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-dim);">INSPECTOR CYCLE</td>
+              <td>#142 (Passive Polling)</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 频谱诊断与通过测试 -->
+      <section class="carto-panel-hud">
+        <div class="carto-panel-title">
+          <span>02 // FREQUENCY SPECTRUM · 测试信道频谱</span>
+          <span>43 TEST CHANNELS</span>
+        </div>
+
+        <table class="carto-orbit-table">
+          <tbody>
+            <tr>
+              <td style="color:var(--ink-dim);width:130px;">VITEST SPECTRUM</td>
+              <td style="color:var(--radar-green);font-weight:700;">348 PASS / 0 FAIL</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-dim);">PLAYWRIGHT E2E</td>
+              <td style="color:var(--radar-green);font-weight:700;">25 PASS / 0 FAIL</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-dim);">CHIRP RUNTIME</td>
+              <td>2.41s (Nominal &lt; 5.00s)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-dim);">GATE ASSERTIONS</td>
+              <td>12 Security Assertions PASS</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-dim);">ANOMALY HARMONICS</td>
+              <td style="color:var(--radar-green);font-weight:700;">ZERO DETECTED</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- 航迹事件流水 (Trajectory Waypoints) -->
+    <section class="carto-panel-hud">
+      <div class="carto-panel-title">
+        <span>03 // TRAJECTORY WAYPOINTS · 历史航迹时序</span>
+        <span>RECORDER LOCKED</span>
+      </div>
+
+      <div class="carto-trajectory-feed" style="margin-top:6px;">
+        <div class="carto-waypoint">
+          <span style="color:var(--ink-dim);">17:26:14</span>
+          <span style="font-weight:700;color:var(--radar-cyan);">[WAYPOINT]</span>
+          <span>HEAD 进位至 c18faa1 (docs: record user authorized push)</span>
+          <span style="color:var(--radar-green);text-align:right;">CLEAN</span>
+        </div>
+
+        <div class="carto-waypoint">
+          <span style="color:var(--ink-dim);">17:25:50</span>
+          <span style="font-weight:700;color:var(--radar-green);">[SPECTRUM]</span>
+          <span>Vitest 单元测试全频段通过：348 项测试零破裂，用时 2410ms</span>
+          <span style="color:var(--radar-green);text-align:right;">PASS</span>
+        </div>
+
+        <div class="carto-waypoint">
+          <span style="color:var(--ink-dim);">17:20:12</span>
+          <span style="font-weight:700;color:var(--radar-green);">[E2E_LOCK]</span>
+          <span>Playwright 25 项端到端流程无回归验证通过</span>
+          <span style="color:var(--radar-green);text-align:right;">PASS</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.carto-theme-toggle').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

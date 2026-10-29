@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luminescent Gallery — Hearth 发光艺廊 (静谧纯白立方)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 艺廊顶部策展条 -->
+  <header class="gallery-masthead">
+    <div class="gallery-masthead-inner">
+      <div class="gallery-logo-group">
+        <span class="gallery-logo">Hearth Lumina</span>
+        <span class="gallery-edition">CURATORIAL CATALOGUE // 127.0.0.1:4317</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:20px;">
+        <ul class="gallery-nav-pills">
+          <li><a href="home.html" class="active">主展厅 (Main Hall)</a></li>
+          <li><a href="project-detail.html">馆藏图录 (Catalogue)</a></li>
+          <li><a href="#">策展发现 (Insights)</a></li>
+          <li><a href="#">暗房日志 (Darkroom)</a></li>
+        </ul>
+        <button type="button" class="gallery-theme-btn" onclick="toggleTheme()">ROOM: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 策展主容器 -->
+  <main class="gallery-hall">
+    <!-- 策展主光箱展品 -->
+    <section class="gallery-lightbox-vitrine">
+      <div>
+        <div class="gallery-curatorial-label" style="color:var(--accent-emerald);">EXHIBITION ROOM 01 // SERENE CALM</div>
+        <h1 class="gallery-exhibition-title">
+          纯白展厅：全馆藏用例悉数通过，未见待审瑕疵
+        </h1>
+        <p class="gallery-curatorial-statement">
+          观测台完成对全部登记展品的例行观摩。没有未决破裂，工作树纯净如新。系统处于静谧长明状态。
+        </p>
+      </div>
+
+      <div class="gallery-optical-metrics">
+        <div class="gallery-optical-col">
+          <span class="gallery-optical-val">02</span>
+          <span class="gallery-optical-lbl">VITRINES</span>
+        </div>
+        <div class="gallery-optical-col">
+          <span class="gallery-optical-val" style="color:var(--accent-emerald);">00</span>
+          <span class="gallery-optical-lbl">SAFELIGHT</span>
+        </div>
+        <div class="gallery-optical-col">
+          <span class="gallery-optical-val" style="color:var(--accent-emerald);">100%</span>
+          <span class="gallery-optical-lbl">ACCURACY</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 纯白立体展台空态 -->
+    <div class="gallery-pristine-cube">
+      <div style="font-family:var(--font-serif);font-size:26px;font-style:italic;color:var(--accent-lumina);">
+        The Pristine White Cube
+      </div>
+      <h2 style="font-family:var(--font-serif);font-size:22px;font-weight:700;">
+        展厅静谧 · 无待处理候选题
+      </h2>
+      <p style="max-width:540px;color:var(--ink-secondary);font-size:14px;line-height:1.7;">
+        “所有底片均已显影固定，光影纯粹。”<br>
+        登记工程的代码与测试结果均处于设计基线状态，无未追踪变动。您可以专注于创作，智能体在暗房安静守候。
+      </p>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.gallery-theme-btn').textContent = 'ROOM: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

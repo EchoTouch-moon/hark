@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monolith Architect — 构造剖面 // sandbox-empty (待灌浆初探)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部大地水准标定条 -->
+  <header class="mono-datum-bar">
+    <div class="mono-datum-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:var(--rule-solid);color:var(--bg-slab);padding:2px 6px;font-weight:900;">HEARTH</span>
+        <span>MONOLITH // ELEVATION PROJECTION // sandbox-empty</span>
+        <span style="color:var(--ink-light);">[SEC-03 UNARMED]</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:20px;">
+        <ul class="mono-nav-blocks">
+          <li class="mono-nav-item"><a href="home.html">01 // 总平态势</a></li>
+          <li class="mono-nav-item"><a href="project-detail.html" class="active">02 // 剖面卷宗</a></li>
+          <li class="mono-nav-item"><a href="#">03 // 结构发现</a></li>
+          <li class="mono-nav-item"><a href="#">04 // 载荷纪要</a></li>
+        </ul>
+        <button type="button" class="mono-theme-btn" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主结构画廊容器 -->
+  <main class="mono-canvas">
+    <!-- 剖面顶部巨大标识 -->
+    <section class="mono-elevation-header">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:11px;font-weight:800;color:var(--ink-light);letter-spacing:0.15em;">
+          STRUCTURAL SECTION // REPOSITORY CH-03
+        </div>
+        <h1 class="mono-elevation-id">SANDBOX-EMPTY // UNCOMMITTED</h1>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--ink-mid);margin-top:6px;">
+          ABSOLUTE PATH: /Users/v/new-idea/sandbox-empty · COMMIT: 0000000
+        </div>
+      </div>
+
+      <div style="text-align:right;">
+        <span style="background:var(--rule-fine);color:var(--ink-mid);font-family:var(--font-mono);font-size:12px;font-weight:800;padding:6px 14px;">
+          STATUS: UNTESTED
+        </span>
+      </div>
+    </section>
+
+    <!-- 巨石空态卡片 -->
+    <div class="mono-basal-empty">
+      <div class="mono-empty-glyph">□</div>
+      <h2 class="mono-empty-title">PYLON AWAITING FIRST POUR · 等待初次结构加载</h2>
+      <p style="max-width:540px;color:var(--ink-mid);font-size:14px;line-height:1.7;">
+        该节点已在 Hearth 结构总图中就位，但尚未接收到第一批测试应力或 Git 提交荷载。请在终端执行一次 <code>pnpm test</code>，观测器将自动提取受力曲线并在此绘制结构剖面。
+      </p>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.mono-theme-btn').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

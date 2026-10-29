@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luminescent Gallery — Hearth 发光艺廊</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 艺廊顶部策展条 -->
+  <header class="gallery-masthead">
+    <div class="gallery-masthead-inner">
+      <div class="gallery-logo-group">
+        <span class="gallery-logo">Hearth Lumina</span>
+        <span class="gallery-edition">CURATORIAL CATALOGUE // 127.0.0.1:4317</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:20px;">
+        <ul class="gallery-nav-pills">
+          <li><a href="home.html" class="active">主展厅 (Main Hall)</a></li>
+          <li><a href="project-detail.html">馆藏图录 (Catalogue)</a></li>
+          <li><a href="#">策展发现 (Insights)</a></li>
+          <li><a href="#">暗房日志 (Darkroom)</a></li>
+        </ul>
+        <button type="button" class="gallery-theme-btn" onclick="toggleTheme()">ROOM: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 策展主容器 -->
+  <main class="gallery-hall">
+    <!-- 策展主光箱展品 -->
+    <section class="gallery-lightbox-vitrine">
+      <div>
+        <div class="gallery-curatorial-label">EXHIBITION ROOM 01 // AUTUMN SALON 2026</div>
+        <h1 class="gallery-exhibition-title">
+          微光暗房：在平静基准中捕获 1 项单点用例断言破裂
+        </h1>
+        <p class="gallery-curatorial-statement">
+          观测台完成对两个登记项目的第 142 次策展巡览。代码库整体光感纯净、工作树无杂质写入。于 pindou 展台捕获到 1 项用例失败（AssertionError），其余展品均处于 100% 饱和度的全绿状态。
+        </p>
+      </div>
+
+      <div class="gallery-optical-metrics">
+        <div class="gallery-optical-col">
+          <span class="gallery-optical-val">02</span>
+          <span class="gallery-optical-lbl">VITRINES</span>
+        </div>
+        <div class="gallery-optical-col">
+          <span class="gallery-optical-val" style="color:var(--accent-safelight);">01</span>
+          <span class="gallery-optical-lbl">SAFELIGHT</span>
+        </div>
+        <div class="gallery-optical-col">
+          <span class="gallery-optical-val" style="color:var(--accent-emerald);">99.7%</span>
+          <span class="gallery-optical-lbl">ACCURACY</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 焦点展品视窗 (The Focal Artwork Vitrine) -->
+    <section class="gallery-focal-vitrine">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="gallery-safelight-tag">
+          <span>●</span> ATTENTION ITEM // SAFELIGHT EXPOSURE
+        </span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--ink-subtle);">
+          CATALOGUE NO. INSIGHT-0842 · pindou
+        </span>
+      </div>
+
+      <h2 class="gallery-focal-headline">
+        测试套件断言破裂：reports/junit.xml 中记录了 1 项未通过用例
+      </h2>
+
+      <p style="font-size:14px;color:var(--ink-secondary);line-height:1.6;">
+        测试报告文件变动触发事实锁定。套件运行 2 项用例，其中 1 项抛出 AssertionError。该代码事实已作为原始底片保存在本地数据库中，未向外部模型发起网络调用。
+      </p>
+
+      <div class="gallery-negative-strip">
+[FILM NEGATIVE #0842] tests/unit/auth-service.test.ts:32:24
+AssertionError: expected true but got false
+Rule: R-TEST-FAILURE · Evidence Facts: 4 Local Citations
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid var(--vitrine-border);">
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--ink-subtle);">
+          PROVENANCE: JUNIT-XML · LOCAL ACTIVE
+        </span>
+        <a href="project-detail.html" style="font-size:13px;color:var(--accent-lumina);text-decoration:none;font-weight:600;">
+          进入展品档案查阅完整底片 →
+        </a>
+      </div>
+    </section>
+
+    <!-- 艺廊双展厅布局 -->
+    <div class="gallery-split-hall">
+      <!-- 馆藏图录列表 -->
+      <section class="gallery-vitrine-box">
+        <div class="gallery-vitrine-title">
+          <span>CATALOGUE RAISONNÉ // 馆藏总目</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--ink-subtle);">2 COLLECTIONS</span>
+        </div>
+
+        <div>
+          <!-- 展品 1 -->
+          <div class="gallery-artwork-item">
+            <div>
+              <a href="project-detail.html" style="font-family:var(--font-serif);font-size:16px;font-weight:700;color:inherit;text-decoration:none;">
+                I. hark
+              </a>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-subtle);margin-top:2px;">
+                codex/ui-refresh-01 [c18faa1]
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span style="color:var(--accent-emerald);font-weight:700;font-family:var(--font-mono);font-size:12px;">348 PASS (100%)</span>
+              <div style="font-size:11px;color:var(--ink-subtle);">PRISTINE WORKTREE</div>
+            </div>
+          </div>
+
+          <!-- 展品 2 -->
+          <div class="gallery-artwork-item">
+            <div>
+              <span style="font-family:var(--font-serif);font-size:16px;font-weight:700;">
+                II. pindou
+              </span>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-subtle);margin-top:2px;">
+                main [9e4f2b1]
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span style="color:var(--accent-safelight);font-weight:700;font-family:var(--font-mono);font-size:12px;">1 FAIL / 2 TOTAL</span>
+              <div style="font-size:11px;color:var(--accent-safelight);">1 SAFELIGHT ITEM</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 暗房时序流水 -->
+      <section class="gallery-vitrine-box">
+        <div class="gallery-vitrine-title">
+          <span>DARKROOM LOG // 暗房冲洗时序</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--ink-subtle);">EXPOSURE CHRONICLE</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
+          <div style="padding-left:12px;border-left:2px solid var(--accent-safelight);">
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-subtle);">17:28:42 // pindou</div>
+            <div style="color:var(--ink-secondary);margin-top:2px;">测试报告底片显影：捕获 1 项断言破裂</div>
+          </div>
+
+          <div style="padding-left:12px;border-left:2px solid var(--accent-lumina);">
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-subtle);">17:26:14 // hark</div>
+            <div style="color:var(--ink-secondary);margin-top:2px;">HEAD 提交哈希归档至 c18faa1，印章完整</div>
+          </div>
+
+          <div style="padding-left:12px;border-left:2px solid var(--vitrine-border);">
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-subtle);">17:25:50 // hark</div>
+            <div style="color:var(--ink-secondary);margin-top:2px;">单元测试底片校验：348 项用例全部合格</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.gallery-theme-btn').textContent = 'ROOM: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

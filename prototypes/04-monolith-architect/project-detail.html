@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monolith Architect — 构造剖面 // hark</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部大地水准标定条 -->
+  <header class="mono-datum-bar">
+    <div class="mono-datum-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:var(--rule-solid);color:var(--bg-slab);padding:2px 6px;font-weight:900;">HEARTH</span>
+        <span>MONOLITH // ELEVATION PROJECTION // hark</span>
+        <span style="color:var(--ink-light);">[SEC-01]</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:20px;">
+        <ul class="mono-nav-blocks">
+          <li class="mono-nav-item"><a href="home.html">01 // 总平态势</a></li>
+          <li class="mono-nav-item"><a href="project-detail.html" class="active">02 // 剖面卷宗</a></li>
+          <li class="mono-nav-item"><a href="#">03 // 结构发现</a></li>
+          <li class="mono-nav-item"><a href="#">04 // 载荷纪要</a></li>
+        </ul>
+        <button type="button" class="mono-theme-btn" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主结构画廊容器 -->
+  <main class="mono-canvas">
+    <!-- 剖面顶部巨大标识 -->
+    <section class="mono-elevation-header">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:11px;font-weight:800;color:var(--ink-light);letter-spacing:0.15em;">
+          STRUCTURAL SECTION // REPOSITORY CH-01
+        </div>
+        <h1 class="mono-elevation-id">HARK // CODEX/UI-REFRESH-01</h1>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--ink-mid);margin-top:6px;">
+          ABSOLUTE PATH: /Users/v/new-idea/hark · COMMIT: c18faa1
+        </div>
+      </div>
+
+      <div style="text-align:right;">
+        <span class="mono-tag-pass" style="font-size:14px;padding:6px 14px;">BEARING SOLID // 100% PASS</span>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-light);margin-top:6px;">
+          STRESS RUNTIME: 2.41s
+        </div>
+      </div>
+    </section>
+
+    <!-- 剖面表格与载荷参数 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <!-- 表格 1 -->
+      <div style="border:2px solid var(--rule-solid);background:var(--bg-slab);">
+        <table class="mono-structural-table">
+          <thead>
+            <tr>
+              <th colspan="2">SECTION 01 // LOAD-BEARING GIT REVISION</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="width:140px;color:var(--ink-light);">BRANCH REF</td>
+              <td style="font-weight:700;">codex/ui-refresh-01</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-light);">TRACKING</td>
+              <td>origin/codex/ui-refresh-01</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-light);">COMMIT SHA</td>
+              <td style="color:var(--accent-lime-dim);font-weight:800;">c18faa1 (SEALED)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-light);">COMMIT MESSAGE</td>
+              <td>docs: record user authorized push of codex/ui-refresh-01</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-light);">WORKTREE STRESS</td>
+              <td style="color:var(--accent-lime-dim);font-weight:800;">0 DIRTY (CLEAN)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 表格 2 -->
+      <div style="border:2px solid var(--rule-solid);background:var(--bg-slab);">
+        <table class="mono-structural-table">
+          <thead>
+            <tr>
+              <th colspan="2">SECTION 02 // EMPIRICAL STRESS TESTS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="width:140px;color:var(--ink-light);">VITEST SUITE</td>
+              <td style="font-weight:700;color:var(--accent-lime-dim);">348 / 348 PASS (100%)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-light);">PLAYWRIGHT E2E</td>
+              <td style="font-weight:700;color:var(--accent-lime-dim);">25 / 25 PASS (100%)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-light);">TEST FILES</td>
+              <td>43 files verified</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-light);">SECURITY GATES</td>
+              <td>12 PASS / 0 FAIL</td>
+            </tr>
+            <tr>
+              <td style="color:var(--ink-light);">LOAD LATENCY</td>
+              <td>2410 ms</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 底部时序纪要 -->
+    <section style="border:2px solid var(--rule-solid);background:var(--bg-slab);padding:24px;">
+      <div style="font-family:var(--font-mono);font-size:12px;font-weight:800;letter-spacing:0.1em;border-bottom:2px solid var(--rule-solid);padding-bottom:8px;margin-bottom:14px;">
+        SECTION 03 // STRUCTURAL DISPATCH LOGS
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-family:var(--font-mono);font-size:12px;">
+        <div style="display:flex;gap:16px;">
+          <span style="color:var(--ink-light);">17:26:14</span>
+          <span style="font-weight:800;">COMMIT_SYNC</span>
+          <span>提交哈希更新至 c18faa1 (user authorized push)。工作树结构完整。</span>
+        </div>
+        <div style="display:flex;gap:16px;">
+          <span style="color:var(--ink-light);">17:25:50</span>
+          <span style="font-weight:800;color:var(--accent-lime-dim);">TEST_ALL_GREEN</span>
+          <span>Vitest 单元测试：43 文件 348 项测试全数通过，无一破裂。</span>
+        </div>
+        <div style="display:flex;gap:16px;">
+          <span style="color:var(--ink-light);">17:20:12</span>
+          <span style="font-weight:800;color:var(--accent-lime-dim);">E2E_VERIFIED</span>
+          <span>Playwright 端到端浏览器验证通过，25 项控制台测试稳固。</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.mono-theme-btn').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

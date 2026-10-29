@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kinetic Cartography — Hearth 深场星图测控台 (基线轨道)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部飞行测控标定头 -->
+  <header class="carto-topbar">
+    <div class="carto-topbar-inner">
+      <div class="carto-coords-badge">
+        <span class="carto-pulse-beacon" style="background:var(--radar-green);box-shadow:0 0 8px var(--radar-green);"></span>
+        <span style="font-weight:700;">HEARTH KINETIC // ORBITAL STATION 127.0.0.1:4317</span>
+        <span style="color:var(--ink-dim);">AZ: 000° · ALL VECTORS NOMINAL</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;">
+        <ul class="carto-nav-links">
+          <li><a href="home.html" class="active">01 // 星图态势</a></li>
+          <li><a href="project-detail.html">02 // 航迹蓝图</a></li>
+          <li><a href="#">03 // 测控拦截</a></li>
+          <li><a href="#">04 // 遥测流水</a></li>
+        </ul>
+        <button type="button" class="carto-theme-toggle" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主画廊容器 -->
+  <main class="carto-container">
+    <!-- 核心态势航天态势 HUD -->
+    <section class="carto-radar-board">
+      <div class="carto-telemetry-meta">
+        <div class="carto-tag-mission" style="color:var(--radar-green);">MISSION SCAN CYCLE #143 // ORBIT CALM</div>
+        <h1 class="carto-headline">
+          深场测绘星图：全星轨参数归正，未探测到偏航异常
+        </h1>
+        <p style="font-size:14px;color:var(--ink-secondary);line-height:1.6;margin-top:6px;">
+          所有登记节点测试套件均在预定轨位闭环通过。Git 航迹无偏航漂移，工作树无未决脏变动。星图测控处于安静巡航状态。
+        </p>
+
+        <div style="display:flex;gap:24px;font-family:var(--font-mono);font-size:12px;margin-top:16px;">
+          <div><span style="color:var(--ink-dim);">ACTIVE NODES: </span><strong>2 NODES</strong></div>
+          <div><span style="color:var(--ink-dim);">PERTURBATION: </span><strong style="color:var(--radar-green);">0 FAULT</strong></div>
+          <div><span style="color:var(--ink-dim);">TELEMETRY INTEGRITY: </span><strong style="color:var(--radar-green);">100%</strong></div>
+        </div>
+      </div>
+
+      <!-- 极坐标雷达盘（双节点均在绿轨） -->
+      <div class="carto-polar-scope">
+        <div class="carto-ring r1"></div>
+        <div class="carto-ring r2"></div>
+        <div class="carto-ring r3"></div>
+        <div class="carto-axis-x"></div>
+        <div class="carto-axis-y"></div>
+
+        <a href="project-detail.html" class="carto-node-dot pass" style="top:35%;left:65%;">
+          <span class="carto-node-label" style="color:var(--radar-green);">hark [c18faa1]</span>
+        </a>
+
+        <div class="carto-node-dot pass" style="top:60%;left:38%;background:var(--radar-green);box-shadow:0 0 10px var(--radar-green);">
+          <span class="carto-node-label" style="color:var(--radar-green);">pindou [CLEARED]</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 空态深场提示 -->
+    <div class="carto-empty-deepspace">
+      <div style="font-family:var(--font-mono);font-size:16px;color:var(--radar-green);letter-spacing:0.15em;">
+        ◈ DEEP SPACE TELEMETRY CLEAR ◈
+      </div>
+      <h2 style="font-size:22px;font-weight:600;">
+        深场星轨澄明 · 当前无待拦截目标
+      </h2>
+      <p style="max-width:540px;color:var(--ink-secondary);font-size:14px;line-height:1.7;">
+        所有轨道节点均按既定轨道正常运转，无需要人工介入的断言异常。观测器将在 0.33 Hz 周期保持被动雷达扫描。
+      </p>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.carto-theme-toggle').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

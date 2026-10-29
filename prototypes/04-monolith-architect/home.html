@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monolith Architect — Hearth 巨石解构工作台</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部大地水准标定条 -->
+  <header class="mono-datum-bar">
+    <div class="mono-datum-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:var(--rule-solid);color:var(--bg-slab);padding:2px 6px;font-weight:900;">HEARTH</span>
+        <span>MONOLITH // DATUM AXIS 127.0.0.1:4317</span>
+        <span style="color:var(--ink-light);">[SCAN #142]</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:20px;">
+        <ul class="mono-nav-blocks">
+          <li class="mono-nav-item"><a href="home.html" class="active">01 // 总平态势</a></li>
+          <li class="mono-nav-item"><a href="project-detail.html">02 // 剖面卷宗</a></li>
+          <li class="mono-nav-item"><a href="#">03 // 结构发现</a></li>
+          <li class="mono-nav-item"><a href="#">04 // 载荷纪要</a></li>
+        </ul>
+        <button type="button" class="mono-theme-btn" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主结构画廊容器 -->
+  <main class="mono-canvas">
+    <!-- 巨构建筑主标题区块 -->
+    <section class="mono-hero-slab">
+      <div>
+        <h1 class="mono-hero-title">STRUCTURAL MONOLITH:<br>1 FAULT CAPTURED</h1>
+        <p class="mono-hero-subtitle">
+          本地工作区结构稳定。观测器完成第 142 次被动荷载巡检，于 pindou 构造柱捕获 1 项断言破裂，其余各受力节点均保持全绿稳态。零模型外发，安全边界完备。
+        </p>
+      </div>
+
+      <div class="mono-mega-stat-cluster">
+        <div class="mono-stat-box">
+          <span class="mono-stat-num">02</span>
+          <span class="mono-stat-label">PYLONS ARMED</span>
+        </div>
+        <div class="mono-stat-box">
+          <span class="mono-stat-num" style="color:var(--accent-hazard);">01</span>
+          <span class="mono-stat-label">FAULT POINT</span>
+        </div>
+        <div class="mono-stat-box">
+          <span class="mono-stat-num">99.7</span>
+          <span class="mono-stat-label">INTEGRITY %</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 巨石非对称网格 -->
+    <div class="mono-monolith-grid">
+      <!-- 警报巨石：带工业警示条纹与锋利切角 -->
+      <section class="mono-hazard-slab">
+        <div class="mono-hazard-ribbon"></div>
+        <div class="mono-hazard-body">
+          <div class="mono-section-tag">
+            <span>HAZARD NODE // CRITICAL EXCEPTION</span>
+            <span style="margin-left:auto;color:var(--ink-light);">CH-02 pindou</span>
+          </div>
+
+          <h2 class="mono-hazard-headline">
+            测试报告 reports/junit.xml 中记录了 1 项未通过用例
+          </h2>
+
+          <p style="font-size:14px;color:var(--ink-mid);line-height:1.6;">
+            观测台在监听到 reports/junit.xml 变动后捕获到测试套件执行结果。套件总计 2 项测试，其中 1 项抛出 AssertionError。当前断言未向任何外部模型外发。
+          </p>
+
+          <div class="mono-code-brutal">
+FAIL: tests/unit/auth-service.test.ts:32:24
+AssertionError: expected true but got false
+[EVIDENCE LOCKED: 4 LOCAL FACTS]
+          </div>
+
+          <div class="mono-action-dock">
+            <span style="font-weight:700;">RULE ID: R-TEST-FAILURE</span>
+            <a href="project-detail.html" class="mono-btn-primary">调焦解构该节点 →</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- 巨石支柱右栏 -->
+      <aside class="mono-pylon-col">
+        <!-- 构造柱列表 -->
+        <div class="mono-pylon-slab">
+          <div class="mono-pylon-title">
+            <span>STRUCTURAL PYLONS</span>
+            <span>2 NODES</span>
+          </div>
+
+          <div class="mono-channel-row">
+            <div>
+              <a href="project-detail.html" class="mono-channel-name">01 // HARK</a>
+              <div style="font-size:11px;color:var(--ink-light);margin-top:2px;">codex/ui-refresh-01 [c18faa1]</div>
+            </div>
+            <span class="mono-tag-pass">348 PASS</span>
+          </div>
+
+          <div class="mono-channel-row">
+            <div>
+              <span class="mono-channel-name">02 // PINDOU</span>
+              <div style="font-size:11px;color:var(--ink-light);margin-top:2px;">main [9e4f2b1]</div>
+            </div>
+            <span class="mono-tag-fail">1 FAIL</span>
+          </div>
+        </div>
+
+        <!-- 荷载时序纪要 -->
+        <div class="mono-pylon-slab">
+          <div class="mono-pylon-title">
+            <span>LOAD TELEMETRY</span>
+            <span>REALTIME</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:12px;font-family:var(--font-mono);font-size:11px;">
+            <div style="border-left:2px solid var(--accent-hazard);padding-left:10px;">
+              <div style="color:var(--ink-light);">17:28:42 · PINDOU</div>
+              <div style="font-weight:700;margin-top:2px;">JUNIT 破裂：捕获 1 项断言异常</div>
+            </div>
+            <div style="border-left:2px solid var(--rule-solid);padding-left:10px;">
+              <div style="color:var(--ink-light);">17:26:14 · HARK</div>
+              <div style="font-weight:700;margin-top:2px;">HEAD 同步至 c18faa1，工作树纯净</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.mono-theme-btn').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

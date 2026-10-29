@@ -35,6 +35,24 @@ const PAGES: PageDef[] = [
   { conceptDir: '03-instrument-studio', conceptPrefix: '03-instrument-studio', fileName: 'home-empty.html', pageName: 'home-empty' },
   { conceptDir: '03-instrument-studio', conceptPrefix: '03-instrument-studio', fileName: 'project-detail.html', pageName: 'project-detail' },
   { conceptDir: '03-instrument-studio', conceptPrefix: '03-instrument-studio', fileName: 'project-detail-empty.html', pageName: 'project-detail-empty' },
+
+  // 04-monolith-architect
+  { conceptDir: '04-monolith-architect', conceptPrefix: '04-monolith-architect', fileName: 'home.html', pageName: 'home' },
+  { conceptDir: '04-monolith-architect', conceptPrefix: '04-monolith-architect', fileName: 'home-empty.html', pageName: 'home-empty' },
+  { conceptDir: '04-monolith-architect', conceptPrefix: '04-monolith-architect', fileName: 'project-detail.html', pageName: 'project-detail' },
+  { conceptDir: '04-monolith-architect', conceptPrefix: '04-monolith-architect', fileName: 'project-detail-empty.html', pageName: 'project-detail-empty' },
+
+  // 05-kinetic-cartography
+  { conceptDir: '05-kinetic-cartography', conceptPrefix: '05-kinetic-cartography', fileName: 'home.html', pageName: 'home' },
+  { conceptDir: '05-kinetic-cartography', conceptPrefix: '05-kinetic-cartography', fileName: 'home-empty.html', pageName: 'home-empty' },
+  { conceptDir: '05-kinetic-cartography', conceptPrefix: '05-kinetic-cartography', fileName: 'project-detail.html', pageName: 'project-detail' },
+  { conceptDir: '05-kinetic-cartography', conceptPrefix: '05-kinetic-cartography', fileName: 'project-detail-empty.html', pageName: 'project-detail-empty' },
+
+  // 06-luminescent-gallery
+  { conceptDir: '06-luminescent-gallery', conceptPrefix: '06-luminescent-gallery', fileName: 'home.html', pageName: 'home' },
+  { conceptDir: '06-luminescent-gallery', conceptPrefix: '06-luminescent-gallery', fileName: 'home-empty.html', pageName: 'home-empty' },
+  { conceptDir: '06-luminescent-gallery', conceptPrefix: '06-luminescent-gallery', fileName: 'project-detail.html', pageName: 'project-detail' },
+  { conceptDir: '06-luminescent-gallery', conceptPrefix: '06-luminescent-gallery', fileName: 'project-detail-empty.html', pageName: 'project-detail-empty' },
 ];
 
 async function main() {
@@ -60,11 +78,16 @@ async function main() {
     // 1. Light Theme
     await page.evaluate(() => {
       document.documentElement.setAttribute('data-theme', 'light');
-      const btn = document.querySelector('.obs-theme-toggle, .gazette-theme-toggle, .rack-theme-toggle');
+      const btn = document.querySelector(
+        '.obs-theme-toggle, .gazette-theme-toggle, .rack-theme-toggle, .mono-theme-btn, .carto-theme-toggle, .gallery-theme-btn'
+      );
       if (btn) {
         if (btn.classList.contains('obs-theme-toggle')) btn.textContent = 'THEME: LIGHT';
         if (btn.classList.contains('gazette-theme-toggle')) btn.textContent = 'PAPER: LIGHT';
         if (btn.classList.contains('rack-theme-toggle')) btn.textContent = 'CHASSIS: LIGHT';
+        if (btn.classList.contains('mono-theme-btn')) btn.textContent = 'THEME: LIGHT';
+        if (btn.classList.contains('carto-theme-toggle')) btn.textContent = 'THEME: LIGHT';
+        if (btn.classList.contains('gallery-theme-btn')) btn.textContent = 'ROOM: LIGHT';
       }
     });
     await page.waitForTimeout(200);
@@ -76,11 +99,16 @@ async function main() {
     // 2. Dark Theme
     await page.evaluate(() => {
       document.documentElement.setAttribute('data-theme', 'dark');
-      const btn = document.querySelector('.obs-theme-toggle, .gazette-theme-toggle, .rack-theme-toggle');
+      const btn = document.querySelector(
+        '.obs-theme-toggle, .gazette-theme-toggle, .rack-theme-toggle, .mono-theme-btn, .carto-theme-toggle, .gallery-theme-btn'
+      );
       if (btn) {
         if (btn.classList.contains('obs-theme-toggle')) btn.textContent = 'THEME: DARK';
         if (btn.classList.contains('gazette-theme-toggle')) btn.textContent = 'PAPER: DARK';
         if (btn.classList.contains('rack-theme-toggle')) btn.textContent = 'CHASSIS: DARK';
+        if (btn.classList.contains('mono-theme-btn')) btn.textContent = 'THEME: DARK';
+        if (btn.classList.contains('carto-theme-toggle')) btn.textContent = 'THEME: DARK';
+        if (btn.classList.contains('gallery-theme-btn')) btn.textContent = 'ROOM: DARK';
       }
     });
     await page.waitForTimeout(200);
@@ -91,7 +119,7 @@ async function main() {
   }
 
   await browser.close();
-  console.log(`[capture-prototypes] Successfully generated 24 screenshots in ${OUTPUT_DIR}`);
+  console.log(`[capture-prototypes] Successfully generated all screenshots in ${OUTPUT_DIR}`);
 }
 
 main().catch((err) => {

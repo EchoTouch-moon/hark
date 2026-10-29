@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luminescent Gallery — 展品总目 // hark</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 艺廊顶部策展条 -->
+  <header class="gallery-masthead">
+    <div class="gallery-masthead-inner">
+      <div class="gallery-logo-group">
+        <span class="gallery-logo">Hearth Lumina</span>
+        <span class="gallery-edition">CATALOGUE RAISONNÉ // hark (CH-01)</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:20px;">
+        <ul class="gallery-nav-pills">
+          <li><a href="home.html">主展厅 (Main Hall)</a></li>
+          <li><a href="project-detail.html" class="active">馆藏图录 (Catalogue)</a></li>
+          <li><a href="#">策展发现 (Insights)</a></li>
+          <li><a href="#">暗房日志 (Darkroom)</a></li>
+        </ul>
+        <button type="button" class="gallery-theme-btn" onclick="toggleTheme()">ROOM: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 策展主容器 -->
+  <main class="gallery-hall">
+    <!-- 展品档案头部光箱 -->
+    <section class="gallery-lightbox-vitrine">
+      <div>
+        <div class="gallery-curatorial-label">EXHIBIT ACCESSION NO. 2026.10.29.c18faa1</div>
+        <h1 class="gallery-exhibition-title">
+          hark <span style="font-size:20px;font-family:var(--font-sans);color:var(--ink-secondary);font-weight:normal;">// codex/ui-refresh-01</span>
+        </h1>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--ink-subtle);margin-top:6px;">
+          PROVENANCE: /Users/v/new-idea/hark · NEGATIVE COMMIT: c18faa1
+        </div>
+      </div>
+
+      <div class="gallery-optical-metrics">
+        <div class="gallery-optical-col">
+          <span class="gallery-optical-val" style="color:var(--accent-emerald);">348</span>
+          <span class="gallery-optical-lbl">PASS CORPUS</span>
+        </div>
+        <div class="gallery-optical-col">
+          <span class="gallery-optical-val">2.41s</span>
+          <span class="gallery-optical-lbl">EXPOSURE TIME</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 35mm 胶片卷带式 Commit 条目 -->
+    <div class="gallery-filmstrip">
+      <div class="gallery-film-sprockets">▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪</div>
+      <div style="padding:10px 0;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <span style="color:var(--accent-lumina);font-weight:700;">FRAME #01 [c18faa1]</span>
+          <span style="color:var(--ink-secondary);margin-left:12px;">docs: record user authorized push of codex/ui-refresh-01</span>
+        </div>
+        <span style="color:var(--ink-subtle);">2026-10-29 17:26:14 UTC+8 (by v)</span>
+      </div>
+      <div class="gallery-film-sprockets">▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪</div>
+    </div>
+
+    <!-- 策展双展厅参数 -->
+    <div class="gallery-split-hall">
+      <!-- 展柜 A: 工作树光感 -->
+      <section class="gallery-vitrine-box">
+        <div class="gallery-vitrine-title">
+          <span>CURATORIAL CALIPERS // 工作树光感</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--accent-emerald);">CLEAN BASELINE</span>
+        </div>
+
+        <div style="font-size:13px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--vitrine-border);">
+            <span style="color:var(--ink-subtle);">当前检出分支</span>
+            <span style="font-family:var(--font-mono);font-weight:600;">codex/ui-refresh-01</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--vitrine-border);">
+            <span style="color:var(--ink-subtle);">上游跟踪镜像</span>
+            <span style="font-family:var(--font-mono);">origin/codex/ui-refresh-01</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--vitrine-border);">
+            <span style="color:var(--ink-subtle);">暂存区变动</span>
+            <span style="font-family:var(--font-mono);color:var(--accent-emerald);font-weight:600;">0 文件变动 (纯净)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--vitrine-border);">
+            <span style="color:var(--ink-subtle);">未跟踪路径</span>
+            <span style="font-family:var(--font-mono);">0 项新增路径</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 展柜 B: 实证测试图录 -->
+      <section class="gallery-vitrine-box">
+        <div class="gallery-vitrine-title">
+          <span>EMPIRICAL EXHIBITS // 实证测试图录</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--accent-emerald);">100% GREEN</span>
+        </div>
+
+        <div style="font-size:13px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--vitrine-border);">
+            <span style="color:var(--ink-subtle);">Vitest 单元与集成测试</span>
+            <span style="font-family:var(--font-mono);color:var(--accent-emerald);font-weight:700;">348 / 348 PASS</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--vitrine-border);">
+            <span style="color:var(--ink-subtle);">Playwright 浏览器端到端</span>
+            <span style="font-family:var(--font-mono);color:var(--accent-emerald);font-weight:700;">25 / 25 PASS</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--vitrine-border);">
+            <span style="color:var(--ink-subtle);">安全门禁断言</span>
+            <span style="font-family:var(--font-mono);font-weight:600;">12 PASS / 0 FAIL</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--vitrine-border);">
+            <span style="color:var(--ink-subtle);">曝光显影时间</span>
+            <span style="font-family:var(--font-mono);">2.41s (43 测试文件)</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.gallery-theme-btn').textContent = 'ROOM: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

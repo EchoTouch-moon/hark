@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kinetic Cartography — Hearth 深场星图测控台</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部飞行测控标定头 -->
+  <header class="carto-topbar">
+    <div class="carto-topbar-inner">
+      <div class="carto-coords-badge">
+        <span class="carto-pulse-beacon"></span>
+        <span style="font-weight:700;">HEARTH KINETIC // ORBITAL STATION 127.0.0.1:4317</span>
+        <span style="color:var(--ink-dim);">AZ: 042° · EL: +61° · RANGE: 0.33Hz</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;">
+        <ul class="carto-nav-links">
+          <li><a href="home.html" class="active">01 // 星图态势</a></li>
+          <li><a href="project-detail.html">02 // 航迹蓝图</a></li>
+          <li><a href="#">03 // 测控拦截</a></li>
+          <li><a href="#">04 // 遥测流水</a></li>
+        </ul>
+        <button type="button" class="carto-theme-toggle" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主画廊容器 -->
+  <main class="carto-container">
+    <!-- 核心态势航天态势 HUD -->
+    <section class="carto-radar-board">
+      <span class="carto-corner-cross" style="top:8px;left:8px;">+</span>
+      <span class="carto-corner-cross" style="top:8px;right:8px;">+</span>
+      <span class="carto-corner-cross" style="bottom:8px;left:8px;">+</span>
+      <span class="carto-corner-cross" style="bottom:8px;right:8px;">+</span>
+
+      <div class="carto-telemetry-meta">
+        <div class="carto-tag-mission">MISSION SCAN CYCLE #142 // LOCAL WORKSPACE</div>
+        <h1 class="carto-headline">
+          深场测绘星图：捕获 pindou 轨道断言偏航，其余星轨信噪比正常
+        </h1>
+        <p style="font-size:14px;color:var(--ink-secondary);line-height:1.6;margin-top:6px;">
+          测控站完成对 2 颗登记轨道节点（hark、pindou）的被动遥测扫描。hark 轨道高度一致且处于 100% 闭环；pindou 节点于 reports/junit.xml 发生单点测试破裂。所有原始代码摘录锁定在本地遥测缓存中，未向外层空间发射。
+        </p>
+
+        <div style="display:flex;gap:24px;font-family:var(--font-mono);font-size:12px;margin-top:16px;">
+          <div><span style="color:var(--ink-dim);">ACTIVE NODES: </span><strong>2 NODES</strong></div>
+          <div><span style="color:var(--ink-dim);">PERTURBATION: </span><strong style="color:var(--radar-red);">1 FAULT</strong></div>
+          <div><span style="color:var(--ink-dim);">TELEMETRY INTEGRITY: </span><strong style="color:var(--radar-green);">99.7%</strong></div>
+        </div>
+      </div>
+
+      <!-- 极坐标雷达盘 -->
+      <div class="carto-polar-scope">
+        <div class="carto-ring r1"></div>
+        <div class="carto-ring r2"></div>
+        <div class="carto-ring r3"></div>
+        <div class="carto-axis-x"></div>
+        <div class="carto-axis-y"></div>
+
+        <!-- Node Alpha: hark (全绿稳定轨道) -->
+        <a href="project-detail.html" class="carto-node-dot pass" title="hark: 100% PASS">
+          <span class="carto-node-label" style="color:var(--radar-green);">hark [c18faa1]</span>
+        </a>
+
+        <!-- Node Beta: pindou (偏航告警节点) -->
+        <div class="carto-node-dot fail" title="pindou: 1 FAIL">
+          <span class="carto-node-label" style="color:var(--radar-red);">pindou [FAULT]</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 战术雷达异常拦截板 -->
+    <section class="carto-target-intercept">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--radar-red);">
+          ANOMALY BEARING: pindou:tests/unit/auth-service.test.ts
+        </span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);">
+          RADAR SIGNATURE: R-TEST-FAILURE · 17:28:42 UTC+8
+        </span>
+      </div>
+
+      <h2 style="font-size:17px;font-weight:600;">
+        测试套件断言偏航：reports/junit.xml 中记录了 1 项未通过用例
+      </h2>
+
+      <div class="carto-code-box">
+[DOPPLER ANOMALY] tests/unit/auth-service.test.ts:32:24
+AssertionError: expected true but got false
+Source: reports/junit.xml | Locked Facts: 4 Local Records
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px dashed var(--grid-line-strong);">
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);">
+          ORBITAL LOCK: SECURE (NO EXTERNAL MODEL EXFILTRATION)
+        </span>
+        <a href="project-detail.html" style="font-family:var(--font-mono);font-size:12px;color:var(--radar-cyan);text-decoration:none;font-weight:700;">
+          锁定该节点矢量航迹 →
+        </a>
+      </div>
+    </section>
+
+    <!-- 战术下层双栏：轨道星表与遥测轨迹流 -->
+    <div class="carto-tactical-grid">
+      <!-- 轨道节点星表 -->
+      <section class="carto-panel-hud">
+        <div class="carto-panel-title">
+          <span>01 // ORBITAL EPHEMERIS · 轨道节点星表</span>
+          <span>2 TRACKED</span>
+        </div>
+
+        <table class="carto-orbit-table">
+          <tbody>
+            <tr>
+              <td><span style="color:var(--radar-green);">●</span> <a href="project-detail.html" style="color:inherit;text-decoration:none;font-weight:700;">hark</a></td>
+              <td>codex/ui-refresh-01 [c18faa1]</td>
+              <td style="color:var(--radar-green);font-weight:700;">348 PASS (100%)</td>
+              <td style="text-align:right;"><a href="project-detail.html" style="color:var(--radar-cyan);">航迹 →</a></td>
+            </tr>
+            <tr>
+              <td><span style="color:var(--radar-red);">▲</span> <strong>pindou</strong></td>
+              <td>main [9e4f2b1]</td>
+              <td style="color:var(--radar-red);font-weight:700;">1 FAIL / 2 TOTAL</td>
+              <td style="text-align:right;"><a href="#" style="color:var(--radar-cyan);">航迹 →</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 遥测矢量流水 -->
+      <section class="carto-panel-hud">
+        <div class="carto-panel-title">
+          <span>02 // REALTIME TELEMETRY STREAM · 实时遥测流</span>
+          <span>DOPPLER 0.33Hz</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;font-family:var(--font-mono);font-size:11px;">
+          <div style="border-left:2px solid var(--radar-red);padding-left:10px;">
+            <div style="color:var(--ink-dim);">17:28:42 // pindou</div>
+            <div style="color:var(--ink-primary);margin-top:2px;">测试报告变动：捕获 1 项断言偏航</div>
+          </div>
+          <div style="border-left:2px solid var(--radar-green);padding-left:10px;">
+            <div style="color:var(--ink-dim);">17:26:14 // hark</div>
+            <div style="color:var(--ink-primary);margin-top:2px;">HEAD 轨道同步至 c18faa1，偏心率稳定</div>
+          </div>
+          <div style="border-left:2px solid var(--grid-line-strong);padding-left:10px;">
+            <div style="color:var(--ink-dim);">17:25:50 // hark</div>
+            <div style="color:var(--ink-primary);margin-top:2px;">Vitest 遥测信号：348 项全频段通过</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.carto-theme-toggle').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

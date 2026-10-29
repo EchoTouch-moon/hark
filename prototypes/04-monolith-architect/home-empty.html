@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monolith Architect — Hearth 巨石解构工作台 (基线稳固)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部大地水准标定条 -->
+  <header class="mono-datum-bar">
+    <div class="mono-datum-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:var(--rule-solid);color:var(--bg-slab);padding:2px 6px;font-weight:900;">HEARTH</span>
+        <span>MONOLITH // DATUM AXIS 127.0.0.1:4317</span>
+        <span style="color:var(--ink-light);">[SCAN #143]</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:20px;">
+        <ul class="mono-nav-blocks">
+          <li class="mono-nav-item"><a href="home.html" class="active">01 // 总平态势</a></li>
+          <li class="mono-nav-item"><a href="project-detail.html">02 // 剖面卷宗</a></li>
+          <li class="mono-nav-item"><a href="#">03 // 结构发现</a></li>
+          <li class="mono-nav-item"><a href="#">04 // 载荷纪要</a></li>
+        </ul>
+        <button type="button" class="mono-theme-btn" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主结构画廊容器 -->
+  <main class="mono-canvas">
+    <!-- 巨构建筑主标题区块 -->
+    <section class="mono-hero-slab">
+      <div>
+        <h1 class="mono-hero-title">STRUCTURAL MONOLITH:<br>ALL SYSTEMS SOLID</h1>
+        <p class="mono-hero-subtitle">
+          本地全域构造柱处于设计强固基准。所有测试套件通过，Git 工作树无应力变形与脏数据，观测器维持静默被动巡检。
+        </p>
+      </div>
+
+      <div class="mono-mega-stat-cluster">
+        <div class="mono-stat-box">
+          <span class="mono-stat-num">02</span>
+          <span class="mono-stat-label">PYLONS ARMED</span>
+        </div>
+        <div class="mono-stat-box">
+          <span class="mono-stat-num" style="color:var(--accent-lime-dim);">00</span>
+          <span class="mono-stat-label">FAULT POINT</span>
+        </div>
+        <div class="mono-stat-box">
+          <span class="mono-stat-num">100</span>
+          <span class="mono-stat-label">INTEGRITY %</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 巨石空态 -->
+    <div class="mono-basal-empty">
+      <div class="mono-empty-glyph">▲</div>
+      <h2 class="mono-empty-title">BASAL STONE STABLE · 全节点坚固基线</h2>
+      <p style="max-width:540px;color:var(--ink-mid);font-size:14px;line-height:1.7;">
+        “无破坏性应力，结构处于稳态平衡。”<br>
+        当前所有登记项目的测试套件与版本哈希均已锁定并经过强一致性校验。没有未决问题需要人工复核，您可以专注于顶层业务架构研发。
+      </p>
+      <div style="margin-top:10px;">
+        <span class="mono-tag-pass" style="font-size:12px;padding:6px 14px;">BASELINE SEALED · ZERO NETWORK EXFILTRATION</span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.mono-theme-btn').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,444 @@
+/* Monolith Architect: 解构巨石与前卫建筑构造 */
+
+:root {
+  --font-display: -apple-system, BlinkMacSystemFont, 'Druk Text Wide', 'Impact', 'Syne', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Space Mono', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'PingFang SC', sans-serif;
+
+  /* 浅色：包豪斯工业灰泥与信号荧光青柠 */
+  --bg-concrete: #eae8e1;
+  --bg-slab: #f7f6f2;
+  --bg-slab-alt: #dedad0;
+  --bg-void: #111215;
+
+  --ink-heavy: #0d0e10;
+  --ink-mid: #4a4d55;
+  --ink-light: #8e94a0;
+
+  --accent-lime: #b6ff00;
+  --accent-lime-dim: #9edb00;
+  --accent-cobalt: #0033ff;
+  --accent-hazard: #ff2a00;
+  --accent-hazard-stripes: repeating-linear-gradient(
+    -45deg,
+    #ff2a00,
+    #ff2a00 8px,
+    #0d0e10 8px,
+    #0d0e10 16px
+  );
+
+  --rule-solid: #0d0e10;
+  --rule-fine: rgba(13, 14, 16, 0.2);
+
+  --border-radius: 0px; /* 纯正解构巨石：绝对 0 钝角 */
+  --page-max: 1360px;
+}
+
+[data-theme="dark"] {
+  /* 深色：黑曜石采石场与夜间高压信号激光 */
+  --bg-concrete: #0a0a0c;
+  --bg-slab: #141519;
+  --bg-slab-alt: #1c1d24;
+  --bg-void: #f7f6f2;
+
+  --ink-heavy: #f2f3f7;
+  --ink-mid: #9ea5b3;
+  --ink-light: #525866;
+
+  --accent-lime: #c8ff00;
+  --accent-lime-dim: #9acc00;
+  --accent-cobalt: #3d6bff;
+  --accent-hazard: #ff3b1a;
+  --accent-hazard-stripes: repeating-linear-gradient(
+    -45deg,
+    #ff3b1a,
+    #ff3b1a 8px,
+    #141519 8px,
+    #141519 16px
+  );
+
+  --rule-solid: #f2f3f7;
+  --rule-fine: rgba(242, 243, 247, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-concrete);
+  color: var(--ink-heavy);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 90px;
+}
+
+/* 顶部大地水准标定条 (Datum Axis) */
+.mono-datum-bar {
+  border-bottom: 2px solid var(--rule-solid);
+  background: var(--bg-slab);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.mono-datum-inner {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 10px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mono-nav-blocks {
+  display: flex;
+  gap: 0;
+  list-style: none;
+  border-left: 1px solid var(--rule-solid);
+}
+
+.mono-nav-item a {
+  display: block;
+  padding: 8px 18px;
+  border-right: 1px solid var(--rule-solid);
+  color: var(--ink-heavy);
+  text-decoration: none;
+  font-weight: 700;
+  transition: all 0.1s;
+}
+
+.mono-nav-item a:hover,
+.mono-nav-item a.active {
+  background: var(--rule-solid);
+  color: var(--bg-slab);
+}
+
+.mono-theme-btn {
+  background: transparent;
+  border: 1px solid var(--rule-solid);
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--ink-heavy);
+  text-transform: uppercase;
+}
+
+.mono-theme-btn:hover {
+  background: var(--accent-lime);
+  color: #000;
+}
+
+/* 主结构画廊容器 */
+.mono-canvas {
+  max-width: var(--page-max);
+  margin: 32px auto 0;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* 巨构建筑主标题区块 (Mega Monumental Slab) */
+.mono-hero-slab {
+  border: 2px solid var(--rule-solid);
+  background: var(--bg-slab);
+  padding: 32px 36px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: flex-end;
+  gap: 24px;
+}
+
+.mono-hero-slab::before {
+  content: 'ELEVATION 01 // STRUCTURAL OVERVIEW';
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: var(--rule-solid);
+  color: var(--bg-slab);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  padding: 2px 8px;
+}
+
+.mono-hero-title {
+  font-family: var(--font-display);
+  font-size: 46px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.mono-hero-subtitle {
+  font-size: 15px;
+  color: var(--ink-mid);
+  margin-top: 14px;
+  max-width: 760px;
+  line-height: 1.6;
+}
+
+.mono-mega-stat-cluster {
+  display: flex;
+  gap: 24px;
+  text-align: right;
+  border-left: 2px solid var(--rule-solid);
+  padding-left: 24px;
+}
+
+.mono-stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.mono-stat-num {
+  font-family: var(--font-display);
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ink-heavy);
+}
+
+.mono-stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-light);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* 巨石双栏构造 (The Asymmetrical Monolith Grid) */
+.mono-monolith-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 24px;
+}
+
+/* 警报巨石：带工业警示条纹与锋利切角 (Hazard Monolith) */
+.mono-hazard-slab {
+  border: 2px solid var(--rule-solid);
+  background: var(--bg-slab);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.mono-hazard-ribbon {
+  height: 8px;
+  background: var(--accent-hazard-stripes);
+  border-bottom: 2px solid var(--rule-solid);
+}
+
+.mono-hazard-body {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mono-section-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-hazard);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mono-hazard-headline {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.mono-code-brutal {
+  background: #000;
+  color: var(--accent-lime);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 16px 20px;
+  border-left: 6px solid var(--accent-hazard);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.mono-action-dock {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 2px solid var(--rule-solid);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.mono-btn-primary {
+  background: var(--rule-solid);
+  color: var(--bg-slab);
+  border: none;
+  padding: 10px 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.1s;
+}
+
+.mono-btn-primary:hover {
+  background: var(--accent-lime);
+  color: #000;
+}
+
+/* 巨石支柱右栏 (Vertical Concrete Pylons) */
+.mono-pylon-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.mono-pylon-slab {
+  border: 2px solid var(--rule-solid);
+  background: var(--bg-slab);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mono-pylon-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--rule-solid);
+  padding-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.mono-channel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule-fine);
+  font-family: var(--font-mono);
+}
+
+.mono-channel-name {
+  font-size: 16px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--ink-heavy);
+  text-decoration: none;
+}
+
+.mono-tag-pass {
+  background: var(--accent-lime);
+  color: #000;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 6px;
+}
+
+.mono-tag-fail {
+  background: var(--accent-hazard);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 6px;
+}
+
+/* 巨石空态 (Monumental Basal Stone) */
+.mono-basal-empty {
+  border: 2px dashed var(--rule-solid);
+  background: var(--bg-slab);
+  padding: 60px 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.mono-empty-glyph {
+  font-family: var(--font-display);
+  font-size: 64px;
+  line-height: 1;
+  color: var(--accent-lime);
+}
+
+.mono-empty-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+
+/* 项目详情页剖面构造 (Architectural Elevation) */
+.mono-elevation-header {
+  border: 2px solid var(--rule-solid);
+  background: var(--bg-slab);
+  padding: 28px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mono-elevation-id {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.mono-structural-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.mono-structural-table th {
+  background: var(--rule-solid);
+  color: var(--bg-slab);
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mono-structural-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--rule-fine);
+}
+
+.mono-structural-table tr:nth-child(even) {
+  background: var(--bg-slab-alt);
+}

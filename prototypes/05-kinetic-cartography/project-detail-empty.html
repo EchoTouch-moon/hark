@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kinetic Cartography — 轨道航迹蓝图 // sandbox-empty (待入轨初测)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部飞行测控标定头 -->
+  <header class="carto-topbar">
+    <div class="carto-topbar-inner">
+      <div class="carto-coords-badge">
+        <span class="carto-pulse-beacon" style="background:var(--ink-dim);box-shadow:none;"></span>
+        <span style="font-weight:700;">HEARTH KINETIC // ORBITAL BLUEPRINT // sandbox-empty</span>
+        <span style="color:var(--ink-dim);">NODE ID: CH-03 · AWAITING ORBIT INSERTION</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;">
+        <ul class="carto-nav-links">
+          <li><a href="home.html">01 // 星图态势</a></li>
+          <li><a href="project-detail.html" class="active">02 // 航迹蓝图</a></li>
+          <li><a href="#">03 // 测控拦截</a></li>
+          <li><a href="#">04 // 遥测流水</a></li>
+        </ul>
+        <button type="button" class="carto-theme-toggle" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主画廊容器 -->
+  <main class="carto-container">
+    <!-- 航迹蓝图头部 -->
+    <section class="carto-blueprint-header">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--ink-dim);letter-spacing:0.1em;">
+          ORBITAL TRAJECTORY DOSSIER // CH-03
+        </div>
+        <h1 style="font-size:32px;font-weight:700;letter-spacing:-0.01em;margin-top:4px;">
+          sandbox-empty <span style="font-size:18px;color:var(--ink-secondary);font-weight:normal;">// main</span>
+        </h1>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--ink-dim);margin-top:6px;">
+          PATH: /Users/v/new-idea/sandbox-empty · COMMIT: 0000000 (UNTRACKED)
+        </div>
+      </div>
+
+      <div style="text-align:right;">
+        <span style="font-family:var(--font-mono);font-size:12px;background:var(--radar-cyan-soft);color:var(--radar-cyan);padding:4px 10px;border-radius:2px;">
+          AWAITING TELEMETRY LOCK
+        </span>
+      </div>
+    </section>
+
+    <!-- 空态深场提示 -->
+    <div class="carto-empty-deepspace">
+      <div style="font-family:var(--font-mono);font-size:16px;color:var(--radar-cyan);letter-spacing:0.15em;">
+        // UNINITIALIZED ORBITAL NODE //
+      </div>
+      <h2 style="font-size:22px;font-weight:600;">
+        节点已挂载，等待首次轨道测控信号
+      </h2>
+      <p style="max-width:540px;color:var(--ink-secondary);font-size:14px;line-height:1.7;">
+        该本地仓库尚未在 <code>/Users/v/new-idea/sandbox-empty</code> 产生任何测试输出或提交记录。请运行一次测试命令（如 <code>pnpm test</code>），测控天线将自动捕获遥测波束并在此绘制航迹图。
+      </p>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.carto-theme-toggle').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

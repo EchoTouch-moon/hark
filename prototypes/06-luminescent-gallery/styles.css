@@ -1,0 +1,345 @@
+/* Luminescent Gallery: 前卫暗房与数字发光艺廊 */
+
+:root {
+  --font-serif: 'Playfair Display', Georgia, 'Songti SC', serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'PingFang SC', sans-serif;
+  --font-mono: 'SF Mono', 'Courier New', Menlo, monospace;
+
+  /* 浅色：艺术馆纯白石膏基座与朱砂红 */
+  --bg-gallery: #f8f7f4;
+  --bg-vitrine: #ffffff;
+  --bg-vitrine-subtle: #f1f0eb;
+  --vitrine-border: rgba(24, 24, 27, 0.08);
+  --vitrine-shadow: 0 12px 36px rgba(0, 0, 0, 0.04);
+
+  --ink-primary: #18181b;
+  --ink-secondary: #52525b;
+  --ink-subtle: #a1a1aa;
+
+  --accent-lumina: #7c3aed;
+  --accent-lumina-glow: rgba(124, 58, 237, 0.1);
+  --accent-safelight: #e11d48;
+  --accent-safelight-glow: rgba(225, 29, 72, 0.1);
+  --accent-emerald: #059669;
+  --accent-emerald-glow: rgba(5, 150, 105, 0.1);
+
+  --radius-vitrine: 8px;
+  --page-max: 1260px;
+}
+
+[data-theme="dark"] {
+  /* 深色：前卫暗房天鹅绒黑与暗室安全灯 */
+  --bg-gallery: #09090b;
+  --bg-vitrine: #121216;
+  --bg-vitrine-subtle: #18181e;
+  --vitrine-border: rgba(255, 255, 255, 0.08);
+  --vitrine-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  --ink-primary: #fafafa;
+  --ink-secondary: #a1a1aa;
+  --ink-subtle: #52525b;
+
+  --accent-lumina: #a78bfa;
+  --accent-lumina-glow: rgba(167, 139, 250, 0.16);
+  --accent-safelight: #fb7185;
+  --accent-safelight-glow: rgba(251, 113, 133, 0.16);
+  --accent-emerald: #34d399;
+  --accent-emerald-glow: rgba(52, 211, 153, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-gallery);
+  color: var(--ink-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 90px;
+}
+
+/* 艺廊顶部策展条 (Curatorial Masthead) */
+.gallery-masthead {
+  border-bottom: 1px solid var(--vitrine-border);
+  background: var(--bg-gallery);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+
+.gallery-masthead-inner {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gallery-logo-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.gallery-logo {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gallery-edition {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-subtle);
+  letter-spacing: 0.1em;
+}
+
+.gallery-nav-pills {
+  display: flex;
+  gap: 20px;
+  list-style: none;
+}
+
+.gallery-nav-pills a {
+  color: var(--ink-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  transition: color 0.15s;
+}
+
+.gallery-nav-pills a:hover,
+.gallery-nav-pills a.active {
+  color: var(--accent-lumina);
+  font-weight: 600;
+}
+
+.gallery-theme-btn {
+  background: transparent;
+  border: 1px solid var(--vitrine-border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gallery-theme-btn:hover {
+  border-color: var(--accent-lumina);
+  color: var(--accent-lumina);
+}
+
+/* 策展主容器 */
+.gallery-hall {
+  max-width: var(--page-max);
+  margin: 36px auto 0;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+/* 策展主光箱 (Curatorial Lightbox Vitrine) */
+.gallery-lightbox-vitrine {
+  background: var(--bg-vitrine);
+  border: 1px solid var(--vitrine-border);
+  border-radius: var(--radius-vitrine);
+  box-shadow: var(--vitrine-shadow);
+  padding: 36px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.gallery-lightbox-vitrine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-lumina), var(--accent-safelight));
+}
+
+.gallery-curatorial-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent-lumina);
+  margin-bottom: 10px;
+}
+
+.gallery-exhibition-title {
+  font-family: var(--font-serif);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--ink-primary);
+}
+
+.gallery-curatorial-statement {
+  font-size: 15px;
+  color: var(--ink-secondary);
+  line-height: 1.7;
+  max-width: 720px;
+  margin-top: 12px;
+}
+
+/* 光学参数指标组 (Optical Aperture Ledger) */
+.gallery-optical-metrics {
+  display: flex;
+  gap: 28px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+
+.gallery-optical-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.gallery-optical-val {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--ink-primary);
+}
+
+.gallery-optical-lbl {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+
+/* 焦点展品视窗 (The Focal Artwork Vitrine) */
+.gallery-focal-vitrine {
+  background: var(--bg-vitrine);
+  border: 1px solid var(--vitrine-border);
+  border-radius: var(--radius-vitrine);
+  box-shadow: var(--vitrine-shadow);
+  padding: 28px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+}
+
+.gallery-safelight-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-safelight);
+  background: var(--accent-safelight-glow);
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+}
+
+.gallery-focal-headline {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-primary);
+  line-height: 1.35;
+}
+
+.gallery-negative-strip {
+  background: var(--bg-vitrine-subtle);
+  border-left: 3px solid var(--accent-safelight);
+  border-radius: 4px;
+  padding: 16px 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-primary);
+}
+
+/* 艺廊双展厅布局 */
+.gallery-split-hall {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 28px;
+}
+
+.gallery-vitrine-box {
+  background: var(--bg-vitrine);
+  border: 1px solid var(--vitrine-border);
+  border-radius: var(--radius-vitrine);
+  box-shadow: var(--vitrine-shadow);
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gallery-vitrine-title {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--vitrine-border);
+  padding-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.gallery-artwork-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--vitrine-border);
+}
+
+/* 艺廊空态 (The Pristine White Cube) */
+.gallery-pristine-cube {
+  background: var(--bg-vitrine);
+  border: 1px dashed var(--vitrine-border);
+  border-radius: var(--radius-vitrine);
+  padding: 56px 36px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* 35mm 胶片卷带式 Commit 条目 (35mm Filmstrip) */
+.gallery-filmstrip {
+  background: var(--bg-vitrine-subtle);
+  border-top: 1px solid var(--vitrine-border);
+  border-bottom: 1px solid var(--vitrine-border);
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  position: relative;
+}
+
+.gallery-film-sprockets {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ink-subtle);
+  font-size: 8px;
+  letter-spacing: 6px;
+  user-select: none;
+}

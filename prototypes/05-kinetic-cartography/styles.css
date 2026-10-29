@@ -1,0 +1,405 @@
+/* Kinetic Cartography: 深场星图与航天测绘工坊 */
+
+:root {
+  --font-mono: 'SF Mono', 'Space Mono', 'JetBrains Mono', Menlo, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'PingFang SC', sans-serif;
+
+  /* 浅色：工程制图晒蓝图纸与深墨蓝 */
+  --bg-deep: #e8eef5;
+  --bg-hud: #f4f8fc;
+  --bg-chart: #ffffff;
+  --grid-line: rgba(14, 54, 92, 0.08);
+  --grid-line-strong: rgba(14, 54, 92, 0.18);
+
+  --ink-primary: #0a223a;
+  --ink-secondary: #3b5a78;
+  --ink-dim: #718fa8;
+
+  --radar-cyan: #0077b6;
+  --radar-cyan-soft: rgba(0, 119, 182, 0.1);
+  --radar-green: #008f5a;
+  --radar-green-soft: rgba(0, 143, 90, 0.1);
+  --radar-amber: #d97706;
+  --radar-amber-soft: rgba(217, 119, 6, 0.12);
+  --radar-red: #dc2626;
+  --radar-red-soft: rgba(220, 38, 38, 0.12);
+
+  --radius-hud: 4px;
+  --page-width: 1280px;
+}
+
+[data-theme="dark"] {
+  /* 深色：深空航天测绘雷达黑与荧光测绘线 */
+  --bg-deep: #05080f;
+  --bg-hud: #0b111e;
+  --bg-chart: #080d17;
+  --grid-line: rgba(0, 240, 255, 0.07);
+  --grid-line-strong: rgba(0, 240, 255, 0.18);
+
+  --ink-primary: #e2f1ff;
+  --ink-secondary: #8ab4d5;
+  --ink-dim: #456885;
+
+  --radar-cyan: #00f0ff;
+  --radar-cyan-soft: rgba(0, 240, 255, 0.12);
+  --radar-green: #00ff88;
+  --radar-green-soft: rgba(0, 255, 136, 0.12);
+  --radar-amber: #ffaa00;
+  --radar-amber-soft: rgba(255, 170, 0, 0.12);
+  --radar-red: #ff3355;
+  --radar-red-soft: rgba(255, 51, 85, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-deep);
+  color: var(--ink-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 80px;
+  background-image: 
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* 顶部飞行测控标定头 (Flight Control Bar) */
+.carto-topbar {
+  border-bottom: 1px solid var(--grid-line-strong);
+  background: var(--bg-hud);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.carto-topbar-inner {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 10px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.carto-coords-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--radar-cyan);
+}
+
+.carto-pulse-beacon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--radar-cyan);
+  box-shadow: 0 0 8px var(--radar-cyan);
+  animation: beacon-blink 2s infinite;
+}
+
+@keyframes beacon-blink {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.carto-nav-links {
+  display: flex;
+  gap: 16px;
+  list-style: none;
+}
+
+.carto-nav-links a {
+  color: var(--ink-secondary);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+
+.carto-nav-links a:hover,
+.carto-nav-links a.active {
+  background: var(--radar-cyan-soft);
+  color: var(--radar-cyan);
+  border: 1px solid var(--radar-cyan);
+}
+
+.carto-theme-toggle {
+  background: transparent;
+  border: 1px solid var(--grid-line-strong);
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-primary);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+/* 主画廊容器 */
+.carto-container {
+  max-width: var(--page-width);
+  margin: 28px auto 0;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 核心态势航天态势 HUD */
+.carto-radar-board {
+  background: var(--bg-chart);
+  border: 1px solid var(--grid-line-strong);
+  border-radius: var(--radius-hud);
+  padding: 24px 32px;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.carto-corner-cross {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--radar-cyan);
+  opacity: 0.5;
+}
+
+.carto-telemetry-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.carto-tag-mission {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--radar-cyan);
+  text-transform: uppercase;
+}
+
+.carto-headline {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+/* 模拟极坐标雷达盘 (Polar Coordinate Radar HUD) */
+.carto-polar-scope {
+  width: 320px;
+  height: 240px;
+  background: var(--bg-hud);
+  border: 1px solid var(--grid-line-strong);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.carto-ring {
+  position: absolute;
+  border: 1px dashed var(--grid-line-strong);
+  border-radius: 50%;
+}
+
+.carto-ring.r1 { width: 80px; height: 80px; }
+.carto-ring.r2 { width: 160px; height: 160px; }
+.carto-ring.r3 { width: 220px; height: 220px; }
+
+.carto-axis-x {
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  background: var(--grid-line);
+}
+
+.carto-axis-y {
+  position: absolute;
+  height: 100%;
+  width: 1px;
+  background: var(--grid-line);
+}
+
+.carto-node-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.carto-node-dot.pass {
+  background: var(--radar-green);
+  box-shadow: 0 0 10px var(--radar-green);
+  top: 35%;
+  left: 65%;
+}
+
+.carto-node-dot.fail {
+  background: var(--radar-red);
+  box-shadow: 0 0 12px var(--radar-red);
+  top: 68%;
+  left: 32%;
+  animation: pulse-alert 1.2s infinite;
+}
+
+@keyframes pulse-alert {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.6); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+.carto-node-label {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  top: -16px;
+  color: var(--ink-primary);
+}
+
+/* 战术雷达异常拦截板 (Target Intercept Docket) */
+.carto-target-intercept {
+  background: var(--bg-chart);
+  border: 1px solid var(--radar-red);
+  border-radius: var(--radius-hud);
+  padding: 22px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+.carto-target-intercept::before {
+  content: 'TARGET LOCK // DOPPLER ANOMALY';
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  background: var(--radar-red);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+
+.carto-code-box {
+  background: var(--bg-hud);
+  border-left: 3px solid var(--radar-red);
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-primary);
+  line-height: 1.6;
+}
+
+/* 战术下层双栏：轨道星表与遥测轨迹流 */
+.carto-tactical-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.carto-panel-hud {
+  background: var(--bg-chart);
+  border: 1px solid var(--grid-line-strong);
+  border-radius: var(--radius-hud);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.carto-panel-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--radar-cyan);
+  border-bottom: 1px solid var(--grid-line);
+  padding-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.carto-orbit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.carto-orbit-table td {
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--grid-line);
+}
+
+.carto-orbit-table tr:hover {
+  background: var(--radar-cyan-soft);
+}
+
+/* 空态雷达 */
+.carto-empty-deepspace {
+  background: var(--bg-chart);
+  border: 1px dashed var(--radar-cyan);
+  border-radius: var(--radius-hud);
+  padding: 60px 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* 项目详情页专用蓝图 */
+.carto-blueprint-header {
+  background: var(--bg-chart);
+  border: 1px solid var(--grid-line-strong);
+  border-radius: var(--radius-hud);
+  padding: 24px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.carto-trajectory-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.carto-waypoint {
+  display: grid;
+  grid-template-columns: 90px 140px 1fr 80px;
+  padding: 8px 12px;
+  background: var(--bg-hud);
+  border-left: 2px solid var(--radar-cyan);
+  border-radius: 2px;
+}
