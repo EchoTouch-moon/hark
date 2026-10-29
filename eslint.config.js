@@ -38,9 +38,15 @@ export default [
     },
   },
   {
-    files: ['tests/e2e/**/*.ts'],
+    files: ['tests/**/*.ts', 'scripts/**/*.ts'],
     languageOptions: {
-      globals: { document: 'readonly', window: 'readonly', console: 'readonly' },
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+        console: 'readonly',
+        Event: 'readonly',
+        CustomEvent: 'readonly',
+      },
     },
   },
   {

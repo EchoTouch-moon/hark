@@ -2,7 +2,7 @@ import { chromium, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
 const base = process.env.HEARTH_QA_URL ?? 'http://127.0.0.1:4404';
-const out = 'handoff/EVIDENCE/day-night-hearth';
+const out = process.env.HEARTH_QA_EVIDENCE_DIR ?? 'handoff/EVIDENCE/day-night-hearth';
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, timezoneId: 'Asia/Shanghai', recordVideo: { dir: out, size: { width: 1440, height: 900 } } });
@@ -46,21 +46,16 @@ try {
   await expect(shell).toHaveAttribute('data-hearth-period', 'day');
   await expect(page.getByRole('heading', { name: '今天，想聊些什么？' })).toBeVisible();
   await expect(room).toHaveAttribute('data-heat', '0.12');
-  const current = room.locator('.ember-atmosphere__current').first();
-  const oldPath = await current.getAttribute('d');
+  const oldFrame = await room.getAttribute('data-frame');
   await page.waitForTimeout(450);
-  expect(await current.getAttribute('d')).not.toBe(oldPath);
-  const veil = room.locator('.ember-atmosphere__veil--left');
-  const veilBefore = await veil.evaluate(node => getComputedStyle(node).transform);
-  await page.waitForTimeout(400);
-  expect(await veil.evaluate(node => getComputedStyle(node).transform)).not.toBe(veilBefore);
+  expect(await room.getAttribute('data-frame')).not.toBe(oldFrame);
   await shot('01-day-empty');
   await menu().click(); await page.getByRole('button', { name: '重看欢迎' }).click();
   await expect(page.getByTestId('hearth-welcome')).toBeVisible();
   await page.waitForTimeout(1100); await shot('00-day-welcome');
   await page.getByTestId('hearth-welcome').getByRole('button', { name: '跳过欢迎' }).click();
   await expect(page.getByTestId('hearth-welcome')).toHaveCount(0);
-  console.log('PASS daytime welcome and empty room, independently moving GSAP contours and veil');
+  console.log('PASS daytime welcome and empty room, continuously rendered fire');
 
   await input.fill('一条用于检查等待的合成消息');
   let release;
@@ -73,27 +68,27 @@ try {
   // An unrelated UI action failing must not end the chat request's wait.
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('hearth:ember-cue', { detail: { kind: 'failed' } })));
   await expect(room).toHaveAttribute('data-phase', 'waiting');
-  await expect.poll(() => room.locator('.ember-atmosphere__waiting').evaluate(node => Number(getComputedStyle(node).opacity))).toBeGreaterThan(.02);
+  await expect.poll(async () => Number(await room.getAttribute('data-response'))).toBeGreaterThan(.02);
   await shot('02-day-waiting');
   await page.evaluate(() => { window.__setHearthTestTime('2026-10-30T21:00:00+08:00'); document.dispatchEvent(new Event('visibilitychange')); });
   await expect(room).toHaveAttribute('data-period', 'night');
   await expect(room).toHaveAttribute('data-phase', 'waiting');
-  await expect.poll(() => room.locator('.ember-atmosphere__waiting').evaluate(node => Number(getComputedStyle(node).opacity))).toBeGreaterThan(.02);
+  await expect.poll(async () => Number(await room.getAttribute('data-response'))).toBeGreaterThan(.02);
   await expect(room).toHaveAttribute('data-heat', '0.12');
   await page.evaluate(() => { window.__setHearthTestTime('2026-10-30T10:00:00+08:00'); document.dispatchEvent(new Event('visibilitychange')); });
   await expect(room).toHaveAttribute('data-period', 'day');
   await expect(room).toHaveAttribute('data-phase', 'waiting');
   await menu().click(); await page.getByRole('button', { name: '暂停动效' }).click();
   await expect(room).toHaveAttribute('data-still', 'true');
-  const waitingOpacity = await room.locator('.ember-atmosphere__waiting').evaluate(node => getComputedStyle(node).opacity);
+  const waitingOpacity = await room.getAttribute('data-response');
   await page.waitForTimeout(300);
-  expect(await room.locator('.ember-atmosphere__waiting').evaluate(node => getComputedStyle(node).opacity)).toBe(waitingOpacity);
+  expect(await room.getAttribute('data-response')).toBe(waitingOpacity);
   release();
   await expect(room).toHaveAttribute('data-heat', '0.42');
   await expect(page.getByRole('status')).toHaveCount(0);
   await menu().click(); await page.getByRole('button', { name: '开启动效' }).click();
   await expect(room).toHaveAttribute('data-still', 'false');
-  await expect(room.locator('.ember-atmosphere__waiting')).toHaveCSS('opacity', '0');
+  await expect(room).toHaveAttribute('data-waiting-response', '0.000');
   await page.unroute('**/api/v1/chat');
   console.log('PASS real pending request, paused waiting, confirmed message and no stale waiting on resume');
 
@@ -147,9 +142,9 @@ try {
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(room).toHaveAttribute('data-still', 'true');
-  const reducedPath = await current.getAttribute('d');
+  const reducedFrame = await room.getAttribute('data-frame');
   await page.waitForTimeout(350);
-  expect(await current.getAttribute('d')).toBe(reducedPath);
+  expect(await room.getAttribute('data-frame')).toBe(reducedFrame);
   await page.setViewportSize({ width: 1280, height: 800 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await shot('08-night-reduced-1280');

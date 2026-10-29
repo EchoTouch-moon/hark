@@ -565,3 +565,23 @@
 .canvas-shell[data-motion-paused='true'] .hearth-welcome { transition: none; }
 
 .canvas-shell[data-hearth-period='night'] .btn-danger { background: #a64335; color: #fff; }
+
+/* The only colored illumination belongs to the central flame. */
+.canvas-shell { --color-bg: #f8f5ef; }
+.canvas-shell[data-hearth-period='night'] { --color-bg: #000; }
+.hearth-flame-control { padding: 13px 13px 9px; border-top: 1px solid var(--color-border); }
+.hearth-flame-control label { display:flex; justify-content:space-between; gap:12px; color:var(--color-ink-2); font-size:12px; }
+.hearth-flame-control output { color:var(--color-ink-3); font-variant-numeric:tabular-nums; }
+.hearth-flame-control input { display:block; width:100%; margin:12px 0 2px; accent-color:var(--color-accent); cursor:pointer; }
+.canvas-chrome, .thread-rail { transition: opacity 400ms ease; }
+.canvas-shell:has(.hearth-welcome:not([data-step='leaving'])) .canvas-chrome,
+.canvas-shell:has(.hearth-welcome:not([data-step='leaving'])) .thread-rail,
+.canvas-shell:has(.hearth-welcome:not([data-step='leaving'])) .canvas-column {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.canvas-shell[data-motion-paused='true'] .canvas-chrome,
+.canvas-shell[data-motion-paused='true'] .thread-rail {
+  transition: none;
+}

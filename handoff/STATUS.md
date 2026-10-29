@@ -154,3 +154,9 @@ UI-02 全部完成并通关门禁：
 - 完成：GSAP 中央流光、错相光幕、昼夜呼吸、真实请求的等待/确认/失败响应；欢迎、菜单、项目和设置补充夜间可读性，手动暂停/减少动态效果/隐藏页可静止。
 - 完成：话题切换时的草稿隔离和中断发送恢复提示；草稿仅存页面内存，不承诺跨刷新恢复。
 - 检查：`pnpm test`、`pnpm typecheck`、修改文件 lint、Web build 和两个浏览器回归脚本。日志、截图、录屏与具体限制见 `handoff/EVIDENCE/day-night-hearth/`；桌面 1440×900 / 1280×800。静态构建仍有既有的 500 kB chunk 提示。
+
+## 2026-10-30 磨砂玻璃活火与动效精进
+- 完成：基于 WebGL 连续湍流火形着色器与真实火焰纹理双流合成，经由全局磨砂玻璃层（backdrop-filter）形成柔和翻动的橙色火影；白天暖白玻璃，夜晚深黑背景，火影为唯一暖色光源。
+- 完成：菜单内火焰大小控制（0.65–1.40 键盘无障碍支持，localStorage 持久化），独立于交流温度；WebGL 丢失/降级时平滑切换至无脚本优雅静态兜底。
+- 精进：修复着色器边界剪裁（添加纹理边缘平滑平坠 fade）、打字高频输入 GSAP timeline 重启跳变闪烁（改为动态平滑过渡）、昼夜切换磨砂背景突变（补充平滑过度与暂停同步）、全局暂停在 documentElement 上的穿透联动，清理欢迎组件废弃 CSS。
+- 检查：`npm test`（49 测试套件 / 375 测试全通过）、`npm run typecheck`（退出码 0）、`npm run lint`（退出码 0，零错误）、`npm run build`（退出码 0）；Playwright `glass-fire.mjs` 7 项全绿，以及 `day-night-hearth.mjs`、`conversation-hearth.mjs` 历史全量回归无破坏。证据沉淀于 `handoff/EVIDENCE/living-fire/`。

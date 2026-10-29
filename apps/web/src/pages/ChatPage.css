@@ -565,7 +565,7 @@
   animation-duration: var(--ember-idle-duration);
 }
 [data-flame-state="dim"] .ember-seed__glow { animation: none; }
-html[data-page-hidden="true"] *, html[data-motion-paused="true"] * { animation-play-state: paused !important; }
+html[data-page-hidden="true"] *, html[data-motion-paused="true"] *, [data-motion-paused="true"] * { animation-play-state: paused !important; }
 .narrative-composer:focus-within .composer { border-color: var(--color-focus); transition: border-color var(--ember-focus-duration); }
 @media(prefers-reduced-motion: reduce) {
   .canvas-page *, .canvas-page *::before, .canvas-page *::after { animation: none !important; transition: none !important; }
@@ -667,3 +667,14 @@ html[data-page-hidden="true"] *, html[data-motion-paused="true"] * { animation-p
   background: linear-gradient(to top,rgba(37,32,28,.84),transparent);
 }
 .composer-status--warning { color: var(--color-danger-ink); line-height: 1.5; }
+
+/* Keep the room's edges pure; only the central fire casts warm color. */
+.composer-dock, [data-hearth-period='night'] .composer-dock { background: transparent; }
+[data-hearth-period='day'] .ember-seed__greeting,
+[data-hearth-period='day'] .ember-seed__subline,
+[data-hearth-period='day'] .seed-eyebrow,
+[data-hearth-period='day'] .chat-msg--assistant { text-shadow: 0 1px 8px rgba(255,255,255,.95), 0 0 22px rgba(255,255,255,.85); }
+[data-hearth-period='night'] .ember-seed__greeting,
+[data-hearth-period='night'] .ember-seed__subline,
+[data-hearth-period='night'] .seed-eyebrow,
+[data-hearth-period='night'] .chat-msg--assistant { text-shadow: 0 1px 8px rgba(0,0,0,.95), 0 0 22px rgba(0,0,0,.9); }

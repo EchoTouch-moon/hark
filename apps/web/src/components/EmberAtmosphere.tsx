@@ -1,7 +1,9 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { EMBER_CUE_EVENT, emitEmberCue, isEmberMotionPaused, readEmberCue } from '../features/ember-cues';
+import { createFlameRenderer, type FlameFrame } from '../features/flameRenderer';
+import flameTextureUrl from '../assets/living-fire.png';
 import type { HearthPeriod } from '../features/hearthPeriod';
 import './EmberAtmosphere.css';
 
@@ -12,15 +14,8 @@ export interface EmberAtmosphereProps {
   paused?: boolean;
   heat?: number;
   period?: HearthPeriod;
+  size?: number;
 }
-
-// These broad, translucent currents are part of the page, not a flame icon.
-// Matching command topology lets GSAP move each current as a continuous shape.
-const currents = [
-  ['M155 735 C90 605 145 505 254 417 C315 367 353 277 324 167 C414 240 423 326 399 408 C484 369 545 256 524 119 C656 264 615 416 550 492 C501 551 603 619 581 735 Z', 'M150 735 C102 600 156 500 270 407 C329 359 359 273 340 160 C427 238 436 328 409 405 C491 366 561 251 541 116 C664 265 625 414 560 487 C512 550 613 620 581 735 Z'],
-  ['M283 741 C221 632 277 550 355 479 C408 431 426 357 405 285 C478 342 490 410 470 462 C530 436 567 379 566 313 C643 410 595 496 548 538 C504 579 544 660 535 741 Z', 'M288 741 C234 625 289 547 366 471 C419 422 438 353 418 279 C488 339 501 409 479 459 C539 432 579 375 578 306 C652 407 608 496 558 535 C514 577 549 659 535 741 Z'],
-  ['M356 742 C308 655 340 589 402 529 C438 495 449 448 441 411 C487 450 496 491 485 535 C527 516 548 487 548 453 C595 515 571 570 541 599 C518 624 532 685 522 742 Z', 'M360 742 C319 651 351 586 413 522 C448 487 459 445 453 406 C497 447 507 489 496 531 C536 513 559 484 560 448 C604 514 583 570 552 596 C528 622 541 683 522 742 Z'],
-];
 
 function isWritingSurface(target: globalThis.EventTarget | null): target is HTMLElement {
   return target instanceof HTMLElement && (target instanceof HTMLTextAreaElement
@@ -28,11 +23,13 @@ function isWritingSurface(target: globalThis.EventTarget | null): target is HTML
     || target.isContentEditable);
 }
 
-/** A content-free room: temporary attention never changes the relationship band. */
-export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false, period = 'day' }: EmberAtmosphereProps) {
+/** One living light source; only confirmed conversation changes its base heat. */
+export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false, period = 'day', size = 1 }: EmberAtmosphereProps) {
   const root = useRef<HTMLDivElement>(null);
-  const unique = useId().replace(/:/g, '');
+  const canvas = useRef<globalThis.HTMLCanvasElement>(null);
+  const frame = useRef<FlameFrame>({ time: 3.1, heat, size, attention: 0, pulse: 0, waiting: 0, day: period === 'day' ? 1 : 0 });
   const timelines = useRef<gsap.core.Animation[]>([]);
+  const drawRef = useRef<(force?: boolean) => void>(() => {});
   const [preferencePaused, setPreferencePaused] = useState(isEmberMotionPaused);
   const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
   const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -58,29 +55,10 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false, pe
     };
   }, []);
 
-  // Keep semantic feedback even when visual motion is paused or reduced.
-  useEffect(() => {
-    const node = root.current;
-    if (!node) return;
-    const markPhase = (event: Event) => {
-      const cue = readEmberCue(event);
-      if (!cue || cue.kind === 'motion-preference') return;
-      if (cue.kind === 'waiting') node.dataset.phase = 'waiting';
-      else if (cue.kind === 'chapter') node.dataset.phase = 'rest';
-      else if (cue.kind === 'acknowledged') node.dataset.phase = cue.kind;
-      else if (cue.kind === 'request-failed') node.dataset.phase = 'failed';
-      else if (node.dataset.phase !== 'waiting') node.dataset.phase = cue.kind === 'release' ? 'rest' : cue.kind;
-    };
-    window.addEventListener(EMBER_CUE_EVENT, markPhase);
-    return () => window.removeEventListener(EMBER_CUE_EVENT, markPhase);
-  }, []);
-
-  // Capture only input intent. Never inspect values, text, identity or project data.
+  // Capture only intent; values, identities and project data never reach the flame.
   useEffect(() => {
     let lastTyping = -Infinity;
-    const focus = (event: globalThis.FocusEvent) => {
-      if (isWritingSurface(event.target)) emitEmberCue('focus');
-    };
+    const focus = (event: globalThis.FocusEvent) => { if (isWritingSurface(event.target)) emitEmberCue('focus'); };
     const release = (event: globalThis.FocusEvent) => {
       if (isWritingSurface(event.target) && !isWritingSurface(event.relatedTarget)) emitEmberCue('release');
     };
@@ -102,148 +80,135 @@ export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false, pe
 
   useGSAP(() => {
     const node = root.current;
-    if (!node || reduced) return;
-    const select = gsap.utils.selector(node);
-    const ambient = gsap.timeline({ paused: true });
-    const pace = period === 'night' ? 1.4 : 1;
-    // Local fire tongues and the room deliberately keep different phases.
-    select('.ember-atmosphere__current').forEach((path, index) => {
-      const contour = currents[index]?.[1];
-      if (!contour) return;
-      ambient.to(path, { attr: { d: contour }, duration: (2.2 + index * .23) * pace,
-        repeat: -1, yoyo: true, ease: 'sine.inOut' }, index * .19);
-    });
-    ambient.to(select('.ember-atmosphere__breath'), { opacity: .84, scaleX: 1.055, scaleY: 1.06,
-      duration: 3.6 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut', transformOrigin: '50% 100%' }, 0);
-    ambient.to(select('.ember-atmosphere__side--left'), { opacity: .8, yPercent: -3,
-      duration: 3.1 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut' }, .7);
-    ambient.to(select('.ember-atmosphere__side--right'), { opacity: .9, yPercent: 3,
-      duration: 3.8 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut' }, 1.3);
-    ambient.to(select('.ember-atmosphere__current'), { opacity: .76, duration: 2.7 * pace,
-      repeat: -1, yoyo: true, ease: 'sine.inOut' }, .6);
+    const surface = canvas.current;
+    if (!node || !surface) return;
+    const textureReady = () => { node.dataset.texture = 'ready'; drawRef.current(true); };
+    let renderer = createFlameRenderer(surface, textureReady);
+    let lastDraw = -Infinity;
+    let renderedFrames = 0;
+    const draw = (force = false) => {
+      const now = window.performance.now();
+      if (!force && now - lastDraw < 30) return;
+      if (document.hidden) return;
+      lastDraw = now;
+      renderer?.draw(frame.current);
+      node.style.setProperty('--hearth-intensity', String(frame.current.heat));
+      node.dataset.frame = String(++renderedFrames);
+      node.dataset.response = (frame.current.attention + frame.current.pulse + frame.current.waiting).toFixed(3);
+      node.dataset.waitingResponse = frame.current.waiting.toFixed(3);
+    };
+    const resize = () => { renderer?.resize(); draw(true); };
+    drawRef.current = draw;
+    node.dataset.renderer = renderer ? 'webgl' : 'fallback';
+    resize();
 
-    // Two broad, independently phased veils make the room itself feel alive.
-    ambient.to(select('.ember-atmosphere__veil--left'), { opacity: .78, xPercent: 5, yPercent: -5,
-      scale: 1.08, duration: 5.2 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut' }, .4);
-    ambient.to(select('.ember-atmosphere__veil--right'), { opacity: .7, xPercent: -4, yPercent: 4,
-      scale: .94, duration: 6.1 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut' }, 1.1);
-
-    // Reused, bounded envelopes: events restart a response, never stack brightness.
-    const focus = gsap.timeline({ paused: true }).to(select('.ember-atmosphere__attention'),
-      { opacity: .65, scaleX: .82, duration: .3, ease: 'power2.out' });
-    const typing = gsap.timeline({ paused: true })
-      .to(select('.ember-atmosphere__reply'), { opacity: .38, scaleX: .9, duration: .2, ease: 'sine.out' })
-      .to(select('.ember-atmosphere__reply'), { opacity: 0, scaleX: 1, duration: .45, ease: 'sine.inOut' });
-    const answer = gsap.timeline({ paused: true })
-      .to(select('.ember-atmosphere__reply'), { opacity: .72, scaleX: 1.06, duration: .34, ease: 'power2.out' })
-      .to(select('.ember-atmosphere__reply'), { opacity: 0, scaleX: 1.13, duration: .7, ease: 'sine.inOut' });
+    const clock = gsap.timeline({ paused: true })
+      .to(frame.current, { time: '+=86400', duration: 86400, repeat: -1, ease: 'none', onUpdate: draw });
+    const fallback = gsap.timeline({ paused: true })
+      .to('.ember-atmosphere__fallback-flame', { scaleX: 1.08, scaleY: 1.04, rotation: 2, duration: 1.8,
+        stagger: .13, repeat: -1, yoyo: true, ease: 'sine.inOut', transformOrigin: '50% 95%' });
+    const focus = gsap.timeline({ paused: true })
+      .to(frame.current, { attention: .14, duration: .4, ease: 'sine.out', onUpdate: () => draw(true) });
+    const pulse = gsap.timeline({ paused: true });
+    const triggerPulse = () => {
+      pulse.clear();
+      pulse.to(frame.current, { pulse: .26, duration: .32, ease: 'sine.out', onUpdate: () => draw(true) })
+        .to(frame.current, { pulse: 0, duration: .8, ease: 'sine.inOut', onUpdate: () => draw(true) });
+      pulse.restart();
+    };
     const waiting = gsap.timeline({ paused: true })
-      .to(select('.ember-atmosphere__waiting'), { opacity: .68, scaleX: .92, scaleY: 1.06,
-        duration: 1.8 * pace, repeat: -1, yoyo: true, ease: 'sine.inOut' });
-    const chapter = gsap.timeline({ paused: true })
-      .to(select('.ember-atmosphere__chapter--left'), { opacity: .7, duration: .22, ease: 'sine.out' }, 0)
-      .to(select('.ember-atmosphere__chapter--left'), { opacity: 0, duration: .42, ease: 'sine.inOut' }, .22)
-      .to(select('.ember-atmosphere__chapter--right'), { opacity: .65, duration: .22, ease: 'sine.out' }, .14)
-      .to(select('.ember-atmosphere__chapter--right'), { opacity: 0, duration: .32, ease: 'sine.inOut' }, .36);
-    const all = [ambient, focus, typing, answer, chapter, waiting];
-    timelines.current = all;
+      .to(frame.current, { waiting: .16, duration: 1.8, repeat: -1, yoyo: true, ease: 'sine.inOut', onUpdate: () => draw(true) });
+    timelines.current = [clock, fallback, focus, pulse, waiting];
     let lastTyping = -Infinity;
     const cue = (event: Event) => {
       const detail = readEmberCue(event);
-      if (!detail) return;
+      if (!detail || detail.kind === 'motion-preference') return;
+      const wasWaiting = node.dataset.phase === 'waiting';
       node.dataset.cue = detail.kind;
+      if (detail.kind === 'waiting') node.dataset.phase = 'waiting';
+      else if (detail.kind === 'chapter') node.dataset.phase = 'rest';
+      else if (detail.kind === 'acknowledged') node.dataset.phase = 'acknowledged';
+      else if (detail.kind === 'request-failed') node.dataset.phase = 'failed';
+      else if (!wasWaiting) node.dataset.phase = detail.kind === 'release' ? 'rest' : detail.kind;
       if (detail.kind === 'acknowledged' || detail.kind === 'request-failed' || detail.kind === 'chapter') waiting.pause(0);
-      if (stillRef.current || document.hidden || detail.kind === 'motion-preference') return;
-      if (node.dataset.phase === 'waiting' && !['waiting', 'acknowledged', 'request-failed', 'chapter'].includes(detail.kind)) return;
+      if (stillRef.current || document.hidden) return;
+      if (wasWaiting && !['waiting', 'acknowledged', 'request-failed', 'chapter'].includes(detail.kind)) return;
       if (detail.kind === 'focus') focus.play();
       else if (detail.kind === 'release') focus.reverse();
       else if (detail.kind === 'typing') {
         const now = window.performance.now();
         if (now - lastTyping < 400) return;
         lastTyping = now;
-        answer.pause();
-        typing.restart();
+        triggerPulse();
       } else if (detail.kind === 'waiting') {
-        typing.pause(0); answer.pause(0); waiting.restart();
-      } else if (detail.kind === 'acknowledged' || detail.kind === 'project-added') {
-        typing.pause();
-        answer.restart();
-      } else if (detail.kind === 'chapter') chapter.restart();
-      else if (detail.kind === 'declined' || detail.kind === 'failed' || detail.kind === 'request-failed') {
-        typing.pause(0); answer.pause(0); chapter.pause(0); focus.reverse();
-        // Both envelopes share the same zero-opacity rest pose.
-        typing.progress(1).pause(); answer.progress(1).pause(); chapter.progress(1).pause();
+        focus.pause(0); pulse.pause(0); waiting.restart();
+      } else if (detail.kind === 'acknowledged' || detail.kind === 'project-added' || detail.kind === 'chapter') {
+        triggerPulse();
+      } else if (detail.kind === 'declined' || detail.kind === 'failed' || detail.kind === 'request-failed') {
+        pulse.pause(0); focus.reverse();
       }
     };
+    const lost = (event: Event) => {
+      event.preventDefault();
+      renderer?.dispose(); renderer = null; node.dataset.renderer = 'fallback'; node.dataset.texture = 'unavailable';
+    };
+    const restored = () => {
+      node.dataset.texture = 'loading';
+      renderer = createFlameRenderer(surface, textureReady);
+      node.dataset.renderer = renderer ? 'webgl' : 'fallback';
+      resize();
+    };
     window.addEventListener(EMBER_CUE_EVENT, cue);
-    if (!stillRef.current) { ambient.play(); if (node.dataset.phase === 'waiting') waiting.play(); }
+    window.addEventListener('resize', resize);
+    surface.addEventListener('webglcontextlost', lost);
+    surface.addEventListener('webglcontextrestored', restored);
+    if (!stillRef.current) { clock.play(); fallback.play(); }
     return () => {
       window.removeEventListener(EMBER_CUE_EVENT, cue);
+      window.removeEventListener('resize', resize);
+      surface.removeEventListener('webglcontextlost', lost);
+      surface.removeEventListener('webglcontextrestored', restored);
+      renderer?.dispose();
+      drawRef.current = () => {};
       timelines.current = [];
     };
-  }, { scope: root, dependencies: [reduced, period], revertOnUpdate: true });
+  }, { scope: root });
 
   useEffect(() => {
-    // Preserve each playhead and direction. Completed one-shot cues stay completed.
     const animations = timelines.current;
     if (still) {
-      animations.forEach(animation => {
-        animation.data = { resume: !animation.paused() };
-        animation.pause();
-      });
+      animations.forEach(animation => { animation.data = { resume: !animation.paused() }; animation.pause(); });
     } else {
       animations.forEach((animation, index) => {
-        if (index === 5) {
+        if (index === 4) {
           if (root.current?.dataset.phase === 'waiting') animation.paused(false);
           else animation.pause(0);
-        } else if (index === 0 || animation.data?.resume) animation.paused(false);
+        } else if (index < 2 || animation.data?.resume) animation.paused(false);
         animation.data = undefined;
       });
+      drawRef.current(true);
     }
-  }, [still, reduced, period]);
+  }, [still]);
 
-  // The continuously varying light is reconstructed from the active thread.
-  // It remains a visual expression, never a project progress or success flag.
   useGSAP(() => {
-    if (!root.current) return;
-    gsap.to(root.current, {
-      '--hearth-intensity': Number.isFinite(heat) ? Math.max(0, Math.min(1, heat)) : 0.12,
+    gsap.to(frame.current, {
+      heat: Number.isFinite(heat) ? Math.max(0, Math.min(1, heat)) : 0.12,
+      size: Number.isFinite(size) ? Math.max(.65, Math.min(1.4, size)) : 1,
+      day: period === 'day' ? 1 : 0,
       duration: still ? 0 : 1.1,
-      ease: 'sine.inOut',
-      overwrite: true,
+      ease: 'sine.inOut', overwrite: 'auto', onUpdate: () => drawRef.current(true),
     });
-  }, { scope: root, dependencies: [heat, still] });
+  }, { scope: root, dependencies: [heat, size, period, still] });
 
   return (
     <div ref={root} className="ember-atmosphere" data-band={band} data-still={still}
-      data-cue="rest" data-phase="rest" data-period={period} data-heat={heat.toFixed(2)} data-motion-engine="gsap" aria-hidden="true">
-      <div className="ember-atmosphere__core" />
-      <div className="ember-atmosphere__breath" />
-      <div className="ember-atmosphere__veil ember-atmosphere__veil--left" />
-      <div className="ember-atmosphere__veil ember-atmosphere__veil--right" />
-      <div className="ember-atmosphere__side ember-atmosphere__side--left" />
-      <div className="ember-atmosphere__side ember-atmosphere__side--right" />
-      <div className="ember-atmosphere__attention" />
-      <div className="ember-atmosphere__reply" />
-      <div className="ember-atmosphere__waiting" />
-      <div className="ember-atmosphere__chapter ember-atmosphere__chapter--left" />
-      <div className="ember-atmosphere__chapter ember-atmosphere__chapter--right" />
-      <svg className="ember-atmosphere__currents" viewBox="0 0 900 760" focusable="false">
-        <defs>
-          <linearGradient id={`${unique}-outer`} x1="450" y1="100" x2="450" y2="730" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#edbd85" stopOpacity="0" />
-            <stop offset=".34" stopColor="#df9b60" stopOpacity=".34" />
-            <stop offset=".75" stopColor="#d68448" stopOpacity=".45" />
-            <stop offset="1" stopColor="#e5ad75" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id={`${unique}-inner`} x1="430" y1="240" x2="470" y2="730" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#f4d6a8" stopOpacity="0" />
-            <stop offset=".48" stopColor="#f5d3a1" stopOpacity=".62" />
-            <stop offset="1" stopColor="#e7a96d" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {currents.map(([path], index) => <path key={index} className="ember-atmosphere__current" d={path} fill={`url(#${unique}-${index === 0 ? 'outer' : 'inner'})`} />)}
-      </svg>
+      data-cue="rest" data-phase="rest" data-period={period} data-heat={heat.toFixed(2)}
+      data-size={size.toFixed(2)} data-renderer="pending" data-motion-engine="gsap" aria-hidden="true">
+      <canvas ref={canvas} className="ember-atmosphere__canvas" />
+      <div className="ember-atmosphere__fallback" style={{ transform: `scale(${size * (0.9 + heat * 0.25)})` }}>
+        <img className="ember-atmosphere__fallback-flame" src={flameTextureUrl} alt="" />
+      </div>
+      <div className="ember-atmosphere__glass" />
     </div>
   );
 }

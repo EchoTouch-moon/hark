@@ -24,7 +24,7 @@ try {
   await expect(page.locator('.ember-presence, .ember-mark')).toHaveCount(0);
   await expect(page.getByRole('tablist',{name:'主视图'})).toHaveCount(0);
   await expect(page.getByRole('heading',{name:/^(今天|今晚)，想聊些什么？$/})).toBeVisible();
-  const current=page.locator('.ember-atmosphere__current').first(); const before=await current.getAttribute('d');await page.waitForTimeout(350);expect(await current.getAttribute('d')).not.toBe(before);
+  const before=await room.getAttribute('data-frame');await page.waitForTimeout(350);expect(await room.getAttribute('data-frame')).not.toBe(before);
   await screenshot('01-empty');
   const initialLight=Number(await room.evaluate(node=>getComputedStyle(node).getPropertyValue('--hearth-intensity')));
   await page.getByRole('button',{name:'介绍我的项目'}).click();
@@ -59,10 +59,10 @@ try {
   await expect(room).toHaveAttribute('data-heat','0.75');await page.reload();await expect(room).toHaveAttribute('data-heat','0.75');
   console.log('PASS history is on demand and warmth is scoped to each thread and survives reload');
   await menu().click();await page.getByRole('button',{name:'暂停动效'}).click();await expect(room).toHaveAttribute('data-still','true');
-  await page.waitForTimeout(100);const paused=await current.getAttribute('d');await page.waitForTimeout(300);expect(await current.getAttribute('d')).toBe(paused);
+  await page.waitForTimeout(100);const paused=await room.getAttribute('data-frame');await page.waitForTimeout(300);expect(await room.getAttribute('data-frame')).toBe(paused);
   await menu().click();await page.getByRole('button',{name:'开启动效'}).click();await expect(room).toHaveAttribute('data-still','false');
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});
-  await expect(room).toHaveAttribute('data-still','true');await page.waitForTimeout(60);const hiddenPath=await current.getAttribute('d');await page.waitForTimeout(250);expect(await current.getAttribute('d')).toBe(hiddenPath);
+  await expect(room).toHaveAttribute('data-still','true');await page.waitForTimeout(60);const hiddenPath=await room.getAttribute('data-frame');await page.waitForTimeout(250);expect(await room.getAttribute('data-frame')).toBe(hiddenPath);
   await page.evaluate(()=>{delete document.hidden;document.dispatchEvent(new Event('visibilitychange'));});await expect(room).toHaveAttribute('data-still','false');
   console.log('PASS simulated background visibility pauses and resumes motion');
   await page.emulateMedia({reducedMotion:'reduce'});await expect(room).toHaveAttribute('data-still','true');

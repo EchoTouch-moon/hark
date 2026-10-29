@@ -32,22 +32,6 @@ export function HearthWelcome({ initialName, paused, period, onExitStart, onComp
     if (step === 'arrival') firstRef.current?.focus();
   }, [step]);
 
-  // The welcome shares the same quiet breathing as the conversation. Its
-  // own child layer lets entrance/exit scale the parent without conflicts.
-  useGSAP(() => {
-    const media = gsap.matchMedia();
-    media.add('(prefers-reduced-motion: no-preference)', () => {
-      const breath = gsap.fromTo('.welcome-light__breath',
-        { scale: .96, opacity: .65 },
-        { scale: 1.04, opacity: .95, duration: period === 'night' ? 5.6 : 4, repeat: -1, yoyo: true, ease: 'sine.inOut', paused: true });
-      const visibility = () => { if (paused || document.hidden) breath.pause(); else breath.resume(); };
-      document.addEventListener('visibilitychange', visibility);
-      visibility();
-      return () => document.removeEventListener('visibilitychange', visibility);
-    }, rootRef);
-    return () => media.revert();
-  }, { scope: rootRef, dependencies: [paused, period], revertOnUpdate: true });
-
   useGSAP(() => {
     const media = gsap.matchMedia();
     media.add({ full: '(prefers-reduced-motion: no-preference)', reduced: '(prefers-reduced-motion: reduce)' }, context => {
@@ -66,13 +50,11 @@ export function HearthWelcome({ initialName, paused, period, onExitStart, onComp
         timeline.addLabel('leave', 0)
           .to('.welcome-story', { opacity: 0, y: -16, duration: .24 }, 'leave')
           .to('.welcome-header, .welcome-footer', { opacity: 0, duration: .32 }, 'leave');
-        timeline.to('.welcome-light', { opacity: .5, scale: 1.08, duration: .7, ease: 'sine.inOut' }, 'leave+=0.08');
         timeline.to(rootRef.current, { opacity: 0, duration: .38 }, 'leave+=0.5');
         timeline.eventCallback('onComplete', complete);
       } else if (step === 'arrival') {
         timeline.addLabel('first-light', 0)
           .fromTo('.welcome-wordmark', { opacity: 0, y: 7 }, { opacity: 1, y: 0 }, 'first-light')
-          .fromTo('.welcome-light', { opacity: 0, scale: .94 }, { opacity: 1, scale: 1, duration: .9 }, 'first-light+=0.08')
           .fromTo('.welcome-chapter, .welcome-story h1, .welcome-description', { opacity: 0, y: 12 }, { opacity: 1, y: 0, stagger: .075 }, 'first-light+=0.18')
           .fromTo('.welcome-actions', { opacity: 0, y: 10 }, { opacity: 1, y: 0 }, 'first-light+=0.38')
           .fromTo('.welcome-footer', { opacity: 0 }, { opacity: 1, stagger: .06 }, 'first-light+=0.3');
@@ -105,7 +87,7 @@ export function HearthWelcome({ initialName, paused, period, onExitStart, onComp
     onExitStart(name.trim());
   }
 
-  return <div className="hearth-welcome" ref={rootRef} data-testid="hearth-welcome" data-motion-engine="gsap" data-step={step} data-motion-paused={paused} role={step === 'leaving' ? undefined : 'dialog'} aria-modal={step === 'leaving' ? undefined : true} aria-labelledby="welcome-title" onKeyDown={event => {
+  return <div className="hearth-welcome" ref={rootRef} data-testid="hearth-welcome" data-motion-engine="gsap" data-step={step} data-motion-paused={paused} data-period={period} role={step === 'leaving' ? undefined : 'dialog'} aria-modal={step === 'leaving' ? undefined : true} aria-labelledby="welcome-title" onKeyDown={event => {
     if (event.key === 'Escape') { event.preventDefault(); enter(); }
     if (event.key !== 'Tab' || step === 'leaving') return;
     const nodes = rootRef.current?.querySelectorAll<HTMLButtonElement | HTMLInputElement>('button:not(:disabled),input:not(:disabled)');
@@ -114,8 +96,6 @@ export function HearthWelcome({ initialName, paused, period, onExitStart, onComp
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
     if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }}>
-    <div className="welcome-paper" aria-hidden="true" />
-    <div className="welcome-light" aria-hidden="true"><div className="welcome-light__breath" /></div>
     <header className="welcome-header"><span className="welcome-wordmark">Hearth<span>私人炉边</span></span><button type="button" className="welcome-skip" disabled={step === 'leaving'} onClick={() => enter()}>跳过欢迎 <span aria-hidden="true">↗</span></button></header>
     <div className="welcome-stage" aria-hidden={step === 'leaving' || undefined}>
       <div className="welcome-story" key={visibleStep}>

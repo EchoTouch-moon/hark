@@ -5,13 +5,10 @@
   display: flex;
   flex-direction: column;
   overflow: auto;
-  background: #f8f5ef;
+  background: transparent;
   color: var(--color-ink);
   isolation: isolate;
 }
-.welcome-paper { position: absolute; inset: 0; z-index: -2; pointer-events: none; background: linear-gradient(130deg,rgba(255,253,249,.38),rgba(242,226,207,.22)); }
-.welcome-light { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.welcome-light__breath { position:absolute; inset:0; background:radial-gradient(ellipse 38% 42% at 50% 48%, rgba(232,167,99,.24),transparent 74%),radial-gradient(ellipse 64% 60% at 50% 60%,rgba(231,189,145,.13),transparent 76%); }
 .welcome-header { display:flex; align-items:center; justify-content:space-between; padding:30px 42px; flex-shrink:0; }
 .welcome-wordmark { font-family:var(--font-serif); font-size:25px; letter-spacing:-.04em; }
 .welcome-wordmark>span { display:none; }
@@ -46,17 +43,17 @@
 .hearth-welcome[data-step='leaving'] { pointer-events:none; }
 @media(prefers-reduced-motion:reduce) { .hearth-welcome,.hearth-welcome * { animation:none!important; transition:none!important; } }
 
-.hearth-welcome { background: var(--color-bg); transition: background-color 600ms ease; }
-[data-hearth-period='night'] .welcome-paper {
-  background: linear-gradient(130deg,rgba(35,28,24,.2),rgba(70,43,27,.24));
-}
-[data-hearth-period='night'] .welcome-light__breath {
-  background: radial-gradient(ellipse 38% 42% at 50% 48%,rgba(222,126,57,.3),transparent 74%),
-    radial-gradient(ellipse 64% 60% at 50% 60%,rgba(164,88,42,.2),transparent 76%);
-}
-[data-hearth-period='night'] .welcome-chapter { color: #c9a888; }
-[data-hearth-period='night'] .welcome-name-field { background: rgba(54,44,36,.85); }
+[data-hearth-period='night'] .welcome-chapter,
+.hearth-welcome[data-period='night'] .welcome-chapter { color: #c9a888; }
+[data-hearth-period='night'] .welcome-name-field,
+.hearth-welcome[data-period='night'] .welcome-name-field { background: rgba(54,44,36,.85); }
 @media (prefers-reduced-motion: reduce) { .hearth-welcome { transition: none; } }
 /* A single focus ring belongs to the whole field, not its inner text box. */
 .hearth-welcome .welcome-name-field:focus-within { outline: 2px solid var(--color-focus); outline-offset: 3px; }
 .hearth-welcome .welcome-name-field input:focus-visible { outline: none; }
+
+/* Welcome and conversation see the very same fire, without a second light field. */
+[data-hearth-period='day'] .welcome-story,
+.hearth-welcome[data-period='day'] .welcome-story { text-shadow: 0 1px 10px rgba(255,255,255,.9), 0 0 24px rgba(255,255,255,.9); }
+[data-hearth-period='night'] .welcome-story,
+.hearth-welcome[data-period='night'] .welcome-story { text-shadow: 0 1px 10px rgba(0,0,0,.9), 0 0 24px rgba(0,0,0,.9); }

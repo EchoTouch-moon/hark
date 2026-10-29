@@ -31,6 +31,7 @@ import {
 } from '../features/emberHeat';
 import { EmberAtmosphere } from '../components/EmberAtmosphere';
 import { getHearthPeriod, type HearthPeriod } from '../features/hearthPeriod';
+import { readFlameSize, saveFlameSize } from '../features/flameSize';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import './AppShell.css';
 
@@ -206,9 +207,16 @@ export function AppShell() {
   const [activeThreadId, setActiveId] = useState<string | null>(null);
   const [shellMode, setShellMode] = useState<ShellMode>('chat');
   const [motionPaused, setMotionPaused] = useState(isEmberMotionPaused);
+  const [flameSize, setFlameSize] = useState(readFlameSize);
   const [welcomeReplay, setWelcomeReplay] = useState(false);
   const menuRef = useRef<ElementRef<'details'>>(null);
-  useEffect(() => { emitEmberCue('motion-preference', motionPaused); }, [motionPaused]);
+  useEffect(() => {
+    document.documentElement.dataset.motionPaused = String(motionPaused);
+    emitEmberCue('motion-preference', motionPaused);
+    return () => {
+      delete document.documentElement.dataset.motionPaused;
+    };
+  }, [motionPaused]);
   const [searchQuery, setSearchQuery] = useState('');
   const [emberTick, setEmberTick] = useState(0);
   // History is always an on-demand surface; re-entering opens the conversation.
@@ -364,7 +372,7 @@ export function AppShell() {
           data-flame-state={ember.band === 'hot' ? 'lively' : ember.band === 'warm' ? 'warm' : 'dim'}
           data-ember-heat={ember.heat.toFixed(2)}
         >
-          <EmberAtmosphere band={ember.band} heat={ember.heat} period={hearthPeriod} />
+          <EmberAtmosphere band={ember.band} heat={ember.heat} period={hearthPeriod} size={flameSize} />
           <ThreadRail
             threads={threads}
             activeThreadId={activeThreadId}
@@ -391,6 +399,11 @@ export function AppShell() {
                       <button type="button" onClick={() => { setMotionPaused(!motionPaused); menuRef.current?.removeAttribute('open'); }}>{motionPaused ? '开启动效' : '暂停动效'}</button>
                       <button type="button" onClick={() => { setShellMode('chat'); setWelcomeReplay(true); menuRef.current?.removeAttribute('open'); }}>重看欢迎</button>
                       <Link to="/settings" onClick={() => menuRef.current?.removeAttribute('open')}>设置</Link>
+                      <div className="hearth-flame-control">
+                        <label htmlFor="hearth-flame-size">火焰大小 <output>{Math.round(flameSize * 100)}%</output></label>
+                        <input id="hearth-flame-size" type="range" min="0.65" max="1.4" step="0.05" value={flameSize}
+                          onChange={(event) => { const value = Number(event.currentTarget.value); setFlameSize(value); saveFlameSize(value); }} />
+                      </div>
                       <p className="hearth-menu__hint">火光随本话题中已保存的交流变化。</p>
                     </div>
                   </details>
