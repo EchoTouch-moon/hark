@@ -19,10 +19,11 @@ import {
   setActiveThreadId,
   type ThreadSummary,
 } from '../features/threads';
-import { preferLiveApi } from '../features/chat';
+import { fetchChatHistory, preferLiveApi } from '../features/chat';
 import {
   applyEmberHeatCss,
   computeEmberHeat,
+  latestConfirmedInteraction,
   type EmberBand,
 } from '../features/emberHeat';
 import './AppShell.css';
@@ -219,7 +220,7 @@ export function AppShell() {
   const [emberTick, setEmberTick] = useState(0);
   const [railCollapsed, setRailCollapsedState] = useState(() => {
     try {
-      return window.localStorage.getItem(RAIL_COLLAPSE_KEY) === '1';
+      return window.localStorage.getItem(RAIL_COLLAPSE_KEY) !== '0';
     } catch {
       return false;
     }
@@ -263,19 +264,25 @@ export function AppShell() {
     setDrawerContent(null);
   }, [location.pathname]);
 
-  const activeThread = threads.find((t) => t.id === activeThreadId) ?? null;
 
-  const ember = useMemo(() => {
-    void emberTick;
-    return computeEmberHeat({
-      threadId: activeThreadId,
-      threadUpdatedAt: activeThread?.updatedAt,
-    });
-  }, [activeThreadId, activeThread?.updatedAt, emberTick]);
-
+  const [confirmedAt, setConfirmedAt] = useState<{threadId: string; at: string | null} | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now);
   useEffect(() => {
-    applyEmberHeatCss(ember.heat);
-  }, [ember.heat]);
+    const controller = new AbortController();
+    if (activeThreadId) void fetchChatHistory(activeThreadId, controller.signal).then(history => {
+      if (!controller.signal.aborted) { setConfirmedAt({threadId: activeThreadId, at: latestConfirmedInteraction(history.messages)}); setNowMs(Date.now()); }
+    }).catch(() => { if (!controller.signal.aborted) setConfirmedAt(null); });
+    return () => controller.abort();
+  }, [activeThreadId, emberTick]);
+  useEffect(() => {
+    const update = () => { document.documentElement.dataset.pageHidden = String(document.hidden); if (!document.hidden) setNowMs(Date.now()); };
+    update();
+    document.addEventListener('visibilitychange', update);
+    const timer = window.setInterval(update, 60000);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', update); };
+  }, []);
+  const ember = computeEmberHeat({lastConfirmedAt: confirmedAt?.threadId === activeThreadId ? confirmedAt.at : null, nowMs});
+  useEffect(() => { applyEmberHeatCss(ember.heat); }, [ember.heat]);
 
   const recomputeEmber = useCallback(() => {
     setEmberTick((n) => n + 1);
@@ -353,6 +360,7 @@ export function AppShell() {
             .filter(Boolean)
             .join(' ')}
           data-ember-band={ember.band}
+          data-flame-state={ember.band === 'hot' ? 'lively' : ember.band === 'warm' ? 'warm' : 'dim'}
           data-ember-heat={ember.heat.toFixed(2)}
         >
           <ThreadRail

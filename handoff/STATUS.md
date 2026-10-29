@@ -122,3 +122,9 @@ UI-02 全部完成并通关门禁：
 - 首页对话复用本地 Mock API、持久会话、主动发送与停止等待；不声称接入真实 AI。
 - 验证：Web build、全仓 typecheck、修改 TSX 的 ESLint；浏览器测试见 `handoff/EVIDENCE/focus-ui-browser.log`，截图 `focus-ui-desktop.png`、`focus-ui-mobile.png`、`focus-ui-attention.png`。
 - 复放：启动独立 Demo 服务于 4399（静态目录为 apps/web/dist 的绝对路径；禁用观察器），运行 `node scripts/qa/focus-ui.mjs`。脚本重点事项通过拦截 overview 响应提供明确合成数据；本地 Mock 发送使用实际 API。
+
+## 2026-10-30 Ember 叙事动效维护
+- 分支 `codex/ember-narrative-motion`，合入新前端、G3 空会话修复及叙事规范。
+- 已实现：从已确认消息计算炉温、失败不升温、首次点燃/复燃、持续挂载的输入井、默认收起历史、减少动态效果/暂停/后台停动效、手机消息区独立滚动。
+- 证据：`handoff/EVIDENCE/ember-motion/`；实现说明 `docs/EMBER-MOTION-IMPLEMENTATION.md`。
+- N0 人工视觉验收待定；N2/N3 未进入。当前仍是明确标注的 Mock 对话。

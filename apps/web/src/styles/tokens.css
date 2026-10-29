@@ -199,3 +199,28 @@ body,
     background-color var(--duration-ember) var(--ease-ember),
     color var(--duration-ember) var(--ease-ember);
 }
+
+/* Narrative v0.1：炉温局部表达；可读表面不随互动变成暗室。 */
+:root {
+  --color-bg: #f7f0e6;
+  --color-bg-raised: #fbf4ea;
+  --color-surface: rgba(255,252,248,.92);
+  --color-surface-sunken: #f0e6da;
+  --color-ink: #2a1f18;
+  --color-ink-2: #5c4a3c;
+  --color-ink-3: #756353;
+  --color-border: #e0d3c5;
+  --color-border-strong: #cdb9a5;
+  --color-accent: #a74520;
+  --color-accent-strong: #863515;
+  --color-accent-soft: #f2dfcf;
+  --color-focus: #a74520;
+  --ember-focus-duration: 160ms;
+  --ember-ignite-duration: 800ms;
+  --ember-rekindle-duration: 1000ms;
+  --ember-settle-duration: 600ms;
+  --thread-unfold-duration: 400ms;
+  --note-arrive-duration: 280ms;
+  --decision-resolve-duration: 220ms;
+  --ember-idle-duration: 7s;
+}

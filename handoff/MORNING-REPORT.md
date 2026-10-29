@@ -90,3 +90,10 @@ UI-02 完成（UI-02.1、UI-02.2、UI-02.3 全部交付）：
 - 检查证据：`handoff/EVIDENCE/focus-ui-{build,typecheck,lint,browser}.log`；截图同目录。重点卡截图为合成验收数据。
 - 运行：`pnpm dev:server` 与 `pnpm dev:web`，访问本地 5173；生产静态构建 `pnpm --filter @hearth/web build`。
 - 范围：修改首页与首页外壳样式；未接入真实模型，未做外部发布，未运行完整历史 E2E。旧首页四区块布局测试需随新设计调整。
+
+## 2026-10-30 Ember 叙事与动效
+- 本地分支 `codex/ember-narrative-motion` 集成新的前端设计、空会话修复和根叙事规范。
+- 完成炉温真实性修复、点燃/复燃、输入井位置过渡、焦点和失败草稿恢复、动效暂停/减少动态效果、手机滚动布局维护。
+- 本地预览 4401 使用独立合成数据库；常规运行仍为 `pnpm dev:server` + `pnpm dev:web`。
+- 适用检查和截图/录屏在 `handoff/EVIDENCE/ember-motion/`；完整实现和未实现能力见 `docs/EMBER-MOTION-IMPLEMENTATION.md`。
+- 尚未发布，未接真实聊天模型，未宣告 N0/N2/N3 或完整历史 E2E 验收通过。

@@ -92,14 +92,14 @@ describe('migrations', () => {
     const db = openDatabase(path.join(dir, 'mig.sqlite'));
     const r1 = migrate(db);
     const r2 = migrate(db);
-    expect(r1.applied).toEqual([1]);
+    expect(r1.applied).toEqual([1, 2]);
     expect(r2.applied).toEqual([]);
-    expect(r2.currentVersion).toBe(1);
+    expect(r2.currentVersion).toBe(2);
     db.close();
   });
   it('fresh open via Storage applies migration and records version', () => {
     const row = store.db.prepare('SELECT COUNT(*) AS n FROM schema_version').get() as { n: number };
-    expect(row.n).toBe(1);
+    expect(row.n).toBe(2);
   });
 });
 

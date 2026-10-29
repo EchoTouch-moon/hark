@@ -2,7 +2,7 @@
  * 沉浸对话画布 · Style Bible v6 / v6.1 Ember Seed
  * 空态炉心 Seed → 首条后 Composer 落底；本地炉温；G1–G4 真 API 优先。
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useThreads } from '../app/AppShell';
 import { ApiError } from '../features/api/client';
@@ -19,7 +19,7 @@ import {
 } from '../features/chat';
 import {
   computeEmberHeat,
-  markSessionSent,
+  latestConfirmedInteraction,
   type EmberBand,
 } from '../features/emberHeat';
 import './ChatPage.css';
@@ -263,7 +263,7 @@ function ComposerForm({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
             onSubmit();
           }
@@ -271,7 +271,8 @@ function ComposerForm({
         placeholder={placeholder}
         rows={2}
         maxLength={4000}
-        disabled={disabled || sending}
+        disabled={disabled}
+        readOnly={sending}
       />
       <button
         type="submit"
@@ -287,7 +288,6 @@ function ComposerForm({
 export function ChatPage() {
   const {
     activeThreadId,
-    threads,
     refreshThreads,
     recomputeEmber,
     emberBand,
@@ -298,19 +298,25 @@ export function ChatPage() {
   const [sending, setSending] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [draft, setDraft] = useState('');
+  const [motionScene, setMotionScene] = useState('rest');
+  const currentThread = useRef(activeThreadId);
+  currentThread.current = activeThreadId;
+  const slotRef = useRef<HTMLDivElement>(null);
+  const [motionPaused, setMotionPaused] = useState(false);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const previousRect = useRef<ReturnType<NonNullable<typeof composerRef.current>['getBoundingClientRect']> | null>(null);
   const [pendingAction, setPendingAction] = useState<MessageAction | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const activeThread = threads.find((t) => t.id === activeThreadId) ?? null;
+
 
   const seedCopy = useMemo(
     () =>
       computeEmberHeat({
-        threadId: activeThreadId,
-        threadUpdatedAt: activeThread?.updatedAt,
+        lastConfirmedAt: latestConfirmedInteraction(messages),
       }),
-    [activeThreadId, activeThread?.updatedAt, emberBand],
+    [messages, emberBand],
   );
 
   const reload = useCallback(async (threadId: string) => {
@@ -325,13 +331,14 @@ export function ChatPage() {
       if (proactive.suggestion && !next.some((m) => m.id === proactive.suggestion!.id)) {
         next = [...next, proactive.suggestion];
       }
-      setMessages(next);
+      if (currentThread.current === threadId) setMessages(next);
     } catch (err) {
       // 断网/API 失败：清空消息，仍走 Seed（轻提示），勿整页 ErrorState
+      if (currentThread.current !== threadId) return;
       setMessages([]);
       setLoadError(err instanceof ApiError ? err.message : '无法加载聊天记录');
     } finally {
-      setLoading(false);
+      if (currentThread.current === threadId) setLoading(false);
     }
   }, []);
 
@@ -350,7 +357,7 @@ export function ChatPage() {
 
   /** 合同：无用户正文 = Seed；单张 G3 主动卡旁挂不切 grown；首条用户/进度结果 → grown */
   const hasUserMessage = useMemo(
-    () => messages.some((m) => m.role === 'user'),
+    () => messages.some((m) => m.role === 'user' && !m.id.startsWith('local-')),
     [messages],
   );
   const showSeed = useMemo(() => {
@@ -396,21 +403,18 @@ export function ChatPage() {
       };
       setMessages((prev) => [...prev, optimistic]);
       setDraft('');
-      markSessionSent(activeThreadId);
-      recomputeEmber();
+
       try {
-        const out = await sendChatMessage(activeThreadId, text, controller.signal);
-        setMessages((prev) => {
-          const withoutLocal = prev.filter((m) => m.id !== optimistic.id);
-          const userKept: CanvasMessage = {
-            ...optimistic,
-            id: `user-${Date.now()}`,
-          };
-          return [...withoutLocal, userKept, out.reply];
-        });
+        await sendChatMessage(activeThreadId, text, controller.signal);
+        const confirmed = await fetchChatHistory(activeThreadId, controller.signal);
+        if (!confirmed.messages.some(m => m.role === 'user' && m.content === text)) throw new Error('用户消息尚未确认保存');
+        if (currentThread.current !== activeThreadId) return;
+        setMessages(confirmed.messages);
+        setMotionScene(seedCopy.band === 'hot' ? 'settle' : seedCopy.reason === 'no-interaction' ? 'ignite' : 'rekindle');
         void refreshThreads();
         recomputeEmber();
       } catch (err) {
+        if (currentThread.current !== activeThreadId) return;
         setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
         setDraft(text);
         setLoadError(err instanceof ApiError ? `发送失败：${err.message}` : '发送失败，请重试');
@@ -419,7 +423,7 @@ export function ChatPage() {
         setSending(false);
       }
     },
-    [activeThreadId, sending, refreshThreads, recomputeEmber],
+    [activeThreadId, sending, refreshThreads, recomputeEmber, seedCopy.band, seedCopy.reason],
   );
 
   const runAction = useCallback(
@@ -465,7 +469,7 @@ export function ChatPage() {
         ]);
         const result = await executeMessageAction(activeThreadId, action);
         setMessages((prev) => prev.map((m) => (m.id === placeholderId ? result.message : m)));
-        markSessionSent(activeThreadId);
+
         recomputeEmber();
         void refreshThreads();
       } catch (err) {
@@ -500,10 +504,24 @@ export function ChatPage() {
     [sendText],
   );
 
-  const chips = seedChipsFor(seedCopy.band);
+  useLayoutEffect(() => {
+    const node = composerRef.current;
+    if (!node) return;
+    node.style.top = showSeed && slotRef.current ? `${slotRef.current.offsetTop}px` : '';
+    const rect = node.getBoundingClientRect();
+    const previous = previousRect.current;
+    let animation: ReturnType<typeof node.animate> | undefined;
+    if (previous && !motionPaused && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      animation = node.animate([{transform: `translate(${previous.x - rect.x}px, ${previous.y - rect.y}px)`}, {transform: 'translate(0, 0)'}], {duration: 400, easing: 'cubic-bezier(.22,1,.36,1)'});
+    }
+    previousRect.current = rect;
+    return () => animation?.cancel();
+  }, [showSeed, loading, loadError, motionPaused]);
+  useEffect(() => { if (!loading) inputRef.current?.focus(); }, [showSeed, loading]);
+  const chips = seedChipsFor(seedCopy.band).slice(0, 2);
 
   return (
-    <section className={`canvas-page${showSeed ? ' canvas-page--seed' : ' canvas-page--grown'}`}>
+    <section data-motion-paused={motionPaused} data-motion-scene={motionScene} className={`canvas-page${showSeed ? ' canvas-page--seed' : ' canvas-page--grown'}`}>
       <div className={`canvas-column${showSeed ? ' canvas-column--seed' : ' canvas-column--grown'}`}>
         {loading ? (
           <div className="chat-loading" role="status">
@@ -517,17 +535,7 @@ export function ChatPage() {
             {seedCopy.subline ? (
               <p className="ember-seed__subline">{seedCopy.subline}</p>
             ) : null}
-            <div className="ember-seed__composer-slot">
-              <ComposerForm
-                draft={draft}
-                setDraft={setDraft}
-                sending={sending}
-                disabled={!activeThreadId}
-                onSubmit={() => void sendText(draft)}
-                inputRef={inputRef}
-                placeholder="从炉边说一句…"
-              />
-            </div>
+            <div ref={slotRef} className="ember-seed__composer-slot" aria-hidden="true" />
             <div className="ember-seed__chips" aria-label="好玩入口">
               {chips.map((c) => (
                 <button
@@ -597,8 +605,8 @@ export function ChatPage() {
           </p>
         ) : null}
 
-        {!showSeed && !loading ? (
-          <div className="composer-dock">
+        {!loading ? (
+          <div ref={composerRef} className={showSeed ? "narrative-composer narrative-composer--seed" : "narrative-composer composer-dock"}>
             <ComposerForm
               draft={draft}
               setDraft={setDraft}
@@ -606,9 +614,10 @@ export function ChatPage() {
               disabled={!activeThreadId}
               onSubmit={() => void sendText(draft)}
               inputRef={inputRef}
-              placeholder="你想先处理什么？"
-              withFlameMark
+              placeholder={showSeed ? "从炉边说一句…" : "你想先处理什么？"}
+              withFlameMark={!showSeed}
             />
+            <p className="narrative-mode">离线演示 · 不连接真实模型 · 炉温仅表示互动 <button type="button" className="motion-toggle" aria-pressed={motionPaused} onClick={() => setMotionPaused(v => !v)}>{motionPaused ? '开启动效' : '暂停动效'}</button></p>
           </div>
         ) : null}
       </div>

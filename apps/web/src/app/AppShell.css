@@ -447,3 +447,6 @@
 .app-content {
   display: contents;
 }
+
+/* 聊天固定为一个视口，历史在消息列滚动；手机操作区不被长消息推走。 */
+.canvas-shell--canvas { height: 100dvh; overflow: hidden; }

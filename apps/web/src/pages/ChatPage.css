@@ -607,7 +607,7 @@
   }
   50% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.06);
+    transform: translate(-50%, -50%) scale(1.02);
   }
 }
 
@@ -619,7 +619,7 @@
   }
   50% {
     opacity: 1;
-    transform: translateX(-50%) scale(1.08);
+    transform: translateX(-50%) scale(1.03);
   }
 }
 
@@ -629,10 +629,10 @@
     transform: translateX(-50%) scaleY(1) scaleX(1);
   }
   30% {
-    transform: translateX(-50%) scaleY(1.04) scaleX(0.97);
+    transform: translateX(-50%) scaleY(1.02) scaleX(0.97);
   }
   60% {
-    transform: translateX(-50%) scaleY(0.96) scaleX(1.03);
+    transform: translateX(-50%) scaleY(0.98) scaleX(1.03);
   }
 }
 
@@ -657,3 +657,39 @@
 .chat-main {
   display: contents;
 }
+
+/* 同一 Composer 保持挂载，空态/长谈位置改变由 FLIP 衔接。 */
+.canvas-column { position: relative; }
+.ember-seed__composer-slot { min-height: 72px; }
+.narrative-composer--seed {
+  position: absolute;
+  top: calc(50% + 40px);
+  left: 50%;
+  width: min(520px, calc(100% - 48px));
+  translate: -50% 0;
+  z-index: 2;
+}
+.narrative-composer.composer-dock { animation: none; }
+.ember-seed__subline { color: var(--color-ink-2); }
+.narrative-mode { text-align: center; color: var(--color-ink-2); font-size: 11px; margin: 10px 0 0; }
+.ember-flame__outer, .ember-flame__inner, .ember-flame__aura, .ember-seed__glow {
+  animation-duration: var(--ember-idle-duration);
+}
+[data-flame-state="dim"] .ember-flame__outer,
+[data-flame-state="dim"] .ember-flame__inner,
+[data-flame-state="dim"] .ember-flame__aura,
+[data-flame-state="dim"] .ember-seed__glow { animation: none; }
+html[data-page-hidden="true"] *, html[data-motion-paused="true"] * { animation-play-state: paused !important; }
+[data-motion-scene="ignite"] .ember-flame { animation: ember-ignite var(--ember-ignite-duration) var(--ease-ember) both; }
+[data-motion-scene="rekindle"] .ember-flame { animation: ember-ignite var(--ember-rekindle-duration) var(--ease-ember) both; }
+.narrative-composer:focus-within .composer { border-color: var(--color-focus); transition: border-color var(--ember-focus-duration); }
+@keyframes ember-ignite { from { opacity: .45; } to { opacity: 1; } }
+@media(prefers-reduced-motion: reduce) {
+  .canvas-page *, .canvas-page *::before, .canvas-page *::after { animation: none !important; transition: none !important; }
+  html, body, .canvas-shell { transition: none; }
+}
+.ember-seed__composer-slot { min-height: 130px; }
+[data-motion-paused="true"] *, [data-motion-paused="true"] *::before { animation: none !important; }
+.motion-toggle { font: inherit; color: var(--color-ink-2); background: transparent; border: 0; text-decoration: underline; cursor: pointer; margin-left: 8px; }
+.narrative-composer, .chat-msg { flex-shrink: 0; }
+.narrative-mode { line-height: 1.6; }
