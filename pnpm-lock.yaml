@@ -56,6 +56,9 @@ importers:
       '@hearth/panels':
         specifier: workspace:*
         version: link:../../packages/panels
+      '@hearth/project-analysis':
+        specifier: workspace:*
+        version: link:../../packages/project-analysis
       '@hearth/project-insight':
         specifier: workspace:*
         version: link:../../packages/project-insight
@@ -160,6 +163,18 @@ importers:
       '@hearth/contracts':
         specifier: workspace:*
         version: link:../contracts
+
+  packages/project-analysis:
+    dependencies:
+      '@hearth/project-insight':
+        specifier: workspace:*
+        version: link:../project-insight
+      '@hearth/project-observer':
+        specifier: workspace:*
+        version: link:../project-observer
+      zod:
+        specifier: 3.24.1
+        version: 3.24.1
 
   packages/project-insight:
     dependencies:

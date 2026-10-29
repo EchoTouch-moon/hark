@@ -19,6 +19,7 @@
     "@hearth/core": "workspace:*",
     "@hearth/project-observer": "workspace:*",
     "@hearth/project-insight": "workspace:*",
+    "@hearth/project-analysis": "workspace:*",
     "@hearth/storage": "workspace:*",
     "esbuild": "^0.25.0",
     "chokidar": "^4.0.3",

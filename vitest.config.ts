@@ -15,6 +15,7 @@ export default defineConfig({
       '@hearth/eval': r('./packages/eval/src/index.ts'),
       '@hearth/project-observer': r('./packages/project-observer/src/index.ts'),
       '@hearth/project-insight': r('./packages/project-insight/src/index.ts'),
+      '@hearth/project-analysis': r('./packages/project-analysis/src/index.ts'),
     },
   },
   test: {

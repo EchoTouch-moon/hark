@@ -29,7 +29,10 @@ import {
 } from '../features/observer';
 import { formatDateTime } from '../features/runs';
 import { fetchInsightSummary } from '../features/insights';
+import { fetchAnalysisRuns, startAnalysis, type AnalysisRun } from '../features/analysis';
+import { RecommendationCard } from '../components/RecommendationCard';
 import './ObserverDetailPage.css';
+import './InsightsPage.css';
 
 const FILTERS: Array<{ id: 'all' | 'git' | 'test' | 'system'; label: string; types?: ObserverEventType[] }> = [
   { id: 'all', label: '全部' },
@@ -58,6 +61,8 @@ export function ObserverDetailPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [confirmPause, setConfirmPause] = useState(false);
   const [openInsights, setOpenInsights] = useState(0);
+  const [analysisRuns, setAnalysisRuns] = useState<AnalysisRun[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const load = useCallback(async (projectId: string, signal?: AbortSignal) => {
     const next = await fetchObserverDetail(projectId, signal);
@@ -75,6 +80,12 @@ export function ObserverDetailPage() {
       setOpenInsights(summary.projects.find((item) => item.projectId === projectId)?.openCount ?? 0);
     } catch {
       setOpenInsights(0);
+    }
+    try {
+      const runs = await fetchAnalysisRuns(projectId, signal);
+      setAnalysisRuns(runs);
+    } catch {
+      setAnalysisRuns([]);
     }
   }, [filter]);
 
@@ -290,6 +301,13 @@ export function ObserverDetailPage() {
             )}
           </div>
 
+          {analysisRuns.length > 0 ? (
+            <div className="page-section" aria-label="项目分析">
+              <p className="page-section-title">项目分析</p>
+              <RecommendationCard run={analysisRuns[0]!} observeHref={`/observe/${encodeURIComponent(projectId)}`} />
+            </div>
+          ) : null}
+
           <div className="page-section" aria-label="配置">
             <p className="page-section-title">配置</p>
             <div className="card obs-config">
@@ -307,6 +325,20 @@ export function ObserverDetailPage() {
                 </button>
                 <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void onScan()}>
                   立即只读重扫
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  type="button"
+                  disabled={busy || analyzing}
+                  onClick={() => {
+                    setAnalyzing(true);
+                    void startAnalysis({ projectId, trigger: 'observe' })
+                      .then((run) => setAnalysisRuns((current) => [run, ...current.filter((item) => item.id !== run.id)]))
+                      .catch((cause) => setError(cause instanceof Error ? cause.message : '分析失败'))
+                      .finally(() => setAnalyzing(false));
+                  }}
+                >
+                  {analyzing ? '分析中…' : '分析当前项目'}
                 </button>
                 <button
                   className="btn btn-ghost"

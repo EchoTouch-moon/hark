@@ -14,6 +14,7 @@ import type { ServerConfig } from '../config.js';
 import type { Storage } from '@hearth/storage';
 import type { ProjectObserver } from '@hearth/project-observer';
 import type { InsightStore } from '@hearth/project-insight';
+import type { AnalysisService } from '@hearth/project-analysis';
 import { SessionManager, parseSessionCookie } from './session.js';
 import { registerCoreRoutes } from './routes/core.js';
 import { registerProjectRoutes } from './routes/projects.js';
@@ -22,6 +23,7 @@ import { registerRunRoutes } from './routes/runs.js';
 import { registerChatRoutes } from './routes/chat.js';
 import { registerObserverRoutes } from './routes/observer.js';
 import { registerInsightRoutes } from './routes/insights.js';
+import { registerAnalysisRoutes } from './routes/analysis.js';
 import type { Services } from './services.js';
 
 /** 服务构建所需全部依赖 */
@@ -31,6 +33,7 @@ export interface AppDeps {
   services: Services;
   observer?: ProjectObserver;
   insight?: InsightStore;
+  analysis?: AnalysisService;
 }
 
 /**
@@ -101,6 +104,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerChatRoutes(app, deps);
   registerObserverRoutes(app, deps);
   registerInsightRoutes(app, deps);
+  registerAnalysisRoutes(app, deps);
 
   return app;
 }

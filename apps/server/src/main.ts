@@ -17,6 +17,13 @@ import { MockAgentAdapter } from '@hearth/agent-adapters';
 import { FixtureConnector } from '@hearth/connectors';
 import { ProjectObserver } from '@hearth/project-observer';
 import { InsightStore, defaultInsightDbPath } from '@hearth/project-insight';
+import {
+  AnalysisService,
+  AnalysisStore,
+  MockAnalysisProvider,
+  PiAnalysisProvider,
+  defaultAnalysisDbPath,
+} from '@hearth/project-analysis';
 import { existsSync } from 'node:fs';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -62,12 +69,19 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
     watchEnabled: process.env['HEARTH_OBSERVER_WATCH'] !== '0',
   });
   const insight = new InsightStore(defaultInsightDbPath(config.repoRoot));
+  const analysisStore = new AnalysisStore(defaultAnalysisDbPath(config.repoRoot));
+  const analysisProvider =
+    (process.env['HEARTH_ANALYSIS_PROVIDER'] ?? 'mock') === 'pi'
+      ? new PiAnalysisProvider()
+      : new MockAnalysisProvider();
+  const analysis = new AnalysisService({ observer, insight, store: analysisStore, provider: analysisProvider });
 
   const deps: AppDeps = {
     config,
     storage,
     observer,
     insight,
+    analysis,
     services: {
       discovery,
       orchestrator,
@@ -104,6 +118,7 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
     await observer.stop();
     observer.close();
     insight.close();
+    analysis.close();
   });
 
   // serve the built SPA when present (same-origin for E2E/demo)

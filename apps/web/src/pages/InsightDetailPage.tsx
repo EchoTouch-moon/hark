@@ -14,6 +14,8 @@ import {
   type InsightDetail,
 } from '../features/insights';
 import { formatDateTime } from '../features/runs';
+import { fetchAnalysisRuns, startAnalysis, type AnalysisRun } from '../features/analysis';
+import { RecommendationCard } from '../components/RecommendationCard';
 import './InsightsPage.css';
 
 export function InsightDetailPage() {
@@ -22,11 +24,18 @@ export function InsightDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
 
   const load = useCallback(async (insightId: string, signal?: AbortSignal) => {
     const next = await fetchInsight(insightId, signal);
     setDetail(next);
     setError(null);
+    try {
+      const runs = await fetchAnalysisRuns(next.projectId, signal);
+      setAnalysisRun(runs.find((item) => item.insightId === insightId) ?? runs[0] ?? null);
+    } catch {
+      setAnalysisRun(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -183,12 +192,32 @@ export function InsightDetailPage() {
         )}
       </div>
 
+      {analysisRun ? (
+        <div className="page-section">
+          <p className="page-section-title">深入分析</p>
+          <RecommendationCard run={analysisRun} observeHref={evidenceHref} />
+        </div>
+      ) : null}
+
       <div className="insight-actions">
         <button type="button" className="btn btn-primary" disabled={busy || !canAck} onClick={() => void run(() => acknowledgeInsight(detail.id))}>
           确认已看
         </button>
         <button type="button" className="btn btn-ghost" disabled={busy || !canDismiss} onClick={() => void run(() => dismissInsight(detail.id))}>
           不再关注这条
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          disabled={busy}
+          onClick={() =>
+            void run(async () => {
+              const next = await startAnalysis({ projectId: detail.projectId, insightId: detail.id, trigger: 'insight' });
+              setAnalysisRun(next);
+            })
+          }
+        >
+          深入分析
         </button>
         <button
           type="button"

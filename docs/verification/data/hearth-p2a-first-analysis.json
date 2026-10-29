@@ -1,0 +1,19 @@
+{
+  "providerDefault": "mock",
+  "livePi": "LIVE_BLOCKED",
+  "livePiReason": "Pi CLI 1.4.0 is installed and --no-tools works, but a sanitized plus allowlisted provider env still returned authentication_error/invalid x-api-key. Mock results were not labeled as live Pi.",
+  "piTools": "none (--no-tools --no-skills --no-extensions --no-mcp --no-context-files --no-session)",
+  "realProject": "pindou",
+  "head": "f57fc770361e",
+  "repoUnchanged": true,
+  "mockCard": {
+    "status": "succeeded",
+    "honestUnknownTests": true,
+    "labeledMock": true,
+    "nextActionRequiresConfirmation": true
+  },
+  "tests": {
+    "analysisPackageAndHttp": "8 passed",
+    "fullRepo": "301 passed"
+  }
+}
