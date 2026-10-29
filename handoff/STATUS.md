@@ -128,3 +128,11 @@ UI-02 全部完成并通关门禁：
 - 已实现：从已确认消息计算炉温、失败不升温、首次点燃/复燃、持续挂载的输入井、默认收起历史、减少动态效果/暂停/后台停动效、手机消息区独立滚动。
 - 证据：`handoff/EVIDENCE/ember-motion/`；实现说明 `docs/EMBER-MOTION-IMPLEMENTATION.md`。
 - N0 人工视觉验收待定；N2/N3 未进入。当前仍是明确标注的 Mock 对话。
+
+## 2026-10-30 Ember 桌面精修与欢迎生命周期
+- 用户追加要求：先补叙事，再由子代理精修；明确不涉及手机，并指定实际使用 GSAP skill。
+- 已补充根叙事、第13节首次进入/本地初始化/入席/回访；没有伪造账号注册后端。
+- 两个替换子代理完成独立炉心 SVG、GSAP 时间线、欢迎与对话组件精修。主代理集成全局纸面/chrome并完成真实桌面验收。
+- 证据：`handoff/EVIDENCE/ember-craft/`，包含8幕流程截图、三态放大实渲染截图、motion-preview.webm、browser.log/keyframes.log/regression.log。
+- 50项适用测试通过，Web build/全仓typecheck/修改组件lint通过；真实浏览器验证GSAP路径在运行、暂停后保持、欢迎跳过/重看/存储失败和对话失败恢复。
+- N0视觉仍由用户审阅；真实账号注册、真实模型、N2/N3不在本次精修范围。

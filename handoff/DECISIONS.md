@@ -85,3 +85,10 @@ Analysis中断复用failed+INTERRUPTED，保留旧Run且不自动重试模型。
 - 冲突的旧 AppShell、HomePage、tokens、旧 E2E 使用新前端版本；既有业务深链接保留。
 - 不沿用“发送即加热”及“thread.updatedAt = 最近互动”；仅回读确认用户消息后升温。避免切换 DB、线程、失败后被旧缓存误导。
 - 不为单个位置过渡新增动画依赖，采用 CSS + 可取消的原生 FLIP。真实故事卡和 Pi 深读仍属后续范围。
+
+## 2026-10-30 精修追加决议
+- 用户明确纠正未设计手机端：本次只验收1440×900与1280×800桌面，不新增移动页面。
+- 用户明确调用gsap-core：新增gsap/@gsap/react依赖，实际采用scoped useGSAP+Timeline，移除冲突WAAPI/旧圆焰CSS。纯UI偏好输入使用直接zod依赖严格校验。
+- 本地欢迎是初次建立关系的实际可运行部分，独立于auth/consent/炉温；完成欢迎不升温。
+- 子代理按用户要求中断并重新派发；已写入组件由新实例接续精修与检查，所有交付最终由主代理浏览器复核。
+- 真实浏览器发现欢迎完成时GSAP父contextSafe包装嵌套matchMedia回调会形成context循环、触发getTweens栈溢出。删除纯React回调的跨context包装，增加active/completed守卫及回调清理，复测完整流程通过。

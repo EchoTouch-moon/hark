@@ -224,3 +224,26 @@ body,
   --decision-resolve-duration: 220ms;
   --ember-idle-duration: 7s;
 }
+
+/* Ember Craft：纸、墨、铜色边缘；焦点来自物体，不来自整页染色。 */
+:root {
+  --color-bg: #f8f5ef;
+  --color-bg-raised: #f4eee4;
+  --color-surface: rgba(255, 253, 249, 0.94);
+  --color-surface-sunken: #eee7dc;
+  --color-ink: #332c25;
+  --color-ink-2: #6d6256;
+  --color-ink-3: #7e7060;
+  --color-border: #e5dcd0;
+  --color-border-strong: #c9b8a3;
+  --color-accent: #a44a27;
+  --color-accent-soft: #f1e4d4;
+  --canvas-col-max: 760px;
+  --topbar-height: 72px;
+  --shadow-1: 0 1px 2px rgba(69, 49, 28, .04), inset 0 1px 0 rgba(255,255,255,.72);
+  --shadow-2: 0 12px 32px -18px rgba(85, 58, 29, .2);
+  --motion-enter: 720ms;
+  --motion-exit: 280ms;
+  --motion-step: 420ms;
+  --ease-ceremony: cubic-bezier(.16,1,.3,1);
+}

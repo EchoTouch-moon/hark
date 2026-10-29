@@ -22,26 +22,8 @@ body {
   color: var(--color-ink);
   background-color: var(--color-bg);
   background-image:
-    radial-gradient(
-      ellipse 95% 75% at 50% 12%,
-      color-mix(in srgb, var(--ember-glow-pink) calc(var(--ember-glow-strength) * 48%), transparent),
-      transparent 58%
-    ),
-    radial-gradient(
-      ellipse 70% 55% at 82% 6%,
-      color-mix(in srgb, var(--ember-glow-blue) calc((0.28 + var(--ember-heat) * 0.3) * 32%), transparent),
-      transparent 52%
-    ),
-    radial-gradient(
-      ellipse 60% 50% at 12% 92%,
-      color-mix(in srgb, var(--ember-glow-pink) calc(var(--ember-glow-strength) * 22%), transparent),
-      transparent 58%
-    ),
-    radial-gradient(
-      ellipse 50% 40% at 70% 70%,
-      color-mix(in srgb, rgba(255, 200, 140, 1) calc(var(--ember-heat) * 12%), transparent),
-      transparent 60%
-    );
+    radial-gradient(ellipse 52% 42% at 50% 46%, rgba(219, 168, 93, .065), transparent 75%),
+    radial-gradient(ellipse 90% 68% at 50% 0%, rgba(255, 253, 248, .9), transparent 85%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -57,7 +39,7 @@ body::after {
   position: fixed;
   inset: 0;
   z-index: var(--z-grain);
-  opacity: 0.04;
+  opacity: 0.025;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;

@@ -10,10 +10,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@hearth/contracts": "workspace:*",
+    "gsap": "^3.15.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^6.28.0",
+    "zod": "3.24.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

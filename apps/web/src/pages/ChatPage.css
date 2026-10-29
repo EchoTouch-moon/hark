@@ -165,89 +165,6 @@
   cursor: not-allowed;
 }
 
-/* ---------- CSS 火焰 widget ---------- */
-
-.ember-flame {
-  position: relative;
-  z-index: 1;
-  width: 56px;
-  height: 72px;
-  transform: scale(var(--ember-flame-scale));
-  transform-origin: center bottom;
-  transition: transform var(--duration-ember) var(--ease-ember);
-  margin-bottom: var(--space-2);
-}
-
-.ember-flame--compact {
-  width: 22px;
-  height: 28px;
-  margin: 0 0 2px;
-  flex-shrink: 0;
-  align-self: center;
-}
-
-.ember-flame__aura,
-.ember-flame__outer,
-.ember-flame__inner,
-.ember-flame__coal {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 50% 50% 45% 45%;
-  pointer-events: none;
-}
-
-.ember-flame__aura {
-  bottom: 8%;
-  width: 140%;
-  height: 70%;
-  background: radial-gradient(
-    ellipse at center,
-    color-mix(in srgb, var(--ember-glow-pink) calc(var(--ember-glow-strength) * 70%), transparent),
-    transparent 70%
-  );
-  filter: blur(10px);
-  animation: ember-aura-breathe 8s ease-in-out infinite;
-}
-
-.ember-flame__outer {
-  bottom: 12%;
-  width: 70%;
-  height: 78%;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, #ffb070 70%, var(--color-accent)) 0%,
-    color-mix(in srgb, #e85a28 80%, transparent) 70%,
-    transparent 100%
-  );
-  filter: blur(0.4px);
-  animation: ember-flicker var(--ember-flicker-ms) ease-in-out infinite;
-  opacity: calc(0.55 + var(--ember-heat) * 0.45);
-}
-
-.ember-flame__inner {
-  bottom: 18%;
-  width: 38%;
-  height: 55%;
-  background: linear-gradient(180deg, #fff6e0 0%, #ffcc66 45%, #ff8a3a 100%);
-  box-shadow: 0 0 12px color-mix(in srgb, #ffcc66 calc(var(--ember-glow-strength) * 80%), transparent);
-  animation: ember-flicker var(--ember-flicker-ms) ease-in-out infinite reverse;
-  opacity: calc(0.45 + var(--ember-heat) * 0.55);
-}
-
-.ember-flame__coal {
-  bottom: 4%;
-  width: 48%;
-  height: 18%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, #3a2218 0%, #1a100c 70%, transparent 100%);
-  opacity: calc(0.35 + (1 - var(--ember-heat)) * 0.45);
-}
-
-.ember-flame--compact .ember-flame__aura {
-  filter: blur(4px);
-}
-
 /* ---------- 消息列 ---------- */
 
 .chat-list {
@@ -611,45 +528,17 @@
   }
 }
 
-@keyframes ember-aura-breathe {
-  0%,
-  100% {
-    opacity: 0.7;
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: translateX(-50%) scale(1.03);
-  }
-}
-
-@keyframes ember-flicker {
-  0%,
-  100% {
-    transform: translateX(-50%) scaleY(1) scaleX(1);
-  }
-  30% {
-    transform: translateX(-50%) scaleY(1.02) scaleX(0.97);
-  }
-  60% {
-    transform: translateX(-50%) scaleY(0.98) scaleX(1.03);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .chat-msg,
   .composer-dock {
     animation: none;
   }
 
-  .ember-seed__glow,
-  .ember-flame__aura,
-  .ember-flame__outer,
-  .ember-flame__inner {
+  .ember-seed__glow {
     animation: none !important;
   }
 
-  /* 主题 crossfade 仍由 --duration-ember 承担（全局 transition） */
+  /* Reduced motion presents the stable state immediately. */
 }
 
 .chat-page,
@@ -672,18 +561,12 @@
 .narrative-composer.composer-dock { animation: none; }
 .ember-seed__subline { color: var(--color-ink-2); }
 .narrative-mode { text-align: center; color: var(--color-ink-2); font-size: 11px; margin: 10px 0 0; }
-.ember-flame__outer, .ember-flame__inner, .ember-flame__aura, .ember-seed__glow {
+.ember-seed__glow {
   animation-duration: var(--ember-idle-duration);
 }
-[data-flame-state="dim"] .ember-flame__outer,
-[data-flame-state="dim"] .ember-flame__inner,
-[data-flame-state="dim"] .ember-flame__aura,
 [data-flame-state="dim"] .ember-seed__glow { animation: none; }
 html[data-page-hidden="true"] *, html[data-motion-paused="true"] * { animation-play-state: paused !important; }
-[data-motion-scene="ignite"] .ember-flame { animation: ember-ignite var(--ember-ignite-duration) var(--ease-ember) both; }
-[data-motion-scene="rekindle"] .ember-flame { animation: ember-ignite var(--ember-rekindle-duration) var(--ease-ember) both; }
 .narrative-composer:focus-within .composer { border-color: var(--color-focus); transition: border-color var(--ember-focus-duration); }
-@keyframes ember-ignite { from { opacity: .45; } to { opacity: 1; } }
 @media(prefers-reduced-motion: reduce) {
   .canvas-page *, .canvas-page *::before, .canvas-page *::after { animation: none !important; transition: none !important; }
   html, body, .canvas-shell { transition: none; }
@@ -693,3 +576,34 @@ html[data-page-hidden="true"] *, html[data-motion-paused="true"] * { animation-p
 .motion-toggle { font: inherit; color: var(--color-ink-2); background: transparent; border: 0; text-decoration: underline; cursor: pointer; margin-left: 8px; }
 .narrative-composer, .chat-msg { flex-shrink: 0; }
 .narrative-mode { line-height: 1.6; }
+
+/* Ember craft: editorial rhythm, an intentional input well, quiet readable conversation. */
+.canvas-column { max-width: 800px; padding-inline: 38px; padding-bottom: 24px; }
+.ember-seed { gap: 0; padding-bottom: 10px; }
+.seed-presence { margin-bottom: 10px; }
+.seed-eyebrow { font-size: 9px;letter-spacing:3px;color:#9b866f;margin:0 0 20px; }
+.ember-seed__greeting { font-weight:500;font-size:clamp(30px,2.7vw,39px);letter-spacing:-1px;line-height:1.5;margin:0; }
+.ember-seed__subline { margin-top:13px;font-size:13px;color:#8a7763;letter-spacing:.3px; }
+.ember-seed__composer-slot { margin-top:30px;min-height:120px; }
+.ember-seed__chips { margin-top:20px;gap:12px; }
+.seed-chip { background:#fffcf54d;border-color:#cbbda650;border-radius:8px;font-size:12px;font-weight:400;padding:10px 17px;box-shadow:none;color:#826b55; }
+.seed-chip:hover:not(:disabled) { background:#fffdf2;border-color:#b89d7b;color:#65482f;transform:translateY(-2px); }
+.narrative-composer--seed { width:min(580px,calc(100% - 76px)); }
+.composer { border-radius:18px;background:linear-gradient(125deg,#fffdf8d9,#fffaf1b8);border-color:#d4c3aa8c;box-shadow:inset 0 1px #fff,0 12px 34px #6c4c2410,0 2px 5px #6c4c2405;padding:16px 18px 14px 20px;align-items:center;gap:15px;backdrop-filter:blur(20px); }
+.composer textarea { padding:6px 0;line-height:1.85;min-height:54px;font-size:14px; }
+.composer textarea::placeholder { color:#a18d76; }
+.composer__send { height:38px;min-width:58px;border-radius:11px;border-color:#94562f;background:linear-gradient(140deg,#b8794b,#94532e);font-size:12px;font-weight:500;box-shadow:inset 0 1px #ffffff21,0 3px 7px #925e2420; }
+.composer__send:disabled { background:#bd9b7d;border-color:#bd9b7d;box-shadow:none;opacity:.45; }
+.narrative-composer:focus-within .composer { border-color:#af8759;box-shadow:inset 0 1px #fff,0 12px 34px #6c4c2410,0 0 0 3px #b8894908; }
+.narrative-mode { margin-top:13px;color:var(--color-ink-2);font-size:11px;letter-spacing:.15px;line-height:1.8; }
+.motion-toggle,.welcome-replay { color:#97816a;text-decoration:none;border:0;padding:0;background:none;font:inherit;cursor:pointer;margin-left:9px; }
+.motion-toggle:hover,.welcome-replay:hover { color:#765234;text-decoration:underline;text-underline-offset:3px; }
+.welcome-replay { border-left:1px solid #cdbda6;padding-left:10px; }
+.chat-list { padding-top:38px;padding-bottom:26px;gap:28px;scrollbar-width:thin;scrollbar-color:#c8b69b60 transparent; }
+.chat-msg__meta { font-size:10px;color:#a08b73;margin-bottom:10px;letter-spacing:.3px; }
+.chat-msg__body p { font-size:14px;line-height:1.95;color:var(--color-ink); }
+.chat-msg--assistant { padding-right:32px; }
+.chat-msg--user { max-width:80%; }
+.chat-msg--user .chat-msg__body { background:#eee4d5;border:1px solid #d6c2a740;border-radius:15px 15px 4px 15px;padding:13px 19px;box-shadow:inset 0 1px #ffffff50; }
+.mini-card { border-radius:14px;border-color:#d8cab46b;background:linear-gradient(120deg,#fffdf8c9,#f8f1e6b5);box-shadow:0 5px 16px #51321405; }
+.composer-dock { padding-top:22px; }

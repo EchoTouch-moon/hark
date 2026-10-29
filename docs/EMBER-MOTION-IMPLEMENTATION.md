@@ -1,5 +1,7 @@
 # Ember 动效与前端状态维护 · 2026-10-30
 
+> 此文保留首轮实现记录。后续用户要求桌面精修并明确指定 GSAP，现已升级实际动画引擎；最新实现与验收见 [EMBER-CRAFT-ACCEPTANCE.md](EMBER-CRAFT-ACCEPTANCE.md) 及 [EMBER-PRESENCE-CRAFT.md](EMBER-PRESENCE-CRAFT.md)。下文关于未新增GSAP及手机截图的描述仅对应旧版本。
+
 本次以 `docs/ember-narrative-experience-spec` 的叙事和 `bot/frontend-v6-ember` 的界面为依据；后者与 `bot/design-v6-ember` 同指 e4ba9eb。集成 `bot/hearth-g3-empty-hearth` 的空会话修复，工作分支为 `codex/ember-narrative-motion`。保留原安全合同，不推送远端。
 
 ## 实际取舍

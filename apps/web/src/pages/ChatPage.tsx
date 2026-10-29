@@ -2,7 +2,13 @@
  * 沉浸对话画布 · Style Bible v6 / v6.1 Ember Seed
  * 空态炉心 Seed → 首条后 Composer 落底；本地炉温；G1–G4 真 API 优先。
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { gsap } from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { useNavigate } from 'react-router-dom';
+import { EmberPresence } from '../components/EmberPresence';
+import { HearthWelcome } from '../components/HearthWelcome';
+import { readWelcomePreference } from '../features/welcome';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useThreads } from '../app/AppShell';
 import { ApiError } from '../features/api/client';
@@ -23,6 +29,8 @@ import {
   type EmberBand,
 } from '../features/emberHeat';
 import './ChatPage.css';
+
+gsap.registerPlugin(useGSAP);
 
 function renderInline(text: string): ReactNode[] {
   const parts: ReactNode[] = [];
@@ -54,21 +62,6 @@ function formatTime(iso: string): string {
   } catch {
     return iso;
   }
-}
-
-/** CSS 火焰 widget（无 keyframe PNG 时对齐 v6.1：外焰+内芯+煤底+aura） */
-function EmberFlame({ compact = false }: { compact?: boolean }) {
-  return (
-    <div
-      className={`ember-flame${compact ? ' ember-flame--compact' : ''}`}
-      aria-hidden="true"
-    >
-      <span className="ember-flame__aura" />
-      <span className="ember-flame__outer" />
-      <span className="ember-flame__inner" />
-      <span className="ember-flame__coal" />
-    </div>
-  );
 }
 
 function ProgressBlock({ steps, runRef }: { steps: ProgressStep[]; runRef?: string }) {
@@ -205,26 +198,10 @@ function MessageTurn({
   );
 }
 
-const SEED_CHIPS_HOT = [
-  { id: 'continue', label: '接着刚才的说' },
-  { id: 'today', label: '今天想先办啥' },
-  { id: 'play', label: '随便聊聊' },
+const SEED_CHIPS = [
+  { id: 'project', label: '介绍我的项目' },
+  { id: 'idea', label: '聊聊一个想法' },
 ];
-const SEED_CHIPS_WARM = [
-  { id: 'catchup', label: '回来了，说两句' },
-  { id: 'todo', label: '帮我理一下待办' },
-  { id: 'play', label: '随便聊聊' },
-];
-const SEED_CHIPS_COOL = [
-  { id: 'reignite', label: '吹一口气' },
-  { id: 'hello', label: '还在吗' },
-];
-
-function seedChipsFor(band: EmberBand) {
-  if (band === 'hot') return SEED_CHIPS_HOT;
-  if (band === 'cool') return SEED_CHIPS_COOL;
-  return SEED_CHIPS_WARM;
-}
 
 function ComposerForm({
   draft,
@@ -235,6 +212,9 @@ function ComposerForm({
   inputRef,
   placeholder,
   withFlameMark,
+  band,
+  scene,
+  paused,
 }: {
   draft: string;
   setDraft: (v: string) => void;
@@ -244,6 +224,9 @@ function ComposerForm({
   inputRef: RefObject<HTMLTextAreaElement | null>;
   placeholder: string;
   withFlameMark?: boolean;
+  band: EmberBand;
+  scene: string;
+  paused: boolean;
 }) {
   return (
     <form
@@ -253,7 +236,7 @@ function ComposerForm({
         onSubmit();
       }}
     >
-      {withFlameMark ? <EmberFlame compact /> : null}
+      {withFlameMark ? <EmberPresence compact band={band} scene={scene} paused={paused} /> : null}
       <label htmlFor="canvas-input" className="visually-hidden">
         输入消息
       </label>
@@ -263,7 +246,7 @@ function ComposerForm({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) {
             e.preventDefault();
             onSubmit();
           }
@@ -286,6 +269,14 @@ function ComposerForm({
 }
 
 export function ChatPage() {
+  const navigate = useNavigate();
+  const [welcomePreference] = useState(readWelcomePreference);
+  const [welcomeVisible, setWelcomeVisible] = useState(!welcomePreference.completed);
+  const [welcomeBlocking, setWelcomeBlocking] = useState(!welcomePreference.completed);
+  const [displayName, setDisplayName] = useState(welcomePreference.name);
+  const [arrival, setArrival] = useState(false);
+  const exitTarget = useCallback(() => columnRef.current?.querySelector<HTMLElement>('.seed-presence, .composer .ember-presence')?.getBoundingClientRect(), []);
+  const columnRef = useRef<HTMLDivElement>(null);
   const {
     activeThreadId,
     refreshThreads,
@@ -379,12 +370,6 @@ export function ChatPage() {
     return messages.filter((m) => m.role === 'assistant').slice(0, 1);
   }, [showSeed, messages]);
 
-  useEffect(() => {
-    if (showSeed) {
-      inputRef.current?.focus();
-    }
-  }, [showSeed, activeThreadId]);
-
   const sendText = useCallback(
     async (raw: string) => {
       const text = raw.trim();
@@ -416,11 +401,12 @@ export function ChatPage() {
       } catch (err) {
         if (currentThread.current !== activeThreadId) return;
         setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-        setDraft(text);
+        setDraft(raw);
         setLoadError(err instanceof ApiError ? `发送失败：${err.message}` : '发送失败，请重试');
       } finally {
         window.clearTimeout(timer);
         setSending(false);
+        if (currentThread.current === activeThreadId) requestAnimationFrame(() => inputRef.current?.focus());
       }
     },
     [activeThreadId, sending, refreshThreads, recomputeEmber, seedCopy.band, seedCopy.reason],
@@ -494,35 +480,72 @@ export function ChatPage() {
 
   const onChip = useCallback(
     (label: string) => {
-      if (label === '吹一口气' || label === '还在吗') {
-        void sendText(label === '吹一口气' ? '吹一口气，火会回来。' : '还在吗？');
-        return;
-      }
+      if (label === '介绍我的项目') { navigate('/projects'); return; }
       setDraft(label);
       requestAnimationFrame(() => inputRef.current?.focus());
     },
-    [sendText],
+    [navigate],
   );
 
-  useLayoutEffect(() => {
+  useGSAP(() => {
     const node = composerRef.current;
     if (!node) return;
-    node.style.top = showSeed && slotRef.current ? `${slotRef.current.offsetTop}px` : '';
+    const align = () => {
+      node.style.top = showSeed && slotRef.current && columnRef.current
+        ? `${slotRef.current.getBoundingClientRect().top - columnRef.current.getBoundingClientRect().top}px`
+        : '';
+    };
+    align();
+    const observer = new window.ResizeObserver(align);
+    if (columnRef.current) observer.observe(columnRef.current);
+    if (slotRef.current) observer.observe(slotRef.current);
+    window.addEventListener('resize', align);
     const rect = node.getBoundingClientRect();
     const previous = previousRect.current;
-    let animation: ReturnType<typeof node.animate> | undefined;
-    if (previous && !motionPaused && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      animation = node.animate([{transform: `translate(${previous.x - rect.x}px, ${previous.y - rect.y}px)`}, {transform: 'translate(0, 0)'}], {duration: 400, easing: 'cubic-bezier(.22,1,.36,1)'});
-    }
+    const media = gsap.matchMedia();
+    media.add({ full: '(prefers-reduced-motion: no-preference)', reduced: '(prefers-reduced-motion: reduce)' }, context => {
+      const still = motionPaused || context.conditions?.reduced;
+      const timeline = gsap.timeline({ paused: true, defaults: { ease: 'power3.out' } });
+      if (previous && (Math.abs(previous.x - rect.x) > 1 || Math.abs(previous.y - rect.y) > 1)) {
+        timeline.fromTo(node, { x: previous.x - rect.x, y: previous.y - rect.y }, { x: 0, y: 0, duration: .4, clearProps: 'transform' }, 0);
+      }
+      if (arrival && !welcomeBlocking) {
+        timeline.fromTo(columnRef.current, { opacity: .3 }, { opacity: 1, duration: .7, clearProps: 'opacity' }, 0);
+      }
+      const visibility = () => {
+        if (document.hidden) timeline.pause();
+        else if (!still) timeline.resume();
+      };
+      document.addEventListener('visibilitychange', visibility);
+      if (still) timeline.progress(1);
+      else if (!document.hidden) timeline.play();
+      return () => document.removeEventListener('visibilitychange', visibility);
+    }, columnRef);
     previousRect.current = rect;
-    return () => animation?.cancel();
-  }, [showSeed, loading, loadError, motionPaused]);
-  useEffect(() => { if (!loading) inputRef.current?.focus(); }, [showSeed, loading]);
-  const chips = seedChipsFor(seedCopy.band).slice(0, 2);
+    return () => { media.revert(); observer.disconnect(); window.removeEventListener('resize', align); };
+  }, { scope: columnRef, dependencies: [showSeed, loading, loadError, motionPaused, welcomeBlocking, arrival], revertOnUpdate: true });
+  useEffect(() => { if (!loading && !welcomeBlocking) inputRef.current?.focus(); }, [showSeed, loading, welcomeBlocking]);
+  useEffect(() => {
+    const column = columnRef.current;
+    if (welcomeBlocking) column?.setAttribute('inert', '');
+    else column?.removeAttribute('inert');
+    return () => column?.removeAttribute('inert');
+  }, [welcomeBlocking]);
+  const finishWelcome = useCallback(() => {
+    setWelcomeVisible(false);
+    setArrival(false);
+    inputRef.current?.focus();
+  }, []);
+  const startWelcomeExit = useCallback((name: string) => {
+    setDisplayName(name);
+    setWelcomeBlocking(false);
+    setArrival(true);
+  }, []);
+  const chips = SEED_CHIPS;
 
   return (
-    <section data-motion-paused={motionPaused} data-motion-scene={motionScene} className={`canvas-page${showSeed ? ' canvas-page--seed' : ' canvas-page--grown'}`}>
-      <div className={`canvas-column${showSeed ? ' canvas-column--seed' : ' canvas-column--grown'}`}>
+    <section data-motion-engine="gsap" data-motion-paused={motionPaused} data-motion-scene={motionScene} data-arrival={arrival} className={`canvas-page${showSeed ? ' canvas-page--seed' : ' canvas-page--grown'}`}>
+      <div ref={columnRef} aria-hidden={welcomeBlocking || undefined} className={`canvas-column${showSeed ? ' canvas-column--seed' : ' canvas-column--grown'}`}>
         {loading ? (
           <div className="chat-loading" role="status">
             正在加载…
@@ -530,8 +553,9 @@ export function ChatPage() {
         ) : showSeed ? (
           <div className="ember-seed" data-ember-band={seedCopy.band}>
             <div className="ember-seed__glow" aria-hidden="true" />
-            <EmberFlame />
-            <p className="ember-seed__greeting">{seedCopy.greeting}</p>
+            <EmberPresence band={seedCopy.band} scene={motionScene} paused={motionPaused} className="seed-presence" />
+            <p className="seed-eyebrow">YOUR PRIVATE HEARTH</p>
+            <p className="ember-seed__greeting">{displayName && seedCopy.reason === 'no-interaction' ? `${displayName}，从这里开始。` : seedCopy.greeting}</p>
             {seedCopy.subline ? (
               <p className="ember-seed__subline">{seedCopy.subline}</p>
             ) : null}
@@ -616,12 +640,16 @@ export function ChatPage() {
               inputRef={inputRef}
               placeholder={showSeed ? "从炉边说一句…" : "你想先处理什么？"}
               withFlameMark={!showSeed}
+              band={seedCopy.band}
+              scene={motionScene}
+              paused={motionPaused}
             />
-            <p className="narrative-mode">离线演示 · 不连接真实模型 · 炉温仅表示互动 <button type="button" className="motion-toggle" aria-pressed={motionPaused} onClick={() => setMotionPaused(v => !v)}>{motionPaused ? '开启动效' : '暂停动效'}</button></p>
+            <p className="narrative-mode">离线演示 · 不连接真实模型 · 炉温仅表示互动 <button type="button" className="motion-toggle" aria-pressed={motionPaused} onClick={() => setMotionPaused(v => !v)}>{motionPaused ? '开启动效' : '暂停动效'}</button> <button type="button" className="welcome-replay" onClick={() => { setWelcomeVisible(true); setWelcomeBlocking(true); setArrival(false); }}>重看欢迎</button></p>
           </div>
         ) : null}
       </div>
 
+      {welcomeVisible && <HearthWelcome initialName={displayName} paused={motionPaused} onExitStart={startWelcomeExit} onComplete={finishWelcome} exitTarget={exitTarget} />}
       <ConfirmSheet
         open={pendingAction !== null}
         title="需要你确认"

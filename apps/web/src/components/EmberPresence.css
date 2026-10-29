@@ -1,0 +1,39 @@
+/** Authored flame contours, translucent lamina and a faceted char bed. */
+.ember-presence {
+  --presence-width: 144px;
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  width: var(--presence-width);
+  aspect-ratio: 8 / 9;
+  pointer-events: none;
+  isolation: isolate;
+}
+.ember-presence__art { display: block; width: 100%; height: 100%; overflow: visible; }
+.ember-presence__reveal { transform-box: view-box; transform-origin: 50% 78%; }
+.ember-presence__mantle, .ember-presence__filament, .ember-presence__left,
+.ember-presence__right, .ember-presence__inner, .ember-presence__heart, .ember-presence__ribbon {
+  transform-box: view-box;
+  transform-origin: 50% 77%;
+}
+.ember-presence__seam-bloom { opacity: .5; }
+.ember-presence__cinders { opacity: .48; }
+.ember-presence[data-band="cool"] .ember-presence__mantle { opacity: .64; }
+.ember-presence[data-band="cool"] .ember-presence__left,
+.ember-presence[data-band="cool"] .ember-presence__right { opacity: .44; }
+.ember-presence[data-band="cool"] .ember-presence__inner { opacity: .68; }
+.ember-presence[data-band="cool"] .ember-presence__heart { opacity: .72; }
+.ember-presence[data-band="cool"] .ember-presence__halo { opacity: .35; }
+.ember-presence[data-band="cool"] .ember-presence__cinders { opacity: .18; }
+.ember-presence[data-band="warm"] .ember-presence__right { opacity: .58; }
+.ember-presence[data-band="warm"] .ember-presence__mantle { opacity: .87; }
+.ember-presence[data-band="warm"] .ember-presence__halo { opacity: .72; }
+.ember-presence[data-band="hot"] .ember-presence__seam-bloom { opacity: .8; }
+.ember-presence[data-band="hot"] .ember-presence__cinders { opacity: .68; }
+.ember-presence--compact { --presence-width: 28px; margin: 0 1px; }
+.ember-presence--compact .ember-presence__ground,
+.ember-presence--compact .ember-presence__cinders,
+.ember-presence--compact .ember-presence__halo { display: none; }
+.ember-presence--compact .ember-presence__seam { stroke-width: 1.6; }
+/* All motion is owned by scoped GSAP timelines; the unenhanced SVG is a readable final frame. */

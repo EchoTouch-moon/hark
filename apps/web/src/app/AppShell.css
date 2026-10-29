@@ -450,3 +450,42 @@
 
 /* 聊天固定为一个视口，历史在消息列滚动；手机操作区不被长消息推走。 */
 .canvas-shell--canvas { height: 100dvh; overflow: hidden; }
+
+/* Craft chrome：薄铜边缘、留白、安静的交互。 */
+.canvas-chrome {
+  min-height: var(--topbar-height);
+  padding: 16px 28px;
+  flex-shrink: 0;
+}
+.chrome-seg {
+  padding: 4px;
+  background: rgba(237, 229, 218, .52);
+  border-color: rgba(163, 139, 107, .13);
+  box-shadow: inset 0 1px 2px rgba(79, 56, 32, .025);
+}
+.chrome-seg__btn { padding: 8px 21px; font-size: 12px; font-weight: 500; letter-spacing: .04em; }
+.chrome-seg__btn.is-active {
+  background: #fffdf9;
+  box-shadow: 0 2px 6px rgba(72, 49, 25, .07), inset 0 0 0 1px rgba(188, 163, 130, .08);
+}
+.chrome-icon-btn, .chrome-avatar {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid rgba(156, 130, 98, .18);
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+.chrome-icon-btn:hover, .chrome-avatar:hover { background: var(--color-surface); border-color: var(--color-border-strong); }
+.chrome-icon-btn:active, .chrome-avatar:active { transform: scale(.95); }
+.thread-rail--collapsed { background: transparent; backdrop-filter: none; border-right-color: transparent; padding-top: 21px; }
+.thread-rail__expand { color: var(--color-ink-3); }
+.canvas-shell--rail-collapsed { grid-template-columns: 48px minmax(0, 1fr); }
+@media(max-width:600px) {
+  .canvas-chrome { padding: 12px 14px; min-height: 64px; }
+  .canvas-shell--rail-collapsed { grid-template-columns: 36px minmax(0, 1fr); }
+  .thread-rail--collapsed { padding: 15px 2px; }
+  .chrome-seg__btn { padding: 8px 15px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .canvas-shell, .chrome-seg__btn, .chrome-icon-btn, .chrome-avatar { transition: none; }
+}
