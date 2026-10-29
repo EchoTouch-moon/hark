@@ -68,3 +68,7 @@ R0 PASS（cca95e0），R1 PASS（1642215）。R2工程本地检查通过：343�
 ## UI-REFRESH-01 · 第二块交付
 
 UI-01.2基础完成：真实根页只读洞察、Demo受模式门禁、Mock/Demo次级导航，真实项目页无合成项目请求。web build、全仓typecheck、改动文件lint及全19项E2E通过，证据ui-01-mode-*。下一步UI-01.3响应式导航/详情焦点交互，接班读tasks/UI-REFRESH-01.md末尾。不推送、不调用Pi、不宣称R2价值通过。
+
+## UI-REFRESH-01 · 第三块交付（UI-01 阶段门禁 PASS）
+
+UI-01.3完成：响应式导航（1024px紧凑72px图标导航并保留可访问名称、>=1280px 200px）、主内容最大1200px居中；按需详情面板（空时不渲染、>=1600px 360px内联列、1024/1440px覆盖式抽屉、600px底部模态）；顶栏常驻说明；Esc/关闭按钮/点击遮罩退出并自动归还焦点。全仓typecheck、web build、lint零错误、Playwright全量22/22通过。证据：handoff/EVIDENCE/ui-01-layout-*。至此UI-01全部完成并通过阶段门禁。下一步进入UI-02.1（只读overview聚合接口）。

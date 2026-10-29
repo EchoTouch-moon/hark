@@ -82,3 +82,7 @@ GitHub CI Run40836527163对源码00121a2实际success，含Node22/Linux完整检
 ## UI-REFRESH-01 · 第二块
 
 UI-01.2模式/导航基础完成：服务端模式共用上下文+Zod、未知/失败关闭操作、真实根洞察页、/demo与旧Demo深链接门禁、次级Mock/Demo入口、真实Projects不取合成项目。全仓typecheck、web build、局部lint、全19项浏览器通过。完整记录tasks/UI-REFRESH-01.md最新交接；下一块UI-01.3。
+
+## UI-REFRESH-01 · 第三块（UI-01 阶段门禁 PASS）
+
+UI-01.3完成：响应式导航（1024px紧凑72px图标导航并保留可访问名称、>=1280px 200px）、主内容最大1200px宽屏居中；按需详情面板（空时不渲染、>=1600px 360px内联列、1024/1440px覆盖式抽屉附遮罩、600px底部模态面板）；顶栏说明随时呼出；Esc/关闭按钮/点击遮罩退出并自动归还焦点。全仓typecheck、web build、lint零错误、Playwright全量22/22通过。证据：handoff/EVIDENCE/ui-01-layout-*。下一块：UI-02.1（只读overview聚合接口）。

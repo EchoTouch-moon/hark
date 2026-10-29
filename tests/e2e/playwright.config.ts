@@ -26,7 +26,7 @@ export default defineConfig({
     cwd: REPO,
     command: [
       'sh -c "',
-      `rm -f "${REPO}/data/e2e.sqlite" "${REPO}/data/e2e.sqlite-wal" "${REPO}/data/e2e.sqlite-shm" "${REPO}/data/e2e-insights.sqlite" "${REPO}/data/e2e-insights.sqlite-wal" "${REPO}/data/e2e-insights.sqlite-shm" "${REPO}/data/e2e-observer.sqlite" "${REPO}/data/e2e-observer.sqlite-wal" "${REPO}/data/e2e-observer.sqlite-shm" "${REPO}/data/e2e-observer.sqlite.writer.lock" "${REPO}/data/e2e-analysis.sqlite" "${REPO}/data/e2e-analysis.sqlite-wal" "${REPO}/data/e2e-analysis.sqlite-shm" tests/e2e/.server.log;`,
+      `rm -f "${REPO}/data/e2e.sqlite" "${REPO}/data/e2e.sqlite-wal" "${REPO}/data/e2e.sqlite-shm" "${REPO}/data/e2e-insights.sqlite" "${REPO}/data/e2e-insights.sqlite-wal" "${REPO}/data/e2e-insights.sqlite-shm" "${REPO}/data/e2e-insights.sqlite.writer.lock" "${REPO}/data/e2e-observer.sqlite" "${REPO}/data/e2e-observer.sqlite-wal" "${REPO}/data/e2e-observer.sqlite-shm" "${REPO}/data/e2e-observer.sqlite.writer.lock" "${REPO}/data/e2e-analysis.sqlite" "${REPO}/data/e2e-analysis.sqlite-wal" "${REPO}/data/e2e-analysis.sqlite-shm" tests/e2e/.server.log;`,
       'pnpm --filter @hearth/web build || exit 1;',
       `HEARTH_PORT=${PORT}`,
       `HEARTH_DB="${REPO}/data/e2e.sqlite"`,

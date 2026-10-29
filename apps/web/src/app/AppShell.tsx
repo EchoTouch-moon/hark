@@ -1,8 +1,10 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -14,19 +16,23 @@ import { ConnectionBadge } from '../components';
 import './AppShell.css';
 
 /* ------------------------------------------------------------------ */
-/* Detail Drawer 插槽：后续任务（Evidence/TaskTrace）向右侧抽屉投放内容 */
+/* Detail Drawer 插槽：向右侧详情抽屉/模态面板投放内容 */
 /* ------------------------------------------------------------------ */
 
 export interface DetailDrawerValue {
-  /** 抽屉当前内容；null 时显示占位说明 */
+  /** 抽屉当前内容；null 时不渲染 */
   content: ReactNode | null;
   /** 页面调用以填充/清空抽屉；路由切换时 AppShell 自动清空 */
   setContent: (content: ReactNode | null) => void;
+  /** 显式关闭抽屉并归还焦点 */
+  closeDrawer: () => void;
+  /** 快捷打开抽屉并记录当前焦点元素 */
+  openDrawer: (content: ReactNode) => void;
 }
 
 const DetailDrawerContext = createContext<DetailDrawerValue | null>(null);
 
-/** 供页面（M1-T05..T08）向右侧 Detail Drawer 投放 Evidence / Task Trace */
+/** 供页面与顶栏向右侧 Detail Drawer 投放 Evidence / Trace / Workspace Details */
 export function useDetailDrawer(): DetailDrawerValue {
   const value = useContext(DetailDrawerContext);
   if (value === null) {
@@ -103,10 +109,10 @@ function NavIcon({ name }: { name: NavIconName }) {
 }
 
 function NavRail() {
-  const {state}=useRuntimeMode();
+  const { state } = useRuntimeMode();
   return (
     <nav className="nav-rail" aria-label="主导航">
-      <div className="nav-brand">
+      <div className="nav-brand" title="Hearth" aria-label="Hearth">
         <svg
           className="nav-brand-mark"
           width="18"
@@ -134,6 +140,8 @@ function NavRail() {
             <NavLink
               to={item.to}
               end={item.end}
+              title={item.label}
+              aria-label={item.label}
               className={({ isActive }) =>
                 isActive ? 'nav-item is-active' : 'nav-item'
               }
@@ -145,10 +153,29 @@ function NavRail() {
         ))}
       </ul>
       <details className="nav-secondary">
-        <summary>更多入口</summary>
-        <NavLink className="nav-item" to="/chat">对话 · Mock 演示</NavLink>
-        <NavLink className="nav-item" to="/demo">{state.status === 'ready' && state.demoMode ? 'Demo 操作台' : '演示模式说明'}</NavLink>
-        {state.status === 'ready' && state.demoMode ? <NavLink className="nav-item" to="/activity">Demo 执行记录</NavLink> : null}
+        <summary aria-label="更多入口">
+          <span className="nav-secondary-full">更多入口</span>
+          <span className="nav-secondary-compact" aria-hidden="true">更多</span>
+        </summary>
+        <NavLink className="nav-item" to="/chat" title="对话 · Mock 演示" aria-label="对话 · Mock 演示">
+          <NavIcon name="chat" />
+          <span className="nav-item-label">对话 · Mock 演示</span>
+        </NavLink>
+        <NavLink
+          className="nav-item"
+          to="/demo"
+          title={state.status === 'ready' && state.demoMode ? 'Demo 操作台' : '演示模式说明'}
+          aria-label={state.status === 'ready' && state.demoMode ? 'Demo 操作台' : '演示模式说明'}
+        >
+          <NavIcon name="home" />
+          <span className="nav-item-label">{state.status === 'ready' && state.demoMode ? 'Demo 操作台' : '演示模式说明'}</span>
+        </NavLink>
+        {state.status === 'ready' && state.demoMode ? (
+          <NavLink className="nav-item" to="/activity" title="Demo 执行记录" aria-label="Demo 执行记录">
+            <NavIcon name="activity" />
+            <span className="nav-item-label">Demo 执行记录</span>
+          </NavLink>
+        ) : null}
       </details>
       <div className="nav-footer">
         <p className="nav-footer-note">本地优先</p>
@@ -176,7 +203,37 @@ function sectionLabel(pathname: string): string {
 function TopBar() {
   const theme = useSyncExternalStore(subscribeTheme, getThemePreference, () => 'light');
   const location = useLocation();
-  const {state}=useRuntimeMode();
+  const { state } = useRuntimeMode();
+  const { content, setContent, closeDrawer } = useDetailDrawer();
+
+  const toggleWorkspaceHelp = () => {
+    if (content) {
+      closeDrawer();
+    } else {
+      setContent(
+        <div className="workspace-help-detail">
+          <h3 className="workspace-help-title">本地工作区说明</h3>
+          <p className="workspace-help-text">
+            Hearth 遵循本地优先原则，所有观察数据与状态均持久化保存在本地 SQLite 数据库中。
+          </p>
+          <div className="workspace-help-section">
+            <p className="workspace-help-subtitle">运行环境与模式</p>
+            <p className="workspace-help-text">
+              当前处于 <strong>{state.status === 'ready' && state.demoMode ? 'Demo 合成数据模式' : '真实项目模式'}</strong>。
+              外部模型调用需明确预览并主动授权，不自动产生后台计费。
+            </p>
+          </div>
+          <div className="workspace-help-section">
+            <p className="workspace-help-subtitle">交互与快捷键</p>
+            <p className="workspace-help-text">
+              按 <kbd>Esc</kbd> 键或点击右上角关闭按钮可随时退出本详情抽屉并恢复焦点。
+            </p>
+          </div>
+        </div>,
+      );
+    }
+  };
+
   return (
     <header className="topbar">
       <div className="topbar-identity">
@@ -185,6 +242,15 @@ function TopBar() {
           /
         </span>
         <span className="topbar-section">{sectionLabel(location.pathname)}</span>
+        <button
+          type="button"
+          className="topbar-help-btn"
+          aria-label="查看工作区说明与详情"
+          title="查看工作区说明与详情"
+          onClick={toggleWorkspaceHelp}
+        >
+          说明
+        </button>
       </div>
       <div className="topbar-badges">
         <label className="theme-control">
@@ -203,25 +269,73 @@ function TopBar() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Detail Drawer（桌面宽屏 280px；窄屏隐藏，后续任务以弹层呈现） */
-/* ------------------------------------------------------------------ */
-
-/* ------------------------------------------------------------------ */
 /* AppShell：NavRail + 主内容 + DetailDrawer 三栏骨架 */
 /* ------------------------------------------------------------------ */
 
 export function AppShell() {
   const location = useLocation();
   const [drawerContent, setDrawerContent] = useState<ReactNode | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const closeDrawer = useCallback(() => {
+    setDrawerContent(null);
+    if (openerRef.current && typeof openerRef.current.focus === 'function' && openerRef.current.isConnected) {
+      openerRef.current.focus();
+    }
+    openerRef.current = null;
+  }, []);
+
+  const openDrawer = useCallback((content: ReactNode) => {
+    if (document.activeElement instanceof HTMLElement) {
+      openerRef.current = document.activeElement;
+    }
+    setDrawerContent(content);
+  }, []);
+
+  const setContent = useCallback(
+    (content: ReactNode | null) => {
+      if (content === null) {
+        closeDrawer();
+      } else {
+        openDrawer(content);
+      }
+    },
+    [closeDrawer, openDrawer],
+  );
 
   // 路由切换时清空抽屉，避免上一页的证据残留
   useEffect(() => {
     setDrawerContent(null);
+    openerRef.current = null;
   }, [location.pathname]);
 
+  // Esc 键监听
+  useEffect(() => {
+    if (!drawerContent) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDrawer();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [drawerContent, closeDrawer]);
+
+  // 打开抽屉时将焦点移至关闭按钮
+  useEffect(() => {
+    if (drawerContent) {
+      const timer = setTimeout(() => {
+        closeButtonRef.current?.focus();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [drawerContent]);
+
   const drawerValue = useMemo<DetailDrawerValue>(
-    () => ({ content: drawerContent, setContent: setDrawerContent }),
-    [drawerContent],
+    () => ({ content: drawerContent, setContent, closeDrawer, openDrawer }),
+    [drawerContent, setContent, closeDrawer, openDrawer],
   );
 
   return (
@@ -237,7 +351,37 @@ export function AppShell() {
             <RuntimeReady><Outlet /></RuntimeReady>
           </main>
         </div>
-        {drawerContent ? <aside className="detail-drawer" aria-label="详情面板">{drawerContent}</aside> : null}
+        {drawerContent ? (
+          <>
+            <div
+              className="detail-drawer-backdrop"
+              onClick={closeDrawer}
+              aria-hidden="true"
+              data-testid="detail-drawer-backdrop"
+            />
+            <aside
+              className="detail-drawer"
+              aria-label="详情面板"
+              role="complementary"
+            >
+              <div className="detail-drawer-header">
+                <span className="detail-drawer-title">详情</span>
+                <button
+                  ref={closeButtonRef}
+                  type="button"
+                  className="detail-drawer-close"
+                  onClick={closeDrawer}
+                  aria-label="关闭详情面板"
+                >
+                  <span aria-hidden="true">✕</span> 关闭
+                </button>
+              </div>
+              <div className="detail-drawer-body">
+                {drawerContent}
+              </div>
+            </aside>
+          </>
+        ) : null}
       </div>
     </DetailDrawerContext.Provider>
   );
