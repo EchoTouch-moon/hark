@@ -60,3 +60,4 @@ Analysis中断复用failed+INTERRUPTED，保留旧Run且不自动重试模型。
 5. 活跃页面 3 秒只读无重叠轮询：使用 `isFetchingRef` 防重叠；在 `document.visibilityState === 'hidden'` 时暂停轮询，切回前台时通过 `visibilitychange` 立即触发一次更新；分页加载时保留已有列表不跳动。
 6. SPA 静态文件路由健全性：修复服务端 SPA 兜底逻辑中当请求携带查询参数（如 `/?projectId=...`）时误将静态根目录当做普通文件用 `fsReadFile` 读取导致 EISDIR 500 错误的问题，增加目录检测与空路径规范化。
 7. 测试结果映射：测试报告中包含失败用例时的 `MIXED` 状态统一归入测试失败（`FAILED`），避免在项目卡片中显示为未知。
+8. 2026-10-29 用户明确授权将独立分支 `codex/ui-refresh-01` 推送至 GitHub（`origin/codex/ui-refresh-01`，HEAD: `c18faa1`），供用户审查与查看远端 CI 状态；不自动合并 master。
