@@ -13,7 +13,7 @@ import type { ZodError } from 'zod';
 import type { ServerConfig } from '../config.js';
 import type { Storage } from '@hearth/storage';
 import type { ProjectObserver } from '@hearth/project-observer';
-import type { InsightStore } from '@hearth/project-insight';
+import type { InsightStore, InsightCoordinator } from '@hearth/project-insight';
 import type { AnalysisService } from '@hearth/project-analysis';
 import { SessionManager, parseSessionCookie } from './session.js';
 import { registerCoreRoutes } from './routes/core.js';
@@ -34,6 +34,7 @@ export interface AppDeps {
   observer?: ProjectObserver;
   insight?: InsightStore;
   analysis?: AnalysisService;
+  coordinator?: InsightCoordinator;
 }
 
 /**

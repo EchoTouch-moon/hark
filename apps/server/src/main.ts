@@ -16,7 +16,7 @@ import { DiscoveryService, Orchestrator } from '@hearth/core';
 import { MockAgentAdapter } from '@hearth/agent-adapters';
 import { FixtureConnector } from '@hearth/connectors';
 import { ProjectObserver } from '@hearth/project-observer';
-import { InsightStore, defaultInsightDbPath } from '@hearth/project-insight';
+import { InsightStore, InsightCoordinator, InProcessObserverReadPort, defaultInsightDbPath } from '@hearth/project-insight';
 import {
   AnalysisService,
   AnalysisStore,
@@ -79,12 +79,17 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
   analysis.recoverInterrupted();
   await analysis.recoverDeletions();
 
+  const coordinator = new InsightCoordinator({
+    store: insight, port: new InProcessObserverReadPort(observer),
+    projectIds: () => observer.listProjects().filter(project => project.enabled).map(project => project.id),
+  });
   const deps: AppDeps = {
     config,
     storage,
     observer,
     insight,
     analysis,
+    coordinator,
     services: {
       discovery,
       orchestrator,
@@ -118,6 +123,7 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
 
   const app = buildApp(deps);
   app.addHook('onClose', async () => {
+    await coordinator.stop();
     await analysis.shutdown();
     await observer.stop();
     observer.close();
@@ -155,7 +161,8 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
   void observer.start().catch((cause) => {
     console.error('[hearth-server] observer start failed:', cause);
   });
-  return { app, config, storage, orchestrator, discovery, observer };
+  coordinator.start();
+  return { app, config, storage, orchestrator, discovery, observer, coordinator };
 }
 
 // CLI entry

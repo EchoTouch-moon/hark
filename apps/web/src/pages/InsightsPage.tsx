@@ -81,6 +81,20 @@ export function InsightsPage() {
     return () => controller.abort();
   }, [load, reloadKey]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    let busy = false;
+    const timer = setInterval(() => {
+      // Preserve explicitly expanded pagination; refresh only the first page.
+      if (busy || loadingMore || (items?.length ?? 0) > 20) return;
+      busy = true;
+      void load(controller.signal).catch((cause) => {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : '刷新洞察失败');
+      }).finally(() => { busy = false; });
+    }, 3000);
+    return () => { clearInterval(timer); controller.abort(); };
+  }, [load, loadingMore, items?.length]);
+
   async function loadMore(): Promise<void> {
     if (nextCursor === null || loadingMore) return;
     setLoadingMore(true);

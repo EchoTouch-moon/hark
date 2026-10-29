@@ -90,3 +90,4 @@ export {
   type InsightSummary,
 } from './insights/query.js';
 export { applyAcknowledge, applyDismiss, applyFeedback } from './insights/actions.js';
+export { InsightCoordinator } from './coordinator.js';

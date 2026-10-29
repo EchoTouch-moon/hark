@@ -19,7 +19,10 @@ export function registerCoreRoutes(app: FastifyInstance, deps: AppDeps, sessions
       status: 'ok',
       db,
       demoMode: deps.config.demoMode,
-      provider: 'mock',
+      provider: 'mock', // Legacy chat identity, retained for compatibility.
+      chatProvider: 'mock',
+      analysisProvider: deps.analysis?.identity() ?? null,
+      insightCoordinator: deps.coordinator?.health() ?? null,
       version: '0.1.0',
       contractVersion: '1',
     });

@@ -1,0 +1,14 @@
+
+ RUN  v3.2.7 /Users/v/new-idea/hark
+
+(node:91382) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-insight/src/coordinator.test.ts (3 tests) 1103ms
+   ✓ a new report automatically creates one Insight; restart, repeat and idle do not duplicate  555ms
+   ✓ delete/re-register does not silently reset a broken stream  315ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  15:23:11
+   Duration  1.64s (transform 187ms, setup 0ms, collect 274ms, tests 1.10s, environment 0ms, prepare 54ms)
+
