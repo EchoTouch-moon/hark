@@ -5,10 +5,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { useNavigate } from 'react-router-dom';
-import { EmberPresence } from '../components/EmberPresence';
 import { HearthWelcome } from '../components/HearthWelcome';
-import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
+import { emitEmberCue } from '../features/ember-cues';
 import { readWelcomePreference } from '../features/welcome';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useThreads } from '../app/AppShell';
@@ -27,7 +25,6 @@ import {
 import {
   computeEmberHeat,
   latestConfirmedInteraction,
-  type EmberBand,
 } from '../features/emberHeat';
 import './ChatPage.css';
 
@@ -212,10 +209,6 @@ function ComposerForm({
   onSubmit,
   inputRef,
   placeholder,
-  withFlameMark,
-  band,
-  scene,
-  paused,
 }: {
   draft: string;
   setDraft: (v: string) => void;
@@ -224,10 +217,6 @@ function ComposerForm({
   onSubmit: () => void;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   placeholder: string;
-  withFlameMark?: boolean;
-  band: EmberBand;
-  scene: string;
-  paused: boolean;
 }) {
   return (
     <form
@@ -237,7 +226,6 @@ function ComposerForm({
         onSubmit();
       }}
     >
-      {withFlameMark ? <EmberPresence compact band={band} scene={scene} paused={paused} /> : null}
       <label htmlFor="canvas-input" className="visually-hidden">
         输入消息
       </label>
@@ -270,19 +258,20 @@ function ComposerForm({
 }
 
 export function ChatPage() {
-  const navigate = useNavigate();
   const [welcomePreference] = useState(readWelcomePreference);
   const [welcomeVisible, setWelcomeVisible] = useState(!welcomePreference.completed);
   const [welcomeBlocking, setWelcomeBlocking] = useState(!welcomePreference.completed);
   const [displayName, setDisplayName] = useState(welcomePreference.name);
   const [arrival, setArrival] = useState(false);
-  const exitTarget = useCallback(() => columnRef.current?.querySelector<HTMLElement>('.seed-presence, .composer .ember-presence')?.getBoundingClientRect(), []);
   const columnRef = useRef<HTMLDivElement>(null);
   const {
     activeThreadId,
     refreshThreads,
     recomputeEmber,
     emberBand,
+    motionPaused,
+    welcomeReplay,
+    setWelcomeReplay,
   } = useThreads();
   const [messages, setMessages] = useState<CanvasMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -294,8 +283,6 @@ export function ChatPage() {
   const currentThread = useRef(activeThreadId);
   currentThread.current = activeThreadId;
   const slotRef = useRef<HTMLDivElement>(null);
-  const [motionPaused, setMotionPaused] = useState(isEmberMotionPaused);
-  useEffect(() => { emitEmberCue('motion-preference', motionPaused); }, [motionPaused]);
   const composerRef = useRef<HTMLDivElement>(null);
   const previousRect = useRef<ReturnType<NonNullable<typeof composerRef.current>['getBoundingClientRect']> | null>(null);
   const [pendingAction, setPendingAction] = useState<MessageAction | null>(null);
@@ -380,6 +367,8 @@ export function ChatPage() {
       setLoadError(null);
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), 15_000);
+      const previousUserIds = new Set(messages.filter((message) => message.role === 'user').map((message) => message.id));
+      let requestAccepted = false;
       const optimistic: CanvasMessage = {
         id: `local-${Date.now()}`,
         role: 'user',
@@ -393,8 +382,11 @@ export function ChatPage() {
 
       try {
         await sendChatMessage(activeThreadId, text, controller.signal);
+        requestAccepted = true;
         const confirmed = await fetchChatHistory(activeThreadId, controller.signal);
-        if (!confirmed.messages.some(m => m.role === 'user' && m.content === text)) throw new Error('用户消息尚未确认保存');
+        if (!confirmed.confirmedUserMessages.some((message) => message.content === text && !previousUserIds.has(message.id))) {
+          throw new Error('用户消息尚未确认保存');
+        }
         if (currentThread.current !== activeThreadId) return;
         setMessages(confirmed.messages);
         emitEmberCue('acknowledged');
@@ -406,14 +398,14 @@ export function ChatPage() {
         setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
         setDraft(raw);
         emitEmberCue('failed');
-        setLoadError(err instanceof ApiError ? `发送失败：${err.message}` : '发送失败，请重试');
+        setLoadError(requestAccepted ? '消息已发送，但暂时无法确认是否保存。请先查看会话，再决定是否重试。' : err instanceof ApiError ? `发送失败：${err.message}` : '发送失败，请重试');
       } finally {
         window.clearTimeout(timer);
         setSending(false);
         if (currentThread.current === activeThreadId) requestAnimationFrame(() => inputRef.current?.focus());
       }
     },
-    [activeThreadId, sending, refreshThreads, recomputeEmber, seedCopy.band, seedCopy.reason],
+    [activeThreadId, sending, refreshThreads, recomputeEmber, seedCopy.band, seedCopy.reason, messages],
   );
 
   const runAction = useCallback(
@@ -483,14 +475,10 @@ export function ChatPage() {
     [runAction],
   );
 
-  const onChip = useCallback(
-    (label: string) => {
-      if (label === '介绍我的项目') { navigate('/projects'); return; }
-      setDraft(label);
-      requestAnimationFrame(() => inputRef.current?.focus());
-    },
-    [navigate],
-  );
+  const onChip = useCallback((label: string) => {
+    setDraft(label === '介绍我的项目' ? '我想介绍一下我的项目：' : '我有一个想法：');
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
 
   useGSAP(() => {
     const node = composerRef.current;
@@ -536,6 +524,14 @@ export function ChatPage() {
     else column?.removeAttribute('inert');
     return () => column?.removeAttribute('inert');
   }, [welcomeBlocking]);
+  useEffect(() => {
+    if (!welcomeReplay) return;
+    setWelcomeVisible(true);
+    setWelcomeBlocking(true);
+    setArrival(false);
+    setWelcomeReplay(false);
+  }, [welcomeReplay, setWelcomeReplay]);
+
   const finishWelcome = useCallback(() => {
     setWelcomeVisible(false);
     setArrival(false);
@@ -557,15 +553,13 @@ export function ChatPage() {
           </div>
         ) : showSeed ? (
           <div className="ember-seed" data-ember-band={seedCopy.band}>
-            <div className="ember-seed__glow" aria-hidden="true" />
-            <EmberPresence band={seedCopy.band} scene={motionScene} paused={motionPaused} className="seed-presence" />
-            <p className="seed-eyebrow">YOUR PRIVATE HEARTH</p>
-            <p className="ember-seed__greeting">{displayName && seedCopy.reason === 'no-interaction' ? `${displayName}，从这里开始。` : seedCopy.greeting}</p>
+            <p className="seed-eyebrow">在这里，慢慢向前</p>
+            <h1 className="ember-seed__greeting">{displayName && seedCopy.reason === 'no-interaction' ? `${displayName}，想从哪里开始？` : seedCopy.reason === 'no-interaction' ? '今天，想聊些什么？' : seedCopy.greeting}</h1>
             {seedCopy.subline ? (
               <p className="ember-seed__subline">{seedCopy.subline}</p>
             ) : null}
             <div ref={slotRef} className="ember-seed__composer-slot" aria-hidden="true" />
-            <div className="ember-seed__chips" aria-label="好玩入口">
+            <div className="ember-seed__chips" aria-label="开始讨论">
               {chips.map((c) => (
                 <button
                   key={c.id}
@@ -643,18 +637,13 @@ export function ChatPage() {
               disabled={!activeThreadId}
               onSubmit={() => void sendText(draft)}
               inputRef={inputRef}
-              placeholder={showSeed ? "从炉边说一句…" : "你想先处理什么？"}
-              withFlameMark={!showSeed}
-              band={seedCopy.band}
-              scene={motionScene}
-              paused={motionPaused}
+              placeholder={showSeed ? "说说你正在想的事…" : "继续说说你的想法…"}
             />
-            <p className="narrative-mode">离线演示 · 不连接真实模型 · 炉温仅表示互动 <button type="button" className="motion-toggle" aria-pressed={motionPaused} onClick={() => setMotionPaused(v => !v)}>{motionPaused ? '开启动效' : '暂停动效'}</button> <button type="button" className="welcome-replay" onClick={() => { setWelcomeVisible(true); setWelcomeBlocking(true); setArrival(false); }}>重看欢迎</button></p>
           </div>
         ) : null}
       </div>
 
-      {welcomeVisible && <HearthWelcome initialName={displayName} paused={motionPaused} onExitStart={startWelcomeExit} onComplete={finishWelcome} exitTarget={exitTarget} />}
+      {welcomeVisible && <HearthWelcome initialName={displayName} paused={motionPaused} onExitStart={startWelcomeExit} onComplete={finishWelcome} />}
       <ConfirmSheet
         open={pendingAction !== null}
         title="需要你确认"

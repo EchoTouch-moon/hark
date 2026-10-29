@@ -6,6 +6,7 @@
  * 真 API 可用时：忽略并清理旧 Mock 注入，history 已有 parts 不再叠本地假行动。
  */
 
+import { z } from 'zod';
 import { apiFetch, ApiError } from './api/client';
 import type { ChatMessage, ChatRole } from './api/types';
 import { touchLocalThread } from './threads';
@@ -49,8 +50,17 @@ export interface ChatReplyDto {
   label: string;
 }
 
+export interface ConfirmedUserMessage {
+  id: string;
+  role: 'user';
+  content: string;
+  createdAt: string;
+}
+
 export interface ChatHistoryDto {
   messages: CanvasMessage[];
+  /** Validated server messages, before any optional local display overlays. */
+  confirmedUserMessages: ConfirmedUserMessage[];
   adapter: string;
   live: boolean;
 }
@@ -226,6 +236,21 @@ export async function fetchChatHistory(
   });
   const data = await apiFetch<ChatHistoryDto>(`/api/v1/chat/history?${qs}`, { signal });
   const server = data.messages ?? [];
+  // Only the server response can establish a saved interaction. The schema
+  // deliberately strips parts, adapter metadata and other unrelated fields.
+  const confirmedSchema = z.object({
+    id: z.string().min(1),
+    role: z.literal('user'),
+    content: z.string(),
+    createdAt: z.string(),
+    threadId: z.string().optional(),
+  }).strip();
+  const confirmedUserMessages = server.flatMap((message) => {
+    const result = confirmedSchema.safeParse(message);
+    if (!result.success || (result.data.threadId && result.data.threadId !== threadId)) return [];
+    const { id, role, content, createdAt } = result.data;
+    return [{ id, role, content, createdAt }];
+  });
   const withParts = attachStoredParts(server);
   const serverHasParts = server.some((m) => Array.isArray(m.parts) && m.parts.length > 0);
   // 真 API / 服务端已带 parts：不合并旧 Mock 本地消息
@@ -237,6 +262,7 @@ export async function fetchChatHistory(
   return {
     ...data,
     messages,
+    confirmedUserMessages,
   };
 }
 

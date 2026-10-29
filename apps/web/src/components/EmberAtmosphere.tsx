@@ -9,16 +9,15 @@ gsap.registerPlugin(useGSAP);
 export interface EmberAtmosphereProps {
   band?: 'cool' | 'warm' | 'hot';
   paused?: boolean;
+  heat?: number;
 }
 
-// Equal command topology permits a small, real change in curvature without MorphSVG.
-const tongues = [
-  ['M0 230C12 217 31 210 27 185C47 196 45 208 57 216C64 201 60 184 71 169C68 199 95 200 111 230Z', 'M0 230C12 217 34 209 31 182C49 194 46 207 57 216C66 201 64 183 76 168C71 199 95 200 111 230Z'],
-  ['M77 230C111 218 129 211 123 190C137 196 140 204 145 213C155 192 145 171 157 149C154 177 180 193 177 208C187 205 190 196 189 187C212 206 211 222 224 230Z', 'M77 230C111 218 132 210 128 187C142 196 142 205 145 213C158 192 152 170 165 148C159 177 182 192 177 208C188 205 193 195 193 185C214 206 211 222 224 230Z'],
-  ['M204 230C226 218 249 219 251 198C262 208 260 218 270 221C283 213 280 199 287 191C285 217 309 219 333 230Z', 'M204 230C226 218 251 217 256 196C265 208 260 218 270 221C285 213 284 199 291 190C286 217 309 219 333 230Z'],
-  ['M1092 230C1120 219 1140 211 1138 192C1154 203 1153 213 1165 216C1174 200 1168 180 1181 165C1175 190 1194 200 1196 213C1210 209 1217 220 1234 230Z', 'M1092 230C1120 219 1137 211 1133 190C1150 202 1153 213 1165 216C1171 200 1162 180 1174 162C1170 190 1190 200 1196 213C1210 209 1217 220 1234 230Z'],
-  ['M1215 230C1242 211 1272 211 1267 181C1285 192 1285 203 1293 211C1305 193 1296 167 1312 141C1306 169 1328 188 1331 205C1345 195 1342 183 1348 173C1357 196 1344 216 1374 230Z', 'M1215 230C1242 211 1268 210 1261 179C1280 191 1285 203 1293 211C1302 193 1289 166 1304 138C1302 169 1324 188 1331 205C1342 195 1339 183 1343 170C1355 196 1344 216 1374 230Z'],
-  ['M1351 230C1375 214 1391 214 1393 195C1404 204 1405 216 1415 215C1421 198 1411 184 1423 166C1420 190 1434 201 1440 204L1440 230Z', 'M1351 230C1375 214 1387 213 1388 193C1401 204 1405 216 1415 215C1418 198 1406 183 1417 163C1416 190 1434 201 1440 204L1440 230Z'],
+// These broad, translucent currents are part of the page, not a flame icon.
+// Matching command topology lets GSAP move each current as a continuous shape.
+const currents = [
+  ['M155 735 C90 605 145 505 254 417 C315 367 353 277 324 167 C414 240 423 326 399 408 C484 369 545 256 524 119 C656 264 615 416 550 492 C501 551 603 619 581 735 Z', 'M150 735 C102 600 156 500 270 407 C329 359 359 273 340 160 C427 238 436 328 409 405 C491 366 561 251 541 116 C664 265 625 414 560 487 C512 550 613 620 581 735 Z'],
+  ['M283 741 C221 632 277 550 355 479 C408 431 426 357 405 285 C478 342 490 410 470 462 C530 436 567 379 566 313 C643 410 595 496 548 538 C504 579 544 660 535 741 Z', 'M288 741 C234 625 289 547 366 471 C419 422 438 353 418 279 C488 339 501 409 479 459 C539 432 579 375 578 306 C652 407 608 496 558 535 C514 577 549 659 535 741 Z'],
+  ['M356 742 C308 655 340 589 402 529 C438 495 449 448 441 411 C487 450 496 491 485 535 C527 516 548 487 548 453 C595 515 571 570 541 599 C518 624 532 685 522 742 Z', 'M360 742 C319 651 351 586 413 522 C448 487 459 445 453 406 C497 447 507 489 496 531 C536 513 559 484 560 448 C604 514 583 570 552 596 C528 622 541 683 522 742 Z'],
 ];
 
 function isWritingSurface(target: globalThis.EventTarget | null): target is HTMLElement {
@@ -28,7 +27,7 @@ function isWritingSurface(target: globalThis.EventTarget | null): target is HTML
 }
 
 /** A content-free room: temporary attention never changes the relationship band. */
-export function EmberAtmosphere({ band = 'cool', paused = false }: EmberAtmosphereProps) {
+export function EmberAtmosphere({ band = 'cool', heat = 0.12, paused = false }: EmberAtmosphereProps) {
   const root = useRef<HTMLDivElement>(null);
   const unique = useId().replace(/:/g, '');
   const timelines = useRef<gsap.core.Animation[]>([]);
@@ -88,8 +87,8 @@ export function EmberAtmosphere({ band = 'cool', paused = false }: EmberAtmosphe
     const select = gsap.utils.selector(node);
     const ambient = gsap.timeline({ paused: true });
     // Local fire tongues and the room deliberately keep different phases.
-    select('.ember-atmosphere__tongue').forEach((path, index) => {
-      const contour = tongues[index]?.[1];
+    select('.ember-atmosphere__current').forEach((path, index) => {
+      const contour = currents[index]?.[1];
       if (!contour) return;
       ambient.to(path, { attr: { d: contour }, duration: 2.2 + index * .23,
         repeat: -1, yoyo: true, ease: 'sine.inOut' }, index * .19);
@@ -100,7 +99,7 @@ export function EmberAtmosphere({ band = 'cool', paused = false }: EmberAtmosphe
       duration: 3.1, repeat: -1, yoyo: true, ease: 'sine.inOut' }, .7);
     ambient.to(select('.ember-atmosphere__side--right'), { opacity: .9, yPercent: 3,
       duration: 3.8, repeat: -1, yoyo: true, ease: 'sine.inOut' }, 1.3);
-    ambient.to(select('.ember-atmosphere__fire'), { opacity: .8, duration: 2.7,
+    ambient.to(select('.ember-atmosphere__current'), { opacity: .76, duration: 2.7,
       repeat: -1, yoyo: true, ease: 'sine.inOut' }, .6);
 
     // Reused, bounded envelopes: events restart a response, never stack brightness.
@@ -167,9 +166,22 @@ export function EmberAtmosphere({ band = 'cool', paused = false }: EmberAtmosphe
     }
   }, [still, reduced]);
 
+  // The continuously varying light is reconstructed from the active thread.
+  // It remains a visual expression, never a project progress or success flag.
+  useGSAP(() => {
+    if (!root.current) return;
+    gsap.to(root.current, {
+      '--hearth-intensity': Number.isFinite(heat) ? Math.max(0, Math.min(1, heat)) : 0.12,
+      duration: still ? 0 : 1.1,
+      ease: 'sine.inOut',
+      overwrite: true,
+    });
+  }, { scope: root, dependencies: [heat, still] });
+
   return (
     <div ref={root} className="ember-atmosphere" data-band={band} data-still={still}
-      data-cue="rest" data-motion-engine="gsap" aria-hidden="true">
+      data-cue="rest" data-heat={heat.toFixed(2)} data-motion-engine="gsap" aria-hidden="true">
+      <div className="ember-atmosphere__core" />
       <div className="ember-atmosphere__breath" />
       <div className="ember-atmosphere__side ember-atmosphere__side--left" />
       <div className="ember-atmosphere__side ember-atmosphere__side--right" />
@@ -177,18 +189,21 @@ export function EmberAtmosphere({ band = 'cool', paused = false }: EmberAtmosphe
       <div className="ember-atmosphere__reply" />
       <div className="ember-atmosphere__chapter ember-atmosphere__chapter--left" />
       <div className="ember-atmosphere__chapter ember-atmosphere__chapter--right" />
-      <svg className="ember-atmosphere__fire" viewBox="0 0 1440 230" preserveAspectRatio="none" focusable="false">
+      <svg className="ember-atmosphere__currents" viewBox="0 0 900 760" focusable="false">
         <defs>
-          <linearGradient id={`${unique}-fire`} x1="0" y1="140" x2="0" y2="230" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#E9B576" stopOpacity="0" />
-            <stop offset=".28" stopColor="#EAC391" stopOpacity=".28" />
-            <stop offset=".67" stopColor="#C9854A" stopOpacity=".34" />
-            <stop offset="1" stopColor="#BA6635" stopOpacity=".08" />
+          <linearGradient id={`${unique}-outer`} x1="450" y1="100" x2="450" y2="730" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#edbd85" stopOpacity="0" />
+            <stop offset=".34" stopColor="#df9b60" stopOpacity=".34" />
+            <stop offset=".75" stopColor="#d68448" stopOpacity=".45" />
+            <stop offset="1" stopColor="#e5ad75" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={`${unique}-inner`} x1="430" y1="240" x2="470" y2="730" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#f4d6a8" stopOpacity="0" />
+            <stop offset=".48" stopColor="#f5d3a1" stopOpacity=".62" />
+            <stop offset="1" stopColor="#e7a96d" stopOpacity="0" />
           </linearGradient>
         </defs>
-        <g fill={`url(#${unique}-fire)`}>
-          {tongues.map(([path], index) => <path key={index} className="ember-atmosphere__tongue" d={path} />)}
-        </g>
+        {currents.map(([path], index) => <path key={index} className="ember-atmosphere__current" d={path} fill={`url(#${unique}-${index === 0 ? 'outer' : 'inner'})`} />)}
       </svg>
     </div>
   );

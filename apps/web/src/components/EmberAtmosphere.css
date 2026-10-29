@@ -1,78 +1,49 @@
-/* The room occupies the margins. The reading column keeps a stable paper ground. */
+/* The whole conversation is the hearth: light comes from the centre, without an icon. */
 .ember-atmosphere {
-  --room-warmth: .72;
+  --hearth-intensity: 0.12;
   position: fixed;
   inset: 0;
-  z-index: 1;
+  z-index: 0;
   overflow: hidden;
   pointer-events: none;
   user-select: none;
-  opacity: var(--room-warmth);
   contain: strict;
 }
-.ember-atmosphere[data-band='warm'] { --room-warmth: .88; }
-.ember-atmosphere[data-band='hot'] { --room-warmth: 1; }
 .ember-atmosphere > * { position: absolute; pointer-events: none; }
+.ember-atmosphere__core {
+  inset: 0;
+  opacity: calc(.4 + var(--hearth-intensity) * .4);
+  background:
+    radial-gradient(ellipse 37% 42% at 50% 51%, rgba(232,169,109,.23), transparent 73%),
+    radial-gradient(ellipse 64% 72% at 50% 58%, rgba(236,194,151,.22), transparent 74%),
+    radial-gradient(ellipse 85% 65% at 50% 105%, rgba(218,165,111,.16), transparent 76%);
+}
 .ember-atmosphere__breath {
-  inset: auto -5% -70px;
-  height: 280px;
+  inset: 9% 10% 0;
   opacity: .46;
-  background: radial-gradient(ellipse at 50% 100%, rgba(219, 164, 91, .16), rgba(226, 182, 123, .065) 42%, transparent 72%);
-  will-change: opacity, transform;
+  background: radial-gradient(ellipse at 50% 54%, rgba(239,170,101,.2), transparent 64%);
+  transform-origin: 50% 55%;
 }
-.ember-atmosphere__side {
-  top: 13%;
-  bottom: -15%;
-  width: 150px;
-  opacity: .48;
-  will-change: opacity, transform;
+.ember-atmosphere__currents {
+  left: 50%;
+  top: 47%;
+  width: min(1180px, 100vw);
+  height: min(780px, 96vh);
+  transform: translate(-50%, -50%);
+  opacity: calc(.36 + var(--hearth-intensity) * .4);
+  filter: blur(13px);
+  overflow: visible;
 }
-.ember-atmosphere__side--left {
-  left: -74px;
-  background: radial-gradient(ellipse at 0 78%, rgba(214, 147, 75, .27), rgba(227, 176, 108, .09) 46%, transparent 72%);
-}
-.ember-atmosphere__side--right {
-  right: -74px;
-  background: radial-gradient(ellipse at 100% 66%, rgba(215, 151, 77, .3), rgba(230, 180, 115, .09) 46%, transparent 72%);
-}
-.ember-atmosphere__fire {
-  left: 0;
-  bottom: -4px;
-  width: 100%;
-  height: 230px;
-  opacity: .57;
-  will-change: opacity;
-}
+.ember-atmosphere__side { top: 8%; bottom: -10%; width: 28%; opacity: .3; }
+.ember-atmosphere__side--left { left: -12%; background: radial-gradient(ellipse at 0 64%, rgba(218,155,92,.2), transparent 72%); }
+.ember-atmosphere__side--right { right: -12%; background: radial-gradient(ellipse at 100% 60%, rgba(218,155,92,.2), transparent 72%); }
 .ember-atmosphere__attention,
 .ember-atmosphere__reply {
-  left: 14%;
-  right: 10%;
-  bottom: -55px;
-  height: 215px;
-  opacity: 0;
-  transform-origin: 50% 100%;
-  background: radial-gradient(ellipse at 50% 100%, rgba(229, 165, 79, .16), rgba(238, 197, 136, .07) 41%, transparent 69%);
+  left: 15%; right: 15%; top: 22%; bottom: 5%; opacity: 0;
+  transform-origin: 50% 55%;
+  background: radial-gradient(ellipse at 50% 55%, rgba(236,165,87,.2), transparent 65%);
 }
-.ember-atmosphere__reply {
-  left: -8%;
-  right: -8%;
-  height: 300px;
-  background: radial-gradient(ellipse at 50% 100%, rgba(238, 182, 102, .2), rgba(235, 196, 137, .075) 43%, transparent 70%);
-}
-.ember-atmosphere__chapter {
-  top: 16%;
-  bottom: 0;
-  width: 180px;
-  opacity: 0;
-}
-.ember-atmosphere__chapter--left {
-  left: -80px;
-  background: radial-gradient(ellipse at 0 64%, rgba(221, 157, 76, .22), transparent 70%);
-}
-.ember-atmosphere__chapter--right {
-  right: -80px;
-  background: radial-gradient(ellipse at 100% 64%, rgba(221, 157, 76, .22), transparent 70%);
-}
-@media (prefers-reduced-motion: reduce) {
-  .ember-atmosphere * { will-change: auto; }
-}
+.ember-atmosphere__reply { left: 0; right: 0; background: radial-gradient(ellipse at 50% 55%, rgba(230,153,75,.19), transparent 70%); }
+.ember-atmosphere__chapter { top: 10%; bottom: 0; width: 38%; opacity: 0; }
+.ember-atmosphere__chapter--left { left: -15%; background: radial-gradient(ellipse at 0 60%, rgba(225,162,93,.2), transparent 70%); }
+.ember-atmosphere__chapter--right { right: -15%; background: radial-gradient(ellipse at 100% 60%, rgba(225,162,93,.2), transparent 70%); }

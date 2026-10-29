@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type ElementRef,
 } from 'react';
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -25,10 +26,11 @@ import {
   applyEmberHeatCss,
   computeEmberHeat,
   latestConfirmedInteraction,
+  confirmedInteractionTimes,
   type EmberBand,
 } from '../features/emberHeat';
 import { EmberAtmosphere } from '../components/EmberAtmosphere';
-import { emitEmberCue } from '../features/ember-cues';
+import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import './AppShell.css';
 
 /* ------------------------------------------------------------------ */
@@ -71,6 +73,10 @@ export interface ThreadContextValue {
   addThread: () => Promise<void>;
   /** ChatPage 发送后刷新炉温 */
   recomputeEmber: () => void;
+  motionPaused: boolean;
+  setMotionPaused: (paused: boolean) => void;
+  welcomeReplay: boolean;
+  setWelcomeReplay: (value: boolean) => void;
 }
 
 const ThreadContext = createContext<ThreadContextValue | null>(null);
@@ -87,37 +93,12 @@ function isCanvasPath(pathname: string): boolean {
   return pathname === '/' || pathname.startsWith('/t/');
 }
 
-const RAIL_COLLAPSE_KEY = 'hearth.rail.collapsed.v2';
-
-function FlameMark({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      className="ember-mark"
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        d="M8 1.6c2.3 2.4 4.2 4.4 4.2 6.9a4.2 4.2 0 1 1-8.4 0C3.8 6 5.7 4 8 1.6Z"
-        fill="var(--color-accent-soft)"
-        stroke="var(--color-accent)"
-        strokeWidth="1.3"
-      />
-      <path
-        d="M8 7.2c.9 1 1.6 1.8 1.6 2.8a1.6 1.6 0 1 1-3.2 0c0-1 .7-1.8 1.6-2.8Z"
-        fill="var(--color-accent)"
-      />
-    </svg>
-  );
-}
-
 function ThreadRail({
   threads,
   activeThreadId,
   collapsed,
   filter,
+  onFilter,
   onToggle,
   onSelect,
   onCreate,
@@ -126,6 +107,7 @@ function ThreadRail({
   activeThreadId: string | null;
   collapsed: boolean;
   filter: string;
+  onFilter: (value: string) => void;
   onToggle: () => void;
   onSelect: (id: string) => void;
   onCreate: () => void;
@@ -165,8 +147,7 @@ function ThreadRail({
     <aside className="thread-rail" aria-label="线程">
       <div className="thread-rail__head">
         <div className="thread-rail__brand">
-          <FlameMark />
-          <span className="thread-rail__name">Hearth</span>
+            <span className="thread-rail__name">Hearth</span>
         </div>
         <button
           type="button"
@@ -184,6 +165,10 @@ function ThreadRail({
         </button>
       </div>
 
+      <label className="thread-search">
+        <span className="visually-hidden">搜索对话</span>
+        <input type="search" aria-label="搜索对话" placeholder="搜索对话…" value={filter} onChange={(event) => onFilter(event.target.value)} />
+      </label>
       <ul className="thread-list">
         {visible.map((t) => {
           const active = t.id === activeThreadId;
@@ -218,25 +203,14 @@ export function AppShell() {
   const [threadsMock, setThreadsMock] = useState(true);
   const [activeThreadId, setActiveId] = useState<string | null>(null);
   const [shellMode, setShellMode] = useState<ShellMode>('chat');
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [motionPaused, setMotionPaused] = useState(isEmberMotionPaused);
+  const [welcomeReplay, setWelcomeReplay] = useState(false);
+  const menuRef = useRef<ElementRef<'details'>>(null);
+  useEffect(() => { emitEmberCue('motion-preference', motionPaused); }, [motionPaused]);
   const [searchQuery, setSearchQuery] = useState('');
   const [emberTick, setEmberTick] = useState(0);
-  const [railCollapsed, setRailCollapsedState] = useState(() => {
-    try {
-      return window.localStorage.getItem(RAIL_COLLAPSE_KEY) !== '0';
-    } catch {
-      return false;
-    }
-  });
-
-  const setRailCollapsed = useCallback((v: boolean) => {
-    setRailCollapsedState(v);
-    try {
-      window.localStorage.setItem(RAIL_COLLAPSE_KEY, v ? '1' : '0');
-    } catch {
-      // ignore
-    }
-  }, []);
+  // History is always an on-demand surface; re-entering opens the conversation.
+  const [railCollapsed, setRailCollapsed] = useState(true);
 
   const refreshThreads = useCallback(async () => {
     const listed = await listThreads();
@@ -268,12 +242,12 @@ export function AppShell() {
   }, [location.pathname]);
 
 
-  const [confirmedAt, setConfirmedAt] = useState<{threadId: string; at: string | null} | null>(null);
+  const [confirmedAt, setConfirmedAt] = useState<{threadId: string; at: string | null; times: string[]} | null>(null);
   const [nowMs, setNowMs] = useState(Date.now);
   useEffect(() => {
     const controller = new AbortController();
     if (activeThreadId) void fetchChatHistory(activeThreadId, controller.signal).then(history => {
-      if (!controller.signal.aborted) { setConfirmedAt({threadId: activeThreadId, at: latestConfirmedInteraction(history.messages)}); setNowMs(Date.now()); }
+      if (!controller.signal.aborted) { setConfirmedAt({threadId: activeThreadId, at: latestConfirmedInteraction(history.confirmedUserMessages), times: confirmedInteractionTimes(history.confirmedUserMessages)}); setNowMs(Date.now()); }
     }).catch(() => { if (!controller.signal.aborted) setConfirmedAt(null); });
     return () => controller.abort();
   }, [activeThreadId, emberTick]);
@@ -284,7 +258,11 @@ export function AppShell() {
     const timer = window.setInterval(update, 60000);
     return () => { clearInterval(timer); document.removeEventListener('visibilitychange', update); };
   }, []);
-  const ember = computeEmberHeat({lastConfirmedAt: confirmedAt?.threadId === activeThreadId ? confirmedAt.at : null, nowMs});
+  const ember = computeEmberHeat({
+    lastConfirmedAt: confirmedAt?.threadId === activeThreadId ? confirmedAt.at : null,
+    interactionTimes: confirmedAt?.threadId === activeThreadId ? confirmedAt.times : [],
+    nowMs,
+  });
   useEffect(() => { applyEmberHeatCss(ember.heat); }, [ember.heat]);
 
   const recomputeEmber = useCallback(() => {
@@ -296,6 +274,7 @@ export function AppShell() {
       setActiveId(id);
       setActiveThreadId(id);
       setShellMode('chat');
+      setRailCollapsed(true);
       const target = `/t/${encodeURIComponent(id)}`;
       if (location.pathname !== target) navigate(target);
     },
@@ -328,6 +307,10 @@ export function AppShell() {
       selectThread,
       addThread,
       recomputeEmber,
+      motionPaused,
+      setMotionPaused,
+      welcomeReplay,
+      setWelcomeReplay,
     }),
     [
       threads,
@@ -342,6 +325,8 @@ export function AppShell() {
       selectThread,
       addThread,
       recomputeEmber,
+      motionPaused,
+      welcomeReplay,
     ],
   );
 
@@ -372,12 +357,13 @@ export function AppShell() {
           data-flame-state={ember.band === 'hot' ? 'lively' : ember.band === 'warm' ? 'warm' : 'dim'}
           data-ember-heat={ember.heat.toFixed(2)}
         >
-          <EmberAtmosphere band={ember.band} />
+          <EmberAtmosphere band={ember.band} heat={ember.heat} />
           <ThreadRail
             threads={threads}
             activeThreadId={activeThreadId}
             collapsed={railCollapsed}
             filter={searchQuery}
+            onFilter={setSearchQuery}
             onToggle={() => setRailCollapsed(!railCollapsed)}
             onSelect={selectThread}
             onCreate={() => void addThread()}
@@ -385,79 +371,27 @@ export function AppShell() {
           <div className="canvas-body">
             {canvas ? (
               <header className="canvas-chrome">
-                <div className="chrome-seg" role="tablist" aria-label="主视图">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={shellMode === 'chat'}
-                    className={`chrome-seg__btn${shellMode === 'chat' ? ' is-active' : ''}`}
-                    onClick={() => setShellMode('chat')}
-                  >
-                    聊天
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={shellMode === 'projects'}
-                    className={`chrome-seg__btn${shellMode === 'projects' ? ' is-active' : ''}`}
-                    onClick={() => setShellMode('projects')}
-                  >
-                    项目
-                  </button>
-                </div>
-
-                <div className="canvas-chrome__right">
-                  {threadsMock ? (
-                    <span className="canvas-chrome__dot" title="线程列表为本地演示" />
-                  ) : null}
-                  {searchOpen ? (
-                    <input
-                      className="chrome-search"
-                      type="search"
-                      value={searchQuery}
-                      placeholder="搜线程…"
-                      aria-label="搜索线程"
-                      autoFocus
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                          setSearchOpen(false);
-                          setSearchQuery('');
-                        }
-                      }}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      className="chrome-icon-btn"
-                      aria-label="搜索"
-                      title="搜索"
-                      onClick={() => {
-                        setSearchOpen(true);
-                        if (railCollapsed) setRailCollapsed(false);
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-                        <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                  )}
-                  <Link
-                    to="/settings"
-                    className="chrome-avatar"
-                    aria-label="设置"
-                    title="设置"
-                  >
-                    <span className="chrome-avatar__glyph" aria-hidden="true">
-                      炉
-                    </span>
-                  </Link>
+                <button type="button" className="hearth-wordmark" onClick={() => { setShellMode('chat'); setRailCollapsed(true); }} aria-label="返回对话">Hearth<span aria-hidden="true">.</span></button>
+                <div className="hearth-header-actions">
+                  <span className="hearth-mode-label" title="回复由本机模拟生成，不连接真实模型">离线演示</span>
+                  <details className="hearth-menu" ref={menuRef} onKeyDown={(event) => {
+                    if (event.key === 'Escape') { menuRef.current?.removeAttribute('open'); menuRef.current?.querySelector('summary')?.focus(); }
+                  }}>
+                    <summary aria-label="打开菜单" title="菜单"><span aria-hidden="true">···</span></summary>
+                    <div className="hearth-menu__panel">
+                      <button type="button" onClick={() => { setRailCollapsed(false); menuRef.current?.removeAttribute('open'); }}>历史对话</button>
+                      <button type="button" onClick={() => { setShellMode('projects'); menuRef.current?.removeAttribute('open'); }}>项目与话题</button>
+                      <button type="button" onClick={() => { setMotionPaused(!motionPaused); menuRef.current?.removeAttribute('open'); }}>{motionPaused ? '开启动效' : '暂停动效'}</button>
+                      <button type="button" onClick={() => { setShellMode('chat'); setWelcomeReplay(true); menuRef.current?.removeAttribute('open'); }}>重看欢迎</button>
+                      <Link to="/settings" onClick={() => menuRef.current?.removeAttribute('open')}>设置</Link>
+                      <p className="hearth-menu__hint">火光随本话题中已保存的交流变化。</p>
+                    </div>
+                  </details>
                 </div>
               </header>
             ) : (
               <header className="canvas-chrome canvas-chrome--page">
-                <Link to="/" className="canvas-chrome__back">
+                <Link to="/" className="canvas-chrome__back" onClick={() => setShellMode('chat')}>
                   ← 对话
                 </Link>
                 <p className="canvas-chrome__title">{sectionLabel(location.pathname)}</p>

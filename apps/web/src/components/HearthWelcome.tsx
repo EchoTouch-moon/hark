@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { EmberPresence } from './EmberPresence';
 import { saveWelcomePreference } from '../features/welcome';
 import './HearthWelcome.css';
 
@@ -12,11 +11,10 @@ interface Props {
   paused: boolean;
   onExitStart: (name: string) => void;
   onComplete: () => void;
-  exitTarget: () => ReturnType<HTMLElement['getBoundingClientRect']> | undefined;
 }
 
 /** A local welcome, not a fictional account-registration flow. */
-export function HearthWelcome({ initialName, paused, onExitStart, onComplete, exitTarget }: Props) {
+export function HearthWelcome({ initialName, paused, onExitStart, onComplete }: Props) {
   const [step, setStep] = useState<'arrival' | 'introduce' | 'leaving'>('arrival');
   const [exitFrom, setExitFrom] = useState<'arrival' | 'introduce'>('arrival');
   const visibleStep = step === 'leaving' ? exitFrom : step;
@@ -31,6 +29,22 @@ export function HearthWelcome({ initialName, paused, onExitStart, onComplete, ex
     if (step === 'introduce') nameRef.current?.focus();
     if (step === 'arrival') firstRef.current?.focus();
   }, [step]);
+
+  // The welcome shares the same quiet breathing as the conversation. Its
+  // own child layer lets entrance/exit scale the parent without conflicts.
+  useGSAP(() => {
+    const media = gsap.matchMedia();
+    media.add('(prefers-reduced-motion: no-preference)', () => {
+      const breath = gsap.fromTo('.welcome-light__breath',
+        { scale: .96, opacity: .65 },
+        { scale: 1.04, opacity: .95, duration: 4, repeat: -1, yoyo: true, ease: 'sine.inOut', paused: true });
+      const visibility = () => { if (paused || document.hidden) breath.pause(); else breath.resume(); };
+      document.addEventListener('visibilitychange', visibility);
+      visibility();
+      return () => document.removeEventListener('visibilitychange', visibility);
+    }, rootRef);
+    return () => media.revert();
+  }, { scope: rootRef, dependencies: [paused], revertOnUpdate: true });
 
   useGSAP(() => {
     const media = gsap.matchMedia();
@@ -49,27 +63,17 @@ export function HearthWelcome({ initialName, paused, onExitStart, onComplete, ex
       if (step === 'leaving') {
         timeline.addLabel('leave', 0)
           .to('.welcome-story', { opacity: 0, y: -16, duration: .24 }, 'leave')
-          .to('.welcome-header, .welcome-footer, .welcome-orbit', { opacity: 0, duration: .32 }, 'leave');
-        const node = rootRef.current?.querySelector<HTMLElement>('.welcome-presence');
-        const target = exitTarget();
-        if (node && target) {
-          const from = node.getBoundingClientRect();
-          timeline.to(node, {
-            x: target.x + target.width / 2 - from.x - from.width / 2,
-            y: target.y + target.height / 2 - from.y - from.height / 2,
-            scaleX: target.width / from.width, scaleY: target.height / from.height,
-            transformOrigin: '50% 50%', duration: .7, ease: 'power3.inOut',
-          }, 'leave+=0.12');
-        }
+          .to('.welcome-header, .welcome-footer', { opacity: 0, duration: .32 }, 'leave');
+        timeline.to('.welcome-light', { opacity: .5, scale: 1.08, duration: .7, ease: 'sine.inOut' }, 'leave+=0.08');
         timeline.to(rootRef.current, { opacity: 0, duration: .38 }, 'leave+=0.5');
         timeline.eventCallback('onComplete', complete);
       } else if (step === 'arrival') {
         timeline.addLabel('first-light', 0)
           .fromTo('.welcome-wordmark', { opacity: 0, y: 7 }, { opacity: 1, y: 0 }, 'first-light')
-          .fromTo('.welcome-presence', { opacity: 0, y: 14, scale: .9 }, { opacity: 1, y: 0, scale: 1, duration: .78 }, 'first-light+=0.08')
+          .fromTo('.welcome-light', { opacity: 0, scale: .94 }, { opacity: 1, scale: 1, duration: .9 }, 'first-light+=0.08')
           .fromTo('.welcome-chapter, .welcome-story h1, .welcome-description', { opacity: 0, y: 12 }, { opacity: 1, y: 0, stagger: .075 }, 'first-light+=0.18')
           .fromTo('.welcome-actions', { opacity: 0, y: 10 }, { opacity: 1, y: 0 }, 'first-light+=0.38')
-          .fromTo('.welcome-orbit, .welcome-footer', { opacity: 0 }, { opacity: 1, stagger: .06 }, 'first-light+=0.3');
+          .fromTo('.welcome-footer', { opacity: 0 }, { opacity: 1, stagger: .06 }, 'first-light+=0.3');
       } else {
         timeline.fromTo('.welcome-story > *', { opacity: 0, y: 10 }, { opacity: 1, y: 0, stagger: .065, duration: .32 });
       }
@@ -88,7 +92,7 @@ export function HearthWelcome({ initialName, paused, onExitStart, onComplete, ex
       };
     }, rootRef);
     return () => media.revert();
-  }, { scope: rootRef, dependencies: [step, paused, onComplete, exitTarget], revertOnUpdate: true });
+  }, { scope: rootRef, dependencies: [step, paused, onComplete], revertOnUpdate: true });
 
   function enter(temporary = false) {
     if (leaving.current) return;
@@ -109,9 +113,9 @@ export function HearthWelcome({ initialName, paused, onExitStart, onComplete, ex
     if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }}>
     <div className="welcome-paper" aria-hidden="true" />
+    <div className="welcome-light" aria-hidden="true"><div className="welcome-light__breath" /></div>
     <header className="welcome-header"><span className="welcome-wordmark">Hearth<span>私人炉边</span></span><button type="button" className="welcome-skip" disabled={step === 'leaving'} onClick={() => enter()}>跳过欢迎 <span aria-hidden="true">↗</span></button></header>
     <div className="welcome-stage" aria-hidden={step === 'leaving' || undefined}>
-      <div className="welcome-hearth"><div className="welcome-orbit" aria-hidden="true" /><EmberPresence band="cool" scene={step === 'leaving' ? 'settle' : 'arrival'} paused={paused} className="welcome-presence" /></div>
       <div className="welcome-story" key={visibleStep}>
         <p className="welcome-chapter"><span /> {visibleStep === 'arrival' ? '01 — 初见' : '02 — 相识'}</p>
         <h1 id="welcome-title">{visibleStep === 'arrival' ? <>为重要的事，<br />留一点空间。</> : <>先认识一下，<br />再慢慢聊。</>}</h1>
