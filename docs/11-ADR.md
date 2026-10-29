@@ -36,6 +36,9 @@
 ## ADR-INSIGHT-004 Signal Inbox 与 Checkpoint
 详见 `docs/adr/ADR-INSIGHT-004.md`。**Decision**：独立 `insights.sqlite`；`signalKey` 去重；同事务写入 inbox 与 CAS 游标；`NO_SIGNAL` 可推进；源重置冻结且不跨库 exactly-once。**Status**：S1.2 已落地。
 
+## ADR-INSIGHT-005 S2 issueKey 与规则游标
+详见 `docs/adr/ADR-INSIGHT-005.md`。**Decision**：用户卡片按 issueFamily+epoch+subject 去重；规则游标独立于 extractor checkpoint；基线模式不把 inbox 旧信号当新洞察；`R-TEST-EVIDENCE-GAP` 保持关闭。**Status**：S2 已落地。
+
 ## 需在真机记录的 OPEN 决议
 - Node 22 vs 24：以实际环境和兼容 lockfile 决定。
 - pnpm/sqlite 驱动：视编译工具链与跨平台安装风险选择 `better-sqlite3` / `node:sqlite`（须评估 Node 版本支持），写 ADR。

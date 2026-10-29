@@ -1,0 +1,11 @@
+{
+  "createdAt": "2026-10-29T02:33:45.536Z",
+  "n": 30,
+  "signals": 200,
+  "p50Ms": 25,
+  "p95Ms": 30,
+  "minMs": 23,
+  "maxMs": 34,
+  "episodesOpened": 1,
+  "rssMb": 101.3125
+}
