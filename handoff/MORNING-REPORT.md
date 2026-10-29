@@ -64,3 +64,7 @@ R0 PASS（cca95e0），R1 PASS（1642215）。R2工程本地检查通过：343�
 ## UI-REFRESH-01 · 第一块交付
 
 本地分支codex/ui-refresh-01，主题基础与空详情隐藏已完成，web build/typecheck、局部lint、新浏览器1场景与基础对比度检查通过。尚未重构真实首页、导航或分析API，未进入P2-B/C。继续执行从tasks/UI-REFRESH-01.md最新交接开始；本块不推送以保留小步本地交付。
+
+## UI-REFRESH-01 · 第二块交付
+
+UI-01.2基础完成：真实根页只读洞察、Demo受模式门禁、Mock/Demo次级导航，真实项目页无合成项目请求。web build、全仓typecheck、改动文件lint及全19项E2E通过，证据ui-01-mode-*。下一步UI-01.3响应式导航/详情焦点交互，接班读tasks/UI-REFRESH-01.md末尾。不推送、不调用Pi、不宣称R2价值通过。

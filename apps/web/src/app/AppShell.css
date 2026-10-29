@@ -209,3 +209,7 @@
   font: inherit;
 }
 .theme-control select:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+.nav-secondary { border-top: 1px solid var(--color-border); padding-top: var(--space-3); }
+.nav-secondary summary { padding: var(--space-2); color: var(--color-ink-2); cursor: pointer; }
+.nav-secondary summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }

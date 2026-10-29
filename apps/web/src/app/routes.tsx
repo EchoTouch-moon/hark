@@ -1,8 +1,11 @@
 import {
   createBrowserRouter,
   Navigate,
+  Link,
+  Outlet,
   useRouteError,
 } from 'react-router-dom';
+import { useRuntimeMode } from '../features/runtime-mode';
 import { AppShell } from './AppShell';
 import { ErrorState } from '../components';
 import { HomePage } from '../pages/HomePage';
@@ -14,6 +17,13 @@ import { ActivityPage } from '../pages/ActivityPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { InsightsPage } from '../pages/InsightsPage';
 import { InsightDetailPage } from '../pages/InsightDetailPage';
+
+/** Defense for direct URLs as well as navigation: never mount Demo actions outside server Demo mode. */
+function DemoGate() {
+  const {state}=useRuntimeMode();
+  if(state.status !== 'ready' || !state.demoMode)return <section className="page"><h1>演示模式未启用</h1><p>当前使用真实项目模式。演示数据初始化仅在服务端显式开启 Demo 模式后可用。</p><Link to="/">返回发现</Link></section>;
+  return <Outlet/>;
+}
 
 /** 路由级错误兜底：如实展示错误并提供重载入口 */
 function RouteError() {
@@ -42,15 +52,18 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     errorElement: <RouteError />,
     children: [
-      { index: true, element: <HomePage /> },
+      { index: true, element: <InsightsPage /> },
       { path: 'chat', element: <ChatPage /> },
       { path: 'projects', element: <ProjectsPage /> },
-      { path: 'projects/:id', element: <ProjectDetailPage /> },
       { path: 'observe/:id', element: <ObserverDetailPage /> },
       { path: 'insights', element: <InsightsPage /> },
       { path: 'insights/:id', element: <InsightDetailPage /> },
-      { path: 'activity', element: <ActivityPage /> },
-      { path: 'activity/:runId', element: <ActivityPage /> },
+      { element: <DemoGate/>, children: [
+        { path: 'demo', element: <HomePage/> },
+        { path: 'projects/:id', element: <ProjectDetailPage/> },
+        { path: 'activity', element: <ActivityPage/> },
+        { path: 'activity/:runId', element: <ActivityPage/> },
+      ] },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { getThemePreference, setThemePreference, subscribeTheme, type ThemePreference } from '../features/theme';
-import { apiFetch } from '../features/api/client';
+import { RuntimeReady, useRuntimeMode } from '../features/runtime-mode';
 import { ConnectionBadge } from '../components';
 import './AppShell.css';
 
@@ -51,12 +51,10 @@ interface NavItemDefinition {
 
 /** 顺序固定：Home / Chat / Projects / Insights / Activity / Settings */
 const NAV_ITEMS: readonly NavItemDefinition[] = [
-  { to: '/', label: 'Demo Home', icon: 'home', end: true },
-  { to: '/chat', label: 'Chat · Mock', icon: 'chat' },
-  { to: '/projects', label: 'Projects', icon: 'projects' },
-  { to: '/insights', label: 'Insights', icon: 'insights' },
-  { to: '/activity', label: 'Activity', icon: 'activity' },
-  { to: '/settings', label: 'Settings', icon: 'settings' },
+  { to: '/', label: '今日概览', icon: 'home', end: true },
+  { to: '/projects', label: '项目', icon: 'projects' },
+  { to: '/insights', label: '发现与建议', icon: 'insights' },
+  { to: '/settings', label: '设置', icon: 'settings' },
 ];
 
 function NavIcon({ name }: { name: NavIconName }) {
@@ -105,6 +103,7 @@ function NavIcon({ name }: { name: NavIconName }) {
 }
 
 function NavRail() {
+  const {state}=useRuntimeMode();
   return (
     <nav className="nav-rail" aria-label="主导航">
       <div className="nav-brand">
@@ -145,6 +144,12 @@ function NavRail() {
           </li>
         ))}
       </ul>
+      <details className="nav-secondary">
+        <summary>更多入口</summary>
+        <NavLink className="nav-item" to="/chat">对话 · Mock 演示</NavLink>
+        <NavLink className="nav-item" to="/demo">{state.status === 'ready' && state.demoMode ? 'Demo 操作台' : '演示模式说明'}</NavLink>
+        {state.status === 'ready' && state.demoMode ? <NavLink className="nav-item" to="/activity">Demo 执行记录</NavLink> : null}
+      </details>
       <div className="nav-footer">
         <p className="nav-footer-note">本地优先</p>
         <p className="nav-footer-note">模型调用需主动触发</p>
@@ -164,18 +169,14 @@ function sectionLabel(pathname: string): string {
   if (pathname.startsWith('/insights')) return '洞察';
   if (pathname.startsWith('/activity')) return '执行记录';
   if (pathname.startsWith('/settings')) return '设置';
-  return '首页';
+  if (pathname.startsWith('/demo')) return 'Demo 操作台';
+  return '今日概览';
 }
 
 function TopBar() {
   const theme = useSyncExternalStore(subscribeTheme, getThemePreference, () => 'light');
   const location = useLocation();
-  const [mode, setMode] = useState<boolean | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    void apiFetch<{demoMode: boolean}>('/api/v1/health', {signal:controller.signal}).then(health=>setMode(health.demoMode)).catch(()=>{});
-    return ()=>controller.abort();
-  }, []);
+  const {state}=useRuntimeMode();
   return (
     <header className="topbar">
       <div className="topbar-identity">
@@ -194,7 +195,7 @@ function TopBar() {
             <option value="system">跟随系统</option>
           </select>
         </label>
-        <span className="badge badge-notice">{mode === null ? '模式读取中' : mode ? 'Demo 合成数据模式' : '真实项目 · 本地存储'}</span>
+        <span className="badge badge-notice">{state.status === 'loading' ? '模式读取中' : state.status === 'error' ? '模式不可用' : state.demoMode ? 'Demo 合成数据模式' : '真实项目 · 本地存储'}</span>
         <ConnectionBadge mode="demo" label={location.pathname.startsWith('/chat') ? '对话：离线演示' : '分析来源见建议卡'} />
       </div>
     </header>
@@ -233,7 +234,7 @@ export function AppShell() {
         <div className="app-body">
           <TopBar />
           <main className="app-content" id="main-content">
-            <Outlet />
+            <RuntimeReady><Outlet /></RuntimeReady>
           </main>
         </div>
         {drawerContent ? <aside className="detail-drawer" aria-label="详情面板">{drawerContent}</aside> : null}

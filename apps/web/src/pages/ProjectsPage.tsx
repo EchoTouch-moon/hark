@@ -22,11 +22,14 @@ import {
   worktreeLabel,
   type ObserverProjectSummary,
 } from '../features/observer';
+import { useRuntimeMode } from '../features/runtime-mode';
 import { formatDateTime } from '../features/runs';
 import { fetchInsightSummary } from '../features/insights';
 import './ProjectsPage.css';
 
 export function ProjectsPage() {
+  const {state}=useRuntimeMode();
+  const demoMode=state.status==='ready' && state.demoMode;
   const formId = useId();
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [observed, setObserved] = useState<ObserverProjectSummary[] | null>(null);
@@ -46,7 +49,7 @@ export function ProjectsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const list = await fetchProjects(controller.signal);
+        const list = demoMode ? await fetchProjects(controller.signal) : [];
         if (!cancelled) {
           setProjects(list);
           setError(null);
@@ -85,7 +88,7 @@ export function ProjectsPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [reloadKey]);
+  }, [reloadKey, demoMode]);
 
   const retry = useCallback(() => {
     setProjects(null);
@@ -137,7 +140,7 @@ export function ProjectsPage() {
 
   return (
     <section className="page">
-      <PageHeader title="项目" subtitle="本地仓库观察事实 + Hearth 已授权的任务项目" />
+      <PageHeader title="项目" subtitle={demoMode ? "本地仓库观察事实 + Demo 合成任务项目" : "只读观察已登记项目，查看有来源的变化与洞察"} />
 
       <div className="page-section" aria-label="本地仓库观察">
         <p className="page-section-title">本地仓库观察</p>
@@ -250,7 +253,7 @@ export function ProjectsPage() {
         )}
       </div>
 
-      <div className="page-section" aria-busy={showLoading} aria-label="任务项目">
+      {demoMode ? <div className="page-section" aria-busy={showLoading} aria-label="任务项目">
         <p className="page-section-title">Hearth 任务项目</p>
         {showLoading ? (
           <div className="project-grid" aria-hidden="true">
@@ -280,7 +283,7 @@ export function ProjectsPage() {
             ))}
           </ul>
         )}
-      </div>
+      </div> : null}
     </section>
   );
 }

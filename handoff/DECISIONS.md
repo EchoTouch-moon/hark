@@ -38,3 +38,7 @@ Analysis中断复用failed+INTERRUPTED，保留旧Run且不自动重试模型。
 ## UI-REFRESH-01 · 分块执行
 
 用户要求节省额度与可接班，本轮只交付主题基础+空详情隐藏，不把导航/路由/后端聚合混入同一块。显示偏好仅保存在设备localStorage；默认浅色，用户明确选择system后才跟随系统。未知服务端模式不应暴露Demo seed。完整计划与接班入口固定为tasks/UI-REFRESH-01.md。
+
+## UI-REFRESH-01 · 模式与导航
+
+今日首页的聚合后端尚未实现，真实根路由先复用现有InsightsPage，不制作假数据概览；旧Home移至/demo。服务端mode只读并校验，未知/失败时不挂载业务操作；本地偏好不能改变mode。观察记录入口随UI-02.3时间线交付后才加入主导航，避免死链接。旧Demo测试改路径并保留原断言语义。

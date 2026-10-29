@@ -18,7 +18,7 @@ test('insight detail missing id is an error, not a fake card', async ({ page }) 
 test('projects and observe navigation still work', async ({ page }) => {
   await page.goto('/projects');
   await expect(page.getByRole('heading', { name: '项目' })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('link', { name: 'Insights' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '发现与建议' })).toBeVisible();
   await page.screenshot({ path: 'handoff/EVIDENCE/insight-projects-with-summary.png', fullPage: true });
   await page.goto('/insights');
   await expect(page.getByRole('heading', { name: '洞察' })).toBeVisible();
