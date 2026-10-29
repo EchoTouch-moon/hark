@@ -204,6 +204,7 @@ export class InsightStore {
   purgeProject(projectId: string): void {
     this.transaction(() => {
       this.db.prepare('DELETE FROM insight_evidence_refs WHERE insight_id IN (SELECT insight_id FROM insight_episodes WHERE project_id = ?)').run(projectId);
+      this.db.prepare('DELETE FROM insight_feedback WHERE insight_id IN (SELECT insight_id FROM insight_episodes WHERE project_id = ?)').run(projectId);
       this.db.prepare('DELETE FROM insight_issue_state WHERE issue_key IN (SELECT issue_key FROM insight_episodes WHERE project_id = ?)').run(projectId);
       this.db.prepare('DELETE FROM insight_episodes WHERE project_id = ?').run(projectId);
       this.db.prepare('DELETE FROM insight_rule_progress WHERE project_id = ?').run(projectId);

@@ -36,7 +36,7 @@ export function useDetailDrawer(): DetailDrawerValue {
 /* 导航 */
 /* ------------------------------------------------------------------ */
 
-type NavIconName = 'home' | 'chat' | 'projects' | 'activity' | 'settings';
+type NavIconName = 'home' | 'chat' | 'projects' | 'insights' | 'activity' | 'settings';
 
 interface NavItemDefinition {
   to: string;
@@ -46,11 +46,12 @@ interface NavItemDefinition {
   end?: boolean;
 }
 
-/** 顺序固定：Home / Chat / Projects / Activity / Settings */
+/** 顺序固定：Home / Chat / Projects / Insights / Activity / Settings */
 const NAV_ITEMS: readonly NavItemDefinition[] = [
   { to: '/', label: 'Home', icon: 'home', end: true },
   { to: '/chat', label: 'Chat', icon: 'chat' },
   { to: '/projects', label: 'Projects', icon: 'projects' },
+  { to: '/insights', label: 'Insights', icon: 'insights' },
   { to: '/activity', label: 'Activity', icon: 'activity' },
   { to: '/settings', label: 'Settings', icon: 'settings' },
 ];
@@ -68,6 +69,9 @@ function NavIcon({ name }: { name: NavIconName }) {
     ),
     projects: (
       <path d="M2.5 5.2a1.2 1.2 0 0 1 1.2-1.2h2.4l1.4 1.9h3.8a1.2 1.2 0 0 1 1.2 1.2v4.9a1.2 1.2 0 0 1-1.2 1.2H3.7a1.2 1.2 0 0 1-1.2-1.2Z" />
+    ),
+    insights: (
+      <path d="M4 3.5h8v2.2H4Zm0 3.6h8V13H8.2L4 10.6Z" />
     ),
     activity: <path d="M2 8.5h3l1.5-4.5 3 9L11 8.5h3" />,
     settings: (
@@ -153,6 +157,7 @@ function NavRail() {
 function sectionLabel(pathname: string): string {
   if (pathname.startsWith('/chat')) return '对话';
   if (pathname.startsWith('/projects')) return '项目';
+  if (pathname.startsWith('/insights')) return '洞察';
   if (pathname.startsWith('/activity')) return '执行记录';
   if (pathname.startsWith('/settings')) return '设置';
   return '首页';

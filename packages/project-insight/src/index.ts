@@ -78,3 +78,15 @@ export { defaultInsightPolicy } from './rules/policy.js';
 export { issueKeyFor, episodeKeyFor, insightIdFor } from './episodes/identity.js';
 export { processProjectRules, dismissEpisode, acknowledgeEpisode } from './insights/processor.js';
 export { sanitizeTemplateData, renderDetail, renderTitle } from './rules/templates.js';
+export {
+  DEFAULT_FEED_STATUSES,
+  getInsight,
+  insightPolicy,
+  listInsights,
+  summarizeInsights,
+  type InsightDetail,
+  type InsightListItem,
+  type InsightListQuery,
+  type InsightSummary,
+} from './insights/query.js';
+export { applyAcknowledge, applyDismiss, applyFeedback } from './insights/actions.js';

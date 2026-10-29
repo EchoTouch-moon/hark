@@ -1,3 +1,14 @@
+/**
+ * @fileoverview 服务端启动主入口（Server Entrypoint）
+ *
+ * 启动步骤：
+ * 1. 初始化持久化存储 Storage 并自动执行版本化迁移
+ * 2. 组装 Orchestrator、DiscoveryService、MockAgentAdapter 与 ProjectObserver
+ * 3. 首次启动自动导入 Demo Fixture 数据（如启用了 HEARTH_DEMO）
+ * 4. 崩溃恢复（S09）：启动前对所有中断在 executing / verifying 状态的任务对账恢复
+ * 5. 挂载 Single Page Application 静态文件代理与 API 路由
+ */
+
 import { buildApp, type AppDeps } from './http/app.js';
 import { loadConfig } from './config.js';
 import { Storage } from '@hearth/storage';
@@ -5,11 +16,16 @@ import { DiscoveryService, Orchestrator } from '@hearth/core';
 import { MockAgentAdapter } from '@hearth/agent-adapters';
 import { FixtureConnector } from '@hearth/connectors';
 import { ProjectObserver } from '@hearth/project-observer';
+import { InsightStore, defaultInsightDbPath } from '@hearth/project-insight';
 import { existsSync } from 'node:fs';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DEFAULT_SETTINGS } from './http/services.js';
 
+/**
+ * 启动 Hearth 后端 HTTP 服务
+ * @param overrides 可选配置覆盖项
+ */
 export async function startServer(overrides: Partial<Parameters<typeof loadConfig>[0]> = {}) {
   const config = loadConfig(overrides);
   const storage = new Storage(config.dbPath);
@@ -45,11 +61,13 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
     dbPath: config.observerDbPath,
     watchEnabled: process.env['HEARTH_OBSERVER_WATCH'] !== '0',
   });
+  const insight = new InsightStore(defaultInsightDbPath(config.repoRoot));
 
   const deps: AppDeps = {
     config,
     storage,
     observer,
+    insight,
     services: {
       discovery,
       orchestrator,
@@ -85,6 +103,7 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
   app.addHook('onClose', async () => {
     await observer.stop();
     observer.close();
+    insight.close();
   });
 
   // serve the built SPA when present (same-origin for E2E/demo)

@@ -12,6 +12,8 @@ import { ProjectDetailPage } from '../pages/ProjectDetailPage';
 import { ObserverDetailPage } from '../pages/ObserverDetailPage';
 import { ActivityPage } from '../pages/ActivityPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { InsightsPage } from '../pages/InsightsPage';
+import { InsightDetailPage } from '../pages/InsightDetailPage';
 
 /** 路由级错误兜底：如实展示错误并提供重载入口 */
 function RouteError() {
@@ -45,6 +47,8 @@ export const router = createBrowserRouter([
       { path: 'projects', element: <ProjectsPage /> },
       { path: 'projects/:id', element: <ProjectDetailPage /> },
       { path: 'observe/:id', element: <ObserverDetailPage /> },
+      { path: 'insights', element: <InsightsPage /> },
+      { path: 'insights/:id', element: <InsightDetailPage /> },
       { path: 'activity', element: <ActivityPage /> },
       { path: 'activity/:runId', element: <ActivityPage /> },
       { path: 'settings', element: <SettingsPage /> },

@@ -9,7 +9,7 @@ export interface InsightMigration {
   up: readonly string[] | ((db: DatabaseSync) => void);
 }
 
-export const INSIGHT_SCHEMA_VERSION = 2;
+export const INSIGHT_SCHEMA_VERSION = 3;
 
 export const INSIGHT_MIGRATIONS: readonly InsightMigration[] = [
   {
@@ -110,6 +110,18 @@ export const INSIGHT_MIGRATIONS: readonly InsightMigration[] = [
         last_verified_recovery_signal_id TEXT,
         dismissed_json TEXT NOT NULL,
         state_json TEXT NOT NULL
+      )`,
+    ],
+  },
+  {
+    version: 3,
+    name: 'insight-v3-feedback',
+    up: [
+      `CREATE TABLE insight_feedback (
+        insight_id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL CHECK (kind IN ('useful', 'not_useful')),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
       )`,
     ],
   },

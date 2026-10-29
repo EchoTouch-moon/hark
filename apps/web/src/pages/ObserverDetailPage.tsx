@@ -1,3 +1,13 @@
+/**
+ * @fileoverview 仓库观察详情页（ObserverDetailPage）
+ * 
+ * 职责：
+ * 1. 展示单个本地仓库的实时 Git 快照（分支、HEAD OID、暂存/未暂存文件统计）；
+ * 2. 展示测试报告聚合指标（套件通过率、执行耗时、失败用例计数）；
+ * 3. 观察器状态管理：手动立即扫描、暂停/恢复观察、关联测试报告源；
+ * 4. 事件时间线：按 Git、测试、系统事件分类筛选，展示变更详情与差异负载（diff payload）。
+ */
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ConfirmDialog, EmptyState, ErrorState, PageHeader } from '../components';
@@ -18,6 +28,7 @@ import {
   type ObserverEventType,
 } from '../features/observer';
 import { formatDateTime } from '../features/runs';
+import { fetchInsightSummary } from '../features/insights';
 import './ObserverDetailPage.css';
 
 const FILTERS: Array<{ id: 'all' | 'git' | 'test' | 'system'; label: string; types?: ObserverEventType[] }> = [
@@ -46,6 +57,7 @@ export function ObserverDetailPage() {
   const [busy, setBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [confirmPause, setConfirmPause] = useState(false);
+  const [openInsights, setOpenInsights] = useState(0);
 
   const load = useCallback(async (projectId: string, signal?: AbortSignal) => {
     const next = await fetchObserverDetail(projectId, signal);
@@ -58,6 +70,12 @@ export function ObserverDetailPage() {
     setDetail(next);
     setEvents(page.events);
     setError(null);
+    try {
+      const summary = await fetchInsightSummary(signal);
+      setOpenInsights(summary.projects.find((item) => item.projectId === projectId)?.openCount ?? 0);
+    } catch {
+      setOpenInsights(0);
+    }
   }, [filter]);
 
   useEffect(() => {
@@ -182,6 +200,13 @@ export function ObserverDetailPage() {
                 </p>
                 <p className="obs-stat-sub">
                   生成于 {formatDateTime(snapshot?.test.generatedAt)} · 采集于 {formatDateTime(snapshot?.test.observedAt)}
+                </p>
+              </article>
+              <article className="card obs-stat">
+                <p className="obs-stat-label">洞察</p>
+                <p>待关注 {openInsights}</p>
+                <p className="obs-stat-sub">
+                  <Link to={`/insights?projectId=${encodeURIComponent(detail.project.id)}`}>查看该项目的洞察</Link>
                 </p>
               </article>
               <article className="card obs-stat">

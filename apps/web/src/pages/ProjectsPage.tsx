@@ -1,3 +1,13 @@
+/**
+ * @fileoverview 项目与仓库列表页（ProjectsPage）
+ * 
+ * 职责：
+ * 1. 展示已注册的项目概览与待处理洞察计数；
+ * 2. 展示代码仓库观察器（Project Observer）的实时状态（Git 分支、工作区脏状态、测试摘要与采集健康度）；
+ * 3. 提供本地 Git 仓库注册入口，支持自定义项目名称与测试报告路径；
+ * 4. 支持快捷暂停/继续指定仓库的观察采集。
+ */
+
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { EmptyState, ErrorState, PageHeader } from '../components';
@@ -13,12 +23,14 @@ import {
   type ObserverProjectSummary,
 } from '../features/observer';
 import { formatDateTime } from '../features/runs';
+import { fetchInsightSummary } from '../features/insights';
 import './ProjectsPage.css';
 
 export function ProjectsPage() {
   const formId = useId();
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [observed, setObserved] = useState<ObserverProjectSummary[] | null>(null);
+  const [insightCounts, setInsightCounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [observerError, setObserverError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -55,6 +67,18 @@ export function ProjectsPage() {
         if (cancelled || (cause instanceof DOMException && cause.name === 'AbortError')) return;
         setObserverError(cause instanceof Error ? cause.message : '加载观察仓库失败');
         setObserved([]);
+      }
+    })();
+    (async () => {
+      try {
+        const summary = await fetchInsightSummary(controller.signal);
+        if (!cancelled) {
+          const next: Record<string, number> = {};
+          for (const row of summary.projects) next[row.projectId] = row.openCount;
+          setInsightCounts(next);
+        }
+      } catch {
+        if (!cancelled) setInsightCounts({});
       }
     })();
     return () => {
@@ -204,6 +228,9 @@ export function ProjectsPage() {
                         <span className={`status-badge is-${test.tone}`}>{test.text}</span>
                       </span>
                       <span className="obs-tile-time">最近成功扫描 {formatDateTime(project.lastSuccessAt ?? undefined)}</span>
+                      <span className="obs-tile-time">
+                        待关注洞察 {insightCounts[project.id] ?? 0} · 详情见洞察页
+                      </span>
                     </Link>
                     <button
                       type="button"
@@ -212,6 +239,9 @@ export function ProjectsPage() {
                     >
                       {project.enabled ? '暂停观察' : '恢复观察'}
                     </button>
+                    <Link className="btn btn-ghost" to={`/insights?projectId=${encodeURIComponent(project.id)}`}>
+                      查看洞察
+                    </Link>
                   </article>
                 </li>
               );
