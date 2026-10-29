@@ -144,7 +144,7 @@ function NavRail() {
       </ul>
       <div className="nav-footer">
         <p className="nav-footer-note">本地优先</p>
-        <p className="nav-footer-note">数据不出本机</p>
+        <p className="nav-footer-note">模型调用需主动触发</p>
       </div>
     </nav>
   );
@@ -156,6 +156,7 @@ function NavRail() {
 
 function sectionLabel(pathname: string): string {
   if (pathname.startsWith('/chat')) return '对话';
+  if (pathname.startsWith('/observe')) return '项目观察';
   if (pathname.startsWith('/projects')) return '项目';
   if (pathname.startsWith('/insights')) return '洞察';
   if (pathname.startsWith('/activity')) return '执行记录';
@@ -175,8 +176,8 @@ function TopBar() {
         <span className="topbar-section">{sectionLabel(location.pathname)}</span>
       </div>
       <div className="topbar-badges">
-        <span className="badge badge-notice">Demo 数据 · 仅本机</span>
-        <ConnectionBadge mode="demo" />
+        <span className="badge badge-notice">本地存储</span>
+        <ConnectionBadge mode="demo" label={location.pathname.startsWith('/chat') ? '对话：离线演示' : '分析来源见建议卡'} />
       </div>
     </header>
   );

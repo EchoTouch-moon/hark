@@ -18,3 +18,7 @@
 | 2026-10-28T05:20Z | M1-T08 | SSE 端点已实现（/runs/:id/stream），但 UI 用 900ms 轮询消费 | 轮询实现更简单稳健（重连即最新快照），SSE 留给后续增强 | 无验收影响（docs 允许 polling fallback） | runs.ts + ActivityPage |
 | 2026-10-28T17:30Z | Observer-P0 | 规格中的四包合并为 `@hearth/project-observer`；独立 `observer.sqlite`；观察详情走 `/observe/:id` | 保留既有 Hearth events/projects 合同与 E2E；观察器可脱离 HTTP 测试 | 无 API Key、无 Docker；UI 不把 UNKNOWN 画成绿色成功 | docs/14-PROJECT-OBSERVER.md |
 | 2026-10-28T17:46Z | Observer-P0 | 扫描事务内不再 prune 仍被 events 引用的 runs；相同 fingerprint 不再重复 ADAPTER_ERROR；STALE 仅在 HEAD 变化时计算；git 沙箱去掉 HOME 全局配置与 fsmonitor | 审查复现持续运行 FK 失败与误标 STALE | T01–T16 仍绿；增加 filter 负例 | observer.p0.test.ts |
+
+## 2026-10-29 · P2-A live provider
+
+用户明确选定 stepfun-plan/step-5-preview。该 Provider 由已安装 StepFun 扩展注册；全部禁扩展会令其不可用。保留 --no-extensions，新增显式 HEARTH_PI_PROVIDER_EXTENSION，仅加载经审阅的 Provider 注册代码；不启用自动发现或其他扩展。模型身份必须显式指定并记入 Run。CLI 用 text 模式接收最终结构化文本，补充嵌套字段合同；真实错误不回退 Mock、不保存原始 stderr。默认服务仍为 Mock，真实验证使用独立 DB，未修改全局 Pi/Hermes 配置。

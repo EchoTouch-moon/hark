@@ -1,0 +1,26 @@
+{
+  "status": "failed",
+  "provider": "pi",
+  "model": "stepfun-plan/step-5-preview",
+  "runId": "anl_0e9cc6baf74de703",
+  "errorCode": "PROVIDER_OUTPUT",
+  "errorMessage": "Pi output failed schema validation",
+  "before": {
+    "head": "f57fc770361e05485223f8fd248af0e4e0f652aa",
+    "statusHash": "05fe5e50b84de3aae9f6bb3d6bf5a3ee6aac4efadfbeb04a8534282dbf0c6410",
+    "indexHash": "202f2a731a2240e6e6d6074b16e93aa5cdc9d3620342739881ed47b2f40a1182",
+    "filesHash": "4d0a80f47cca50dc4b9aeff131ebc564fd1db20f99809aebad2e6d29b2ca58f8",
+    "fileCount": 611
+  },
+  "after": {
+    "head": "f57fc770361e05485223f8fd248af0e4e0f652aa",
+    "statusHash": "05fe5e50b84de3aae9f6bb3d6bf5a3ee6aac4efadfbeb04a8534282dbf0c6410",
+    "indexHash": "202f2a731a2240e6e6d6074b16e93aa5cdc9d3620342739881ed47b2f40a1182",
+    "filesHash": "4d0a80f47cca50dc4b9aeff131ebc564fd1db20f99809aebad2e6d29b2ca58f8",
+    "fileCount": 611
+  },
+  "repoUnchanged": true,
+  "fingerprintScope": "HEAD, raw index, porcelain status, all tracked and nonignored untracked file contents/modes; symlinks hashed without following; ignored files excluded",
+  "recommendation": null,
+  "completedAt": "2026-10-29T06:46:00.579Z"
+}

@@ -50,3 +50,7 @@
 
 ## 7. 用户审批事项（今晚零越权）
 未访问 personal-vault/memory-vault；未碰 Hermes 配置；无 sudo/Docker/远端推送/邮件/支付；所有密钥类操作为零（PROVIDER_BUDGET=0，无付费 API）。真实副作用接入一律等你明早批准。
+
+## 2026-10-29 · P2-A Live Verification 增量交付
+
+真实 stepfun-plan/step-5-preview 在 pindou 上生成建议卡，工程闭环 PASS；默认 Mock 保留。修复 Provider 扩展注册缺失、显式模型选择、结构化输出合同和 UI 来源标识。全仓 306 tests、类型检查、改动文件 lint、web build 通过。未执行模型建议、未更改 pindou、未修改全局 Pi/Hermes 配置。人工有用性判断尚未完成，未进入 P2-B/C。详情与截图：docs/verification/hearth-p2a-live-verification.md、handoff/EVIDENCE/p2a-live-card.png。原有工作区改动保留；全仓 diff-check 的既有空白问题不属于此次变更。

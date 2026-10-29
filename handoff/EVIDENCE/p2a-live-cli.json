@@ -1,0 +1,11 @@
+{
+  "piVersion": "1.4.0",
+  "provider": "stepfun-plan",
+  "model": "step-5-preview",
+  "withoutExtension": {"exit": 1, "error": "Unknown provider stepfun-plan"},
+  "authCheckWithoutExtension": {"exit": 2, "status": "invalid", "reason": "invalid_state"},
+  "explicitProviderExtension": "@d3ara1n/pi-provider-stepfun@0.3.1/src/index.ts",
+  "minimalLiveRequest": {"exit": 0, "ready": true, "outputChars": 6},
+  "credentialContentsCaptured": false,
+  "flags": ["--no-extensions", "-e <explicit provider extension>", "--no-tools", "--no-mcp", "--no-skills", "--no-context-files", "--no-session", "--offline"]
+}

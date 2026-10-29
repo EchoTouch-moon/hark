@@ -26,3 +26,7 @@
 3. **M2 precision@3**：仅 5 事件 golden fixture（P=1.0），50 条标注基准集未建，报告 NOT_MEASURED。
 4. **Hermes**：本机未配置（HEARTH_HERMES_URL 未设），probe 呈 unconfigured，未做任何真实连接。
 5. **node:sqlite 为 experimental**：Node 22 内置，性能/稳定性对本 demo 足够；升级 Node 大版本前需回归 storage 测试。
+
+## 2026-10-29 · P2-A live 更新
+
+本次选定 StepFun 的真实请求已通；旧 Pi 认证阻塞对这一显式配置已解除。第一次真实分析因输出结构不匹配失败，补全提示合同后成功。无需用户提供密钥。复现配置见 README-dev.md，证据见 docs/verification/hearth-p2a-live-verification.md。剩余：建议质量待人工评价；ignored 文件未纳入指纹；英文/冗长建议及“先 commit/stash”措辞需后续按评价改进。

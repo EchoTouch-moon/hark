@@ -17,7 +17,8 @@ export function RecommendationCard({
     <article className="card analysis-card">
       <header className="analysis-card-head">
         <span className="status-badge is-info">{ANALYSIS_STATUS_LABEL[run.status]}</span>
-        <span className="status-badge is-neutral">{run.provider}</span>
+        <span className="status-badge is-neutral">{run.provider === 'mock' ? 'Mock 演示 · 未调用真实 AI' : 'Pi 真实模型调用'}</span>
+        {run.model ? <span className="insight-card-meta">{run.model}</span> : null}
         {run.stale ? <span className="status-badge is-warning">分析时点已过期</span> : null}
       </header>
       {run.status === 'failed' || run.status === 'cancelled' ? (
