@@ -203,10 +203,62 @@ export class InsightStore {
   /** Explicit P1 data removal for a project. Does not touch observer.sqlite. */
   purgeProject(projectId: string): void {
     this.transaction(() => {
+      this.db.prepare('DELETE FROM insight_evidence_refs WHERE insight_id IN (SELECT insight_id FROM insight_episodes WHERE project_id = ?)').run(projectId);
+      this.db.prepare('DELETE FROM insight_issue_state WHERE issue_key IN (SELECT issue_key FROM insight_episodes WHERE project_id = ?)').run(projectId);
+      this.db.prepare('DELETE FROM insight_episodes WHERE project_id = ?').run(projectId);
+      this.db.prepare('DELETE FROM insight_rule_progress WHERE project_id = ?').run(projectId);
       this.db.prepare('DELETE FROM signal_inbox WHERE project_id = ?').run(projectId);
       this.db.prepare('DELETE FROM consumer_checkpoints WHERE project_id = ?').run(projectId);
       this.db.prepare('DELETE FROM source_interruptions WHERE project_id = ?').run(projectId);
     });
+  }
+
+  listInboxAfter(input: {
+    projectId: string;
+    streamEpoch: number;
+    afterSeq: number;
+    afterSignalId: string;
+    limit: number;
+  }): Array<{ signalId: string; appendSeq: number; payloadJson: string }> {
+    const rows = this.db
+      .prepare(
+        `SELECT signal_id AS signalId, append_seq AS appendSeq, payload_json AS payloadJson
+         FROM signal_inbox
+         WHERE project_id = ? AND stream_epoch = ?
+           AND (append_seq > ? OR (append_seq = ? AND signal_id > ?))
+         ORDER BY append_seq ASC, signal_id ASC
+         LIMIT ?`,
+      )
+      .all(
+        input.projectId,
+        input.streamEpoch,
+        input.afterSeq,
+        input.afterSeq,
+        input.afterSignalId,
+        input.limit,
+      ) as Array<{ signalId: string; appendSeq: number; payloadJson: string }>;
+    return rows;
+  }
+
+  maxInboxSeq(projectId: string, streamEpoch: number): number {
+    const row = this.db
+      .prepare('SELECT MAX(append_seq) AS seq FROM signal_inbox WHERE project_id = ? AND stream_epoch = ?')
+      .get(projectId, streamEpoch) as { seq: number | null };
+    return row.seq === null ? 0 : Number(row.seq);
+  }
+
+  countInbox(projectId: string, streamEpoch: number): number {
+    const row = this.db
+      .prepare('SELECT COUNT(*) AS n FROM signal_inbox WHERE project_id = ? AND stream_epoch = ?')
+      .get(projectId, streamEpoch) as { n: number };
+    return Number(row.n);
+  }
+
+  countEpisodes(projectId: string): number {
+    const row = this.db.prepare('SELECT COUNT(*) AS n FROM insight_episodes WHERE project_id = ?').get(projectId) as {
+      n: number;
+    };
+    return Number(row.n);
   }
 
   commitSignalBatch(input: {

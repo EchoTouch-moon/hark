@@ -9,7 +9,7 @@ export interface InsightMigration {
   up: readonly string[] | ((db: DatabaseSync) => void);
 }
 
-export const INSIGHT_SCHEMA_VERSION = 1;
+export const INSIGHT_SCHEMA_VERSION = 2;
 
 export const INSIGHT_MIGRATIONS: readonly InsightMigration[] = [
   {
@@ -51,6 +51,66 @@ export const INSIGHT_MIGRATIONS: readonly InsightMigration[] = [
         resolution_status TEXT NOT NULL
       )`,
       `CREATE INDEX idx_interrupt_open ON source_interruptions(project_id, interruption_type, resolution_status)`,
+    ],
+  },
+  {
+    version: 2,
+    name: 'insight-v2-episodes',
+    up: [
+      `CREATE TABLE insight_episodes (
+        insight_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        stream_epoch INTEGER NOT NULL,
+        issue_key TEXT NOT NULL,
+        episode_key TEXT NOT NULL UNIQUE,
+        subject_key TEXT NOT NULL,
+        issue_family TEXT NOT NULL,
+        opening_signal_id TEXT NOT NULL,
+        primary_rule_id TEXT NOT NULL,
+        primary_rule_version TEXT NOT NULL,
+        status TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        confidence TEXT NOT NULL,
+        title_key TEXT NOT NULL,
+        detail_key TEXT NOT NULL,
+        template_data_json TEXT NOT NULL,
+        first_observed_at TEXT NOT NULL,
+        last_material_observed_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        historical INTEGER NOT NULL DEFAULT 0
+      )`,
+      `CREATE INDEX insight_episodes_feed_idx
+         ON insight_episodes(project_id, status, last_material_observed_at DESC, insight_id DESC)`,
+      `CREATE TABLE insight_evidence_refs (
+        insight_id TEXT NOT NULL REFERENCES insight_episodes(insight_id) ON DELETE CASCADE,
+        evidence_key TEXT NOT NULL,
+        role TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        source_kind TEXT NOT NULL,
+        quality TEXT NOT NULL,
+        PRIMARY KEY(insight_id, evidence_key, role)
+      )`,
+      `CREATE TABLE insight_rule_progress (
+        project_id TEXT NOT NULL,
+        stream_epoch INTEGER NOT NULL,
+        ruleset_version TEXT NOT NULL,
+        last_append_seq INTEGER NOT NULL,
+        last_signal_id TEXT NOT NULL,
+        revision INTEGER NOT NULL,
+        state TEXT NOT NULL,
+        baseline_until_seq INTEGER NOT NULL,
+        activated_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (project_id, stream_epoch, ruleset_version)
+      )`,
+      `CREATE TABLE insight_issue_state (
+        issue_key TEXT PRIMARY KEY,
+        active_episode_key TEXT,
+        last_verified_recovery_signal_id TEXT,
+        dismissed_json TEXT NOT NULL,
+        state_json TEXT NOT NULL
+      )`,
     ],
   },
 ];

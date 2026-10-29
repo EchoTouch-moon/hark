@@ -72,3 +72,9 @@ export {
   type ConsumeProjectInput,
   type ConsumeResult,
 } from './consume.js';
+export { evaluateSignal, listedRules } from './rules/registry.js';
+export { RULESET_VERSION } from './rules/types.js';
+export { defaultInsightPolicy } from './rules/policy.js';
+export { issueKeyFor, episodeKeyFor, insightIdFor } from './episodes/identity.js';
+export { processProjectRules, dismissEpisode, acknowledgeEpisode } from './insights/processor.js';
+export { sanitizeTemplateData, renderDetail, renderTitle } from './rules/templates.js';
