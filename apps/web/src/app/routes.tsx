@@ -15,7 +15,7 @@ import { SettingsPage } from '../pages/SettingsPage';
 import { InsightsPage } from '../pages/InsightsPage';
 import { InsightDetailPage } from '../pages/InsightDetailPage';
 
-/** 路由级错误兜底：如实展示错误并提供重载入口 */
+/** 路由级错误兜底 */
 function RouteError() {
   const error = useRouteError();
   const message =
@@ -32,9 +32,8 @@ function RouteError() {
 }
 
 /**
- * 路由表（docs/02-UX）：
- * / , /chat , /projects , /projects/:id , /activity/:runId , /settings
- * /activity 是缺少 runId 时的列表落点；未知路径回到 Home。
+ * Style Bible v2：
+ * / = 沉浸画布；/t/:threadId 切线程；/cards · insights · activity · projects 仅调试 URL，无日常 Nav。
  */
 export const router = createBrowserRouter([
   {
@@ -42,8 +41,10 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     errorElement: <RouteError />,
     children: [
-      { index: true, element: <HomePage /> },
-      { path: 'chat', element: <ChatPage /> },
+      { index: true, element: <ChatPage /> },
+      { path: 't/:threadId', element: <ChatPage /> },
+      { path: 'chat', element: <Navigate to="/" replace /> },
+      { path: 'cards', element: <HomePage /> },
       { path: 'projects', element: <ProjectsPage /> },
       { path: 'projects/:id', element: <ProjectDetailPage /> },
       { path: 'observe/:id', element: <ObserverDetailPage /> },

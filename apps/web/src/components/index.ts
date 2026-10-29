@@ -12,3 +12,6 @@ export type { ConnectionBadgeProps, ConnectionMode } from './ConnectionBadge';
 
 export { ConfirmDialog } from './ConfirmDialog';
 export type { ConfirmDialogProps } from './ConfirmDialog';
+
+export { ConfirmSheet } from './ConfirmSheet';
+export type { ConfirmSheetProps } from './ConfirmSheet';

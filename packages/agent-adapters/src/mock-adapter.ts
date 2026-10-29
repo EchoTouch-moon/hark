@@ -62,15 +62,15 @@ export class MockAgentAdapter {
   private compose(message: string, turn: number): string {
     const m = message.trim();
     if (/你好|hello|hi/i.test(m)) {
-      return '你好！我是 Hearth 的**离线演示**助手：当前未连接任何真实模型（Hermes 未配置）。我可以陪你看卡片、解释证据来源，但不会假装已经接入真模型。';
+      return '你好。我是 Hearth 的**离线演示**助手：当前未连接任何真实模型（Hermes 未配置）。有事时我会在本线程给摘要和最多三条行动；无事就安静。不会假装已接入真模型。';
     }
     if (/ci|构建|build|失败/i.test(m)) {
-      return '关于 CI 失败：Home 里的「项目构建未通过」卡片就是这条合成事件（`fixture://github/project-atlas/runs/42`）。点击「开始诊断」后，MockExecutor 会在 `.hearth-demo-artifacts/report/` 写入诊断 JSON，并由独立 Verifier 校验 SHA-256 后才算完成。当前为**离线演示模式**。';
+      return '关于构建失败：这是**演示**说明。真洞察未接时，线程里若出现建议会标明「演示 / 尚未接真洞察」。点行动会在本线程回写进度与结果，不会跳到工作台。当前为**离线演示模式**。';
     }
     if (/会议|日程|calendar/i.test(m)) {
-      return '会议冲突这条是合成日历事件。对应卡片只会生成**本地草稿文件**（drafts/meeting-adjustment.md），不会发送任何邮件——发送属于 L2 外部副作用，需要你在场批准，且本演示不提供该通道。';
+      return '会议冲突类事项若冒泡，会留在本线程确认→执行→结果。本拍演示不会发邮件（L2 外部副作用需在场批准，演示通道未开）。';
     }
-    return `收到（第 ${turn} 轮）：「${m.slice(0, 80)}${m.length > 80 ? '…' : ''}」\n\n这是 Mock 适配器的确定性回复，用于演示聊天流与运行轨迹。要体验真实闭环，可以去 Home 执行一张动作卡片。`;
+    return `收到（第 ${turn} 轮）：「${m.slice(0, 80)}${m.length > 80 ? '…' : ''}」\n\n这是 Mock 适配器的确定性回复（离线演示 · 不连接模型）。有需要处理的事时，行动会留在本线程闭环，不会把你推去卡片墙。`;
   }
 }
 

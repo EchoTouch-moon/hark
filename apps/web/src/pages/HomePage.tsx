@@ -315,7 +315,7 @@ export function HomePage() {
 
   return (
     <section className="page home-page">
-      <PageHeader title="今天" subtitle="值得你注意的事，会安静地出现在这里" />
+      <PageHeader title="建议（次级）" subtitle="旧建议卡流已降权；日常请回到对话主壳" />
 
       {notice ? (
         <p className={`home-notice home-notice-${notice.tone}`} role="status" aria-live="polite">

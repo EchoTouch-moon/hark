@@ -1,6 +1,6 @@
 /**
- * Hearth 全局样式（基于 tokens.css）
- * 只放跨页面复用的基础层：reset、正文、焦点、按钮、徽标、页面骨架。
+ * Hearth 全局 · v6.1 Craft
+ * 多径向光叠暖纸 + grain ~0.04；黯底 #161412
  */
 *,
 *::before,
@@ -20,13 +20,54 @@ body {
   font-size: var(--text-md);
   line-height: var(--leading-normal);
   color: var(--color-ink);
-  background: var(--color-bg);
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(
+      ellipse 95% 75% at 50% 12%,
+      color-mix(in srgb, var(--ember-glow-pink) calc(var(--ember-glow-strength) * 48%), transparent),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 70% 55% at 82% 6%,
+      color-mix(in srgb, var(--ember-glow-blue) calc((0.28 + var(--ember-heat) * 0.3) * 32%), transparent),
+      transparent 52%
+    ),
+    radial-gradient(
+      ellipse 60% 50% at 12% 92%,
+      color-mix(in srgb, var(--ember-glow-pink) calc(var(--ember-glow-strength) * 22%), transparent),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 70% 70%,
+      color-mix(in srgb, rgba(255, 200, 140, 1) calc(var(--ember-heat) * 12%), transparent),
+      transparent 60%
+    );
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  transition:
+    background-color var(--duration-ember) var(--ease-ember),
+    color var(--duration-ember) var(--ease-ember);
+}
+
+/* 极轻 grain overlay opacity ≈ .04 */
+body::after {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-grain);
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 180px 180px;
 }
 
 #root {
   min-height: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 img,
@@ -71,7 +112,6 @@ h4 {
   background: var(--color-accent-soft);
 }
 
-/* ---------- 焦点可见性（无障碍） ---------- */
 :focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
@@ -81,7 +121,6 @@ h4 {
   outline: none;
 }
 
-/* ---------- 动效降级 ---------- */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -93,7 +132,6 @@ h4 {
   }
 }
 
-/* ---------- 跳转主内容（无障碍） ---------- */
 .skip-link {
   position: fixed;
   top: var(--space-2);
@@ -113,7 +151,6 @@ h4 {
   transform: translateY(0);
 }
 
-/* ---------- 按钮 ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -147,9 +184,10 @@ h4 {
 }
 
 .btn-ghost {
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
   border-color: var(--color-border-strong);
   color: var(--color-ink);
+  backdrop-filter: blur(8px);
 }
 
 .btn-ghost:not(:disabled):hover {
@@ -165,7 +203,6 @@ h4 {
   background: #83312a;
 }
 
-/* ---------- 徽标 ---------- */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -184,7 +221,6 @@ h4 {
   border: 1px solid rgba(138, 96, 23, 0.22);
 }
 
-/* ---------- 页面骨架（各页面通用） ---------- */
 .page {
   display: flex;
   flex-direction: column;
@@ -222,7 +258,6 @@ h4 {
   flex-shrink: 0;
 }
 
-/* 页面内的内容区块（卡片列表等预留容器） */
 .page-section {
   display: flex;
   flex-direction: column;
@@ -237,15 +272,14 @@ h4 {
   letter-spacing: var(--tracking-wide);
 }
 
-/* 通用卡片面 */
 .card {
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-1);
+  backdrop-filter: blur(10px);
 }
 
-/* 仅屏幕阅读器可见（表单标签等） */
 .visually-hidden {
   position: absolute;
   width: 1px;

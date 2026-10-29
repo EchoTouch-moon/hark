@@ -1,44 +1,293 @@
-.chat-layout {
+/* Ember Seed 画布 · v6 / v6.1 Craft */
+
+.canvas-page {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  flex: 1;
+  align-items: center;
+  width: 100%;
 }
 
-.chat-main {
+.canvas-column {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: var(--canvas-col-max, 680px);
   display: flex;
   flex-direction: column;
-  min-height: 320px;
-  max-height: calc(100vh - 220px);
+  padding: 0 var(--space-5) var(--space-4);
 }
+
+.canvas-column--seed {
+  justify-content: center;
+  padding-bottom: var(--space-10);
+}
+
+/* ---------- 空态 Seed ---------- */
+
+.ember-seed {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  width: 100%;
+}
+
+.ember-seed__glow {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: min(420px, 90vw);
+  height: min(280px, 48vh);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--ember-glow-pink) calc(var(--ember-glow-strength) * 55%), transparent),
+    color-mix(in srgb, var(--ember-glow-blue) calc(var(--ember-glow-strength) * 18%), transparent) 45%,
+    transparent 70%
+  );
+  filter: blur(8px);
+  pointer-events: none;
+  z-index: 0;
+  animation: ember-breathe 8s ease-in-out infinite;
+}
+
+.ember-seed__greeting {
+  position: relative;
+  z-index: 1;
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-display);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-ink);
+  line-height: var(--leading-tight);
+}
+
+.ember-seed__subline {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-ink-3);
+}
+
+.ember-seed__composer-slot {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 520px;
+  margin-top: var(--space-4);
+}
+
+.ember-seed__chips {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  max-width: 520px;
+}
+
+/* G3 主动卡：叠在 Seed 下方轻敲，不切 grown、不钉 Composer */
+.ember-seed__tap {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 520px;
+  margin-top: var(--space-4);
+  text-align: left;
+}
+
+.ember-seed__tap-body {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-ink-2);
+}
+
+.ember-seed__error {
+  position: relative;
+  z-index: 1;
+  margin-top: var(--space-3);
+  max-width: 520px;
+}
+
+.ember-seed__retry {
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.seed-chip {
+  border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  color: var(--color-ink-2);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-radius: var(--radius-full);
+  padding: 8px 14px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    var(--shadow-1);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.seed-chip:hover:not(:disabled) {
+  color: var(--color-ink);
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  transform: translateY(-1px);
+}
+
+.seed-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- CSS 火焰 widget ---------- */
+
+.ember-flame {
+  position: relative;
+  z-index: 1;
+  width: 56px;
+  height: 72px;
+  transform: scale(var(--ember-flame-scale));
+  transform-origin: center bottom;
+  transition: transform var(--duration-ember) var(--ease-ember);
+  margin-bottom: var(--space-2);
+}
+
+.ember-flame--compact {
+  width: 22px;
+  height: 28px;
+  margin: 0 0 2px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.ember-flame__aura,
+.ember-flame__outer,
+.ember-flame__inner,
+.ember-flame__coal {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50% 50% 45% 45%;
+  pointer-events: none;
+}
+
+.ember-flame__aura {
+  bottom: 8%;
+  width: 140%;
+  height: 70%;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--ember-glow-pink) calc(var(--ember-glow-strength) * 70%), transparent),
+    transparent 70%
+  );
+  filter: blur(10px);
+  animation: ember-aura-breathe 8s ease-in-out infinite;
+}
+
+.ember-flame__outer {
+  bottom: 12%;
+  width: 70%;
+  height: 78%;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #ffb070 70%, var(--color-accent)) 0%,
+    color-mix(in srgb, #e85a28 80%, transparent) 70%,
+    transparent 100%
+  );
+  filter: blur(0.4px);
+  animation: ember-flicker var(--ember-flicker-ms) ease-in-out infinite;
+  opacity: calc(0.55 + var(--ember-heat) * 0.45);
+}
+
+.ember-flame__inner {
+  bottom: 18%;
+  width: 38%;
+  height: 55%;
+  background: linear-gradient(180deg, #fff6e0 0%, #ffcc66 45%, #ff8a3a 100%);
+  box-shadow: 0 0 12px color-mix(in srgb, #ffcc66 calc(var(--ember-glow-strength) * 80%), transparent);
+  animation: ember-flicker var(--ember-flicker-ms) ease-in-out infinite reverse;
+  opacity: calc(0.45 + var(--ember-heat) * 0.55);
+}
+
+.ember-flame__coal {
+  bottom: 4%;
+  width: 48%;
+  height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, #3a2218 0%, #1a100c 70%, transparent 100%);
+  opacity: calc(0.35 + (1 - var(--ember-heat)) * 0.45);
+}
+
+.ember-flame--compact .ember-flame__aura {
+  filter: blur(4px);
+}
+
+/* ---------- 消息列 ---------- */
 
 .chat-list {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  min-height: 0;
 }
 
 .chat-msg {
-  max-width: 78%;
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  animation: chat-msg-in var(--duration-seed) var(--ease-spring) both;
 }
 
 .chat-msg--user {
   align-self: flex-end;
-  background: var(--color-accent-soft);
+  max-width: 85%;
+}
+
+.chat-msg--user .chat-msg__body {
+  background: color-mix(in srgb, var(--color-accent-soft) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-1);
+  backdrop-filter: blur(8px);
 }
 
 .chat-msg--assistant {
-  align-self: flex-start;
-  background: var(--color-bg-raised);
+  align-self: stretch;
+}
+
+.chat-msg--assistant .chat-msg__body {
+  padding: 0;
 }
 
 .chat-msg__meta {
@@ -50,14 +299,31 @@
   margin-bottom: var(--space-1);
 }
 
+.chat-msg--user .chat-msg__meta {
+  padding: 0 var(--space-1);
+}
+
 .chat-msg__body p {
   margin: 0 0 var(--space-1);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  font-size: var(--text-lg);
+  line-height: var(--leading-normal);
+  color: var(--color-ink);
 }
 
 .chat-msg__body p:last-child {
   margin-bottom: 0;
+}
+
+.chat-msg__result {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-md);
+  color: var(--color-success-ink);
+}
+
+.chat-msg__result.is-fail {
+  color: var(--color-danger-ink);
 }
 
 .chat-code {
@@ -66,81 +332,328 @@
   background: var(--color-surface-sunken);
   padding: 0.05em 0.35em;
   border-radius: 4px;
-  overflow-wrap: anywhere;
 }
 
 .chat-loading {
-  padding: var(--space-6);
-  text-align: center;
+  flex: 1;
+  display: grid;
+  place-items: center;
   color: var(--color-ink-3);
 }
 
-.chat-steps {
-  align-self: flex-start;
+.chat-inline-error {
+  margin: var(--space-2) 0;
+  color: var(--color-danger-ink);
   font-size: var(--text-sm);
 }
 
-.chat-steps__toggle {
-  background: none;
-  border: none;
-  color: var(--color-accent);
-  cursor: pointer;
-  padding: var(--space-1) 0;
-  font-size: var(--text-sm);
+/* MiniCard + chips（≤1 卡 ≤2 chip） */
+.mini-card {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--color-border) 90%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    var(--shadow-1);
 }
 
-.chat-steps__list {
-  margin: var(--space-1) 0 0;
-  padding-left: var(--space-5);
-  color: var(--color-ink-3);
+.agent-actions {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.chat-steps__name {
-  font-family: var(--font-mono);
-  margin-right: var(--space-2);
-}
-
-.chat-input-row {
-  display: flex;
+  align-items: flex-start;
   gap: var(--space-2);
-  margin-top: var(--space-3);
-  align-items: flex-end;
 }
 
-.chat-input-row textarea {
-  flex: 1;
-  resize: vertical;
-  min-height: 44px;
-  max-height: 160px;
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font: inherit;
-  background: var(--color-surface);
-  color: var(--color-text);
+.agent-actions__whisper {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+  letter-spacing: var(--tracking-wide);
 }
 
-.chat-input-row button {
-  height: 44px;
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-accent);
+.agent-actions__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.agent-action {
+  border: 1px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
   background: var(--color-accent);
   color: var(--color-on-accent);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
   cursor: pointer;
-  font-weight: 500;
+  box-shadow: var(--shadow-1);
 }
 
-.chat-input-row button:disabled {
-  opacity: 0.5;
+.agent-action:hover:not(:disabled) {
+  background: var(--color-accent-strong);
+}
+
+.agent-action:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-.chat-hint {
+.agent-action-ignore {
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-3);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.agent-action-ignore:hover:not(:disabled) {
+  color: var(--color-ink-2);
+}
+
+.agent-actions__note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+}
+
+/* ProgressBlock */
+.progress-block {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-bg-raised) 80%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.progress-block__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.progress-block__step {
+  display: grid;
+  grid-template-columns: 1.2em 1fr;
+  column-gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+}
+
+.progress-block__step.is-done {
+  color: var(--color-success-ink);
+}
+
+.progress-block__step.is-failed {
+  color: var(--color-danger-ink);
+}
+
+.progress-block__step.is-running {
+  color: var(--color-ink);
+}
+
+.progress-block__status {
+  font-weight: 700;
+}
+
+.progress-block__name {
+  font-weight: 600;
+}
+
+.progress-block__detail {
+  grid-column: 2;
+  color: var(--color-ink-3);
+  font-size: var(--text-xs);
+}
+
+.progress-block__evidence {
+  margin-top: var(--space-2);
+}
+
+.progress-block__evidence-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.progress-block__evidence-body {
   margin: var(--space-2) 0 0;
   font-size: var(--text-xs);
   color: var(--color-ink-3);
+}
+
+/* ---------- Composer（玻璃 pill） ---------- */
+
+.composer-dock {
+  position: sticky;
+  bottom: 0;
+  padding-top: var(--space-3);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--color-bg) 88%, transparent) 28%
+  );
+  animation: composer-dock-in var(--duration-seed) var(--ease-spring) both;
+}
+
+.composer {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+  width: 100%;
+  padding: 10px 12px 10px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 58%, transparent);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 8px 28px color-mix(in srgb, var(--ember-glow-pink) calc(var(--ember-glow-strength) * 28%), transparent),
+    var(--shadow-1);
+}
+
+.ember-seed__composer-slot .composer {
+  /* 空态居中更大一点但仍是 pill */
+  border-radius: var(--radius-xl);
+}
+
+.composer textarea {
+  flex: 1;
+  resize: none;
+  min-height: 44px;
+  max-height: 140px;
+  padding: 10px 4px;
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--text-md);
+  background: transparent;
+  color: var(--color-ink);
+  box-shadow: none;
+}
+
+.composer textarea:focus {
+  outline: none;
+}
+
+.composer textarea::placeholder {
+  color: var(--color-ink-3);
+}
+
+.composer__send {
+  height: 40px;
+  min-width: 64px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 50%, transparent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  transition: transform 100ms var(--ease-out);
+}
+
+.composer__send:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.composer__send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@keyframes chat-msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes composer-dock-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ember-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+}
+
+@keyframes ember-aura-breathe {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.08);
+  }
+}
+
+@keyframes ember-flicker {
+  0%,
+  100% {
+    transform: translateX(-50%) scaleY(1) scaleX(1);
+  }
+  30% {
+    transform: translateX(-50%) scaleY(1.04) scaleX(0.97);
+  }
+  60% {
+    transform: translateX(-50%) scaleY(0.96) scaleX(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-msg,
+  .composer-dock {
+    animation: none;
+  }
+
+  .ember-seed__glow,
+  .ember-flame__aura,
+  .ember-flame__outer,
+  .ember-flame__inner {
+    animation: none !important;
+  }
+
+  /* 主题 crossfade 仍由 --duration-ember 承担（全局 transition） */
+}
+
+.chat-page,
+.chat-layout,
+.chat-main {
+  display: contents;
 }
