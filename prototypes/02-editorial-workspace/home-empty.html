@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editorial Workspace — Hearth 研报公报 (无异常基线)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 报头 Masthead -->
+  <header class="gazette-masthead">
+    <div class="gazette-masthead-inner">
+      <div class="gazette-top-row">
+        <span>VOL. IV · NO. 42</span>
+        <span>LOCAL RESEARCH DESK · 127.0.0.1:4317</span>
+        <span>OCTOBER 29, 2026 · BASELINE EDITION</span>
+      </div>
+
+      <div class="gazette-title-row">
+        <h1 class="gazette-title">The Hearth Dispatch</h1>
+        <div class="gazette-subtitle">炉火个人智能体研报公报 · 本地代码库客观观测纪要</div>
+      </div>
+
+      <div class="gazette-folio-rule">
+        <ul class="gazette-nav-links">
+          <li><a href="home.html" class="active">本期头版 (Overview)</a></li>
+          <li><a href="project-detail.html">卷宗档案 (Projects)</a></li>
+          <li><a href="#">专论发现 (Insights)</a></li>
+          <li><a href="#">时序纪要 (Transits)</a></li>
+          <li><a href="#">编务校对 (Settings)</a></li>
+        </ul>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span>STATUS: ALL SUITES CLEAR · ZERO DEFECTS</span>
+          <button type="button" class="gazette-theme-toggle" onclick="toggleTheme()">PAPER: LIGHT</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主版面：非对称双栏社论版 -->
+  <main class="gazette-body">
+    <!-- 左侧主述评专栏 (63%) -->
+    <article class="gazette-lead-col">
+      <div>
+        <div class="gazette-kicker" style="color:var(--sage-green);">Editorial Monograph // 主编专栏 · 承平述要</div>
+        <h2 class="gazette-headline">风平浪静：各登记卷宗用例全部告捷，未见未决风险</h2>
+        <div class="gazette-deck">
+          观测台完成对全部登记项目的例行比对。未检出测试失败，工作树无未跟踪脏数据；系统处于稳态守候基线。
+        </div>
+
+        <div class="gazette-byline-bar">
+          <span>DESK: EDITORIAL MONOGRAPH // ROUTINE AUDIT</span>
+          <span>CANDIDATES: 0 ACTIVE ITEMS</span>
+          <span>CYCLE: #143</span>
+        </div>
+
+        <!-- 纯白卷轴空态典雅框 -->
+        <div class="gazette-empty-desk">
+          <div class="gazette-empty-bookplate">Ex Libris · Hearth Baseline</div>
+          <h3 class="gazette-empty-title">卷轴澄明 · 当前无待批阅事项</h3>
+          <p class="gazette-empty-desc">
+            “今日无战事，工作树平整如新。”<br>
+            两个登记项目均已通过本地全部测试用例。没有尚未跟踪的代码遗留，亦无任何需要人工复核的安全异常。观测器将在后台维持安静观察，仅在捕获到确切客观事实异动时更新公报。
+          </p>
+        </div>
+
+        <p class="gazette-para" style="margin-top:20px;">
+          在此宁静时刻，您可以专注于纯粹的核心算法构思或架构重构。系统已锁定当前 Git 散列值与 JUnit 报告凭证作为不可篡改的历史基线。
+        </p>
+      </div>
+    </article>
+
+    <!-- 右侧边栏专栏 (37%) -->
+    <aside class="gazette-marginal-col">
+      <!-- 卷宗归档 -->
+      <div>
+        <div class="gazette-section-label">
+          <span>Project Dossier // 登记卷宗</span>
+          <span>2 REPOSITORIES</span>
+        </div>
+
+        <div class="gazette-dossier-list">
+          <!-- 卷宗 1 -->
+          <div class="gazette-dossier-item">
+            <div class="gazette-dossier-header">
+              <a href="project-detail.html" class="gazette-dossier-name" style="text-decoration:none;">I. hark</a>
+              <span class="gazette-dossier-num">CH-01</span>
+            </div>
+            <div class="gazette-dossier-meta">
+              BRANCH: codex/ui-refresh-01 · HEAD: c18faa1
+            </div>
+            <div class="gazette-dossier-stats">
+              <span style="color:var(--sage-green);font-weight:600;">348 / 348 PASS (100%)</span>
+              <span style="color:var(--ink-muted);">WORKTREE: CLEAN</span>
+            </div>
+          </div>
+
+          <!-- 卷宗 2 -->
+          <div class="gazette-dossier-item">
+            <div class="gazette-dossier-header">
+              <span class="gazette-dossier-name">II. pindou</span>
+              <span class="gazette-dossier-num">CH-02</span>
+            </div>
+            <div class="gazette-dossier-meta">
+              BRANCH: main · HEAD: 9e4f2b1
+            </div>
+            <div class="gazette-dossier-stats">
+              <span style="color:var(--sage-green);font-weight:600;">2 / 2 PASS (100%)</span>
+              <span style="color:var(--ink-muted);">RESOLVED</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 研报纪要时序 -->
+      <div>
+        <div class="gazette-section-label">
+          <span>Dispatch Docket // 研报纪要时序</span>
+          <span>CHRONICLE</span>
+        </div>
+
+        <div class="gazette-dispatch-docket">
+          <div class="gazette-dispatch-entry">
+            <span class="gazette-dispatch-time">18:02:11 · hark</span>
+            <p class="gazette-dispatch-text">例行扫描确认无误，测试通过率 100%，无未提交变动。</p>
+          </div>
+
+          <div class="gazette-dispatch-entry">
+            <span class="gazette-dispatch-time">17:58:30 · pindou</span>
+            <p class="gazette-dispatch-text">用例断言已恢复通过，原「值得注意」候选题已顺利归档。</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.gazette-theme-toggle').textContent = 'PAPER: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

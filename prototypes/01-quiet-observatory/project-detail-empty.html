@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiet Observatory — 台站详情 // sandbox-empty (初始待探测)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部台站仪表条 -->
+  <header class="obs-topbar">
+    <div class="obs-topbar-inner">
+      <div class="obs-station-id">
+        <span class="obs-radar-dot" style="background:var(--ink-muted);"></span>
+        <span class="obs-station-name">HEARTH OBSERVATORY</span>
+        <span class="obs-coords">// STATION 127.0.0.1:4317 · INITIALIZING</span>
+      </div>
+      <div class="obs-topbar-controls">
+        <ul class="obs-nav-links">
+          <li><a href="home.html">天幕概览</a></li>
+          <li><a href="project-detail.html" class="active">观测台站</a></li>
+          <li><a href="#">发现与建议</a></li>
+          <li><a href="#">过境流水</a></li>
+          <li><a href="#">仪器校准</a></li>
+        </ul>
+        <button type="button" class="obs-theme-toggle" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="obs-container">
+    <!-- 台站头部坐标与状态条 -->
+    <section class="obs-detail-header">
+      <div class="obs-detail-title-group">
+        <div class="obs-date-badge">STATION CH-03 // NEWLY ATTACHED REPOSITORY</div>
+        <h1 class="obs-detail-h1">sandbox-empty</h1>
+        <div class="obs-detail-path">PATH: /Users/v/new-idea/sandbox-empty</div>
+      </div>
+      <div class="obs-detail-meta-strip">
+        <div>
+          <span style="color:var(--ink-muted);">BRANCH: </span>
+          <span style="color:var(--ink-primary);font-weight:600;">main</span>
+        </div>
+        <div>
+          <span style="color:var(--ink-muted);">HEAD: </span>
+          <span style="color:var(--ink-muted);font-weight:600;">0000000 (UNCOMMITTED)</span>
+        </div>
+        <div>
+          <span class="obs-tag-severity" style="background:var(--bg-sunken);color:var(--ink-secondary);">STANDBY · 待初探</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 空态主视窗 -->
+    <div class="obs-zen-empty" style="padding: 64px 32px;">
+      <div style="font-family:var(--font-mono);font-size:20px;color:var(--ink-muted);letter-spacing:0.15em;">// NO TELEMETRY CAPTURED //</div>
+      <h3 class="obs-zen-empty-title" style="font-size:17px;">台站已登记，等待首次过境扫描与测试报告</h3>
+      <p class="obs-zen-empty-sub">
+        该本地仓库尚未生成任何 junit.xml 测试报告或 Git 变更记录。请在项目目录运行一次测试命令（例如 <code>pnpm test</code>），或保存一次代码修改，观测器将自动捕获过境频谱并在此生成状态游标。
+      </p>
+      <div style="margin-top: 16px;">
+        <span class="obs-evidence-pill" style="padding: 6px 12px; font-size: 12px;">WATCHING: /Users/v/new-idea/sandbox-empty</span>
+      </div>
+    </div>
+
+    <!-- 底部双栏占位台账 -->
+    <div class="obs-spec-grid" style="opacity: 0.6;">
+      <div class="obs-spec-block">
+        <div class="obs-spec-block-title">01 // Git Worktree Caliper</div>
+        <div style="font-size:13px;color:var(--ink-muted);padding:12px 0;">等待 Git 本地索引首次对齐...</div>
+      </div>
+      <div class="obs-spec-block">
+        <div class="obs-spec-block-title">02 // Test Suite Telemetry</div>
+        <div style="font-size:13px;color:var(--ink-muted);padding:12px 0;">未检测到 junit.xml / vitest 报告文件...</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.obs-theme-toggle').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

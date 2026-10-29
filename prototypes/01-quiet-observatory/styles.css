@@ -1,0 +1,611 @@
+/* Quiet Observatory: 安静精密的个人观测台 */
+
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  --font-mono: 'SF Mono', Menlo, Consolas, monospace;
+
+  /* 浅色：晨曦纸灰与高山冷松 */
+  --bg-space: #fbfaf7;
+  --bg-surface: #ffffff;
+  --bg-sunken: #f4f2ec;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+
+  --ink-primary: #1c1c1a;
+  --ink-secondary: #57554f;
+  --ink-muted: #8c887e;
+  --ink-faint: #b8b4a9;
+
+  --hairline: rgba(38, 34, 28, 0.08);
+  --hairline-strong: rgba(38, 34, 28, 0.16);
+  --hairline-focus: rgba(54, 83, 63, 0.4);
+
+  --accent-pine: #36533f;
+  --accent-pine-soft: #eaf1ec;
+  --accent-ember: #a34824;
+  --accent-ember-soft: #f8ece6;
+  --accent-sky: #3b5f7e;
+  --accent-sky-soft: #edf3f8;
+
+  --status-pass: #2d6a4f;
+  --status-fail: #a83232;
+  --status-stale: #8c6214;
+  --status-neutral: #646b73;
+
+  --radius-subtle: 6px;
+  --radius-pill: 999px;
+  --page-width: 1240px;
+}
+
+[data-theme="dark"] {
+  /* 深色：深夜天幕与冷星微光 */
+  --bg-space: #0f1013;
+  --bg-surface: #17181d;
+  --bg-sunken: #111215;
+  --bg-glass: rgba(23, 24, 29, 0.85);
+
+  --ink-primary: #e8eaed;
+  --ink-secondary: #a1a6b0;
+  --ink-muted: #6b7280;
+  --ink-faint: #434852;
+
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.16);
+  --hairline-focus: rgba(74, 222, 128, 0.4);
+
+  --accent-pine: #4ade80;
+  --accent-pine-soft: rgba(74, 222, 128, 0.12);
+  --accent-ember: #fb923c;
+  --accent-ember-soft: rgba(251, 146, 60, 0.12);
+  --accent-sky: #60a5fa;
+  --accent-sky-soft: rgba(96, 165, 250, 0.12);
+
+  --status-pass: #4ade80;
+  --status-fail: #f87171;
+  --status-stale: #fbbf24;
+  --status-neutral: #9ca3af;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-space);
+  color: var(--ink-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 80px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* 顶部台站仪表条 */
+.obs-topbar {
+  border-bottom: 1px solid var(--hairline);
+  background: var(--bg-glass);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.obs-topbar-inner {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.obs-station-id {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.obs-radar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-pine);
+  position: relative;
+}
+
+.obs-radar-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent-pine);
+  opacity: 0.5;
+  animation: radar-pulse 3s infinite ease-out;
+}
+
+@keyframes radar-pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.obs-station-name {
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.obs-coords {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.obs-topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.obs-nav-links {
+  display: flex;
+  gap: 20px;
+  list-style: none;
+}
+
+.obs-nav-links a {
+  color: var(--ink-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.15s;
+}
+
+.obs-nav-links a:hover,
+.obs-nav-links a.active {
+  color: var(--ink-primary);
+  font-weight: 500;
+}
+
+.obs-theme-toggle {
+  background: transparent;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--ink-secondary);
+  cursor: pointer;
+}
+
+/* 页面主容器 */
+.obs-container {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 36px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+/* 天幕大态势叙事区（开放空间，不使用框死卡片） */
+.obs-horizon {
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+}
+
+.obs-horizon-main {
+  max-width: 800px;
+}
+
+.obs-date-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.obs-headline {
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink-primary);
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+
+.obs-subtext {
+  font-size: 14px;
+  color: var(--ink-secondary);
+  line-height: 1.6;
+}
+
+.obs-metrics-ledger {
+  display: flex;
+  gap: 28px;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.obs-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.obs-metric-val {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink-primary);
+}
+
+.obs-metric-lbl {
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+}
+
+/* 主焦点发现（Focal Observation） */
+.obs-focal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.obs-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.obs-section-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.obs-section-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.obs-focal-pane {
+  background: var(--bg-surface);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-subtle);
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+}
+
+/* 观测十字瞄准线装饰 */
+.obs-focal-pane::before {
+  content: '+';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+.obs-focal-pane::after {
+  content: '+';
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+.obs-focal-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.obs-tag-severity {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.obs-tag-severity.attention {
+  background: var(--accent-ember-soft);
+  color: var(--accent-ember);
+}
+
+.obs-tag-severity.important {
+  background: rgba(168, 50, 50, 0.12);
+  color: var(--status-fail);
+}
+
+.obs-focal-proj {
+  font-family: var(--font-mono);
+  color: var(--ink-secondary);
+  font-weight: 500;
+}
+
+.obs-focal-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-left: auto;
+}
+
+.obs-focal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-primary);
+  line-height: 1.4;
+}
+
+.obs-focal-summary {
+  font-size: 14px;
+  color: var(--ink-secondary);
+  line-height: 1.6;
+}
+
+.obs-focal-evidence-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px dashed var(--hairline-strong);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.obs-evidence-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.obs-evidence-pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 6px;
+  background: var(--bg-sunken);
+  border-radius: 3px;
+  color: var(--ink-secondary);
+}
+
+.obs-btn-link {
+  color: var(--accent-pine);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.obs-btn-link:hover {
+  text-decoration: underline;
+}
+
+/* 下层双栏：台站与过境流水 */
+.obs-split-grid {
+  display: grid;
+  grid-template-columns: 7fr 5fr;
+  gap: 32px;
+}
+
+/* 台站频道列表（非卡片化，细线台账式） */
+.obs-station-ledger {
+  display: flex;
+  flex-direction: column;
+}
+
+.obs-station-row {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr auto;
+  align-items: center;
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 13px;
+  transition: background-color 0.1s;
+}
+
+.obs-station-row:hover {
+  background-color: var(--bg-surface);
+}
+
+.obs-station-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.obs-station-branch-cell {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.obs-station-test-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.obs-status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+}
+
+.obs-status-indicator.pass { background: var(--status-pass); }
+.obs-status-indicator.fail { background: var(--status-fail); }
+.obs-status-indicator.stale { background: var(--status-stale); }
+
+.obs-station-action-cell {
+  display: flex;
+  gap: 8px;
+}
+
+/* 过境流水（Transit Stream） */
+.obs-stream {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--hairline);
+  padding-left: 20px;
+}
+
+.obs-stream-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.obs-stream-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.obs-stream-type {
+  color: var(--ink-secondary);
+  font-weight: 500;
+}
+
+.obs-stream-desc {
+  font-size: 13px;
+  color: var(--ink-secondary);
+  line-height: 1.5;
+}
+
+/* 空态观测 */
+.obs-zen-empty {
+  padding: 48px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--ink-muted);
+  text-align: center;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-subtle);
+  background: var(--bg-surface);
+}
+
+.obs-zen-empty-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+}
+
+.obs-zen-empty-sub {
+  font-size: 13px;
+  max-width: 440px;
+  line-height: 1.6;
+}
+
+/* 项目详情页专用样式 */
+.obs-detail-header {
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.obs-detail-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.obs-detail-h1 {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.obs-detail-path {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.obs-detail-meta-strip {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.obs-spec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.obs-spec-block {
+  background: var(--bg-surface);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-subtle);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.obs-spec-block-title {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.obs-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.obs-data-table td {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.obs-data-table td:first-child {
+  color: var(--ink-muted);
+  width: 120px;
+}
+
+.obs-data-table td:last-child {
+  font-family: var(--font-mono);
+  color: var(--ink-primary);
+  text-align: right;
+}

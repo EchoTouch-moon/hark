@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instrument Studio — 仪器通道探针 // sandbox-empty (待初探)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 机架顶部 Master Status Display (MSD) -->
+  <header class="rack-header">
+    <div class="rack-header-inner">
+      <div class="rack-chassis-label">
+        <div class="rack-screw"></div>
+        <div>
+          <span class="rack-model-no">HEARTH // MK-IV INSTRUMENT CONSOLE</span>
+          <div class="rack-bus-status">
+            <span class="rack-led-dot warn"></span>
+            <span>CH-03 PROBE BENCH · REPO: sandbox-empty · UNARMED</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;">
+        <ul class="rack-nav-switches">
+          <li><a href="home.html" class="rack-switch-btn">[01 MASTER]</a></li>
+          <li><a href="project-detail.html" class="rack-switch-btn active">[02 CHANNELS]</a></li>
+          <li><a href="#" class="rack-switch-btn">[03 TRACES]</a></li>
+          <li><a href="#" class="rack-switch-btn">[04 CALIBRATE]</a></li>
+        </ul>
+        <button type="button" class="rack-theme-toggle" onclick="toggleTheme()">CHASSIS: LIGHT</button>
+        <div class="rack-screw"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主机架仓格主网格 -->
+  <main class="rack-container">
+    <!-- 顶部数字段码仪表盘 -->
+    <section class="rack-segment-ribbon">
+      <div class="rack-segment-group">
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val">CH-03</span>
+          <span class="rack-segment-lbl">CHANNEL ID</span>
+        </div>
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val" style="color:var(--ink-muted);">--%</span>
+          <span class="rack-segment-lbl">PASS INTEGRITY</span>
+        </div>
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val">000</span>
+          <span class="rack-segment-lbl">ASSERTIONS</span>
+        </div>
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val">0.00s</span>
+          <span class="rack-segment-lbl">EXEC RUNTIME</span>
+        </div>
+      </div>
+
+      <div style="text-align:right;">
+        <div style="font-size:12px;color:var(--sunken-lcd-muted);font-weight:700;">AWAITING FIRST SIGNAL INPUT</div>
+        <div style="font-size:10px;color:var(--sunken-lcd-muted);margin-top:2px;">/Users/v/new-idea/sandbox-empty</div>
+      </div>
+    </section>
+
+    <!-- 示波器待测视窗 -->
+    <section class="rack-bay-unit">
+      <div class="rack-bay-header">
+        <span>BAY 02 // TRANSDUCER AWAITING PROBE INPUT</span>
+        <span>STATUS: UNCONNECTED</span>
+      </div>
+      <div class="rack-bay-body">
+        <div class="rack-standby-pane">
+          <div class="rack-flatline-wave">· · · · · · · · · [NO INPUT DETECTED] · · · · · · · · ·</div>
+          <div style="font-size:16px;font-weight:700;color:#fff;">
+            通道已插入机架，等待首次测试信号或代码输入
+          </div>
+          <div style="font-size:12px;color:var(--sunken-lcd-text);max-width:540px;line-height:1.7;">
+            尚未在 <code>/Users/v/new-idea/sandbox-empty</code> 捕获到测试报告或 Git 变更。请在终端执行一次 <code>pnpm test</code>，或产生一次代码提交，探针传感器将自动开始采集波形并绘制逻辑图表。
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.rack-theme-toggle').textContent = 'CHASSIS: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

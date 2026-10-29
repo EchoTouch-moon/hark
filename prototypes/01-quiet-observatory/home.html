@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiet Observatory — Hearth 今日观测台</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部台站仪表条 -->
+  <header class="obs-topbar">
+    <div class="obs-topbar-inner">
+      <div class="obs-station-id">
+        <span class="obs-radar-dot"></span>
+        <span class="obs-station-name">HEARTH OBSERVATORY</span>
+        <span class="obs-coords">// STATION 127.0.0.1:4317 · LOCAL ACTIVE</span>
+      </div>
+      <div class="obs-topbar-controls">
+        <ul class="obs-nav-links">
+          <li><a href="home.html" class="active">天幕概览</a></li>
+          <li><a href="project-detail.html">观测台站</a></li>
+          <li><a href="#">发现与建议</a></li>
+          <li><a href="#">过境流水</a></li>
+          <li><a href="#">仪器校准</a></li>
+        </ul>
+        <button type="button" class="obs-theme-toggle" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="obs-container">
+    <!-- 天幕大态势叙事区 -->
+    <section class="obs-horizon">
+      <div class="obs-horizon-main">
+        <div class="obs-date-badge">2026-10-29 · EPOCH 42 · LOCAL SCAN 180s CYCLE</div>
+        <h1 class="obs-headline">天幕平稳：捕获 1 项待复核用例失败，其余频道信号正常</h1>
+        <p class="obs-subtext">观测器完成对本地工作区的第 142 次被动巡检。工作区整体状态干净，未检测到破坏性冲突或未授权模型外发。</p>
+      </div>
+      <div class="obs-metrics-ledger">
+        <div class="obs-metric-item">
+          <span class="obs-metric-val">2<span style="font-size:13px;color:var(--ink-muted);font-weight:normal;"> / 2</span></span>
+          <span class="obs-metric-lbl">ACTIVE STATIONS</span>
+        </div>
+        <div class="obs-metric-item">
+          <span class="obs-metric-val" style="color:var(--status-fail);">1</span>
+          <span class="obs-metric-lbl">ATTENTION ITEM</span>
+        </div>
+        <div class="obs-metric-item">
+          <span class="obs-metric-val">10</span>
+          <span class="obs-metric-lbl">TODAY TRANSITS</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 主焦点发现：高纵深大视野聚焦窗 -->
+    <section class="obs-focal-section">
+      <div class="obs-section-header">
+        <span class="obs-section-title">01 // Focal Attention · 主焦点透镜</span>
+        <span class="obs-section-count">1 UNRESOLVED CANDIDATE</span>
+      </div>
+
+      <article class="obs-focal-pane">
+        <div class="obs-focal-meta">
+          <span class="obs-tag-severity attention">值得注意 · ATTENTION</span>
+          <span class="obs-focal-proj">STATION: pindou</span>
+          <span style="font-family:var(--font-mono);color:var(--ink-muted);">RULE: R-TEST-FAILURE</span>
+          <time class="obs-focal-time">17:28:42 UTC+8</time>
+        </div>
+        <h2 class="obs-focal-title">测试报告 reports/junit.xml 中记录了 1 项未通过用例</h2>
+        <p class="obs-focal-summary">
+          观测台在监听到 reports/junit.xml 变动后捕获到测试套件执行结果。套件总计 2 项测试，其中 1 项失败（Assertion failed: expected true but got false）。当前 HEAD 绑定仍在比对中，未向任何外部模型外发该代码摘录。
+        </p>
+        <div class="obs-focal-evidence-row">
+          <div class="obs-evidence-pills">
+            <span class="obs-evidence-pill">SRC: junit-xml</span>
+            <span class="obs-evidence-pill">Q: OBSERVED</span>
+            <span class="obs-evidence-pill">EVIDENCE: 4 FACTS</span>
+          </div>
+          <a href="#" class="obs-btn-link">调焦展开证据与逐项预览 →</a>
+        </div>
+      </article>
+    </section>
+
+    <!-- 下层双栏：台站频谱与过境事件流水 -->
+    <div class="obs-split-grid">
+      <!-- 左：观测台站频谱 -->
+      <section>
+        <div class="obs-section-header">
+          <span class="obs-section-title">02 // Telemetry Stations · 登记台站</span>
+          <span class="obs-section-count">2 REPOSITORIES</span>
+        </div>
+
+        <div class="obs-station-ledger">
+          <!-- Station 1 -->
+          <div class="obs-station-row">
+            <div class="obs-station-name-cell">
+              <span class="obs-status-indicator pass"></span>
+              <a href="project-detail.html" style="color:inherit;text-decoration:none;">hark</a>
+            </div>
+            <div class="obs-station-branch-cell">codex/ui-refresh-01 [c18faa1]</div>
+            <div class="obs-station-test-cell">
+              <span class="obs-status-indicator pass"></span>
+              <span>348 PASS</span>
+            </div>
+            <div class="obs-station-action-cell">
+              <a href="project-detail.html" class="obs-btn-link" style="font-size:12px;">台站频谱 →</a>
+            </div>
+          </div>
+
+          <!-- Station 2 -->
+          <div class="obs-station-row">
+            <div class="obs-station-name-cell">
+              <span class="obs-status-indicator fail"></span>
+              <a href="#" style="color:inherit;text-decoration:none;">pindou</a>
+            </div>
+            <div class="obs-station-branch-cell">main [9e4f2b1]</div>
+            <div class="obs-station-test-cell">
+              <span class="obs-status-indicator fail"></span>
+              <span style="color:var(--status-fail);">1 FAIL / 2 TOTAL</span>
+            </div>
+            <div class="obs-station-action-cell">
+              <a href="#" class="obs-btn-link" style="font-size:12px;">台站频谱 →</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右：过境观察事件流 -->
+      <section>
+        <div class="obs-section-header">
+          <span class="obs-section-title">03 // Transit Stream · 客观过境事件</span>
+          <span class="obs-section-count">REALTIME OBSERVED</span>
+        </div>
+
+        <div class="obs-stream">
+          <div class="obs-stream-item">
+            <div class="obs-stream-header">
+              <span>17:28:42</span>
+              <span>// pindou</span>
+              <span class="obs-stream-type">TEST_REPORT_UPDATED</span>
+            </div>
+            <p class="obs-stream-desc">收到测试报告 reports/junit.xml：1 项失败，共 2 项用例。</p>
+          </div>
+
+          <div class="obs-stream-item">
+            <div class="obs-stream-header">
+              <span>17:26:14</span>
+              <span>// hark</span>
+              <span class="obs-stream-type">REPOSITORY_HEAD_CHANGED</span>
+            </div>
+            <p class="obs-stream-desc">HEAD 变更至 c18faa1 (codex/ui-refresh-01)，工作区保持干净。</p>
+          </div>
+
+          <div class="obs-stream-item">
+            <div class="obs-stream-header">
+              <span>16:45:02</span>
+              <span>// hark</span>
+              <span class="obs-stream-type">WORKTREE_STATE_CHANGED</span>
+            </div>
+            <p class="obs-stream-desc">文件状态更新：已暂存 0，未暂存 0，未跟踪 0。</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.obs-theme-toggle').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

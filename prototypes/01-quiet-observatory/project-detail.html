@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiet Observatory — 台站详情 // hark</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部台站仪表条 -->
+  <header class="obs-topbar">
+    <div class="obs-topbar-inner">
+      <div class="obs-station-id">
+        <span class="obs-radar-dot"></span>
+        <span class="obs-station-name">HEARTH OBSERVATORY</span>
+        <span class="obs-coords">// STATION 127.0.0.1:4317 · STATION DETAIL</span>
+      </div>
+      <div class="obs-topbar-controls">
+        <ul class="obs-nav-links">
+          <li><a href="home.html">天幕概览</a></li>
+          <li><a href="project-detail.html" class="active">观测台站</a></li>
+          <li><a href="#">发现与建议</a></li>
+          <li><a href="#">过境流水</a></li>
+          <li><a href="#">仪器校准</a></li>
+        </ul>
+        <button type="button" class="obs-theme-toggle" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="obs-container">
+    <!-- 台站头部坐标与状态条 -->
+    <section class="obs-detail-header">
+      <div class="obs-detail-title-group">
+        <div class="obs-date-badge">STATION CH-01 // LOCAL REPOSITORY MONITOR</div>
+        <h1 class="obs-detail-h1">hark</h1>
+        <div class="obs-detail-path">PATH: /Users/v/new-idea/hark</div>
+      </div>
+      <div class="obs-detail-meta-strip">
+        <div>
+          <span style="color:var(--ink-muted);">BRANCH: </span>
+          <span style="color:var(--ink-primary);font-weight:600;">codex/ui-refresh-01</span>
+        </div>
+        <div>
+          <span style="color:var(--ink-muted);">HEAD: </span>
+          <span style="color:var(--accent-pine);font-weight:600;">c18faa1</span>
+        </div>
+        <div>
+          <span class="obs-tag-severity pass" style="background:var(--accent-pine-soft);color:var(--status-pass);">CALM · 正常</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 双栏工作区与测试校准台账 -->
+    <div class="obs-spec-grid">
+      <!-- 工作树状态 -->
+      <div class="obs-spec-block">
+        <div class="obs-spec-block-title">01 // Git Worktree Caliper · 工作树游标</div>
+        <table class="obs-data-table">
+          <tbody>
+            <tr>
+              <td>分支状态</td>
+              <td>codex/ui-refresh-01 (跟踪 origin/codex/ui-refresh-01)</td>
+            </tr>
+            <tr>
+              <td>最新提交</td>
+              <td>c18faa1 docs: record user authorized push</td>
+            </tr>
+            <tr>
+              <td>提交时间</td>
+              <td>2026-10-29 17:26:14 UTC+8 (by v)</td>
+            </tr>
+            <tr>
+              <td>暂存变动</td>
+              <td>0 文件 (0 行添加 / 0 行删除)</td>
+            </tr>
+            <tr>
+              <td>未暂存变动</td>
+              <td>0 文件 (工作区干净)</td>
+            </tr>
+            <tr>
+              <td>未跟踪文件</td>
+              <td>0 个新增路径</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 测试套件频谱 -->
+      <div class="obs-spec-block">
+        <div class="obs-spec-block-title">02 // Test Suite Telemetry · 测试套件频谱</div>
+        <table class="obs-data-table">
+          <tbody>
+            <tr>
+              <td>套件执行器</td>
+              <td>Vitest 3.0 / reports/junit.xml</td>
+            </tr>
+            <tr>
+              <td>测试通过率</td>
+              <td><span style="color:var(--status-pass);font-weight:600;">100%</span> (348 / 348 PASS)</td>
+            </tr>
+            <tr>
+              <td>执行耗时</td>
+              <td>2.41s · 43 测试文件</td>
+            </tr>
+            <tr>
+              <td>端到端测试</td>
+              <td>Playwright E2E: 25 / 25 PASS</td>
+            </tr>
+            <tr>
+              <td>最近报告时间</td>
+              <td>2026-10-29 17:25:50 UTC+8</td>
+            </tr>
+            <tr>
+              <td>破坏性退化</td>
+              <td><span style="color:var(--status-pass);">0 项异常告警</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 台站专属历史事件流 -->
+    <section>
+      <div class="obs-section-header">
+        <span class="obs-section-title">03 // Station Transit Ledger · hark 台站过境记录</span>
+        <span class="obs-section-count">4 EVENT ENTRIES</span>
+      </div>
+
+      <div class="obs-stream" style="margin-top: 16px;">
+        <div class="obs-stream-item">
+          <div class="obs-stream-header">
+            <span>17:26:14</span>
+            <span class="obs-stream-type">REPOSITORY_HEAD_CHANGED</span>
+            <span style="margin-left:auto;">FACT ID: #F-0842</span>
+          </div>
+          <p class="obs-stream-desc">HEAD 变更至 c18faa1：docs: record user authorized push of codex/ui-refresh-01。工作树保持干净。</p>
+        </div>
+
+        <div class="obs-stream-item">
+          <div class="obs-stream-header">
+            <span>17:25:50</span>
+            <span class="obs-stream-type">TEST_REPORT_UPDATED</span>
+            <span style="margin-left:auto;">FACT ID: #F-0841</span>
+          </div>
+          <p class="obs-stream-desc">测试报告更新：套件 43 文件，348 项测试全部通过，耗时 2410ms。</p>
+        </div>
+
+        <div class="obs-stream-item">
+          <div class="obs-stream-header">
+            <span>17:20:12</span>
+            <span class="obs-stream-type">TEST_REPORT_UPDATED</span>
+            <span style="margin-left:auto;">FACT ID: #F-0839</span>
+          </div>
+          <p class="obs-stream-desc">Playwright E2E 测试更新：25 项用例执行通过，覆盖率无回归。</p>
+        </div>
+
+        <div class="obs-stream-item">
+          <div class="obs-stream-header">
+            <span>16:45:02</span>
+            <span class="obs-stream-type">WORKTREE_STATE_CHANGED</span>
+            <span style="margin-left:auto;">FACT ID: #F-0820</span>
+          </div>
+          <p class="obs-stream-desc">观测器完成文件树全量比对：未暂存 0，已暂存 0，未跟踪 0。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.obs-theme-toggle').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

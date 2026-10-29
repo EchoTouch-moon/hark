@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instrument Studio — Hearth 仪器工作台 (待机基线)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 机架顶部 Master Status Display (MSD) -->
+  <header class="rack-header">
+    <div class="rack-header-inner">
+      <div class="rack-chassis-label">
+        <div class="rack-screw"></div>
+        <div>
+          <span class="rack-model-no">HEARTH // MK-IV INSTRUMENT CONSOLE</span>
+          <div class="rack-bus-status">
+            <span class="rack-led-dot"></span>
+            <span>BUS 127.0.0.1:4317 · CLK: 0.33 Hz · STANDBY BASELINE</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;">
+        <ul class="rack-nav-switches">
+          <li><a href="home.html" class="rack-switch-btn active">[01 MASTER]</a></li>
+          <li><a href="project-detail.html" class="rack-switch-btn">[02 CHANNELS]</a></li>
+          <li><a href="#" class="rack-switch-btn">[03 TRACES]</a></li>
+          <li><a href="#" class="rack-switch-btn">[04 CALIBRATE]</a></li>
+        </ul>
+        <button type="button" class="rack-theme-toggle" onclick="toggleTheme()">CHASSIS: LIGHT</button>
+        <div class="rack-screw"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主机架仓格主网格 -->
+  <main class="rack-container">
+    <!-- 顶部数字段码仪表盘 -->
+    <section class="rack-segment-ribbon">
+      <div class="rack-segment-group">
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val">0143</span>
+          <span class="rack-segment-lbl">SCAN CYCLES</span>
+        </div>
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val">02</span>
+          <span class="rack-segment-lbl">ACTIVE BUS CH</span>
+        </div>
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val" style="color:var(--led-green);">00</span>
+          <span class="rack-segment-lbl">FAULT DETECTED</span>
+        </div>
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val" style="color:var(--led-green);">100%</span>
+          <span class="rack-segment-lbl">ASSERTION RATE</span>
+        </div>
+      </div>
+
+      <div style="text-align:right;">
+        <div style="font-size:12px;color:var(--sunken-lcd-text);font-weight:700;">CALIBRATED ZERO-FAULT BASELINE</div>
+        <div style="font-size:10px;color:var(--sunken-lcd-muted);margin-top:2px;">ALL WAVEFORMS STABILIZED</div>
+      </div>
+    </section>
+
+    <!-- Bay 02: 示波器待机空态 (Standby Oscilloscope) -->
+    <section class="rack-bay-unit">
+      <div class="rack-bay-header">
+        <span>BAY 02 // PRIMARY SIGNAL TRANSDUCER & ANALYZER</span>
+        <span>STATUS: CALM / STANDBY</span>
+      </div>
+      <div class="rack-bay-body">
+        <div class="rack-standby-pane">
+          <div class="rack-flatline-wave">─────── ◈ ─────── ◈ ───────</div>
+          <div style="font-size:16px;font-weight:700;color:#fff;">
+            OSCILLOSCOPE STANDBY // 示波器处于稳定基线平波
+          </div>
+          <div style="font-size:12px;color:var(--sunken-lcd-text);max-width:540px;line-height:1.7;">
+            所有通道均已通过最新测试套件断言校验。未检出断言破坏、未捕获异常退出代码或脏工作树。系统正在 0.33 Hz 周期维持被动信号巡检。
+          </div>
+          <div style="font-size:11px;color:var(--sunken-lcd-muted);margin-top:6px;">
+            SIGNAL INTEGRITY: 1.000 · ZERO NETWORK CALLS · LOCAL BUFFER SECURE
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bay 01: 频道排插与音量电平表 (全部通道标称绿色) -->
+    <section class="rack-bay-unit">
+      <div class="rack-bay-header">
+        <span>BAY 01 // TELEMETRY CHANNEL MATRIX & VU MONITORS</span>
+        <span>2 CHANNELS NOMINAL</span>
+      </div>
+      <div class="rack-bay-body">
+        <div class="rack-channel-matrix">
+          <!-- Channel 1: hark -->
+          <div class="rack-channel-strip">
+            <div class="rack-channel-top">
+              <div class="rack-channel-name">
+                <span class="rack-led-dot"></span>
+                <a href="project-detail.html" style="color:inherit;text-decoration:none;">CH 01 // hark</a>
+              </div>
+              <span style="font-size:11px;color:var(--led-green);font-weight:700;">100% NOMINAL</span>
+            </div>
+
+            <div class="rack-vu-bar">
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+            </div>
+
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);">
+              BRANCH: codex/ui-refresh-01 [c18faa1]<br>
+              VITEST: 348 / 348 PASS · WORKTREE: CLEAN
+            </div>
+
+            <div class="rack-channel-controls">
+              <a href="project-detail.html" class="rack-mini-switch active">[PROBE CH-01]</a>
+              <span class="rack-mini-switch">[SOLO]</span>
+              <span class="rack-mini-switch">[MUTE]</span>
+            </div>
+          </div>
+
+          <!-- Channel 2: pindou -->
+          <div class="rack-channel-strip">
+            <div class="rack-channel-top">
+              <div class="rack-channel-name">
+                <span class="rack-led-dot"></span>
+                <span>CH 02 // pindou</span>
+              </div>
+              <span style="font-size:11px;color:var(--led-green);font-weight:700;">100% NOMINAL</span>
+            </div>
+
+            <div class="rack-vu-bar">
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+              <div class="rack-vu-segment lit-green"></div>
+            </div>
+
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);">
+              BRANCH: main [9e4f2b1]<br>
+              JUNIT: 2 PASS / 2 TOTAL · FAULTS RESOLVED
+            </div>
+
+            <div class="rack-channel-controls">
+              <span class="rack-mini-switch active">[PROBE CH-02]</span>
+              <span class="rack-mini-switch">[SOLO]</span>
+              <span class="rack-mini-switch">[MUTE]</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bay 03: 走带式事件步进器 -->
+    <section class="rack-bay-unit">
+      <div class="rack-bay-header">
+        <span>BAY 03 // REALTIME STEP-SEQUENCER TRANSIT RECORDER</span>
+        <span>ROLL: 18:02:11:00</span>
+      </div>
+      <div class="rack-bay-body">
+        <div class="rack-sequencer-feed">
+          <div class="rack-sequencer-step">
+            <span class="rack-step-timecode">STEP 01</span>
+            <span class="rack-step-tag" style="color:var(--led-green);">[HEARTBEAT]</span>
+            <span>hark: 周期扫描确认无变动，哈希 c18faa1 保持纯净</span>
+            <span style="color:var(--ink-muted);text-align:right;">18:02:11</span>
+          </div>
+
+          <div class="rack-sequencer-step">
+            <span class="rack-step-timecode">STEP 02</span>
+            <span class="rack-step-tag" style="color:var(--led-green);">[RESOLVED]</span>
+            <span>pindou: 测试套件断言已全量恢复通过，故障寄存器复位</span>
+            <span style="color:var(--ink-muted);text-align:right;">17:58:30</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.rack-theme-toggle').textContent = 'CHASSIS: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

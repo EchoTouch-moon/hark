@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instrument Studio — 仪器通道探针 // hark (Console MK-IV)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 机架顶部 Master Status Display (MSD) -->
+  <header class="rack-header">
+    <div class="rack-header-inner">
+      <div class="rack-chassis-label">
+        <div class="rack-screw"></div>
+        <div>
+          <span class="rack-model-no">HEARTH // MK-IV INSTRUMENT CONSOLE</span>
+          <div class="rack-bus-status">
+            <span class="rack-led-dot"></span>
+            <span>CH-01 PROBE BENCH · REPO: hark · BUS NOMINAL</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;">
+        <ul class="rack-nav-switches">
+          <li><a href="home.html" class="rack-switch-btn">[01 MASTER]</a></li>
+          <li><a href="project-detail.html" class="rack-switch-btn active">[02 CHANNELS]</a></li>
+          <li><a href="#" class="rack-switch-btn">[03 TRACES]</a></li>
+          <li><a href="#" class="rack-switch-btn">[04 CALIBRATE]</a></li>
+        </ul>
+        <button type="button" class="rack-theme-toggle" onclick="toggleTheme()">CHASSIS: LIGHT</button>
+        <div class="rack-screw"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主机架仓格主网格 -->
+  <main class="rack-container">
+    <!-- 顶部数字段码仪表盘 -->
+    <section class="rack-segment-ribbon">
+      <div class="rack-segment-group">
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val">CH-01</span>
+          <span class="rack-segment-lbl">CHANNEL ID</span>
+        </div>
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val" style="color:var(--led-green);">100%</span>
+          <span class="rack-segment-lbl">PASS INTEGRITY</span>
+        </div>
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val">348</span>
+          <span class="rack-segment-lbl">ASSERTIONS</span>
+        </div>
+        <div class="rack-segment-cell">
+          <span class="rack-segment-val">2.41s</span>
+          <span class="rack-segment-lbl">EXEC RUNTIME</span>
+        </div>
+      </div>
+
+      <div style="text-align:right;">
+        <div style="font-size:12px;color:var(--sunken-lcd-text);font-weight:700;">HEAD c18faa1 [CLEAN]</div>
+        <div style="font-size:10px;color:var(--sunken-lcd-muted);margin-top:2px;">/Users/v/new-idea/hark</div>
+      </div>
+    </section>
+
+    <!-- 双栏测量游标 (Hardware Calipers) -->
+    <div class="rack-caliper-grid">
+      <!-- Bay A: Git 寄存器游标 -->
+      <section class="rack-bay-unit">
+        <div class="rack-bay-header">
+          <span>BAY A // GIT REPOSITORY CALIPER REGISTERS</span>
+          <span>DEV: /dev/git-bus</span>
+        </div>
+        <div class="rack-bay-body">
+          <table class="rack-register-table">
+            <tbody>
+              <tr>
+                <td>BRANCH REGISTER</td>
+                <td>codex/ui-refresh-01</td>
+              </tr>
+              <tr>
+                <td>TRACKING UPSTREAM</td>
+                <td>origin/codex/ui-refresh-01</td>
+              </tr>
+              <tr>
+                <td>LATEST COMMIT SHA</td>
+                <td style="color:var(--led-green);">c18faa1 (CLEAN)</td>
+              </tr>
+              <tr>
+                <td>COMMIT AUTHOR</td>
+                <td>v &lt;authorized&gt;</td>
+              </tr>
+              <tr>
+                <td>STAGED CHANGES</td>
+                <td>0 files (0 bytes delta)</td>
+              </tr>
+              <tr>
+                <td>UNSTAGED CHANGES</td>
+                <td>0 files (0 bytes delta)</td>
+              </tr>
+              <tr>
+                <td>UNTRACKED PATHS</td>
+                <td>0 files detected</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Bay B: 测试诊断逻辑分析器 -->
+      <section class="rack-bay-unit">
+        <div class="rack-bay-header">
+          <span>BAY B // TEST LOGIC TRANSDUCER & ASSERTION METER</span>
+          <span>SUITE: vitest 3.0</span>
+        </div>
+        <div class="rack-bay-body">
+          <table class="rack-register-table">
+            <tbody>
+              <tr>
+                <td>UNIT PASS RATE</td>
+                <td style="color:var(--led-green);">100% (348 / 348 PASS)</td>
+              </tr>
+              <tr>
+                <td>TEST SUITE FILES</td>
+                <td>43 files verified</td>
+              </tr>
+              <tr>
+                <td>PLAYWRIGHT E2E</td>
+                <td style="color:var(--led-green);">100% (25 / 25 PASS)</td>
+              </tr>
+              <tr>
+                <td>SAFETY GATE CHECK</td>
+                <td>12 assertions (100% PASS)</td>
+              </tr>
+              <tr>
+                <td>LATENCY PROBE</td>
+                <td>2410 ms (Within 5000ms SLA)</td>
+              </tr>
+              <tr>
+                <td>FAULT REGISTERS</td>
+                <td style="color:var(--led-green);">0 ACTIVE FAULTS</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- Bay C: 走带式逻辑追踪记录器 -->
+    <section class="rack-bay-unit">
+      <div class="rack-bay-header">
+        <span>BAY C // CHANNEL 01 TRACE LOG RECORDER</span>
+        <span>RECORDER RUNNING</span>
+      </div>
+      <div class="rack-bay-body">
+        <div class="rack-sequencer-feed">
+          <div class="rack-sequencer-step">
+            <span class="rack-step-timecode">STEP 01</span>
+            <span class="rack-step-tag">[COMMIT]</span>
+            <span>HEAD 更新至 c18faa1：docs: record user authorized push of codex/ui-refresh-01</span>
+            <span style="color:var(--ink-muted);text-align:right;">17:26:14</span>
+          </div>
+
+          <div class="rack-sequencer-step">
+            <span class="rack-step-timecode">STEP 02</span>
+            <span class="rack-step-tag" style="color:var(--led-green);">[TEST_PASS]</span>
+            <span>Vitest 单元测试：348 项用例无一失败，耗时 2410ms</span>
+            <span style="color:var(--ink-muted);text-align:right;">17:25:50</span>
+          </div>
+
+          <div class="rack-sequencer-step">
+            <span class="rack-step-timecode">STEP 03</span>
+            <span class="rack-step-tag" style="color:var(--led-green);">[E2E_PASS]</span>
+            <span>Playwright 端到端测试：25 项用例执行通过</span>
+            <span style="color:var(--ink-muted);text-align:right;">17:20:12</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.rack-theme-toggle').textContent = 'CHASSIS: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

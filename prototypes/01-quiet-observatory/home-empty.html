@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiet Observatory — Hearth 今日观测台 (无异常基线)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶部台站仪表条 -->
+  <header class="obs-topbar">
+    <div class="obs-topbar-inner">
+      <div class="obs-station-id">
+        <span class="obs-radar-dot"></span>
+        <span class="obs-station-name">HEARTH OBSERVATORY</span>
+        <span class="obs-coords">// STATION 127.0.0.1:4317 · BASELINE CALM</span>
+      </div>
+      <div class="obs-topbar-controls">
+        <ul class="obs-nav-links">
+          <li><a href="home.html" class="active">天幕概览</a></li>
+          <li><a href="project-detail.html">观测台站</a></li>
+          <li><a href="#">发现与建议</a></li>
+          <li><a href="#">过境流水</a></li>
+          <li><a href="#">仪器校准</a></li>
+        </ul>
+        <button type="button" class="obs-theme-toggle" onclick="toggleTheme()">THEME: LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="obs-container">
+    <!-- 天幕大态势叙事区 -->
+    <section class="obs-horizon">
+      <div class="obs-horizon-main">
+        <div class="obs-date-badge">2026-10-29 · EPOCH 42 · LOCAL SCAN 180s CYCLE</div>
+        <h1 class="obs-headline">天幕平稳：全频道信号正常，未捕获到待审候选</h1>
+        <p class="obs-subtext">观测器完成对 2 个本地台站的静默扫描。所有测试套件均处于通过状态，Git 工作树干净，无任何待处理未决风险。</p>
+      </div>
+      <div class="obs-metrics-ledger">
+        <div class="obs-metric-item">
+          <span class="obs-metric-val">2<span style="font-size:13px;color:var(--ink-muted);font-weight:normal;"> / 2</span></span>
+          <span class="obs-metric-lbl">ACTIVE STATIONS</span>
+        </div>
+        <div class="obs-metric-item">
+          <span class="obs-metric-val" style="color:var(--status-pass);">0</span>
+          <span class="obs-metric-lbl">ATTENTION ITEM</span>
+        </div>
+        <div class="obs-metric-item">
+          <span class="obs-metric-val">12</span>
+          <span class="obs-metric-lbl">TODAY TRANSITS</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 主焦点区：空态天幕基线 -->
+    <section class="obs-focal-section">
+      <div class="obs-section-header">
+        <span class="obs-section-title">01 // Focal Attention · 主焦点透镜</span>
+        <span class="obs-section-count">0 CANDIDATES</span>
+      </div>
+
+      <div class="obs-zen-empty">
+        <div style="font-family:var(--font-mono);font-size:18px;color:var(--accent-pine);letter-spacing:0.1em;">+ BASELINE SECURE +</div>
+        <h3 class="obs-zen-empty-title">天幕清澄 · 当前无需要人工介入的待处理候选</h3>
+        <p class="obs-zen-empty-sub">
+          所有登记台站测试套件均在最近一次扫描中通过。本地工作区无未提交的脏变更，无异常进程挂起。您可以专注于当前研发，观测器将在后台静默保持 180s 周期被动巡检。
+        </p>
+      </div>
+    </section>
+
+    <!-- 下层双栏：台站与过境流水 -->
+    <div class="obs-split-grid">
+      <!-- 左：观测台站频谱 -->
+      <section>
+        <div class="obs-section-header">
+          <span class="obs-section-title">02 // Telemetry Stations · 登记台站</span>
+          <span class="obs-section-count">2 REPOSITORIES</span>
+        </div>
+
+        <div class="obs-station-ledger">
+          <!-- Station 1 -->
+          <div class="obs-station-row">
+            <div class="obs-station-name-cell">
+              <span class="obs-status-indicator pass"></span>
+              <a href="project-detail.html" style="color:inherit;text-decoration:none;">hark</a>
+            </div>
+            <div class="obs-station-branch-cell">codex/ui-refresh-01 [c18faa1]</div>
+            <div class="obs-station-test-cell">
+              <span class="obs-status-indicator pass"></span>
+              <span>348 PASS</span>
+            </div>
+            <div class="obs-station-action-cell">
+              <a href="project-detail.html" class="obs-btn-link" style="font-size:12px;">台站频谱 →</a>
+            </div>
+          </div>
+
+          <!-- Station 2 -->
+          <div class="obs-station-row">
+            <div class="obs-station-name-cell">
+              <span class="obs-status-indicator pass"></span>
+              <a href="#" style="color:inherit;text-decoration:none;">pindou</a>
+            </div>
+            <div class="obs-station-branch-cell">main [9e4f2b1]</div>
+            <div class="obs-station-test-cell">
+              <span class="obs-status-indicator pass"></span>
+              <span>2 PASS / 2 TOTAL</span>
+            </div>
+            <div class="obs-station-action-cell">
+              <a href="#" class="obs-btn-link" style="font-size:12px;">台站频谱 →</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右：过境观察事件流 -->
+      <section>
+        <div class="obs-section-header">
+          <span class="obs-section-title">03 // Transit Stream · 客观过境事件</span>
+          <span class="obs-section-count">BASELINE STABLE</span>
+        </div>
+
+        <div class="obs-stream">
+          <div class="obs-stream-item">
+            <div class="obs-stream-header">
+              <span>18:02:11</span>
+              <span>// hark</span>
+              <span class="obs-stream-type">PERIODIC_HEARTBEAT_ACK</span>
+            </div>
+            <p class="obs-stream-desc">第 142 次扫描周期确认完毕：哈希一致，工作区整洁。</p>
+          </div>
+
+          <div class="obs-stream-item">
+            <div class="obs-stream-header">
+              <span>17:58:30</span>
+              <span>// pindou</span>
+              <span class="obs-stream-type">TEST_REPORT_CLEARED</span>
+            </div>
+            <p class="obs-stream-desc">套件断言已全部恢复通过，候选告警标记自动归档。</p>
+          </div>
+
+          <div class="obs-stream-item">
+            <div class="obs-stream-header">
+              <span>17:26:14</span>
+              <span>// hark</span>
+              <span class="obs-stream-type">REPOSITORY_HEAD_CHANGED</span>
+            </div>
+            <p class="obs-stream-desc">HEAD 变更至 c18faa1 (codex/ui-refresh-01)。</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.obs-theme-toggle').textContent = 'THEME: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

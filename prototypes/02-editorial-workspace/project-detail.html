@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editorial Workspace — 项目卷宗 // hark (The Hearth Dispatch)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 报头 Masthead -->
+  <header class="gazette-masthead">
+    <div class="gazette-masthead-inner">
+      <div class="gazette-top-row">
+        <span>ARCHIVAL DOSSIER // MONOGRAPH 01</span>
+        <span>REPOSITORY: hark</span>
+        <span>OCTOBER 29, 2026</span>
+      </div>
+
+      <div class="gazette-title-row" style="padding: 16px 0 10px;">
+        <h1 class="gazette-title" style="font-size:32px;">Project Monograph: hark</h1>
+        <div class="gazette-subtitle">工程实录与实证测试分析 · 卷号 CH-01</div>
+      </div>
+
+      <div class="gazette-folio-rule">
+        <ul class="gazette-nav-links">
+          <li><a href="home.html">本期头版 (Overview)</a></li>
+          <li><a href="project-detail.html" class="active">卷宗档案 (Projects)</a></li>
+          <li><a href="#">专论发现 (Insights)</a></li>
+          <li><a href="#">时序纪要 (Transits)</a></li>
+          <li><a href="#">编务校对 (Settings)</a></li>
+        </ul>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span>HEALTH: VERIFIED SOLID · 348 PASS</span>
+          <button type="button" class="gazette-theme-toggle" onclick="toggleTheme()">PAPER: LIGHT</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主卷宗版面 -->
+  <main class="gazette-body">
+    <!-- 左侧实证专论 (63%) -->
+    <article class="gazette-lead-col">
+      <div>
+        <div class="gazette-kicker" style="color:var(--sage-green);">Empirical Dissertation // 第一部：工作树与版本源流</div>
+        <h2 class="gazette-headline">版本演进与测试套件实证考据</h2>
+        <div class="gazette-deck">
+          hark 当前处于 codex/ui-refresh-01 分支，已与上游 origin 建立同步镜像。本地未见脏写入，所有单元与端到端测试均实现全绿收敛。
+        </div>
+
+        <p class="gazette-para gazette-dropcap-para">
+          据炉火归档器记录，本工程最新一次提交为 <code>c18faa1</code>（<i>docs: record user authorized push of codex/ui-refresh-01</i>），由工程师 <code>v</code> 显式提交。工作树状态经三次深度哈希校验，暂存区与未暂存区均为零变动，展现出高度规范的本地开发守则。
+        </p>
+
+        <!-- 实证测试表格 -->
+        <div style="margin: 24px 0;">
+          <div class="gazette-section-label">
+            <span>TABLE 1.1 // EMPIRICAL TEST SUITE VERIFICATION</span>
+            <span>VITEST & PLAYWRIGHT</span>
+          </div>
+
+          <table class="gazette-academic-table">
+            <thead>
+              <tr>
+                <th>测试套件范畴</th>
+                <th>用例总数</th>
+                <th>通过数</th>
+                <th>失败数</th>
+                <th>耗时基准</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Vitest Unit & Integration</strong></td>
+                <td>348</td>
+                <td style="color:var(--sage-green);font-weight:600;">348</td>
+                <td>0</td>
+                <td>2.41s</td>
+              </tr>
+              <tr>
+                <td><strong>Playwright E2E Spec</strong></td>
+                <td>25</td>
+                <td style="color:var(--sage-green);font-weight:600;">25</td>
+                <td>0</td>
+                <td>8.95s</td>
+              </tr>
+              <tr>
+                <td><strong>Safety & Policy Gate</strong></td>
+                <td>12</td>
+                <td style="color:var(--sage-green);font-weight:600;">12</td>
+                <td>0</td>
+                <td>0.32s</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="gazette-para">
+          此等实证结果表明，工程在完成 UI-02 优化迭代后，未引入任何破坏性合同破裂。所有数据接口均在 Zod 严格校验层保护之下，SQLite 数据库迁移保持单一线性向前演进。
+        </p>
+      </div>
+    </article>
+
+    <!-- 右侧边栏专栏 (37%) -->
+    <aside class="gazette-marginal-col">
+      <!-- 卷宗核心参数 -->
+      <div>
+        <div class="gazette-section-label">
+          <span>Dossier Metrics // 卷宗参数标定</span>
+          <span>FACT SHEET</span>
+        </div>
+
+        <div style="margin-top:12px;font-size:13px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--rule-light);">
+            <span style="color:var(--ink-muted);">本地绝对路径</span>
+            <span style="font-family:var(--font-mono);font-size:11px;">/Users/v/new-idea/hark</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--rule-light);">
+            <span style="color:var(--ink-muted);">当前检出分支</span>
+            <span style="font-family:var(--font-mono);font-size:11px;">codex/ui-refresh-01</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--rule-light);">
+            <span style="color:var(--ink-muted);">最新提交哈希</span>
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--sage-green);font-weight:600;">c18faa1</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--rule-light);">
+            <span style="color:var(--ink-muted);">工作区洁净度</span>
+            <span style="color:var(--sage-green);font-weight:600;">PRISTINE (0 DIRTY)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 研报时序纪要 -->
+      <div>
+        <div class="gazette-section-label">
+          <span>Chronicle Docket // 卷宗时序录</span>
+          <span>4 RECORDS</span>
+        </div>
+
+        <div class="gazette-dispatch-docket">
+          <div class="gazette-dispatch-entry">
+            <span class="gazette-dispatch-time">17:26:14 · COMMIT LOG</span>
+            <p class="gazette-dispatch-text">提交 c18faa1：docs: record user authorized push of codex/ui-refresh-01。</p>
+          </div>
+
+          <div class="gazette-dispatch-entry">
+            <span class="gazette-dispatch-time">17:25:50 · JUNIT TEST</span>
+            <p class="gazette-dispatch-text">单元测试套件全量通过，348 项测试零失败，用时 2.41s。</p>
+          </div>
+
+          <div class="gazette-dispatch-entry">
+            <span class="gazette-dispatch-time">17:20:12 · PLAYWRIGHT</span>
+            <p class="gazette-dispatch-text">端到端浏览器校验通过，25 项测试覆盖核心控制台链路。</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.gazette-theme-toggle').textContent = 'PAPER: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>

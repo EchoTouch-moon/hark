@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editorial Workspace — Hearth 研报公报 (The Hearth Dispatch)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 报头 Masthead -->
+  <header class="gazette-masthead">
+    <div class="gazette-masthead-inner">
+      <div class="gazette-top-row">
+        <span>VOL. IV · NO. 42</span>
+        <span>LOCAL RESEARCH DESK · 127.0.0.1:4317</span>
+        <span>OCTOBER 29, 2026 · AUTUMN EDITION</span>
+      </div>
+
+      <div class="gazette-title-row">
+        <h1 class="gazette-title">The Hearth Dispatch</h1>
+        <div class="gazette-subtitle">炉火个人智能体研报公报 · 本地代码库客观观测纪要</div>
+      </div>
+
+      <div class="gazette-folio-rule">
+        <ul class="gazette-nav-links">
+          <li><a href="home.html" class="active">本期头版 (Overview)</a></li>
+          <li><a href="project-detail.html">卷宗档案 (Projects)</a></li>
+          <li><a href="#">专论发现 (Insights)</a></li>
+          <li><a href="#">时序纪要 (Transits)</a></li>
+          <li><a href="#">编务校对 (Settings)</a></li>
+        </ul>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span>STATUS: SCAN CYCLE #142 COMPLETE</span>
+          <button type="button" class="gazette-theme-toggle" onclick="toggleTheme()">PAPER: LIGHT</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主版面：非对称双栏社论版 -->
+  <main class="gazette-body">
+    <!-- 左侧主述评专栏 (63%) -->
+    <article class="gazette-lead-col">
+      <div>
+        <div class="gazette-kicker">Special Dispatch // 头条特稿 · 异常侦测</div>
+        <h2 class="gazette-headline">测试断言破裂与代码库基线考辨：pindou 套件出现 1 项未通过用例</h2>
+        <div class="gazette-deck">
+          测试报告 reports/junit.xml 触发观测比对。套件内 1 项用例未获通过，工作树其余文件保持干净整洁；观测器已完成本地客观归档，未触发外部模型调度。
+        </div>
+
+        <div class="gazette-byline-bar">
+          <span>DISPATCHED BY: OBSERVER EXTRACTOR // R-TEST-FAILURE</span>
+          <span>STATION: pindou · HEAD: 9e4f2b1</span>
+          <span>TIME: 17:28:42 UTC+8</span>
+        </div>
+
+        <p class="gazette-para gazette-dropcap-para">
+          在最近一次巡检周期内，炉火观测器截获到工程 <code>pindou</code> 根目录下测试输出文件的客观变动。经结构化解析，测试套件共运行 2 项用例，其中 1 项抛出 AssertionError。该现象直接反映了本地开发阶段的断言未决状态，具有高度针对性的代码复核价值。
+        </p>
+
+        <div class="gazette-pull-quote">
+          “任何未经证据链锁定的工程推断皆属臆测。客观事实、严格隔离与可验证性是本地个人智能体守卫的第一要义。”
+        </div>
+
+        <p class="gazette-para">
+          按照 Hearth 架构约束，系统并未将此失败堆栈提交至外部大语言模型，亦未执行任何破坏性自动修复操作。观测器已将该用例失败记录为「值得注意」候选题，并提取了完整的断言上下文证据，留待工程师查阅或后续显式授权处理。
+        </p>
+
+        <!-- 学术特刊证据板 -->
+        <div class="gazette-evidence-plate">
+          <div class="gazette-evidence-plate-title">
+            <span>EVIDENCE PLATE // 事实考据板 [DOC. JUNIT-0842]</span>
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--rubric-red);">ATTENTION · 值得注意</span>
+          </div>
+          <div class="gazette-code-citation">
+[FAIL] tests/unit/auth-service.test.ts > AuthService > should validate jwt signature
+AssertionError: expected true but got false
+   at AuthService.verifyToken (src/auth/service.ts:48:19)
+   at tests/unit/auth-service.test.ts:32:24
+          </div>
+          <div class="gazette-plate-footnote">
+            * 证据出处：reports/junit.xml · 状态：OBSERVED · 关联实体：pindou:tests/unit/auth-service.test.ts · 证据条目数：4
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 右侧边栏专栏 (37%) -->
+    <aside class="gazette-marginal-col">
+      <!-- 卷宗归档 -->
+      <div>
+        <div class="gazette-section-label">
+          <span>Project Dossier // 登记卷宗</span>
+          <span>2 REPOSITORIES</span>
+        </div>
+
+        <div class="gazette-dossier-list">
+          <!-- 卷宗 1 -->
+          <div class="gazette-dossier-item">
+            <div class="gazette-dossier-header">
+              <a href="project-detail.html" class="gazette-dossier-name" style="text-decoration:none;">I. hark</a>
+              <span class="gazette-dossier-num">CH-01</span>
+            </div>
+            <div class="gazette-dossier-meta">
+              BRANCH: codex/ui-refresh-01 · HEAD: c18faa1
+            </div>
+            <div class="gazette-dossier-stats">
+              <span style="color:var(--sage-green);font-weight:600;">348 / 348 PASS (100%)</span>
+              <span style="color:var(--ink-muted);">WORKTREE: CLEAN</span>
+            </div>
+          </div>
+
+          <!-- 卷宗 2 -->
+          <div class="gazette-dossier-item">
+            <div class="gazette-dossier-header">
+              <span class="gazette-dossier-name">II. pindou</span>
+              <span class="gazette-dossier-num">CH-02</span>
+            </div>
+            <div class="gazette-dossier-meta">
+              BRANCH: main · HEAD: 9e4f2b1
+            </div>
+            <div class="gazette-dossier-stats">
+              <span style="color:var(--rubric-red);font-weight:600;">1 / 2 FAIL (50%)</span>
+              <span style="color:var(--ink-muted);">1 ATTENTION ITEM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 研报纪要时序 -->
+      <div>
+        <div class="gazette-section-label">
+          <span>Dispatch Docket // 研报纪要时序</span>
+          <span>CHRONICLE</span>
+        </div>
+
+        <div class="gazette-dispatch-docket">
+          <div class="gazette-dispatch-entry">
+            <span class="gazette-dispatch-time">17:28:42 · pindou</span>
+            <p class="gazette-dispatch-text">观测到测试报告文件更新，捕获 1 项断言失败（junit-xml）。</p>
+          </div>
+
+          <div class="gazette-dispatch-entry">
+            <span class="gazette-dispatch-time">17:26:14 · hark</span>
+            <p class="gazette-dispatch-text">版本提交更新至 c18faa1，记录用户授权推送，工作区纯净。</p>
+          </div>
+
+          <div class="gazette-dispatch-entry">
+            <span class="gazette-dispatch-time">16:45:02 · hark</span>
+            <p class="gazette-dispatch-text">全量文件树基线校验，暂存变动为 0，未暂存变动为 0。</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.gazette-theme-toggle').textContent = 'PAPER: ' + next.toUpperCase();
+    }
+  </script>
+</body>
+</html>
