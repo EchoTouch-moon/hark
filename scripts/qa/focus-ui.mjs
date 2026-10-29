@@ -1,0 +1,43 @@
+import { chromium, expect } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+const browser = await chromium.launch({headless:true});
+const page = await browser.newPage({viewport:{width:1440,height:1000}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+const root='http://127.0.0.1:4399';
+mkdirSync('handoff/EVIDENCE',{recursive:true});
+try {
+ await page.goto(root); await page.getByRole('heading',{name:/和重要的事/ }).waitFor();
+ if(await page.locator('.focus-history').count()) console.log('Existing synthetic conversation retained');
+ await page.getByRole('link',{name:/添加第一个项目/}).waitFor();
+ await page.screenshot({path:'handoff/EVIDENCE/focus-ui-desktop.png',fullPage:true,animations:'disabled'});
+ await page.getByRole('button',{name:'帮我梳理下一步'}).click();
+ if(await page.locator('#focus-input').inputValue()!=='帮我梳理下一步') throw Error('提示未填入');
+ await page.getByRole('button',{name:'发送消息'}).click();
+ await page.getByText(/继续上次的对话/).waitFor();
+ await expect(page.locator('#focus-input')).toHaveValue('');
+ await expect(page.locator('.focus-history')).toHaveAttribute('open','');
+ await page.locator('.focus-message').first().waitFor();
+ console.log('PASS: empty state, prompt, real local Mock send and persisted history');
+ await page.reload(); await page.getByText(/继续上次的对话/).waitFor();
+ await page.setViewportSize({width:390,height:844});
+ await page.screenshot({path:'handoff/EVIDENCE/focus-ui-mobile.png',fullPage:true,animations:'disabled'});
+ if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)) throw Error('手机横向溢出');
+ console.log('PASS: history survives reload; mobile has no horizontal overflow');
+ await page.route('**/api/v1/overview*',async route=>{
+ const response=await route.fetch(); const data=await response.json();
+ data.summary.status='ATTENTION_NEEDED';data.summary.headline='有一件事值得关注';data.summary.detail='合成验收数据：最近的回归验证需要关注。';
+ data.prioritizedInsights={items:[{id:'synthetic-focus',projectId:'synthetic',projectName:'Hearth · 合成验收',title:'先完成回归验证，再推进新的界面。',summary:'这是一条用于界面验收的合成发现，查看依据可进入现有详情流程。',severity:'attention',status:'open',observedAt:new Date().toISOString(),primaryRuleId:'test',evidenceCount:3,historical:false}],totalOpenCount:2,hasMore:true};
+ await route.fulfill({json:data});
+ });
+ await page.setViewportSize({width:1440,height:1000});await page.reload();
+ await page.getByRole('heading',{name:'先完成回归验证，再推进新的界面。'}).waitFor();
+ await page.getByRole('button',{name:'和我聊聊'}).click();
+ if(!(await page.locator('#focus-input').inputValue()).includes('回归验证')) throw Error('未填入重点事项');
+ await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0,0); });
+ await page.screenshot({path:'handoff/EVIDENCE/focus-ui-attention.png',fullPage:true,animations:'disabled'});
+ await page.getByRole('link',{name:/查看 3 条依据/}).click();
+ if(!page.url().endsWith('/insights/synthetic-focus')) throw Error('详情跳转错误');
+ console.log('PASS: synthetic attention state, contextual prompt and evidence navigation');
+ if(errors.length) throw Error(errors.join('\n'));
+ console.log('PASS: no browser page errors');
+} finally { await browser.close(); }

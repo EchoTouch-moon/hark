@@ -1,19 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { EmptyState, ErrorState, PageHeader } from '../components';
-import {
-  fetchOverview,
-  type OverviewResponse,
-  OVERVIEW_STATUS_LABELS,
-  OVERVIEW_STATUS_TONE,
-  TEST_STATUS_LABELS,
-  TEST_STATUS_TONE,
-} from '../features/overview';
-import { SEVERITY_LABEL, SEVERITY_TONE } from '../features/insights';
-import { EVENT_TYPE_LABELS, type ObserverEventType } from '../features/observer';
-import { formatDateTime } from '../features/runs';
+import { ErrorState } from '../components';
+import { fetchOverview, type OverviewResponse, OVERVIEW_STATUS_LABELS } from '../features/overview';
+import { fetchChatHistory, sendChatMessage, type ChatMessage } from '../features/chat';
 import './HomePage.css';
-
 const REFRESH_INTERVAL_MS = 3000;
 
 export function HomePage() {
@@ -85,326 +75,85 @@ export function HomePage() {
     setSearchParams(next, { replace: true });
   };
 
-  if (loading && !data) {
-    return (
-      <section className="page home-page">
-        <PageHeader title="今日概览" subtitle="基于真实本地事实聚合 · 零未授权模型调用" />
-        <div className="home-loading" role="status">正在加载今日工作台概览…</div>
-      </section>
-    );
+  const [draft, setDraft] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sending, setSending] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const controller = useRef<AbortController | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const abort = new AbortController();
+    void fetchChatHistory(abort.signal).then(result => setMessages(result.messages)).catch(() => {
+      if (!abort.signal.aborted) setChatError('会话记录暂时无法读取，可前往对话页重试。');
+    });
+    return () => { abort.abort(); controller.current?.abort(); };
+  }, []);
+  async function send() {
+    if (sending || !draft.trim()) return;
+    const text = draft.trim();
+    setSending(true); setChatError(null);
+    const abort = new AbortController(); controller.current = abort;
+    const timer = window.setTimeout(() => abort.abort(), 30000);
+    try {
+      await sendChatMessage(text, abort.signal);
+      const history = await fetchChatHistory(abort.signal);
+      setMessages(history.messages); setDraft(''); setHistoryOpen(true);
+    } catch (err) {
+      setChatError(abort.signal.aborted ? '已停止等待。消息可能已保存在本地，请查看会话记录后重试。' : err instanceof Error ? err.message : '发送失败，请重试');
+    } finally { window.clearTimeout(timer); setSending(false); }
   }
-
-  if (error && !data) {
-    return (
-      <section className="page home-page">
-        <PageHeader title="今日概览" subtitle="基于真实本地事实聚合 · 零未授权模型调用" />
-        <ErrorState message={error} onRetry={() => loadData(false)} />
-      </section>
-    );
-  }
-
+  function prompt(text: string) { setDraft(text); inputRef.current?.focus(); }
+  const focus = data?.prioritizedInsights.items[0];
   const summary = data?.summary;
-  const sectionsAvailability = data?.sectionsAvailability;
-  const hasDegradedSection =
-    sectionsAvailability &&
-    (sectionsAvailability.projects !== 'AVAILABLE' ||
-      sectionsAvailability.insights !== 'AVAILABLE' ||
-      sectionsAvailability.observations !== 'AVAILABLE');
-
-  const prioritized = data?.prioritizedInsights;
-  const projects = data?.projects ?? [];
-  const recentObservations = data?.recentObservations;
-
+  const degraded = data && Object.values(data.sectionsAvailability).some(value => value !== 'AVAILABLE');
   return (
-    <section className="page home-page">
-      <PageHeader
-        title="今日概览"
-        subtitle={`本地事实聚合 · ${summary?.date ?? '今日'}`}
-        actions={
-          <div className="home-filter-bar">
-            <label htmlFor="home-project-select" className="home-filter-label">
-              项目范围：
-            </label>
-            <select
-              id="home-project-select"
-              className="home-filter-select"
-              value={projectId ?? ''}
-              onChange={(e) => handleProjectFilterChange(e.target.value)}
-            >
-              <option value="">全部项目 ({projects.length})</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        }
-      />
-
-      {/* 降级警示横幅：不吞噬正常区块 */}
-      {hasDegradedSection ? (
-        <div className="home-degraded-banner" role="alert">
-          <span className="home-banner-badge tone-warning">部分数据源降级</span>
-          <span>
-            {sectionsAvailability?.projects !== 'AVAILABLE' ? '项目状态不可用；' : ''}
-            {sectionsAvailability?.insights !== 'AVAILABLE' ? '洞察引擎状态不可用；' : ''}
-            {sectionsAvailability?.observations !== 'AVAILABLE' ? '观察事件流不可用；' : ''}
-            未受影响的数据区域正常展示。
-          </span>
+    <section className="hearth-focus" aria-label="Hearth 对话工作台">
+      <div className="focus-landscape" aria-hidden="true"><div className="focus-sun"/><div className="mountain mountain-back"/><div className="mountain mountain-front"/><div className="observatory"><i/><b/></div></div>
+      <header className="focus-heading">
+        <p className="focus-eyebrow">A LITTLE SPACE TO FOCUS <span>●</span></p>
+        <h1>和重要的事，<br/>慢慢<span>向前。</span></h1>
+        <p>把纷繁留给 Hearth，把注意力留给当下。</p>
+      </header>
+      <div className="focus-context">
+        <span className="context-dot"/>
+        <span>{loading && !data ? '正在了解当前工作状态…' : summary ? OVERVIEW_STATUS_LABELS[summary.status] : '等待连接本地工作区'}</span>
+        <span className="context-divider">/</span>
+        <label htmlFor="home-project-select" className="visually-hidden">项目范围</label>
+        <select id="home-project-select" value={projectId ?? ''} onChange={e => handleProjectFilterChange(e.target.value)}>
+          <option value="">全部项目{data ? ` · ${data.projects.length}` : ''}</option>
+          {data?.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </div>
+      {error && !data && <ErrorState message={error} onRetry={() => void loadData()} />}
+      {degraded && <p role="alert" className="focus-warning">部分来源暂时不可用，当前信息可能不完整。<Link to="/projects">查看项目状态</Link></p>}
+      <div className="focus-conversation">
+        <div className="hearth-avatar" aria-hidden="true">⌒</div>
+        <div className="focus-brief">
+          <p className="focus-speaker">Hearth <span>与你一起，专注当下</span></p>
+          <h2>{focus ? '眼下，这件事值得你关注。' : summary?.headline ?? '从你正在做的事开始。'}</h2>
+          <p>{summary?.detail ?? '说说你想推进什么，或者先添加一个本地项目。'}</p>
+          {focus ? <article className="focus-decision">
+            <div className="decision-meta"><span>◈ {focus.projectName}</span><span>值得关注</span></div>
+            <h3>{focus.title}</h3><p>{focus.summary}</p>
+            <div className="decision-bottom"><Link to={`/insights/${focus.id}`}>查看 {focus.evidenceCount} 条依据 <span>↗</span></Link><button type="button" onClick={() => prompt(`我想进一步讨论：${focus.title}`)}>和我聊聊 <span>→</span></button></div>
+          </article> : summary?.status === 'NO_PROJECTS' ? <Link className="focus-start" to="/projects">添加第一个项目 <span>↗</span></Link> : null}
+          {data && data.prioritizedInsights.totalOpenCount > 1 && <Link className="focus-more" to="/insights">另外 {data.prioritizedInsights.totalOpenCount - 1} 件事，等你想看时再展开 →</Link>}
         </div>
-      ) : null}
-
-      {/* 第 1 区：今日概览叙事与指标 */}
-      {summary ? (
-        <article className="home-section home-summary-card">
-          <div className="home-summary-header">
-            <div className="home-summary-title-wrap">
-              <span className={`home-status-badge tone-${OVERVIEW_STATUS_TONE[summary.status]}`}>
-                {OVERVIEW_STATUS_LABELS[summary.status]}
-              </span>
-              <h2 className="home-summary-headline">{summary.headline}</h2>
-            </div>
-            <time className="home-summary-time">{summary.date}</time>
-          </div>
-          <p className="home-summary-detail">{summary.detail}</p>
-          <div className="home-metrics-strip">
-            <div className="home-metric-pill">
-              <span className="metric-label">登记项目</span>
-              <span className="metric-value">
-                {summary.counts.enabledProjects}
-                <span className="metric-total"> / {summary.counts.totalProjects}</span>
-              </span>
-            </div>
-            <div className="home-metric-pill">
-              <span className="metric-label">待关注发现</span>
-              <span className="metric-value">
-                {summary.counts.openInsights}
-                {summary.counts.importantInsights > 0 ? (
-                  <span className="metric-highlight"> ({summary.counts.importantInsights} 重要)</span>
-                ) : null}
-              </span>
-            </div>
-            <div className="home-metric-pill">
-              <span className="metric-label">今日观察事件</span>
-              <span className="metric-value">{summary.counts.todayObservationsCount}</span>
-            </div>
-          </div>
-        </article>
-      ) : null}
-
-      {/* 第 2 区：值得关注（最多 3 条，优先排序） */}
-      <section className="home-section" aria-labelledby="section-prioritized-title">
-        <div className="home-section-header">
-          <div className="home-section-title-wrap">
-            <h2 id="section-prioritized-title" className="home-section-title">
-              值得关注
-            </h2>
-            {prioritized && prioritized.totalOpenCount > 0 ? (
-              <span className="home-count-tag">{prioritized.totalOpenCount}</span>
-            ) : null}
-          </div>
-          {prioritized && (prioritized.hasMore || prioritized.totalOpenCount > 3) ? (
-            <Link
-              to={projectId ? `/insights?projectId=${encodeURIComponent(projectId)}` : '/insights'}
-              className="home-section-link"
-            >
-              查看全部发现 (共 {prioritized.totalOpenCount} 条) →
-            </Link>
-          ) : null}
-        </div>
-
-        {prioritized && prioritized.items.length > 0 ? (
-          <div className="home-insights-list">
-            {prioritized.items.map((item) => (
-              <article key={item.id} className="home-insight-card">
-                <div className="home-insight-meta-top">
-                  <span className={`home-tag tone-${SEVERITY_TONE[item.severity]}`}>
-                    {SEVERITY_LABEL[item.severity]}
-                  </span>
-                  <span className="home-project-badge">{item.projectName}</span>
-                  <span className="home-rule-tag">{item.primaryRuleId}</span>
-                  <time className="home-meta-time">{formatDateTime(item.observedAt)}</time>
-                </div>
-                <h3 className="home-insight-title">
-                  <Link to={`/insights/${item.id}`}>{item.title}</Link>
-                </h3>
-                <p className="home-insight-summary">{item.summary}</p>
-                <div className="home-insight-footer">
-                  <span className="home-evidence-count">
-                    {item.evidenceCount} 条事实证据
-                  </span>
-                  <Link to={`/insights/${item.id}`} className="home-card-action-btn">
-                    查看详情与建议 →
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="home-empty-box">
-            {summary?.status === 'NO_PROJECTS' ? (
-              <EmptyState
-                title="暂无登记项目"
-                hint="目前尚未登记任何本地项目。请先在“项目”中添加项目根目录。"
-                action={
-                  <Link to="/projects" className="home-btn-primary">
-                    登记本地项目
-                  </Link>
-                }
-              />
-            ) : summary?.status === 'NO_SIGNALS' ? (
-              <EmptyState
-                title="尚无可评估信号"
-                hint="项目已登记，但尚未观测到测试报告更新或 Git 提交信号。"
-              />
-            ) : summary?.status === 'ALL_CLEAR' ? (
-              <EmptyState
-                title="目前全部正常"
-                hint="当前未发现需要重点关注的异常或待办事项。"
-              />
-            ) : (
-              <EmptyState
-                title="暂无未处理发现"
-                hint="所有历史发现均已处理或忽略。"
-              />
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* 第 3 区：项目概况 */}
-      <section className="home-section" aria-labelledby="section-projects-title">
-        <div className="home-section-header">
-          <div className="home-section-title-wrap">
-            <h2 id="section-projects-title" className="home-section-title">
-              项目概况
-            </h2>
-            <span className="home-count-tag">{projects.length}</span>
-          </div>
-          <Link to="/projects" className="home-section-link">
-            管理项目 →
-          </Link>
-        </div>
-
-        {projects.length > 0 ? (
-          <div className="home-projects-grid">
-            {projects.map((proj) => {
-              const isFiltered = projectId === proj.id;
-              return (
-                <div
-                  key={proj.id}
-                  className={`home-project-card ${isFiltered ? 'is-selected' : ''}`}
-                >
-                  <div className="home-project-top">
-                    <div className="home-project-title-group">
-                      <h3 className="home-project-name">{proj.name}</h3>
-                      <span className={`home-status-dot ${proj.enabled ? 'is-active' : 'is-paused'}`} />
-                      <span className="home-project-state-text">
-                        {proj.enabled ? '运行中' : '已暂停'}
-                      </span>
-                    </div>
-                    <span className={`home-tag tone-${TEST_STATUS_TONE[proj.testStatus]}`}>
-                      {TEST_STATUS_LABELS[proj.testStatus]}
-                    </span>
-                  </div>
-
-                  <div className="home-project-meta">
-                    <span className="home-project-branch">
-                      分支: {proj.branch ?? 'HEAD'}
-                      {proj.headOid ? ` (${proj.headOid.slice(0, 7)})` : ''}
-                    </span>
-                    <span className="home-project-obs-time">
-                      最近观察: {formatDateTime(proj.lastObservedAt ?? undefined)}
-                    </span>
-                  </div>
-
-                  <div className="home-project-bottom">
-                    <span className="home-project-open-count">
-                      {proj.openInsightCount > 0 ? (
-                        <strong className="text-warning">{proj.openInsightCount} 条待关注</strong>
-                      ) : (
-                        <span className="text-muted">0 条待关注</span>
-                      )}
-                    </span>
-                    <div className="home-project-actions">
-                      <button
-                        type="button"
-                        className="home-btn-ghost-sm"
-                        onClick={() => handleProjectFilterChange(isFiltered ? '' : proj.id)}
-                      >
-                        {isFiltered ? '取消筛选' : '仅看此项目'}
-                      </button>
-                      <Link to={`/observe/${proj.id}`} className="home-btn-ghost-sm">
-                        详情
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="home-empty-box">
-            <EmptyState
-              title="尚未登记本地项目"
-              hint="添加本地 Git 仓库路径即可开始自动化观察与代码洞察。"
-              action={
-                <Link to="/projects" className="home-btn-primary">
-                  添加第一个项目
-                </Link>
-              }
-            />
-          </div>
-        )}
-      </section>
-
-      {/* 第 4 区：最近观察 */}
-      <section className="home-section" aria-labelledby="section-observations-title">
-        <div className="home-section-header">
-          <div className="home-section-title-wrap">
-            <h2 id="section-observations-title" className="home-section-title">
-              最近观察
-            </h2>
-            {recentObservations && recentObservations.events.length > 0 ? (
-              <span className="home-count-tag">{recentObservations.events.length}</span>
-            ) : null}
-          </div>
-          <Link
-            to={projectId ? `/observations?projectId=${encodeURIComponent(projectId)}` : '/observations'}
-            className="home-section-link"
-          >
-            查看完整时间线 →
-          </Link>
-        </div>
-
-        {recentObservations && recentObservations.events.length > 0 ? (
-          <ul className="home-observations-list">
-            {recentObservations.events.map((evt) => {
-              const label =
-                EVENT_TYPE_LABELS[evt.type as ObserverEventType] ?? evt.type;
-              return (
-                <li key={evt.id} className="home-observation-item">
-                  <div className="obs-header">
-                    <time className="obs-time">{formatDateTime(evt.timestamp)}</time>
-                    <span className="obs-project">{evt.projectName}</span>
-                    <span className="obs-type-tag">{label}</span>
-                    <span className="obs-source-tag">{evt.source}</span>
-                  </div>
-                  <p className="obs-summary">{evt.payloadSummary}</p>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <div className="home-empty-box">
-            <EmptyState
-              title="暂无观察记录"
-              hint="当本地仓库发生提交、分支切换或测试运行后，客观事件将记录于此。"
-            />
-          </div>
-        )}
-      </section>
+      </div>
+      {messages.length > 0 && <details className="focus-history" open={historyOpen} onToggle={e => setHistoryOpen(e.currentTarget.open)}><summary>继续上次的对话 · {messages.length} 条消息</summary><div className="focus-messages" aria-live="polite">{messages.map(m => <article key={m.id} className={m.role === 'user' ? 'focus-message is-user' : 'focus-message'}><span>{m.role === 'user' ? '你' : 'Hearth · 离线演示'}</span><p>{m.content}</p></article>)}</div><Link to="/chat">打开完整会话 ↗</Link></details>}
+      <div className="focus-compose-area">
+        <div className="focus-prompts">{['帮我梳理下一步', '我想讨论一个新想法', '先聊聊当前的工作'].map(text => <button type="button" key={text} onClick={() => prompt(text)}>{text} <span>↗</span></button>)}</div>
+        {chatError && <p className="focus-warning" role="alert">{chatError} <Link to="/chat">查看会话记录</Link></p>}
+        <form className="focus-composer" onSubmit={e => { e.preventDefault(); void send(); }}>
+          <span className="composer-spark" aria-hidden="true">✦</span>
+          <label htmlFor="focus-input" className="visually-hidden">告诉 Hearth 你想做什么</label>
+          <textarea id="focus-input" ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="告诉我，你现在想专注什么…" rows={2} maxLength={4000} disabled={sending} onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); } }}/>
+          {sending ? <button type="button" className="composer-send" aria-label="停止等待" onClick={() => controller.current?.abort()}>■</button> : <button type="submit" className="composer-send" disabled={!draft.trim()} aria-label="发送消息">↑</button>}
+        </form>
+        <div className="composer-footnote"><span>本地保存 · 对话为离线演示</span><span>Enter 发送 · Shift + Enter 换行</span></div>
+      </div>
+      <a className="focus-credit" href="https://deerflow.tech" target="_blank" rel="noreferrer">Created By Deerflow</a>
     </section>
   );
 }

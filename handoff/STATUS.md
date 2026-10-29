@@ -116,3 +116,9 @@ UI-02 全部完成并通关门禁：
 4. **门禁与状态**：
    - Phase 1 验收完成，所有原型及 48 张截图已生成；严禁在人工确认视觉方向前替换 `apps/web` 生产代码；
    - 下一步：等待用户从 6 套方案中选择最终视觉方向后，正式开启 Phase 2 生产组件重构。
+
+## 2026-10-29 对话优先首页
+- 已完成：按用户提供的两张参考图修改现有首页。暖白、炉火橙、雾山天文台；默认呈现当前状态与一条重点发现，其余内容按需查看。
+- 首页对话复用本地 Mock API、持久会话、主动发送与停止等待；不声称接入真实 AI。
+- 验证：Web build、全仓 typecheck、修改 TSX 的 ESLint；浏览器测试见 `handoff/EVIDENCE/focus-ui-browser.log`，截图 `focus-ui-desktop.png`、`focus-ui-mobile.png`、`focus-ui-attention.png`。
+- 复放：启动独立 Demo 服务于 4399（静态目录为 apps/web/dist 的绝对路径；禁用观察器），运行 `node scripts/qa/focus-ui.mjs`。脚本重点事项通过拦截 overview 响应提供明确合成数据；本地 Mock 发送使用实际 API。

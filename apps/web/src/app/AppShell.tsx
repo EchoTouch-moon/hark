@@ -57,7 +57,7 @@ interface NavItemDefinition {
 
 /** 顺序固定：Home / Chat / Projects / Insights / Activity / Settings */
 const NAV_ITEMS: readonly NavItemDefinition[] = [
-  { to: '/', label: '今日概览', icon: 'home', end: true },
+  { to: '/', label: '当下', icon: 'chat', end: true },
   { to: '/projects', label: '项目', icon: 'projects' },
   { to: '/insights', label: '发现与建议', icon: 'insights' },
   { to: '/observations', label: '观察记录', icon: 'activity' },
@@ -344,7 +344,7 @@ export function AppShell() {
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
-      <div className={`app-shell${drawerContent ? ' has-detail' : ''}`}>
+      <div className={`app-shell${location.pathname === '/' ? ' is-focus-workspace' : ''}${drawerContent ? ' has-detail' : ''}`}>
         <NavRail />
         <div className="app-body">
           <TopBar />

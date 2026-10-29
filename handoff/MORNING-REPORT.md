@@ -83,3 +83,10 @@ UI-02 完成（UI-02.1、UI-02.2、UI-02.3 全部交付）：
 5. 发现与建议（`InsightsPage`）：增加“发现列表”与“分析建议历史”双视图，项目标签采用真实项目名称映射；
 6. 阶段门禁通过：合成 JUnit 失败测试报告自动经后台流水线生成新 Insight 并呈现在首页，重复扫描不重复展示，全过程零模型调用；
 7. 验收测试：全仓 43 文件 / 348 个单测 PASS；全仓 `typecheck` PASS；`eslint` 0 错误；Playwright **25/25 PASS**。证据：`handoff/EVIDENCE/ui-02-workbench-home.png`、`ui-02-workbench-filter.png`、`ui-02-observations-timeline.png`、`ui-02-gate-insight.png`。下一步进入 UI-03.1。
+
+## 2026-10-29 首页视觉与交互改版
+- 已完成对话优先首页：重点事项、按需证据、快捷提示、可发送及停止等待的输入框、可折叠持久会话；桌面及手机布局。
+- 实际数据继续来自 overview；无项目、无法连接、部分来源不可用分别展示相应状态；对话清楚标注离线演示。
+- 检查证据：`handoff/EVIDENCE/focus-ui-{build,typecheck,lint,browser}.log`；截图同目录。重点卡截图为合成验收数据。
+- 运行：`pnpm dev:server` 与 `pnpm dev:web`，访问本地 5173；生产静态构建 `pnpm --filter @hearth/web build`。
+- 范围：修改首页与首页外壳样式；未接入真实模型，未做外部发布，未运行完整历史 E2E。旧首页四区块布局测试需随新设计调整。

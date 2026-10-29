@@ -1,0 +1,4 @@
+PASS: empty state, prompt, real local Mock send and persisted history
+PASS: history survives reload; mobile has no horizontal overflow
+PASS: synthetic attention state, contextual prompt and evidence navigation
+PASS: no browser page errors
