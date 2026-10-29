@@ -489,3 +489,4 @@
 @media(prefers-reduced-motion:reduce) {
   .canvas-shell, .chrome-seg__btn, .chrome-icon-btn, .chrome-avatar { transition: none; }
 }
+.projects-pane__manage { display: inline-block; margin: 0 0 24px; font-size: 12px; color: var(--color-accent); border-bottom: 1px solid var(--color-border); padding-bottom: 5px; }

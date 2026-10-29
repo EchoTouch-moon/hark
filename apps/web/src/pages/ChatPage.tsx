@@ -8,6 +8,7 @@ import { useGSAP } from '@gsap/react';
 import { useNavigate } from 'react-router-dom';
 import { EmberPresence } from '../components/EmberPresence';
 import { HearthWelcome } from '../components/HearthWelcome';
+import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import { readWelcomePreference } from '../features/welcome';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useThreads } from '../app/AppShell';
@@ -293,7 +294,8 @@ export function ChatPage() {
   const currentThread = useRef(activeThreadId);
   currentThread.current = activeThreadId;
   const slotRef = useRef<HTMLDivElement>(null);
-  const [motionPaused, setMotionPaused] = useState(false);
+  const [motionPaused, setMotionPaused] = useState(isEmberMotionPaused);
+  useEffect(() => { emitEmberCue('motion-preference', motionPaused); }, [motionPaused]);
   const composerRef = useRef<HTMLDivElement>(null);
   const previousRect = useRef<ReturnType<NonNullable<typeof composerRef.current>['getBoundingClientRect']> | null>(null);
   const [pendingAction, setPendingAction] = useState<MessageAction | null>(null);
@@ -395,6 +397,7 @@ export function ChatPage() {
         if (!confirmed.messages.some(m => m.role === 'user' && m.content === text)) throw new Error('用户消息尚未确认保存');
         if (currentThread.current !== activeThreadId) return;
         setMessages(confirmed.messages);
+        emitEmberCue('acknowledged');
         setMotionScene(seedCopy.band === 'hot' ? 'settle' : seedCopy.reason === 'no-interaction' ? 'ignite' : 'rekindle');
         void refreshThreads();
         recomputeEmber();
@@ -402,6 +405,7 @@ export function ChatPage() {
         if (currentThread.current !== activeThreadId) return;
         setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
         setDraft(raw);
+        emitEmberCue('failed');
         setLoadError(err instanceof ApiError ? `发送失败：${err.message}` : '发送失败，请重试');
       } finally {
         window.clearTimeout(timer);
@@ -459,6 +463,7 @@ export function ChatPage() {
         recomputeEmber();
         void refreshThreads();
       } catch (err) {
+        emitEmberCue('failed');
         setLoadError(err instanceof ApiError ? err.message : '行动执行失败');
       } finally {
         setActionBusy(false);
@@ -659,7 +664,7 @@ export function ChatPage() {
         confirmText="批准"
         cancelText="拒绝"
         busy={actionBusy}
-        onCancel={() => setPendingAction(null)}
+        onCancel={() => { setPendingAction(null); emitEmberCue('declined'); }}
         onConfirm={() => {
           if (pendingAction) void runAction(pendingAction);
         }}

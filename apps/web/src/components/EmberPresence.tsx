@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { EMBER_CUE_EVENT, isEmberMotionPaused, readEmberCue } from '../features/ember-cues';
 import './EmberPresence.css';
 
 gsap.registerPlugin(useGSAP);
@@ -44,11 +45,29 @@ const contours = {
   },
 };
 
+/** Keep the authored command topology while bending control points above the coal bed. */
+function flowingContour(path: string, bend: number, lift: number): string {
+  let coordinate = 0;
+  const values = [...path.matchAll(/-?\d*\.?\d+/g)].map((match) => Number(match[0]));
+  return path.replace(/-?\d*\.?\d+/g, () => {
+    const index = coordinate++;
+    const y = values[index % 2 === 0 ? index + 1 : index] ?? 166;
+    const height = Math.max(0, Math.min(1, (166 - y) / 110));
+    // Nonlinear displacement changes curvature rather than scaling the whole contour.
+    const offset = index % 2 === 0
+      ? bend * height * (.65 + .35 * Math.sin(height * Math.PI))
+      : -lift * Math.pow(height, 1.4);
+    return String(Number((values[index]! + offset).toFixed(2)));
+  });
+}
+
 export function EmberPresence({ band = 'cool', scene = 'rest', compact = false, paused = false, className = '' }: EmberPresenceProps) {
   const unique = useId().replace(/:/g, '');
   const root = useRef<HTMLDivElement>(null);
   const ignition = useRef<ReturnType<typeof gsap.timeline> | null>(null);
   const ambient = useRef<ReturnType<typeof gsap.timeline> | null>(null);
+  const resetInteraction = useRef<(() => void) | null>(null);
+  const [motionPaused, setMotionPaused] = useState(isEmberMotionPaused);
   const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
   const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const shape = contours[band];
@@ -58,10 +77,16 @@ export function EmberPresence({ band = 'cool', scene = 'rest', compact = false, 
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     const update = () => setReduced(media.matches);
     const visibility = () => setHidden(document.hidden);
+    const preference = (event: Event) => {
+      const cue = readEmberCue(event);
+      if (cue?.kind === 'motion-preference' && cue.paused !== undefined) setMotionPaused(cue.paused);
+    };
     update(); visibility();
+    window.addEventListener(EMBER_CUE_EVENT, preference);
     media.addEventListener('change', update);
     document.addEventListener('visibilitychange', visibility);
     return () => {
+      window.removeEventListener(EMBER_CUE_EVENT, preference);
       media.removeEventListener('change', update);
       document.removeEventListener('visibilitychange', visibility);
     };
@@ -97,19 +122,33 @@ export function EmberPresence({ band = 'cool', scene = 'rest', compact = false, 
     const timeline = gsap.timeline({ paused: true, defaults: { ease: 'sine.inOut', repeat: -1, yoyo: true } });
     timeline.addLabel('breath', 0).addLabel('tongue', .18).addLabel('cinders', .46);
     timeline.to(select('.ember-presence__seam-bloom'), { opacity: band === 'cool' ? .62 : .84, duration: 4.1 }, 'breath');
-    if (band !== 'cool') {
-      // Ambient movement acts on paths; ignition acts on their parent stages.
-      timeline.to(select('.ember-presence__mantle, .ember-presence__filament'), { skewX: 1.4, scaleY: 1.018, svgOrigin: '96 166', duration: 1.9 }, 'breath');
-      timeline.to(select('.ember-presence__left'), { rotation: 1.2, scaleY: 1.025, svgOrigin: '80 163', duration: 2.35 }, 'tongue');
-      timeline.to(select('.ember-presence__ribbon'), { skewX: -1.1, scaleY: 1.03, svgOrigin: '80 163', duration: 2.08 }, 'tongue+=.43');
-      timeline.to(select('.ember-presence__right'), { rotation: -1.2, scaleY: .98, svgOrigin: '115 165', duration: 1.65 }, 'tongue+=.26');
-      timeline.to(select('.ember-presence__inner'), { skewX: -1.2, scaleY: 1.025, svgOrigin: '96 165', duration: 1.45 }, 'tongue+=.65');
-      timeline.to(select('.ember-presence__heart'), { scaleY: 1.035, svgOrigin: '96 164', duration: 1.7 }, 'tongue+=.92');
-      timeline.to(select('.ember-presence__halo'), { scale: 1.025, svgOrigin: '96 162', duration: 3.5 }, 'breath');
-      const bentContour = band === 'hot'
-        ? 'M91 171C64 172 49 154 54 134C58 115 78 106 75 88C73 76 64 67 67 52C73 64 85 66 89 78C94 64 106 52 104 35C102 25 97 23 99 15C118 28 131 45 127 66C124 80 115 87 119 99C129 89 136 77 133 64C152 84 150 106 138 122C136 127 138 130 142 134C158 153 134 171 110 173Z'
-        : 'M94 170C69 172 54 156 58 138C61 121 77 115 77 98C77 84 70 77 73 64C81 79 97 81 100 96C108 78 114 66 108 49C131 66 140 87 131 107C125 120 126 127 132 134C144 152 125 169 108 170Z';
-      timeline.to(select('.ember-presence__mantle'), { attr: { d: bentContour }, duration: band === 'hot' ? 1.55 : 2.45 }, 'tongue');
+    // Each lamina flows at its own period; even cool has a moving contour and inner current.
+    const quiet = band === 'cool';
+    const speed = quiet ? 1.5 : band === 'warm' ? 1.15 : 1;
+    timeline.to(select('.ember-presence__mantle'), {
+      attr: { d: flowingContour(shape.mantle, quiet ? 9 : 7, quiet ? 7 : 5) },
+      skewX: 1.8, svgOrigin: '96 166', duration: 1.8 * speed,
+    }, 'breath');
+    timeline.to(select('.ember-presence__filament'), {
+      attr: { d: flowingContour(shape.filament, -6, 5) }, opacity: .8, duration: 1.6 * speed,
+    }, 'tongue+=.2');
+    timeline.to(select('.ember-presence__left'), {
+      attr: { d: flowingContour(shape.left, -8, 6) }, rotation: -1.5, svgOrigin: '80 163', duration: 2.15 * speed,
+    }, 'tongue');
+    timeline.to(select('.ember-presence__ribbon'), {
+      attr: { d: flowingContour(shape.ribbon, 9, 9) }, y: -1.5, duration: 1.65 * speed,
+    }, 'tongue+=.43');
+    timeline.to(select('.ember-presence__right'), {
+      attr: { d: flowingContour(shape.right, 7, 6) }, rotation: 1.5, svgOrigin: '115 165', duration: 1.85 * speed,
+    }, 'tongue+=.26');
+    timeline.to(select('.ember-presence__inner'), {
+      attr: { d: flowingContour(shape.inner, -9, 9) }, skewX: -2, svgOrigin: '96 165', duration: 1.4 * speed,
+    }, 'tongue+=.65');
+    timeline.to(select('.ember-presence__heart'), {
+      attr: { d: flowingContour(shape.heart, 5, 8) }, scaleY: 1.06, svgOrigin: '96 164', duration: 1.7 * speed,
+    }, 'tongue+=.92');
+    timeline.to(select('.ember-presence__halo'), { scale: quiet ? 1.045 : 1.065, svgOrigin: '96 162', duration: 3.5 }, 'breath');
+    if (!quiet) {
       for (let index = 0; index < 3; index++) {
         const cinder = select('.ember-presence__cinder')[index];
         if (!cinder) continue;
@@ -124,14 +163,80 @@ export function EmberPresence({ band = 'cool', scene = 'rest', compact = false, 
     return () => { ambient.current = null; };
   }, { scope: root, dependencies: [band, reduced], revertOnUpdate: true });
 
+  useGSAP((_context, contextSafe) => {
+    const node = root.current;
+    if (!node || reduced || !contextSafe) return;
+    const select = gsap.utils.selector(node);
+    const hover = select('.ember-presence__near');
+    const attention = select('.ember-presence__attention');
+    const pulse = select('.ember-presence__pulse');
+    gsap.set([...hover, ...attention, ...pulse], { svgOrigin: '96 166' });
+    const xTo = gsap.quickTo(hover, 'x', { duration: .45, ease: 'power2.out' });
+    const leanTo = gsap.quickTo(hover, 'rotation', { duration: .5, ease: 'power2.out' });
+    let response: gsap.core.Timeline | null = null;
+    let focusTween: gsap.core.Tween | null = null;
+    let lastTyping = -Infinity;
+    const reset = () => {
+      response?.kill(); focusTween?.kill();
+      xTo.tween.pause(); leanTo.tween.pause();
+      gsap.set([...hover, ...attention, ...pulse], { x: 0, rotation: 0, scaleY: 1 });
+      node.dataset.attention = 'rest'; node.dataset.hover = 'false';
+    };
+    resetInteraction.current = reset;
+    const move = contextSafe((event: Event) => {
+      if (!('clientX' in event) || typeof event.clientX !== 'number') return;
+      if (node.dataset.still === 'true' || compact || ('pointerType' in event && event.pointerType === 'touch')) return;
+      const bounds = node.getBoundingClientRect();
+      const proximity = Math.max(-1, Math.min(1, (event.clientX - bounds.left - bounds.width / 2) / (bounds.width / 2)));
+      node.dataset.hover = 'true';
+      xTo(proximity * 3); leanTo(proximity * 1.3);
+    });
+    const leave = contextSafe(() => {
+      node.dataset.hover = 'false';
+      if (node.dataset.still === 'true') return;
+      xTo(0); leanTo(0);
+    });
+    const cue = contextSafe((event: Event) => {
+      const intent = readEmberCue(event);
+      if (!intent || node.dataset.still === 'true' || compact) return;
+      if (intent.kind === 'focus' || intent.kind === 'release' || intent.kind === 'failed' || intent.kind === 'declined') {
+        const focused = intent.kind === 'focus';
+        node.dataset.attention = focused ? 'focus' : 'rest';
+        focusTween?.kill();
+        focusTween = gsap.to(attention, { rotation: focused ? 1.7 : 0, scaleY: focused ? 1.035 : 1, duration: focused ? .28 : .6, ease: 'sine.out', overwrite: true });
+        if (!focused) { response?.kill(); gsap.set(pulse, { scaleY: 1, x: 0 }); }
+      } else if (intent.kind === 'typing') {
+        const now = window.performance.now();
+        if (now - lastTyping < 350) return;
+        lastTyping = now;
+        response?.kill();
+        node.dataset.attention = 'typing';
+        response = gsap.timeline({ onComplete: () => { node.dataset.attention = 'focus'; } });
+        response.to(pulse, { scaleY: 1.065, x: -.7, duration: .18, ease: 'sine.out' })
+          .to(pulse, { scaleY: 1, x: 0, duration: .42, ease: 'sine.inOut' });
+      }
+    });
+    node.addEventListener('pointermove', move);
+    node.addEventListener('pointerleave', leave);
+    window.addEventListener(EMBER_CUE_EVENT, cue);
+    return () => {
+      node.removeEventListener('pointermove', move);
+      node.removeEventListener('pointerleave', leave);
+      window.removeEventListener(EMBER_CUE_EVENT, cue);
+      resetInteraction.current = null;
+    };
+  }, { scope: root, dependencies: [reduced, compact], revertOnUpdate: true });
+
   useEffect(() => {
+    const still = paused || motionPaused || hidden || reduced;
     if (reduced) ignition.current?.progress(1).pause();
-    else ignition.current?.paused(paused || hidden);
-    ambient.current?.paused(paused || hidden || reduced);
-  }, [paused, reduced, hidden]);
+    else ignition.current?.paused(still);
+    ambient.current?.paused(still);
+    if (still) resetInteraction.current?.();
+  }, [paused, motionPaused, reduced, hidden]);
 
   return (
-    <div ref={root} className={`ember-presence${compact ? ' ember-presence--compact' : ''} ${className}`} data-motion-engine="gsap" data-band={band} data-scene={scene} data-still={paused || reduced || hidden} aria-hidden="true">
+    <div ref={root} className={`ember-presence${compact ? ' ember-presence--compact' : ''} ${className}`} data-motion-engine="gsap" data-band={band} data-scene={scene} data-still={paused || motionPaused || reduced || hidden} data-attention="rest" data-hover="false" aria-hidden="true">
       <svg className="ember-presence__art" viewBox="0 0 192 216" fill="none" focusable="false">
         <defs>
           <linearGradient id={id('mantle')} x1="104" y1="34" x2="95" y2="174" gradientUnits="userSpaceOnUse"><stop stopColor="#F6CF9B" stopOpacity=".74"/><stop offset=".34" stopColor="#EC954C" stopOpacity=".82"/><stop offset=".71" stopColor="#D75D27"/><stop offset="1" stopColor="#94391C" stopOpacity=".18"/></linearGradient>
@@ -146,10 +251,12 @@ export function EmberPresence({ band = 'cool', scene = 'rest', compact = false, 
         </defs>
         <path className="ember-presence__ground" d="M47 187C67 181 126 181 148 187C134 195 69 197 47 187Z" fill="#71624B" opacity=".065"/>
         <path className="ember-presence__halo" d="M19 134C19 90 54 47 97 47C140 47 174 90 174 134C174 178 140 207 97 207C54 207 19 178 19 134Z" fill={`url(#${id('aura')})`}/>
+        <g className="ember-presence__near"><g className="ember-presence__attention"><g className="ember-presence__pulse">
         <g className="ember-presence__reveal ember-presence__mantle-stage"><path className="ember-presence__mantle" d={shape.mantle} fill={`url(#${id('mantle')})`}/><path className="ember-presence__filament" d={shape.filament} stroke="#FFF0C8" strokeWidth=".65" strokeLinecap="round" strokeOpacity=".52"/></g>
         <g className="ember-presence__reveal ember-presence__left-stage"><path className="ember-presence__left" d={shape.left} fill={`url(#${id('side')})`}/></g>
         <g className="ember-presence__reveal ember-presence__right-stage"><path className="ember-presence__right" d={shape.right} fill={`url(#${id('side')})`}/></g>
         <g className="ember-presence__reveal ember-presence__inner-stage"><path className="ember-presence__ribbon" d={shape.ribbon} fill={`url(#${id('ribbon')})`}/><path className="ember-presence__inner" d={shape.inner} fill={`url(#${id('inner')})`}/><path className="ember-presence__heart" d={shape.heart} fill={`url(#${id('heart')})`}/></g>
+        </g></g></g>
         <g className="ember-presence__coal">
           <path d="M61 170L72 160L91 158L106 162L124 166L132 177L118 188L96 193L73 188L58 181Z" fill={`url(#${id('coal')})`}/>
           <path d="M61 170L72 160L91 158L85 168L70 174Z" fill="#A07958" opacity=".65"/>

@@ -224,3 +224,4 @@
 .obs-tile-toggle {
   align-self: flex-start;
 }
+.project-story-feedback { margin-top: 16px; padding: 12px 16px; border-left: 2px solid var(--color-accent); color: var(--color-ink-2); background: var(--color-accent-soft); font-size: 13px; line-height: 1.8; }

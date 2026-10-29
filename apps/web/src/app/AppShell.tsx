@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -26,6 +27,8 @@ import {
   latestConfirmedInteraction,
   type EmberBand,
 } from '../features/emberHeat';
+import { EmberAtmosphere } from '../components/EmberAtmosphere';
+import { emitEmberCue } from '../features/ember-cues';
 import './AppShell.css';
 
 /* ------------------------------------------------------------------ */
@@ -343,6 +346,12 @@ export function AppShell() {
   );
 
   const canvas = isCanvasPath(location.pathname);
+  const chapter = `${location.pathname}:${activeThreadId ?? ''}:${shellMode}`;
+  const previousChapter = useRef(chapter);
+  useEffect(() => {
+    if (previousChapter.current !== chapter) emitEmberCue('chapter');
+    previousChapter.current = chapter;
+  }, [chapter]);
 
   return (
     <DetailDrawerContext.Provider value={drawerValue}>
@@ -363,6 +372,7 @@ export function AppShell() {
           data-flame-state={ember.band === 'hot' ? 'lively' : ember.band === 'warm' ? 'warm' : 'dim'}
           data-ember-heat={ember.heat.toFixed(2)}
         >
+          <EmberAtmosphere band={ember.band} />
           <ThreadRail
             threads={threads}
             activeThreadId={activeThreadId}
@@ -499,12 +509,13 @@ function ProjectsPane({
   return (
     <section className="projects-pane" aria-label="项目（线程）">
       <header className="projects-pane__head">
-        <h1 className="projects-pane__title">项目</h1>
-        <p className="projects-pane__hint">本拍等同线程；点一项回到聊天。</p>
+        <h1 className="projects-pane__title">项目与话题</h1>
+        <p className="projects-pane__hint">选择一段谈话继续，或把新的本地项目带到炉边。</p>
         <button type="button" className="btn btn-primary" onClick={onCreate}>
           新线程
         </button>
       </header>
+      <Link to="/projects" className="projects-pane__manage">管理本地项目与观察范围 ↗</Link>
       <ul className="projects-pane__list">
         {visible.map((t) => (
           <li key={t.id}>

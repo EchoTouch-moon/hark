@@ -25,6 +25,7 @@ import {
 import { useRuntimeMode } from '../features/runtime-mode';
 import { formatDateTime } from '../features/runs';
 import { fetchInsightSummary } from '../features/insights';
+import { emitEmberCue } from '../features/ember-cues';
 import './ProjectsPage.css';
 
 export function ProjectsPage() {
@@ -42,6 +43,7 @@ export function ProjectsPage() {
   const [reportPath, setReportPath] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [projectAdded, setProjectAdded] = useState(false);
   const [registerMessage, setRegisterMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -105,6 +107,7 @@ export function ProjectsPage() {
       return;
     }
     setRegistering(true);
+    setProjectAdded(false);
     setRegisterMessage(null);
     try {
       await registerObserverProject({
@@ -115,12 +118,15 @@ export function ProjectsPage() {
             ? undefined
             : [{ format: 'junit-xml', relativePath: reportPath.trim() }],
       });
+      emitEmberCue('project-added');
+      setProjectAdded(true);
       setPath('');
       setName('');
       setReportPath('');
       setConfirmed(false);
       setReloadKey((key) => key + 1);
     } catch (cause) {
+      emitEmberCue('failed');
       setRegisterMessage(cause instanceof Error ? cause.message : '注册失败');
     } finally {
       setRegistering(false);
@@ -198,6 +204,7 @@ export function ProjectsPage() {
             </button>
             {registerMessage ? <p className="obs-register-msg">{registerMessage}</p> : null}
           </div>
+          {projectAdded && <p className="project-story-feedback" role="status">项目已加入关照范围。接下来可以查看观察结果；尚未进行分析或运行测试。</p>}
         </form>
 
         {observerError !== null ? <ErrorState message={observerError} onRetry={retry} /> : null}

@@ -1,7 +1,7 @@
 import { chromium, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 const base = process.env.HEARTH_QA_URL ?? 'http://127.0.0.1:4402';
-const out = 'handoff/EVIDENCE/ember-craft';
+const out = process.env.HEARTH_QA_OUT ?? 'handoff/EVIDENCE/ember-craft';
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch();
 const context = await browser.newContext({viewport:{width:1440,height:900},recordVideo:{dir:out,size:{width:1440,height:900}}});

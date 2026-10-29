@@ -12,16 +12,19 @@
 
 ## 运动控制
 
-已阅读并实际应用本地 `gsap-core`、`gsap-react`、`gsap-timeline` 指南。组件导入并注册 `useGSAP`，以两条真正的 GSAP 时间线分别管理点燃和持续运动；不再使用 CSS 动画或原生 WAAPI。
+已阅读并实际应用本地 `gsap-core`、`gsap-react`、`gsap-timeline`、`gsap-performance` 指南。组件导入并注册 `useGSAP`，以真正的 GSAP 时间线分别管理点燃、持续运动及封顶的输入回应；不再使用 CSS 动画或原生 WAAPI。
 
 - 点燃时间线显式标记 `core` → `wings` → `mantle`：内芯先亮，侧舌以 55ms 错开，外焰最后升起。点燃约 860ms，复燃约 1100ms。使用 `fromTo` 明确起止值、`power3.out` 缓动。
 - 持续时间线带 `breath`、`tongue`、`cinders` 标签。外焰、中焰、内芯、透光带分别用不同周期的 `sine.inOut` 往返；火星嵌套时间线错相升起消隐。运动原点通过 `svgOrigin` 固定在各自火舌根部，炭心不浮动。
-- 外焰通过 GSAP `attr: { d }` 对相同命令序列的贝塞尔控制点做微幅往返形变，无 MorphSVG 插件要求。黯态保留安静火形，只给裂隙局部极慢的呼吸。
+- 外焰通过 GSAP `attr: { d }` 对相同命令序列的贝塞尔控制点做微幅往返形变，无 MorphSVG 插件要求。三态均变更外焰、左右火舌、内焰、心焰、透光带和细亮热流的曲率。控制点按距炭心的高度加权：根部稳定，尖端弯折；黯态周期比旺态慢1.5倍，但可采样到真实路径变化，而非仅透明度呼吸。
 - 点燃只作用于父级 stage，持续运动只作用于内部路径；没有两个引擎竞争同一个 transform。
-- 手动 `paused` 与 `document.hidden` 对两条时间线调用暂停，恢复用原时间点继续，不重建点燃。
+- 手动 `paused`、无持久化的全局 `motion-preference`、`document.hidden` 共同暂停。全局恢复不能覆盖组件自身 `paused`；挂载时读取现存动效偏好。恢复用原时间点继续，不重建点燃。
 - `prefers-reduced-motion` 初始直接保留完整 SVG；运行中切换时，点燃 `.progress(1).pause()`，持续运动 context 还原静态轮廓。
 - 每个 `useGSAP` 都设置 `scope: root`、`revertOnUpdate: true`，场景变更或卸载自动清理；组件句柄同步置空。SVG 定义使用 React `useId` 隔离。未使用 SVG SMIL。
-- 根节点 `data-motion-engine="gsap"` 为非视觉审计标记，可与路径 `d`、内焰 `transform` 的浏览器采样共同验证实际运行。
+- 局部靠近只监听火体根节点的 pointermove / pointerleave；使用预建 `quickTo` 复用补间，横移≤3px，靠近转角≤1.3°，与focus叠加也≤3°。离开归位；compact不拦截鼠标。
+- focus / release 独立控制 attention 组；typing独立控制 pulse 组，至少350ms节流，最大1.065倍短促展开后420ms归位，重复输入替换旧回应而不叠加。failed / declined也收束。三个交互组与点燃stage、路径自然流动层互不覆盖。
+- 交互监听由单层 `contextSafe` 包装，卸载解绑；暂停立即取消临时回应并复位。减少动态效果直接保留静帧。cue由Zod验证且不携带内容、身份、权限，不发出API请求。
+- 根节点 `data-attention` / `data-hover` 提供局部回应审计；`data-motion-engine="gsap"` 为非视觉审计标记，可与路径 `d`、内焰 `transform` 的浏览器采样共同验证实际运行。
 
 API：`band='cool' | 'warm' | 'hot'`、`scene: string`、`compact`、`paused`、`className`，保持原调用合同。视觉组件 `aria-hidden`，状态语义由调用方文本表达。
 

@@ -136,3 +136,9 @@ UI-02 全部完成并通关门禁：
 - 证据：`handoff/EVIDENCE/ember-craft/`，包含8幕流程截图、三态放大实渲染截图、motion-preview.webm、browser.log/keyframes.log/regression.log。
 - 50项适用测试通过，Web build/全仓typecheck/修改组件lint通过；真实浏览器验证GSAP路径在运行、暂停后保持、欢迎跳过/重看/存储失败和对话失败恢复。
 - N0视觉仍由用户审阅；真实账号注册、真实模型、N2/N3不在本次精修范围。
+
+## 2026-10-30 叙事系统与活的炉边
+- 重写根叙事并新增docs/EMBER-STORY-SYSTEM.md：角色、三状态轴、九节拍、操作映射及产品发展优先级。
+- 两个子代理完成三态持续火形/靠近交互与全局GSAP环境；主代理完成实际业务cue桥接、项目入口语义及真实结果反馈。
+- 检查：54项适用测试、build/typecheck/修改TSX lint通过；三态运动、输入不加热、失败无确认回光、成功一次回光、全局暂停、话题切换/合成注册、reduce和合成后台暂停浏览器验收通过。旧欢迎全流程亦回归通过。
+- 证据：handoff/EVIDENCE/ember-story；桌面1440/1280，未新增手机设计。
