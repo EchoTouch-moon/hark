@@ -21,6 +21,7 @@ import { registerProjectRoutes } from './routes/projects.js';
 import { registerCardRoutes } from './routes/cards.js';
 import { registerRunRoutes } from './routes/runs.js';
 import { registerChatRoutes } from './routes/chat.js';
+import { registerThreadRoutes } from './routes/threads.js';
 import { registerObserverRoutes } from './routes/observer.js';
 import { registerInsightRoutes } from './routes/insights.js';
 import { registerAnalysisRoutes } from './routes/analysis.js';
@@ -104,6 +105,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerCardRoutes(app, deps);
   registerRunRoutes(app, deps);
   registerChatRoutes(app, deps);
+  registerThreadRoutes(app, deps);
   registerObserverRoutes(app, deps);
   registerInsightRoutes(app, deps);
   registerAnalysisRoutes(app, deps);

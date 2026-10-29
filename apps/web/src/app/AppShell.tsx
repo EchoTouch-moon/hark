@@ -1,38 +1,43 @@
+/**
+ * CanvasShell · Style Bible v6 Ember Seed
+ * 顶栏：聊天|项目 + 搜索/头像；极简可收 thread rail；设置从头像进。
+ */
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { getThemePreference, setThemePreference, subscribeTheme, type ThemePreference } from '../features/theme';
-import { RuntimeReady, useRuntimeMode } from '../features/runtime-mode';
-import { ConnectionBadge } from '../components';
+import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  createThread,
+  getActiveThreadId,
+  listThreads,
+  setActiveThreadId,
+  type ThreadSummary,
+} from '../features/threads';
+import { preferLiveApi } from '../features/chat';
+import {
+  applyEmberHeatCss,
+  computeEmberHeat,
+  type EmberBand,
+} from '../features/emberHeat';
 import './AppShell.css';
 
 /* ------------------------------------------------------------------ */
-/* Detail Drawer 插槽：向右侧详情抽屉/模态面板投放内容 */
+/* Detail Drawer 兼容插槽（v2 默认不用） */
 /* ------------------------------------------------------------------ */
 
 export interface DetailDrawerValue {
-  /** 抽屉当前内容；null 时不渲染 */
   content: ReactNode | null;
-  /** 页面调用以填充/清空抽屉；路由切换时 AppShell 自动清空 */
   setContent: (content: ReactNode | null) => void;
-  /** 显式关闭抽屉并归还焦点 */
-  closeDrawer: () => void;
-  /** 快捷打开抽屉并记录当前焦点元素 */
-  openDrawer: (content: ReactNode) => void;
 }
 
 const DetailDrawerContext = createContext<DetailDrawerValue | null>(null);
 
-/** 供页面与顶栏向右侧 Detail Drawer 投放 Evidence / Trace / Workspace Details */
 export function useDetailDrawer(): DetailDrawerValue {
   const value = useContext(DetailDrawerContext);
   if (value === null) {
@@ -42,348 +47,482 @@ export function useDetailDrawer(): DetailDrawerValue {
 }
 
 /* ------------------------------------------------------------------ */
-/* 导航 */
+/* Thread 上下文 */
 /* ------------------------------------------------------------------ */
 
-type NavIconName = 'home' | 'chat' | 'projects' | 'insights' | 'activity' | 'settings';
+export type ShellMode = 'chat' | 'projects';
 
-interface NavItemDefinition {
-  to: string;
-  label: string;
-  icon: NavIconName;
-  /** 是否仅在精确匹配时高亮（Home 用） */
-  end?: boolean;
+export interface ThreadContextValue {
+  threads: ThreadSummary[];
+  activeThreadId: string | null;
+  threadsMock: boolean;
+  railCollapsed: boolean;
+  setRailCollapsed: (v: boolean) => void;
+  shellMode: ShellMode;
+  setShellMode: (m: ShellMode) => void;
+  emberBand: EmberBand;
+  emberHeat: number;
+  refreshThreads: () => Promise<void>;
+  selectThread: (id: string) => void;
+  addThread: () => Promise<void>;
+  /** ChatPage 发送后刷新炉温 */
+  recomputeEmber: () => void;
 }
 
-/** 顺序固定：Home / Chat / Projects / Insights / Activity / Settings */
-const NAV_ITEMS: readonly NavItemDefinition[] = [
-  { to: '/', label: '当下', icon: 'chat', end: true },
-  { to: '/projects', label: '项目', icon: 'projects' },
-  { to: '/insights', label: '发现与建议', icon: 'insights' },
-  { to: '/observations', label: '观察记录', icon: 'activity' },
-  { to: '/settings', label: '设置', icon: 'settings' },
-];
+const ThreadContext = createContext<ThreadContextValue | null>(null);
 
-function NavIcon({ name }: { name: NavIconName }) {
-  const paths: Record<NavIconName, ReactNode> = {
-    home: (
-      <>
-        <path d="M3 7.5 8 3l5 4.5v4.8a1.2 1.2 0 0 1-1.2 1.2H4.2A1.2 1.2 0 0 1 3 12.3Z" />
-        <path d="M6.5 13.5v-3h3v3" />
-      </>
-    ),
-    chat: (
-      <path d="M3.5 4.5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v4.5a1 1 0 0 1-1 1H7.75L5 12.75V10.5h-.5a1 1 0 0 1-1-1Z" />
-    ),
-    projects: (
-      <path d="M2.5 5.2a1.2 1.2 0 0 1 1.2-1.2h2.4l1.4 1.9h3.8a1.2 1.2 0 0 1 1.2 1.2v4.9a1.2 1.2 0 0 1-1.2 1.2H3.7a1.2 1.2 0 0 1-1.2-1.2Z" />
-    ),
-    insights: (
-      <path d="M4 3.5h8v2.2H4Zm0 3.6h8V13H8.2L4 10.6Z" />
-    ),
-    activity: <path d="M2 8.5h3l1.5-4.5 3 9L11 8.5h3" />,
-    settings: (
-      <>
-        <path d="M3 5h6M12.5 5H13M3 11h2.5M9 11h4" />
-        <circle cx="10.5" cy="5" r="1.6" />
-        <circle cx="7" cy="11" r="1.6" />
-      </>
-    ),
-  };
+export function useThreads(): ThreadContextValue {
+  const value = useContext(ThreadContext);
+  if (value === null) {
+    throw new Error('useThreads 必须在 AppShell 内部使用');
+  }
+  return value;
+}
+
+function isCanvasPath(pathname: string): boolean {
+  return pathname === '/' || pathname.startsWith('/t/');
+}
+
+const RAIL_COLLAPSE_KEY = 'hearth.rail.collapsed.v2';
+
+function FlameMark({ size = 18 }: { size?: number }) {
   return (
     <svg
-      className="nav-item-icon"
-      width="16"
-      height="16"
+      className="ember-mark"
+      width={size}
+      height={size}
       viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
       aria-hidden="true"
       focusable="false"
     >
-      {paths[name]}
+      <path
+        d="M8 1.6c2.3 2.4 4.2 4.4 4.2 6.9a4.2 4.2 0 1 1-8.4 0C3.8 6 5.7 4 8 1.6Z"
+        fill="var(--color-accent-soft)"
+        stroke="var(--color-accent)"
+        strokeWidth="1.3"
+      />
+      <path
+        d="M8 7.2c.9 1 1.6 1.8 1.6 2.8a1.6 1.6 0 1 1-3.2 0c0-1 .7-1.8 1.6-2.8Z"
+        fill="var(--color-accent)"
+      />
     </svg>
   );
 }
 
-function NavRail() {
-  const { state } = useRuntimeMode();
-  return (
-    <nav className="nav-rail" aria-label="主导航">
-      <div className="nav-brand" title="Hearth" aria-label="Hearth">
-        <svg
-          className="nav-brand-mark"
-          width="18"
-          height="18"
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <path
-            d="M8 1.6c2.3 2.4 4.2 4.4 4.2 6.9a4.2 4.2 0 1 1-8.4 0C3.8 6 5.7 4 8 1.6Z"
-            fill="var(--color-accent-soft)"
-            stroke="var(--color-accent)"
-            strokeWidth="1.3"
-          />
-          <path
-            d="M8 7.2c.9 1 1.6 1.8 1.6 2.8a1.6 1.6 0 1 1-3.2 0c0-1 .7-1.8 1.6-2.8Z"
-            fill="var(--color-accent)"
-          />
-        </svg>
-        <span className="nav-brand-name">Hearth</span>
-      </div>
-      <ul className="nav-list">
-        {NAV_ITEMS.map((item) => (
-          <li key={item.to}>
-            <NavLink
-              to={item.to}
-              end={item.end}
-              title={item.label}
-              aria-label={item.label}
-              className={({ isActive }) =>
-                isActive ? 'nav-item is-active' : 'nav-item'
-              }
-            >
-              <NavIcon name={item.icon} />
-              <span className="nav-item-label">{item.label}</span>
-            </NavLink>
-          </li>
-        ))}
-      </ul>
-      <details className="nav-secondary">
-        <summary aria-label="更多入口">
-          <span className="nav-secondary-full">更多入口</span>
-          <span className="nav-secondary-compact" aria-hidden="true">更多</span>
-        </summary>
-        <NavLink className="nav-item" to="/chat" title="对话 · Mock 演示" aria-label="对话 · Mock 演示">
-          <NavIcon name="chat" />
-          <span className="nav-item-label">对话 · Mock 演示</span>
-        </NavLink>
-        <NavLink
-          className="nav-item"
-          to="/demo"
-          title={state.status === 'ready' && state.demoMode ? 'Demo 操作台' : '演示模式说明'}
-          aria-label={state.status === 'ready' && state.demoMode ? 'Demo 操作台' : '演示模式说明'}
-        >
-          <NavIcon name="home" />
-          <span className="nav-item-label">{state.status === 'ready' && state.demoMode ? 'Demo 操作台' : '演示模式说明'}</span>
-        </NavLink>
-        {state.status === 'ready' && state.demoMode ? (
-          <NavLink className="nav-item" to="/activity" title="Demo 执行记录" aria-label="Demo 执行记录">
-            <NavIcon name="activity" />
-            <span className="nav-item-label">Demo 执行记录</span>
-          </NavLink>
-        ) : null}
-      </details>
-      <div className="nav-footer">
-        <p className="nav-footer-note">本地优先</p>
-        <p className="nav-footer-note">模型调用需主动触发</p>
-      </div>
-    </nav>
-  );
-}
+function ThreadRail({
+  threads,
+  activeThreadId,
+  collapsed,
+  filter,
+  onToggle,
+  onSelect,
+  onCreate,
+}: {
+  threads: ThreadSummary[];
+  activeThreadId: string | null;
+  collapsed: boolean;
+  filter: string;
+  onToggle: () => void;
+  onSelect: (id: string) => void;
+  onCreate: () => void;
+}) {
+  const q = filter.trim().toLowerCase();
+  const visible = q
+    ? threads.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          (t.preview ?? '').toLowerCase().includes(q),
+      )
+    : threads;
 
-/* ------------------------------------------------------------------ */
-/* 顶部 workspace 标识 */
-/* ------------------------------------------------------------------ */
-
-function sectionLabel(pathname: string): string {
-  if (pathname.startsWith('/chat')) return '对话';
-  if (pathname.startsWith('/observe')) return '项目观察';
-  if (pathname.startsWith('/projects')) return '项目';
-  if (pathname.startsWith('/insights')) return '洞察';
-  if (pathname.startsWith('/activity')) return '执行记录';
-  if (pathname.startsWith('/settings')) return '设置';
-  if (pathname.startsWith('/demo')) return 'Demo 操作台';
-  return '今日概览';
-}
-
-function TopBar() {
-  const theme = useSyncExternalStore(subscribeTheme, getThemePreference, () => 'light');
-  const location = useLocation();
-  const { state } = useRuntimeMode();
-  const { content, setContent, closeDrawer } = useDetailDrawer();
-
-  const toggleWorkspaceHelp = () => {
-    if (content) {
-      closeDrawer();
-    } else {
-      setContent(
-        <div className="workspace-help-detail">
-          <h3 className="workspace-help-title">本地工作区说明</h3>
-          <p className="workspace-help-text">
-            Hearth 遵循本地优先原则，所有观察数据与状态均持久化保存在本地 SQLite 数据库中。
-          </p>
-          <div className="workspace-help-section">
-            <p className="workspace-help-subtitle">运行环境与模式</p>
-            <p className="workspace-help-text">
-              当前处于 <strong>{state.status === 'ready' && state.demoMode ? 'Demo 合成数据模式' : '真实项目模式'}</strong>。
-              外部模型调用需明确预览并主动授权，不自动产生后台计费。
-            </p>
-          </div>
-          <div className="workspace-help-section">
-            <p className="workspace-help-subtitle">交互与快捷键</p>
-            <p className="workspace-help-text">
-              按 <kbd>Esc</kbd> 键或点击右上角关闭按钮可随时退出本详情抽屉并恢复焦点。
-            </p>
-          </div>
-        </div>,
-      );
-    }
-  };
-
-  return (
-    <header className="topbar">
-      <div className="topbar-identity">
-        <span className="topbar-workspace">本地工作区</span>
-        <span className="topbar-sep" aria-hidden="true">
-          /
-        </span>
-        <span className="topbar-section">{sectionLabel(location.pathname)}</span>
+  if (collapsed) {
+    return (
+      <aside className="thread-rail thread-rail--collapsed" aria-label="线程侧栏（已收起）">
         <button
           type="button"
-          className="topbar-help-btn"
-          aria-label="查看工作区说明与详情"
-          title="查看工作区说明与详情"
-          onClick={toggleWorkspaceHelp}
+          className="thread-rail__expand"
+          aria-label="展开线程列表"
+          onClick={onToggle}
         >
-          说明
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path
+              d="M3 4h10M3 8h10M3 12h10"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="thread-rail" aria-label="线程">
+      <div className="thread-rail__head">
+        <div className="thread-rail__brand">
+          <FlameMark />
+          <span className="thread-rail__name">Hearth</span>
+        </div>
+        <button
+          type="button"
+          className="thread-rail__collapse"
+          aria-label="收起侧栏"
+          onClick={onToggle}
+        >
+          «
         </button>
       </div>
-      <div className="topbar-badges">
-        <label className="theme-control">
-          <span className="visually-hidden">显示主题</span>
-          <select aria-label="显示主题" value={theme} onChange={event => setThemePreference(event.target.value as ThemePreference)}>
-            <option value="light">浅色</option>
-            <option value="dark">深色</option>
-            <option value="system">跟随系统</option>
-          </select>
-        </label>
-        <span className="badge badge-notice">{state.status === 'loading' ? '模式读取中' : state.status === 'error' ? '模式不可用' : state.demoMode ? 'Demo 合成数据模式' : '真实项目 · 本地存储'}</span>
-        <ConnectionBadge mode="demo" label={location.pathname.startsWith('/chat') ? '对话：离线演示' : '分析来源见建议卡'} />
+
+      <div className="thread-rail__actions">
+        <button type="button" className="thread-rail__new" onClick={onCreate}>
+          新线程
+        </button>
       </div>
-    </header>
+
+      <ul className="thread-list">
+        {visible.map((t) => {
+          const active = t.id === activeThreadId;
+          return (
+            <li key={t.id}>
+              <button
+                type="button"
+                className={`thread-item${active ? ' is-active' : ''}`}
+                onClick={() => onSelect(t.id)}
+                aria-current={active ? 'true' : undefined}
+              >
+                <span className="thread-item__title">{t.title}</span>
+                {t.preview ? <span className="thread-item__preview">{t.preview}</span> : null}
+              </button>
+            </li>
+          );
+        })}
+        {visible.length === 0 ? (
+          <li className="thread-list__empty">无匹配线程</li>
+        ) : null}
+      </ul>
+    </aside>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* AppShell：NavRail + 主内容 + DetailDrawer 三栏骨架 */
-/* ------------------------------------------------------------------ */
 
 export function AppShell() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [drawerContent, setDrawerContent] = useState<ReactNode | null>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
-  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerContent(null);
-    if (openerRef.current && typeof openerRef.current.focus === 'function' && openerRef.current.isConnected) {
-      openerRef.current.focus();
+  const [threads, setThreads] = useState<ThreadSummary[]>([]);
+  const [threadsMock, setThreadsMock] = useState(true);
+  const [activeThreadId, setActiveId] = useState<string | null>(null);
+  const [shellMode, setShellMode] = useState<ShellMode>('chat');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [emberTick, setEmberTick] = useState(0);
+  const [railCollapsed, setRailCollapsedState] = useState(() => {
+    try {
+      return window.localStorage.getItem(RAIL_COLLAPSE_KEY) === '1';
+    } catch {
+      return false;
     }
-    openerRef.current = null;
+  });
+
+  const setRailCollapsed = useCallback((v: boolean) => {
+    setRailCollapsedState(v);
+    try {
+      window.localStorage.setItem(RAIL_COLLAPSE_KEY, v ? '1' : '0');
+    } catch {
+      // ignore
+    }
   }, []);
 
-  const openDrawer = useCallback((content: ReactNode) => {
-    if (document.activeElement instanceof HTMLElement) {
-      openerRef.current = document.activeElement;
+  const refreshThreads = useCallback(async () => {
+    const listed = await listThreads();
+    setThreads(listed.threads);
+    setThreadsMock(listed.mock);
+    if (!listed.mock) preferLiveApi();
+    const fromQuery = searchParams.get('thread');
+    const fromPath = location.pathname.startsWith('/t/')
+      ? location.pathname.slice(3).split('/')[0]
+      : null;
+    const preferred =
+      fromQuery ||
+      fromPath ||
+      getActiveThreadId() ||
+      listed.threads[0]?.id ||
+      null;
+    if (preferred) {
+      setActiveId(preferred);
+      setActiveThreadId(preferred);
     }
-    setDrawerContent(content);
-  }, []);
+  }, [location.pathname, searchParams]);
 
-  const setContent = useCallback(
-    (content: ReactNode | null) => {
-      if (content === null) {
-        closeDrawer();
-      } else {
-        openDrawer(content);
-      }
-    },
-    [closeDrawer, openDrawer],
-  );
+  useEffect(() => {
+    void refreshThreads();
+  }, [refreshThreads]);
 
-  // 路由切换时清空抽屉，避免上一页的证据残留
   useEffect(() => {
     setDrawerContent(null);
-    openerRef.current = null;
   }, [location.pathname]);
 
-  // Esc 键监听
-  useEffect(() => {
-    if (!drawerContent) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeDrawer();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [drawerContent, closeDrawer]);
+  const activeThread = threads.find((t) => t.id === activeThreadId) ?? null;
 
-  // 打开抽屉时将焦点移至关闭按钮
+  const ember = useMemo(() => {
+    void emberTick;
+    return computeEmberHeat({
+      threadId: activeThreadId,
+      threadUpdatedAt: activeThread?.updatedAt,
+    });
+  }, [activeThreadId, activeThread?.updatedAt, emberTick]);
+
   useEffect(() => {
-    if (drawerContent) {
-      const timer = setTimeout(() => {
-        closeButtonRef.current?.focus();
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [drawerContent]);
+    applyEmberHeatCss(ember.heat);
+  }, [ember.heat]);
+
+  const recomputeEmber = useCallback(() => {
+    setEmberTick((n) => n + 1);
+  }, []);
+
+  const selectThread = useCallback(
+    (id: string) => {
+      setActiveId(id);
+      setActiveThreadId(id);
+      setShellMode('chat');
+      const target = `/t/${encodeURIComponent(id)}`;
+      if (location.pathname !== target) navigate(target);
+    },
+    [location.pathname, navigate],
+  );
+
+  const addThread = useCallback(async () => {
+    const { thread } = await createThread({ title: '新线程' });
+    await refreshThreads();
+    selectThread(thread.id);
+  }, [refreshThreads, selectThread]);
 
   const drawerValue = useMemo<DetailDrawerValue>(
-    () => ({ content: drawerContent, setContent, closeDrawer, openDrawer }),
-    [drawerContent, setContent, closeDrawer, openDrawer],
+    () => ({ content: drawerContent, setContent: setDrawerContent }),
+    [drawerContent],
   );
+
+  const threadValue = useMemo<ThreadContextValue>(
+    () => ({
+      threads,
+      activeThreadId,
+      threadsMock,
+      railCollapsed,
+      setRailCollapsed,
+      shellMode,
+      setShellMode,
+      emberBand: ember.band,
+      emberHeat: ember.heat,
+      refreshThreads,
+      selectThread,
+      addThread,
+      recomputeEmber,
+    }),
+    [
+      threads,
+      activeThreadId,
+      threadsMock,
+      railCollapsed,
+      setRailCollapsed,
+      shellMode,
+      ember.band,
+      ember.heat,
+      refreshThreads,
+      selectThread,
+      addThread,
+      recomputeEmber,
+    ],
+  );
+
+  const canvas = isCanvasPath(location.pathname);
 
   return (
     <DetailDrawerContext.Provider value={drawerValue}>
-      <a className="skip-link" href="#main-content">
-        跳到主要内容
-      </a>
-      <div className={`app-shell${location.pathname === '/' ? ' is-focus-workspace' : ''}${drawerContent ? ' has-detail' : ''}`}>
-        <NavRail />
-        <div className="app-body">
-          <TopBar />
-          <main className="app-content" id="main-content">
-            <RuntimeReady><Outlet /></RuntimeReady>
-          </main>
-        </div>
-        {drawerContent ? (
-          <>
-            <div
-              className="detail-drawer-backdrop"
-              onClick={closeDrawer}
-              aria-hidden="true"
-              data-testid="detail-drawer-backdrop"
-            />
-            <aside
-              className="detail-drawer"
-              aria-label="详情面板"
-              role="complementary"
-            >
-              <div className="detail-drawer-header">
-                <span className="detail-drawer-title">详情</span>
-                <button
-                  ref={closeButtonRef}
-                  type="button"
-                  className="detail-drawer-close"
-                  onClick={closeDrawer}
-                  aria-label="关闭详情面板"
-                >
-                  <span aria-hidden="true">✕</span> 关闭
-                </button>
-              </div>
-              <div className="detail-drawer-body">
-                {drawerContent}
-              </div>
+      <ThreadContext.Provider value={threadValue}>
+        <a className="skip-link" href="#main-content">
+          跳到主要内容
+        </a>
+        <div
+          className={[
+            'canvas-shell',
+            railCollapsed ? 'canvas-shell--rail-collapsed' : '',
+            canvas ? 'canvas-shell--canvas' : 'canvas-shell--page',
+            `canvas-shell--ember-${ember.band}`,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          data-ember-band={ember.band}
+          data-ember-heat={ember.heat.toFixed(2)}
+        >
+          <ThreadRail
+            threads={threads}
+            activeThreadId={activeThreadId}
+            collapsed={railCollapsed}
+            filter={searchQuery}
+            onToggle={() => setRailCollapsed(!railCollapsed)}
+            onSelect={selectThread}
+            onCreate={() => void addThread()}
+          />
+          <div className="canvas-body">
+            {canvas ? (
+              <header className="canvas-chrome">
+                <div className="chrome-seg" role="tablist" aria-label="主视图">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={shellMode === 'chat'}
+                    className={`chrome-seg__btn${shellMode === 'chat' ? ' is-active' : ''}`}
+                    onClick={() => setShellMode('chat')}
+                  >
+                    聊天
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={shellMode === 'projects'}
+                    className={`chrome-seg__btn${shellMode === 'projects' ? ' is-active' : ''}`}
+                    onClick={() => setShellMode('projects')}
+                  >
+                    项目
+                  </button>
+                </div>
+
+                <div className="canvas-chrome__right">
+                  {threadsMock ? (
+                    <span className="canvas-chrome__dot" title="线程列表为本地演示" />
+                  ) : null}
+                  {searchOpen ? (
+                    <input
+                      className="chrome-search"
+                      type="search"
+                      value={searchQuery}
+                      placeholder="搜线程…"
+                      aria-label="搜索线程"
+                      autoFocus
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setSearchOpen(false);
+                          setSearchQuery('');
+                        }
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="chrome-icon-btn"
+                      aria-label="搜索"
+                      title="搜索"
+                      onClick={() => {
+                        setSearchOpen(true);
+                        if (railCollapsed) setRailCollapsed(false);
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+                        <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  )}
+                  <Link
+                    to="/settings"
+                    className="chrome-avatar"
+                    aria-label="设置"
+                    title="设置"
+                  >
+                    <span className="chrome-avatar__glyph" aria-hidden="true">
+                      炉
+                    </span>
+                  </Link>
+                </div>
+              </header>
+            ) : (
+              <header className="canvas-chrome canvas-chrome--page">
+                <Link to="/" className="canvas-chrome__back">
+                  ← 对话
+                </Link>
+                <p className="canvas-chrome__title">{sectionLabel(location.pathname)}</p>
+              </header>
+            )}
+            <main className="canvas-main" id="main-content">
+              {canvas && shellMode === 'projects' ? (
+                <ProjectsPane
+                  threads={threads}
+                  activeThreadId={activeThreadId}
+                  filter={searchQuery}
+                  onSelect={selectThread}
+                  onCreate={() => void addThread()}
+                />
+              ) : (
+                <Outlet />
+              )}
+            </main>
+          </div>
+          {drawerContent !== null ? (
+            <aside className="detail-drawer" aria-label="详情面板">
+              {drawerContent}
             </aside>
-          </>
-        ) : null}
-      </div>
+          ) : null}
+        </div>
+      </ThreadContext.Provider>
     </DetailDrawerContext.Provider>
   );
+}
+
+function ProjectsPane({
+  threads,
+  activeThreadId,
+  filter,
+  onSelect,
+  onCreate,
+}: {
+  threads: ThreadSummary[];
+  activeThreadId: string | null;
+  filter: string;
+  onSelect: (id: string) => void;
+  onCreate: () => void;
+}) {
+  const q = filter.trim().toLowerCase();
+  const visible = q
+    ? threads.filter((t) => t.title.toLowerCase().includes(q))
+    : threads;
+
+  return (
+    <section className="projects-pane" aria-label="项目（线程）">
+      <header className="projects-pane__head">
+        <h1 className="projects-pane__title">项目</h1>
+        <p className="projects-pane__hint">本拍等同线程；点一项回到聊天。</p>
+        <button type="button" className="btn btn-primary" onClick={onCreate}>
+          新线程
+        </button>
+      </header>
+      <ul className="projects-pane__list">
+        {visible.map((t) => (
+          <li key={t.id}>
+            <button
+              type="button"
+              className={`projects-pane__item${t.id === activeThreadId ? ' is-active' : ''}`}
+              onClick={() => onSelect(t.id)}
+            >
+              <span className="projects-pane__item-title">{t.title}</span>
+              {t.preview ? (
+                <span className="projects-pane__item-preview">{t.preview}</span>
+              ) : null}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function sectionLabel(pathname: string): string {
+  if (pathname.startsWith('/cards')) return '建议（调试）';
+  if (pathname.startsWith('/observe')) return '项目观察（调试）';
+  if (pathname.startsWith('/projects')) return '项目（调试）';
+  if (pathname.startsWith('/insights')) return '洞察（调试）';
+  if (pathname.startsWith('/activity')) return '活动（调试）';
+  if (pathname.startsWith('/settings')) return '设置';
+  return '页面';
 }

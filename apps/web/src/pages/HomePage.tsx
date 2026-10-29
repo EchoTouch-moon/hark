@@ -1,159 +1,400 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { ErrorState } from '../components';
-import { fetchOverview, type OverviewResponse, OVERVIEW_STATUS_LABELS } from '../features/overview';
-import { fetchChatHistory, sendChatMessage, type ChatMessage } from '../features/chat';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isTerminalRunState } from '@hearth/contracts';
+import type { ActionCard as HearthCard, TaskRun } from '@hearth/contracts';
+import { ConfirmDialog, EmptyState, ErrorState, PageHeader } from '../components';
+import { ActionCard, type CardPendingAction } from '../components/ActionCard';
+import { EvidenceDrawer } from '../components/EvidenceDrawer';
+import {
+  CARD_POLL_INTERVAL_MS,
+  POLLING_CARD_STATUSES,
+  RUNGED_TERMINAL_STATUSES,
+  SNOOZE_2H_MS,
+  fetchCardDetail,
+  friendlyCardError,
+  isProactiveCard,
+  toSecondPrecisionIso,
+  useCardActions,
+  useCards,
+  useProjects,
+} from '../features/cards';
 import './HomePage.css';
-const REFRESH_INTERVAL_MS = 3000;
 
+/** 主动建议区最多展示的卡片数（docs/02-UX U01） */
+const PRIMARY_LIMIT = 3;
+
+/** 相对时间 / TTL / 到期判断的心跳间隔 */
+const NOW_TICK_MS = 30_000;
+
+/** 页面顶部提示的自动消失时间 */
+const NOTICE_TTL_MS = 8_000;
+
+interface HomeNotice {
+  tone: 'info' | 'error';
+  text: string;
+}
+
+/**
+ * U01 Home：今天值得处理的事。
+ *
+ * - 主动建议区最多 3 张（proposed / snoozed 到期 / 审批与执行进行中），
+ *   其余折叠在「查看全部」；
+ * - 操作：查看证据（页面内 EvidenceDrawer）/ 开始处理（L2 显示为请求批准）/
+ *   忽略（二次确认）/ 稍后（2 小时）；
+ * - 执行后轮询 GET /cards/:id（900ms），run 终态即停；刷新后状态全部
+ *   来自 API，不用 localStorage 存业务状态。
+ */
 export function HomePage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const projectId = searchParams.get('projectId') ?? undefined;
+  const { cards, loading, error, refetch, mergeCard } = useCards();
+  const { projects, loading: projectsLoading, error: projectsError } = useProjects();
+  const actions = useCardActions();
 
-  const [data, setData] = useState<OverviewResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [runsByCard, setRunsByCard] = useState<Record<string, TaskRun | null>>({});
+  /** 本会话内执行过的卡片：终态后仍钉在主动建议区，避免执行完就消失 */
+  const [pinned, setPinned] = useState<ReadonlySet<string>>(() => new Set());
+  const [expandedAll, setExpandedAll] = useState(false);
+  const [evidenceId, setEvidenceId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [pending, setPending] = useState<Record<string, CardPendingAction>>({});
+  const [actionErrors, setActionErrors] = useState<Record<string, string | null>>({});
+  const [notice, setNotice] = useState<HomeNotice | null>(null);
+  const [scanBusy, setScanBusy] = useState(false);
+  const [seedBusy, setSeedBusy] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
-  const isFetchingRef = useRef(false);
+  /* ---------- 心跳与提示自动消失 ---------- */
 
-  const loadData = useCallback(
-    async (isBackground = false) => {
-      if (isFetchingRef.current) return;
-      isFetchingRef.current = true;
-      if (!isBackground) setLoading(true);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), NOW_TICK_MS);
+    return () => window.clearInterval(timer);
+  }, []);
 
-      try {
-        const res = await fetchOverview(projectId);
-        setData(res);
-        setError(null);
-      } catch (err) {
-        if (!isBackground) {
-          setError(err instanceof Error ? err.message : '获取今日概览失败');
-        }
-      } finally {
-        isFetchingRef.current = false;
-        if (!isBackground) setLoading(false);
-      }
-    },
-    [projectId],
+  useEffect(() => {
+    if (notice === null) return undefined;
+    const timer = window.setTimeout(() => setNotice(null), NOTICE_TTL_MS);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  /* ---------- 列表划分 ---------- */
+
+  const visibleCards = useMemo(
+    () => cards.filter((c) => c.status !== 'dismissed'),
+    [cards],
   );
 
-  // 初次加载与参数变化加载
+  const primaryCards = useMemo(() => {
+    const active = visibleCards.filter(
+      (c) => isProactiveCard(c, nowMs) || pinned.has(c.id),
+    );
+    return active
+      .slice()
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, PRIMARY_LIMIT);
+  }, [visibleCards, nowMs, pinned]);
+
+  const primaryIds = useMemo(() => new Set(primaryCards.map((c) => c.id)), [primaryCards]);
+
+  const restCards = useMemo(
+    () => visibleCards.filter((c) => !primaryIds.has(c.id)),
+    [visibleCards, primaryIds],
+  );
+
+  /* ---------- 终态卡片回填 run（刷新后仍能给出「查看 Run」链接） ---------- */
+
+  const missingRunKey = useMemo(
+    () =>
+      visibleCards
+        .filter((c) => RUNGED_TERMINAL_STATUSES.has(c.status) && !(c.id in runsByCard))
+        .map((c) => c.id)
+        .join(','),
+    [visibleCards, runsByCard],
+  );
+
   useEffect(() => {
-    loadData(false);
-  }, [loadData]);
-
-  // 3 秒只读不重叠静默轮询 + 后台暂停 + 切回前台立即刷新
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        loadData(true);
+    if (missingRunKey === '') return undefined;
+    let cancelled = false;
+    const ids = missingRunKey.split(',');
+    void (async () => {
+      for (const id of ids) {
+        try {
+          const detail = await fetchCardDetail(id);
+          if (cancelled) return;
+          setRunsByCard((prev) => ({ ...prev, [id]: detail.run }));
+        } catch {
+          // 回填失败不重试：打开证据面板时会再次拉取
+          if (!cancelled) setRunsByCard((prev) => ({ ...prev, [id]: null }));
+        }
       }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        loadData(true);
-      }
-    }, REFRESH_INTERVAL_MS);
-
+    })();
     return () => {
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      cancelled = true;
     };
-  }, [loadData]);
+  }, [missingRunKey]);
 
-  const handleProjectFilterChange = (selectedId: string) => {
-    const next = new URLSearchParams(searchParams);
-    if (!selectedId) {
-      next.delete('projectId');
-    } else {
-      next.set('projectId', selectedId);
-    }
-    setSearchParams(next, { replace: true });
-  };
+  /* ---------- 进行中的卡每 900ms 轮询（run 终态即停） ---------- */
 
-  const [draft, setDraft] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [sending, setSending] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [chatError, setChatError] = useState<string | null>(null);
-  const controller = useRef<AbortController | null>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const activeKey = useMemo(
+    () =>
+      visibleCards
+        .filter(
+          (c) =>
+            POLLING_CARD_STATUSES.has(c.status) ||
+            // execute 刚返回时 card 可能仍是 proposed，但已有关联的非终态 run
+            (runsByCard[c.id] !== undefined && !isTerminalRunState(runsByCard[c.id]!.state)),
+        )
+        .map((c) => c.id)
+        .join(','),
+    [visibleCards, runsByCard],
+  );
+
   useEffect(() => {
-    const abort = new AbortController();
-    void fetchChatHistory(abort.signal).then(result => setMessages(result.messages)).catch(() => {
-      if (!abort.signal.aborted) setChatError('会话记录暂时无法读取，可前往对话页重试。');
-    });
-    return () => { abort.abort(); controller.current?.abort(); };
+    if (activeKey === '') return undefined;
+    let cancelled = false;
+    const ids = activeKey.split(',');
+    const tick = async (): Promise<void> => {
+      for (const id of ids) {
+        try {
+          const detail = await fetchCardDetail(id);
+          if (cancelled) return;
+          mergeCard(detail.card);
+          setRunsByCard((prev) => ({ ...prev, [id]: detail.run }));
+        } catch {
+          // 单轮网络抖动忽略，下一轮继续
+        }
+      }
+    };
+    // 变化时立即跑一轮：刷新页面后马上恢复 run 状态
+    void tick();
+    const timer = window.setInterval(() => void tick(), CARD_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeKey, mergeCard]);
+
+  /* ---------- 项目 badge 名称映射（project-atlas → Atlas） ---------- */
+
+  const projectNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const project of projects) {
+      map.set(project.id, project.name.replace(/^Project\s+/, ''));
+    }
+    return map;
+  }, [projects]);
+
+  const firstRun = !projectsLoading && projectsError === null && projects.length === 0;
+
+  /* ---------- 操作 ---------- */
+
+  const beginAction = useCallback((cardId: string, action: CardPendingAction): void => {
+    setPending((prev) => ({ ...prev, [cardId]: action }));
+    setActionErrors((prev) => ({ ...prev, [cardId]: null }));
   }, []);
-  async function send() {
-    if (sending || !draft.trim()) return;
-    const text = draft.trim();
-    setSending(true); setChatError(null);
-    const abort = new AbortController(); controller.current = abort;
-    const timer = window.setTimeout(() => abort.abort(), 30000);
-    try {
-      await sendChatMessage(text, abort.signal);
-      const history = await fetchChatHistory(abort.signal);
-      setMessages(history.messages); setDraft(''); setHistoryOpen(true);
-    } catch (err) {
-      setChatError(abort.signal.aborted ? '已停止等待。消息可能已保存在本地，请查看会话记录后重试。' : err instanceof Error ? err.message : '发送失败，请重试');
-    } finally { window.clearTimeout(timer); setSending(false); }
-  }
-  function prompt(text: string) { setDraft(text); inputRef.current?.focus(); }
-  const focus = data?.prioritizedInsights.items[0];
-  const summary = data?.summary;
-  const degraded = data && Object.values(data.sectionsAvailability).some(value => value !== 'AVAILABLE');
+
+  const endAction = useCallback(
+    (cardId: string, failure: string | null): void => {
+      setPending((prev) => ({ ...prev, [cardId]: null }));
+      if (failure !== null) setActionErrors((prev) => ({ ...prev, [cardId]: failure }));
+    },
+    [],
+  );
+
+  const handleExecute = useCallback(
+    async (cardId: string): Promise<void> => {
+      beginAction(cardId, 'execute');
+      const result = await actions.execute(cardId);
+      if (result.ok) {
+        mergeCard(result.data.card);
+        setRunsByCard((prev) => ({ ...prev, [cardId]: result.data.run }));
+        setPinned((prev) => {
+          const next = new Set(prev);
+          next.add(cardId);
+          return next;
+        });
+        if (result.data.alreadyRunning) {
+          setNotice({ tone: 'info', text: '该建议已有任务在执行，已恢复状态跟踪' });
+        }
+        endAction(cardId, null);
+      } else {
+        endAction(cardId, friendlyCardError(result.error));
+      }
+    },
+    [actions, beginAction, endAction, mergeCard],
+  );
+
+  const handleSnooze = useCallback(
+    async (cardId: string): Promise<void> => {
+      beginAction(cardId, 'snooze');
+      const until = toSecondPrecisionIso(new Date(Date.now() + SNOOZE_2H_MS));
+      const result = await actions.snooze(cardId, until);
+      if (result.ok) {
+        mergeCard(result.data.card);
+        endAction(cardId, null);
+      } else {
+        endAction(cardId, friendlyCardError(result.error));
+      }
+    },
+    [actions, beginAction, endAction, mergeCard],
+  );
+
+  const confirmCard = useMemo(
+    () => cards.find((c) => c.id === confirmId) ?? null,
+    [cards, confirmId],
+  );
+
+  const handleConfirmDismiss = useCallback(async (): Promise<void> => {
+    const cardId = confirmId;
+    setConfirmId(null);
+    if (cardId === null) return;
+    beginAction(cardId, 'dismiss');
+    const result = await actions.dismiss(cardId, 'not_useful');
+    if (result.ok) {
+      mergeCard(result.data.card);
+      setEvidenceId((cur) => (cur === cardId ? null : cur));
+      endAction(cardId, null);
+    } else {
+      endAction(cardId, friendlyCardError(result.error));
+    }
+  }, [actions, beginAction, confirmId, endAction, mergeCard]);
+
+  const handleDiscover = useCallback(async (): Promise<void> => {
+    setScanBusy(true);
+    const result = await actions.discover();
+    setScanBusy(false);
+    if (result.ok) {
+      setNotice({ tone: 'info', text: `扫描完成：新增 ${result.data.cardsCreated} 张建议` });
+      refetch();
+    } else if (result.error.status === 429) {
+      setNotice({ tone: 'error', text: '扫描太频繁，请稍后再试' });
+    } else {
+      setNotice({ tone: 'error', text: `扫描失败：${result.error.message}` });
+    }
+  }, [actions, refetch]);
+
+  const handleSeed = useCallback(async (): Promise<void> => {
+    setSeedBusy(true);
+    const seeded = await actions.seedDemo();
+    if (seeded.ok) {
+      const discovered = await actions.discover();
+      setNotice({
+        tone: 'info',
+        text: `已初始化 Demo 数据：${seeded.data.projects} 个项目、${seeded.data.eventsIngested} 条事件${
+          discovered.ok ? `，新增 ${discovered.data.cardsCreated} 张建议` : ''
+        }`,
+      });
+      refetch();
+      setSeedBusy(false);
+    } else {
+      setNotice({ tone: 'error', text: `初始化失败：${seeded.error.message}` });
+      setSeedBusy(false);
+    }
+  }, [actions, refetch]);
+
+  /* ---------- 渲染 ---------- */
+
+  const renderCard = (card: HearthCard) => (
+    <ActionCard
+      key={card.id}
+      card={card}
+      projectName={projectNameById.get(card.projectId) ?? null}
+      run={runsByCard[card.id] ?? null}
+      pending={pending[card.id] ?? null}
+      evidenceOpen={evidenceId === card.id}
+      actionError={actionErrors[card.id] ?? null}
+      onToggleEvidence={() =>
+        setEvidenceId((cur) => (cur === card.id ? null : card.id))
+      }
+      onExecute={() => void handleExecute(card.id)}
+      onDismissRequest={() => setConfirmId(card.id)}
+      onSnooze={() => void handleSnooze(card.id)}
+    >
+      {evidenceId === card.id ? (
+        <EvidenceDrawer card={card} onClose={() => setEvidenceId(null)} />
+      ) : null}
+    </ActionCard>
+  );
+
   return (
-    <section className="hearth-focus" aria-label="Hearth 对话工作台">
-      <div className="focus-landscape" aria-hidden="true"><div className="focus-sun"/><div className="mountain mountain-back"/><div className="mountain mountain-front"/><div className="observatory"><i/><b/></div></div>
-      <header className="focus-heading">
-        <p className="focus-eyebrow">A LITTLE SPACE TO FOCUS <span>●</span></p>
-        <h1>和重要的事，<br/>慢慢<span>向前。</span></h1>
-        <p>把纷繁留给 Hearth，把注意力留给当下。</p>
-      </header>
-      <div className="focus-context">
-        <span className="context-dot"/>
-        <span>{loading && !data ? '正在了解当前工作状态…' : summary ? OVERVIEW_STATUS_LABELS[summary.status] : '等待连接本地工作区'}</span>
-        <span className="context-divider">/</span>
-        <label htmlFor="home-project-select" className="visually-hidden">项目范围</label>
-        <select id="home-project-select" value={projectId ?? ''} onChange={e => handleProjectFilterChange(e.target.value)}>
-          <option value="">全部项目{data ? ` · ${data.projects.length}` : ''}</option>
-          {data?.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-      </div>
-      {error && !data && <ErrorState message={error} onRetry={() => void loadData()} />}
-      {degraded && <p role="alert" className="focus-warning">部分来源暂时不可用，当前信息可能不完整。<Link to="/projects">查看项目状态</Link></p>}
-      <div className="focus-conversation">
-        <div className="hearth-avatar" aria-hidden="true">⌒</div>
-        <div className="focus-brief">
-          <p className="focus-speaker">Hearth <span>与你一起，专注当下</span></p>
-          <h2>{focus ? '眼下，这件事值得你关注。' : summary?.headline ?? '从你正在做的事开始。'}</h2>
-          <p>{summary?.detail ?? '说说你想推进什么，或者先添加一个本地项目。'}</p>
-          {focus ? <article className="focus-decision">
-            <div className="decision-meta"><span>◈ {focus.projectName}</span><span>值得关注</span></div>
-            <h3>{focus.title}</h3><p>{focus.summary}</p>
-            <div className="decision-bottom"><Link to={`/insights/${focus.id}`}>查看 {focus.evidenceCount} 条依据 <span>↗</span></Link><button type="button" onClick={() => prompt(`我想进一步讨论：${focus.title}`)}>和我聊聊 <span>→</span></button></div>
-          </article> : summary?.status === 'NO_PROJECTS' ? <Link className="focus-start" to="/projects">添加第一个项目 <span>↗</span></Link> : null}
-          {data && data.prioritizedInsights.totalOpenCount > 1 && <Link className="focus-more" to="/insights">另外 {data.prioritizedInsights.totalOpenCount - 1} 件事，等你想看时再展开 →</Link>}
+    <section className="page home-page">
+      <PageHeader title="建议（次级）" subtitle="旧建议卡流已降权；日常请回到对话主壳" />
+
+      {notice ? (
+        <p className={`home-notice home-notice-${notice.tone}`} role="status" aria-live="polite">
+          {notice.text}
+        </p>
+      ) : null}
+
+      {error ? (
+        <ErrorState message={error.message} onRetry={refetch} />
+      ) : loading ? (
+        <p className="home-loading" role="status">
+          正在加载建议…
+        </p>
+      ) : visibleCards.length === 0 ? (
+        <EmptyState
+          title="目前没有值得打扰你的事情"
+          hint="Hearth 会在有把握、且确实值得的时候才打扰你"
+          action={
+            <div className="home-empty-actions">
+              {firstRun ? (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => void handleSeed()}
+                  disabled={seedBusy || scanBusy}
+                  title={seedBusy ? '正在初始化合成数据…' : '写入两个合成项目与示例事件，并立即扫描'}
+                >
+                  {seedBusy ? '初始化中…' : '初始化 Demo 数据'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => void handleDiscover()}
+                disabled={scanBusy || seedBusy}
+                title={scanBusy ? '正在扫描…' : '立即扫描事件源，生成新的建议'}
+              >
+                {scanBusy ? '扫描中…' : '重新扫描'}
+              </button>
+            </div>
+          }
+        />
+      ) : (
+        <div className="page-section" aria-label="主动建议">
+          <p className="page-section-title">需要你决定</p>
+          {primaryCards.map(renderCard)}
+          {restCards.length > 0 ? (
+            <button
+              type="button"
+              className="home-toggle-all"
+              aria-expanded={expandedAll}
+              onClick={() => setExpandedAll((v) => !v)}
+            >
+              {expandedAll ? '收起' : `查看全部（${restCards.length}）`}
+            </button>
+          ) : null}
+          {expandedAll && restCards.length > 0 ? (
+            <>
+              <p className="page-section-title home-rest-title">
+                其它建议与历史（{restCards.length}）
+              </p>
+              {restCards.map(renderCard)}
+            </>
+          ) : null}
         </div>
-      </div>
-      {messages.length > 0 && <details className="focus-history" open={historyOpen} onToggle={e => setHistoryOpen(e.currentTarget.open)}><summary>继续上次的对话 · {messages.length} 条消息</summary><div className="focus-messages" aria-live="polite">{messages.map(m => <article key={m.id} className={m.role === 'user' ? 'focus-message is-user' : 'focus-message'}><span>{m.role === 'user' ? '你' : 'Hearth · 离线演示'}</span><p>{m.content}</p></article>)}</div><Link to="/chat">打开完整会话 ↗</Link></details>}
-      <div className="focus-compose-area">
-        <div className="focus-prompts">{['帮我梳理下一步', '我想讨论一个新想法', '先聊聊当前的工作'].map(text => <button type="button" key={text} onClick={() => prompt(text)}>{text} <span>↗</span></button>)}</div>
-        {chatError && <p className="focus-warning" role="alert">{chatError} <Link to="/chat">查看会话记录</Link></p>}
-        <form className="focus-composer" onSubmit={e => { e.preventDefault(); void send(); }}>
-          <span className="composer-spark" aria-hidden="true">✦</span>
-          <label htmlFor="focus-input" className="visually-hidden">告诉 Hearth 你想做什么</label>
-          <textarea id="focus-input" ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="告诉我，你现在想专注什么…" rows={2} maxLength={4000} disabled={sending} onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); } }}/>
-          {sending ? <button type="button" className="composer-send" aria-label="停止等待" onClick={() => controller.current?.abort()}>■</button> : <button type="submit" className="composer-send" disabled={!draft.trim()} aria-label="发送消息">↑</button>}
-        </form>
-        <div className="composer-footnote"><span>本地保存 · 对话为离线演示</span><span>Enter 发送 · Shift + Enter 换行</span></div>
-      </div>
-      <a className="focus-credit" href="https://deerflow.tech" target="_blank" rel="noreferrer">Created By Deerflow</a>
+      )}
+
+      <ConfirmDialog
+        open={confirmCard !== null}
+        title="忽略这条建议？"
+        description={
+          confirmCard
+            ? `将忽略「${confirmCard.title}」，并记录反馈「对我没用」。已忽略的建议不会再打扰你。`
+            : undefined
+        }
+        confirmText="忽略"
+        onCancel={() => setConfirmId(null)}
+        onConfirm={() => void handleConfirmDismiss()}
+      />
     </section>
   );
 }

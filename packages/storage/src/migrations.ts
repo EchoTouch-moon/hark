@@ -169,6 +169,24 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX idx_audit_object ON audit_log(object_id)`,
     ],
   },
+  {
+    version: 2,
+    name: 'threads-and-chat-parts-v2',
+    up: [
+      `CREATE TABLE threads (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        preview TEXT NOT NULL DEFAULT '',
+        project_id TEXT,
+        proactive_status TEXT NOT NULL DEFAULT 'idle',
+        proactive_message_id TEXT,
+        updated_at TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`,
+      `CREATE INDEX idx_threads_updated ON threads(updated_at DESC)`,
+      `ALTER TABLE chat_messages ADD COLUMN parts_json TEXT`,
+    ],
+  },
 ];
 
 /**

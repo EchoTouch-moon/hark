@@ -1,30 +1,120 @@
 /**
- * Hearth 设计令牌（tokens）
- * 视觉定位：原创极简、轻度 editorial；浅色主题为主，克制配色。
- * 仅使用 CSS 自定义属性，组件一律引用令牌而非硬编码色值。
+ * Hearth 设计令牌 · Style Bible v6 / v6.1 Craft Ember Seed
+ * --ember-heat 0–1 插值；禁止两套皮肤硬切。
  */
+@property --ember-heat {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0.5;
+}
+
 :root {
-  /* ---------- 色板 · 暖纸 + 墨色 + 炭火点缀 ---------- */
-  --color-bg: #f8f7f3;            /* 页面底色（暖纸灰） */
-  --color-bg-raised: #f2f1eb;     /* 抬升底色（导航/空态） */
-  --color-surface: #ffffff;       /* 卡片面 */
-  --color-surface-sunken: #efede6;/* 下沉面（输入、代码块） */
+  --ember-heat: 0.5;
+  /* v6.1：主题插值 500ms cubic-bezier(.22,1,.36,1) */
+  --duration-ember: 500ms;
+  --ease-ember: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Composer 下沉：360ms spring，bounce 0（critically damped） */
+  --duration-seed: 360ms;
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
 
-  --color-ink: #26221c;           /* 主文字 */
-  --color-ink-2: #5b554b;         /* 次级文字 */
-  --color-ink-3: #6d7169;         /* 弱化文字/占位 */
+  /* 端点：黯 #161412 ↔ 温 #F7F0E6 ↔ 旺 #F3E0CC */
+  --ember-bg-cool: #161412;
+  --ember-bg-mid: #f7f0e6;
+  --ember-bg-hot: #f3e0cc;
+  --ember-ink-cool: #e8e2d8;
+  --ember-ink-hot: #2a1f18;
+  --ember-accent-cool: #a89080;
+  --ember-accent-hot: #c45a28;
+  --ember-glow-pink: rgba(232, 140, 110, 1);
+  --ember-glow-blue: rgba(150, 170, 210, 1);
 
-  --color-border: #e6e1d6;        /* 常规描边 */
-  --color-border-strong: #d2ccbe; /* 强描边 */
+  /* 由 applyEmberHeatCss 写入：heat≤0 → 1；heat≥0.4 → 0 */
+  --ember-cool-factor: 0;
+  --ember-warm-mix: color-mix(
+    in srgb,
+    var(--ember-bg-mid) calc((1 - var(--ember-heat)) * 100%),
+    var(--ember-bg-hot)
+  );
+  --color-bg: color-mix(
+    in srgb,
+    var(--ember-bg-cool) calc(var(--ember-cool-factor) * 100%),
+    var(--ember-warm-mix)
+  );
 
-  --color-accent: #9c4b26;        /* 炭火橙（主操作） */
-  --color-accent-strong: #7e3b1d;
-  --color-accent-soft: #f2e3d9;
+  --color-bg-raised: color-mix(
+    in srgb,
+    #1c1a18 calc(var(--ember-cool-factor) * 100%),
+    #fbf4ea
+  );
+
+  --color-surface: color-mix(
+    in srgb,
+    rgba(40, 36, 32, 0.72) calc(var(--ember-cool-factor) * 100%),
+    rgba(255, 252, 248, 0.72)
+  );
+
+  --color-surface-sunken: color-mix(
+    in srgb,
+    #24201c calc(var(--ember-cool-factor) * 100%),
+    #f0e6da
+  );
+
+  --color-ink: color-mix(
+    in srgb,
+    var(--ember-ink-cool) calc(var(--ember-cool-factor) * 100%),
+    var(--ember-ink-hot)
+  );
+  --color-ink-2: color-mix(
+    in srgb,
+    #b8aea2 calc(var(--ember-cool-factor) * 100%),
+    #5c4a3c
+  );
+  --color-ink-3: color-mix(
+    in srgb,
+    #8a8076 calc(var(--ember-cool-factor) * 100%),
+    #9a8574
+  );
+
+  --color-border: color-mix(
+    in srgb,
+    rgba(255, 255, 255, 0.1) calc(var(--ember-cool-factor) * 100%),
+    #e8dccf
+  );
+  --color-border-strong: color-mix(
+    in srgb,
+    rgba(255, 255, 255, 0.16) calc(var(--ember-cool-factor) * 100%),
+    #d4c4b2
+  );
+
+  --color-accent: color-mix(
+    in srgb,
+    var(--ember-accent-cool) calc(var(--ember-cool-factor) * 100%),
+    var(--ember-accent-hot)
+  );
+  --color-accent-strong: color-mix(
+    in srgb,
+    #c4a898 calc(var(--ember-cool-factor) * 100%),
+    #9c3f18
+  );
+  --color-accent-soft: color-mix(
+    in srgb,
+    rgba(168, 144, 128, 0.22) calc(var(--ember-cool-factor) * 100%),
+    rgba(196, 90, 40, 0.16)
+  );
   --color-on-accent: #ffffff;
 
-  --color-focus: #b05e33;         /* 焦点环 */
+  --color-focus: color-mix(
+    in srgb,
+    #d4b8a0 calc(var(--ember-cool-factor) * 100%),
+    #d4783a
+  );
 
-  /* 状态色（浅底 + 深字，保证对比度） */
+  /* flame-scale：黯 0.72 / 温 1 / 旺 1.12 → 0.72 + heat * 0.4 */
+  --ember-glow-strength: calc(0.16 + var(--ember-heat) * 0.7);
+  --ember-flame-scale: calc(0.72 + var(--ember-heat) * 0.4);
+  /* flicker 周期：旺快(~1.2s) 黯慢(~3.2s) */
+  --ember-flicker-ms: calc(3200ms - var(--ember-heat) * 2000ms);
+
   --color-success-ink: #3c7050;
   --color-success-soft: #e7f0e9;
   --color-warning-ink: #8a6017;
@@ -34,16 +124,14 @@
   --color-info-ink: #41648c;
   --color-info-soft: #e8eef6;
 
-  /* ---------- 字体 ---------- */
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC',
     sans-serif;
   --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia,
-    'Songti SC', 'Noto Serif CJK SC', serif; /* editorial 标题 */
+    'Songti SC', 'Noto Serif CJK SC', serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New',
     monospace;
 
-  /* 字号（14 为正文基准） */
   --text-xs: 12px;
   --text-sm: 13px;
   --text-md: 14px;
@@ -51,13 +139,13 @@
   --text-xl: 18px;
   --text-2xl: 22px;
   --text-3xl: 28px;
+  --text-display: 34px;
 
   --leading-tight: 1.3;
   --leading-normal: 1.6;
-
   --tracking-wide: 0.02em;
+  --tracking-tight: -0.02em;
 
-  /* ---------- 间距（4px 基） ---------- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -69,63 +157,45 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* ---------- 圆角（规范 10–16px） ---------- */
   --radius-sm: 10px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  --radius-xl: 22px;
   --radius-full: 999px;
 
-  /* ---------- 阴影（轻） ---------- */
   --shadow-1: 0 1px 2px rgba(38, 34, 28, 0.05), 0 1px 3px rgba(38, 34, 28, 0.04);
   --shadow-2: 0 4px 14px rgba(38, 34, 28, 0.08);
   --shadow-overlay: 0 12px 40px rgba(38, 34, 28, 0.16);
+  --shadow-ember: 0 10px 36px
+    color-mix(in srgb, var(--ember-glow-pink) calc(var(--ember-glow-strength) * 50%), transparent);
 
-  /* ---------- 动效（160–220ms ease-out） ---------- */
   --duration-fast: 160ms;
   --duration-base: 200ms;
   --duration-slow: 220ms;
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
 
-  /* ---------- 布局 ---------- */
-  --nav-width: 200px;        /* 左侧折叠导航 */
-  --drawer-width: 360px;     /* 右侧 Detail Drawer */
-  --topbar-height: 56px;
-  --page-max-width: 1200px;
+  --nav-width: 200px;
+  --thread-rail-width: 200px;
+  --drawer-width: 280px;
+  --topbar-height: 52px;
+  --page-max-width: 920px;
+  --canvas-col-max: 680px;
 
-  /* ---------- 层级 ---------- */
   --z-topbar: 30;
   --z-drawer: 40;
   --z-modal: 60;
   --z-toast: 80;
+  --z-grain: 90;
 }
 
+html {
+  transition: --ember-heat var(--duration-ember) var(--ease-ember);
+}
 
-:root { color-scheme: light; }
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --color-bg: #171b20;
-  --color-bg-raised: #1c2127;
-  --color-surface: #20262d;
-  --color-surface-sunken: #171d23;
-  --color-ink: #eef0ed;
-  --color-ink-2: #c0c8c1;
-  --color-ink-3: #aab2ac;
-  --color-border: #3b454d;
-  --color-border-strong: #69777e;
-  --color-accent: #e2a07f;
-  --color-accent-strong: #f3ba9c;
-  --color-accent-soft: #403027;
-  --color-on-accent: #241b17;
-  --color-focus: #f3ba9c;
-  --color-success-ink: #a2d3b0;
-  --color-success-soft: #23372c;
-  --color-warning-ink: #edcc8b;
-  --color-warning-soft: #3b3222;
-  --color-danger-ink: #f0aaa2;
-  --color-danger-soft: #402a29;
-  --color-info-ink: #b0cdf0;
-  --color-info-soft: #263749;
-  --shadow-1: 0 1px 3px rgba(0, 0, 0, .16);
-  --shadow-2: 0 4px 14px rgba(0, 0, 0, .22);
-  --shadow-overlay: 0 12px 40px rgba(0, 0, 0, .4);
+html,
+body,
+.canvas-shell {
+  transition:
+    background-color var(--duration-ember) var(--ease-ember),
+    color var(--duration-ember) var(--ease-ember);
 }

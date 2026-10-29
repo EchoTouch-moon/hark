@@ -4,8 +4,8 @@
  * 约定（见 docs/04-CONTRACTS.md）：
  * - 会话 cookie 由服务器管理（HttpOnly），前端只缓存 CSRF token；
  * - 写方法自动携带 `content-type: application/json` 与 `x-csrf-token`；
- * - 无 token 或收到 401 时，先 GET /api/v1/auth/session 获取 { csrfToken }
- *   并保存，然后重试一次写请求。
+ * - 无 token 或收到 401/403 时，先 GET /api/v1/auth/session 获取 { csrfToken }
+ *   并保存，然后重试一次写请求（旧 localStorage token 失效常见为 403）。
  */
 
 export class ApiError extends Error {
@@ -179,8 +179,8 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       );
     }
 
-    // 写请求 401：刷新一次 CSRF token 后重试，仍失败则如实抛出
-    if (response.status === 401) {
+    // 写请求 401/403：刷新一次 CSRF token 后重试（过期 token 常返回 403）
+    if (response.status === 401 || response.status === 403) {
       try {
         const freshToken = await fetchSessionToken();
         headers.set('x-csrf-token', freshToken);

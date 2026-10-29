@@ -33,6 +33,33 @@ function parse<T>(schema: { parse(x: unknown): T }, raw: unknown, ctx: string): 
   return schema.parse(value);
 }
 
+/** G1 thread row persisted in SQLite */
+export interface ThreadRow {
+  id: string;
+  title: string;
+  preview: string;
+  projectId: string | null;
+  /** idle | offered | consumed */
+  proactiveStatus: string;
+  proactiveMessageId: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+
+function mapThread(r: Row): ThreadRow {
+  return {
+    id: String(r['id']),
+    title: String(r['title']),
+    preview: String(r['preview'] ?? ''),
+    projectId: r['project_id'] != null ? String(r['project_id']) : null,
+    proactiveStatus: String(r['proactive_status'] ?? 'idle'),
+    proactiveMessageId: r['proactive_message_id'] != null ? String(r['proactive_message_id']) : null,
+    updatedAt: String(r['updated_at']),
+    createdAt: String(r['created_at']),
+  };
+}
+
+
 /**
  * @fileoverview 强类型 SQLite 持久化门面（Storage Layer）
  * 
@@ -442,20 +469,184 @@ export class Storage {
       .run(f.id, f.cardId, f.kind, f.reason ?? null, f.createdAt);
   }
 
-  appendChat(m: { id: string; sessionId: string; role: string; content: string; runId?: string; adapter: string; createdAt: string }): void {
+  appendChat(m: {
+    id: string;
+    sessionId: string;
+    role: string;
+    content: string;
+    runId?: string;
+    adapter: string;
+    createdAt: string;
+    parts?: unknown;
+  }): void {
     this.db
-      .prepare('INSERT INTO chat_messages (id, session_id, role, content, run_id, adapter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(m.id, m.sessionId, m.role, m.content, m.runId ?? null, m.adapter, m.createdAt);
+      .prepare(
+        'INSERT INTO chat_messages (id, session_id, role, content, run_id, adapter, created_at, parts_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        m.id,
+        m.sessionId,
+        m.role,
+        m.content,
+        m.runId ?? null,
+        m.adapter,
+        m.createdAt,
+        m.parts === undefined ? null : j(m.parts),
+      );
   }
 
-  listChat(sessionId: string, limit = 200): Array<{ id: string; sessionId: string; role: string; content: string; runId?: string; adapter: string; createdAt: string }> {
+  updateChat(
+    id: string,
+    patch: { content?: string; parts?: unknown; runId?: string | null },
+  ): void {
+    const row = this.db.prepare('SELECT * FROM chat_messages WHERE id = ?').get(id) as Row | undefined;
+    if (!row) throw new Error(`chat message ${id} not found`);
+    const content = patch.content ?? String(row['content']);
+    const parts_json =
+      patch.parts === undefined
+        ? (row['parts_json'] as string | null)
+        : j(patch.parts);
+    const run_id =
+      patch.runId === undefined ? (row['run_id'] as string | null) : patch.runId;
+    this.db
+      .prepare('UPDATE chat_messages SET content = ?, parts_json = ?, run_id = ? WHERE id = ?')
+      .run(content, parts_json, run_id, id);
+  }
+
+  listChat(
+    sessionId: string,
+    limit = 200,
+  ): Array<{
+    id: string;
+    sessionId: string;
+    role: string;
+    content: string;
+    runId?: string;
+    adapter: string;
+    createdAt: string;
+    parts?: unknown;
+  }> {
     const rows = this.db
       .prepare('SELECT * FROM chat_messages WHERE session_id = ? ORDER BY created_at LIMIT ?')
       .all(sessionId, limit) as Row[];
-    return rows.map((r) => ({
-      id: String(r['id']), sessionId: String(r['session_id']), role: String(r['role']), content: String(r['content']),
-      runId: r['run_id'] ? String(r['run_id']) : undefined, adapter: String(r['adapter']), createdAt: String(r['created_at']),
-    }));
+    return rows.map((r) => {
+      let parts: unknown | undefined;
+      if (r['parts_json']) {
+        try {
+          parts = JSON.parse(String(r['parts_json']));
+        } catch {
+          parts = undefined;
+        }
+      }
+      return {
+        id: String(r['id']),
+        sessionId: String(r['session_id']),
+        role: String(r['role']),
+        content: String(r['content']),
+        runId: r['run_id'] ? String(r['run_id']) : undefined,
+        adapter: String(r['adapter']),
+        createdAt: String(r['created_at']),
+        ...(parts !== undefined ? { parts } : {}),
+      };
+    });
+  }
+
+  // ---------- threads (G1) ----------
+
+  ensureDefaultThread(): ThreadRow {
+    const existing = this.listThreads(1);
+    if (existing.length > 0) return existing[0]!;
+    const now = new Date().toISOString();
+    const thread: ThreadRow = {
+      id: 'thread-default',
+      title: '日常',
+      preview: '有需要时我会出现',
+      projectId: null,
+      proactiveStatus: 'idle',
+      proactiveMessageId: null,
+      updatedAt: now,
+      createdAt: now,
+    };
+    this.insertThread(thread);
+    return thread;
+  }
+
+  insertThread(t: ThreadRow): void {
+    this.db
+      .prepare(
+        `INSERT INTO threads (id, title, preview, project_id, proactive_status, proactive_message_id, updated_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        t.id,
+        t.title,
+        t.preview,
+        t.projectId,
+        t.proactiveStatus,
+        t.proactiveMessageId,
+        t.updatedAt,
+        t.createdAt,
+      );
+  }
+
+  getThread(id: string): ThreadRow | null {
+    const r = this.db.prepare('SELECT * FROM threads WHERE id = ?').get(id) as Row | undefined;
+    if (!r) return null;
+    return mapThread(r);
+  }
+
+  listThreads(limit = 100): ThreadRow[] {
+    const rows = this.db
+      .prepare('SELECT * FROM threads ORDER BY updated_at DESC LIMIT ?')
+      .all(Math.min(Math.max(limit, 1), 200)) as Row[];
+    return rows.map(mapThread);
+  }
+
+  touchThread(id: string, preview?: string): void {
+    const cur = this.getThread(id);
+    if (!cur) return;
+    const now = new Date().toISOString();
+    const nextPreview =
+      preview === undefined ? cur.preview : preview.slice(0, 80);
+    this.db
+      .prepare('UPDATE threads SET preview = ?, updated_at = ? WHERE id = ?')
+      .run(nextPreview, now, id);
+  }
+
+  updateThreadProactive(
+    id: string,
+    patch: { proactiveStatus: string; proactiveMessageId?: string | null },
+  ): void {
+    const cur = this.getThread(id);
+    if (!cur) throw new Error(`thread ${id} not found`);
+    const msgId =
+      patch.proactiveMessageId === undefined
+        ? cur.proactiveMessageId
+        : patch.proactiveMessageId;
+    this.db
+      .prepare(
+        'UPDATE threads SET proactive_status = ?, proactive_message_id = ?, updated_at = ? WHERE id = ?',
+      )
+      .run(patch.proactiveStatus, msgId, new Date().toISOString(), id);
+  }
+
+  /** Ensure a thread row exists for chat sessionId=threadId mapping. */
+  ensureThread(id: string, title = '新线程'): ThreadRow {
+    const cur = this.getThread(id);
+    if (cur) return cur;
+    const now = new Date().toISOString();
+    const thread: ThreadRow = {
+      id,
+      title,
+      preview: '',
+      projectId: null,
+      proactiveStatus: 'idle',
+      proactiveMessageId: null,
+      updatedAt: now,
+      createdAt: now,
+    };
+    this.insertThread(thread);
+    return thread;
   }
 
   /**
@@ -489,7 +680,7 @@ export class Storage {
     if (Number(nonDemo['n']) > 0) throw new Error('refusing reset: non-demo projects present');
     this.db.exec('BEGIN');
     try {
-      for (const t of ['audit_log', 'feedback', 'chat_messages', 'evidence', 'run_steps', 'runs', 'approvals', 'cards', 'candidates', 'events', 'sources', 'settings']) {
+      for (const t of ['audit_log', 'feedback', 'chat_messages', 'threads', 'evidence', 'run_steps', 'runs', 'approvals', 'cards', 'candidates', 'events', 'sources', 'settings']) {
         this.db.exec(`DELETE FROM ${t}`);
       }
       this.db.exec('COMMIT');

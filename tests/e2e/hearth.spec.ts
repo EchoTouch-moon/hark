@@ -20,7 +20,7 @@ function cardByTitle(page: Page, title: string) {
 }
 
 async function seedViaUi(page: Page): Promise<void> {
-  await page.goto('/demo');
+  await page.goto('/cards');
   await page.getByRole('button', { name: /初始化|Demo 数据/ }).first().click();
   await expect(page.getByRole('button', { name: '查看证据' }).first()).toBeVisible({ timeout: 20_000 });
 }
@@ -39,7 +39,7 @@ async function expandHistory(page: Page): Promise<void> {
 test.describe.configure({ mode: 'serial' });
 
 test('E2E-11: 首次运行是真实空态，不制造假任务', async ({ page }) => {
-  await page.goto('/demo');
+  await page.goto('/cards');
   await expect(page.getByText(/没有值得打扰你的事情/)).toBeVisible({ timeout: 15_000 });
 });
 
@@ -56,7 +56,7 @@ test('E2E-01: 初始化 Demo → 3 张卡片含 whyNow/来源/风险', async ({ 
 });
 
 test('E2E-02: 查看证据 → 执行 → completed + 真实 artifact + sha256', async ({ page }) => {
-  await page.goto('/demo');
+  await page.goto('/cards');
   const ciCard = cardByTitle(page, '项目构建未通过');
   await ciCard.getByRole('button', { name: /查看证据/ }).click();
   await expect(page.getByText(/fixture:\/\//).first()).toBeVisible();
@@ -79,7 +79,7 @@ test('E2E-02: 查看证据 → 执行 → completed + 真实 artifact + sha256',
 });
 
 test('E2E-03: 刷新后状态保持一致（服务端持久化）', async ({ page }) => {
-  await page.goto('/demo');
+  await page.goto('/cards');
   await expandHistory(page);
   await expect(cardByTitle(page, '项目构建未通过').getByText(/已完成|completed/i).first()).toBeVisible({ timeout: 20_000 });
   await page.reload();
@@ -89,7 +89,7 @@ test('E2E-03: 刷新后状态保持一致（服务端持久化）', async ({ pag
 });
 
 test('E2E-04: 快速双击不产生双副作用（幂等）', async ({ page }) => {
-  await page.goto('/demo');
+  await page.goto('/cards');
   const card = cardByTitle(page, '可以继续上次的研究');
   const btn = card.getByRole('button', { name: /开始处理/ }).first();
   await btn.click({ clickCount: 2, delay: 30 });
@@ -106,7 +106,7 @@ test('E2E-04: 快速双击不产生双副作用（幂等）', async ({ page }) =
 });
 
 test('E2E-06: 忽略后卡片不再出现在主动建议（刷新也不重现）', async ({ page }) => {
-  await page.goto('/demo');
+  await page.goto('/cards');
   const card = cardByTitle(page, '两场会议需要协调');
   await card.getByRole('button', { name: /忽略/ }).click();
   // ConfirmDialog 确认
@@ -128,12 +128,12 @@ test('E2E-07: 项目隔离由服务端保证', async ({ page }) => {
 });
 
 test('E2E-08: Chat mock 回复、持久化、明确 Demo 标识', async ({ page }) => {
-  await page.goto('/chat');
+  await page.goto('/');
   await expect(page.getByText(/离线演示|不连接模型/).first()).toBeVisible();
   const input = page.locator('#chat-input');
   await input.fill('CI 失败了怎么办');
   await input.press('Enter');
-  await expect(page.getByRole('main').getByText(/Mock|Hearth · Mock/).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/Mock|Hearth · Mock/).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/离线演示/).first()).toBeVisible();
   await page.screenshot({ path: `${SHOT_DIR}/ui-chat.png`, fullPage: true });
   await page.reload();
@@ -142,7 +142,7 @@ test('E2E-08: Chat mock 回复、持久化、明确 Demo 标识', async ({ page 
 
 test('Settings 保存可持久化', async ({ page }) => {
   await page.goto('/settings');
-  await expect(page.getByRole('main').getByText(/Demo|演示/).first()).toBeVisible();
+  await expect(page.getByText(/Demo|演示/).first()).toBeVisible();
   const budget = page.locator('input[type="number"]').first();
   await budget.fill('2');
   await page.getByRole('button', { name: /保存/ }).click();
@@ -154,7 +154,7 @@ test('Settings 保存可持久化', async ({ page }) => {
 
 test('视口 1280×800 无水平滚动', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('/demo');
+  await page.goto('/');
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
@@ -162,7 +162,7 @@ test('视口 1280×800 无水平滚动', async ({ page }) => {
 });
 
 test('Activity 页可见 run 时间线与验证证据', async ({ page }) => {
-  await page.goto('/demo');
+  await page.goto('/cards');
   await expandHistory(page);
   const ciCard = cardByTitle(page, '项目构建未通过');
   const link = ciCard.getByRole('link').first();
