@@ -35,7 +35,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
   const port = Number(process.env['HEARTH_PORT'] ?? 4317);
   const host = process.env['HEARTH_HOST'] ?? '127.0.0.1';
   const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..');
-  return {
+  const config = {
     host,
     port,
     dbPath: process.env['HEARTH_DB'] ?? path.join(repoRoot, 'data', 'dev.sqlite'),
@@ -53,4 +53,6 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     repoRoot,
     ...overrides,
   };
+  if (!['127.0.0.1', '::1', 'localhost'].includes(config.host)) throw new Error('仅允许 loopback 监听；当前没有远程身份认证');
+  return config;
 }

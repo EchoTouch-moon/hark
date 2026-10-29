@@ -15,7 +15,7 @@ export interface StartAnalysisInput {
 }
 
 export class AnalysisService {
-  private readonly inflight = new Map<string, AbortController>();
+  private readonly inflight = new Map<string, { projectId: string; controller: AbortController; done: Promise<void> }>();
 
   constructor(
     private readonly deps: {
@@ -24,21 +24,35 @@ export class AnalysisService {
       store: AnalysisStore;
       provider: AnalysisProvider;
       now?: () => string;
+      maxConcurrent?: number;
+      maxDailyRequests?: number;
     },
   ) {}
 
   close(): void {
-    for (const controller of this.inflight.values()) controller.abort();
+    for (const entry of this.inflight.values()) entry.controller.abort();
     this.inflight.clear();
     this.deps.store.close();
   }
 
+  async shutdown(): Promise<void> {
+    for (const entry of this.inflight.values()) entry.controller.abort();
+    await Promise.all([...this.inflight.values()].map(entry => entry.done));
+    this.close();
+  }
+
   async start(input: StartAnalysisInput): Promise<AnalysisRunView> {
-    if (this.deps.store.runningCount(input.projectId) > 0 || this.inflight.has(input.projectId)) {
+    if (this.deps.store.runningCount(input.projectId) > 0 || [...this.inflight.values()].some(entry => entry.projectId === input.projectId)) {
       throw new AnalysisError('IN_FLIGHT', 'an analysis is already running for this project');
     }
+    if (this.deps.store.pendingDeletions().includes(input.projectId)) throw new AnalysisError('PROJECT_DELETING', '项目正在清除历史');
+    if (this.inflight.size >= (this.deps.maxConcurrent ?? 1)) throw new AnalysisError('CAPACITY', '模型全局并发限额已满');
+    if (input.trigger === 'insight' && !input.insightId) throw new AnalysisError('INVALID_INSIGHT', '洞察入口必须指定目标洞察');
     const now = this.now();
-    const context = requireProjectContext(this.deps.observer, this.deps.insight, input.projectId, now);
+    if (this.deps.provider.id !== 'mock' && this.deps.store.requestsSince(now.slice(0, 10)) >= (this.deps.maxDailyRequests ?? 20)) {
+      throw new AnalysisError('BUDGET', '模型每日请求预算已用完');
+    }
+    const context = requireProjectContext(this.deps.observer, this.deps.insight, input.projectId, now, input.insightId);
     const id = `anl_${randomBytes(8).toString('hex')}`;
     this.deps.store.insertRunning({
       id,
@@ -54,7 +68,9 @@ export class AnalysisService {
       startedAt: now,
     });
     const controller = new AbortController();
-    this.inflight.set(input.projectId, controller);
+    let resolveDone!: () => void;
+    const done = new Promise<void>(resolve => { resolveDone = resolve; });
+    this.inflight.set(id, { projectId: input.projectId, controller, done });
     const started = Date.now();
     try {
       const outcome = await this.deps.provider.analyze({
@@ -62,6 +78,7 @@ export class AnalysisService {
         insightId: input.insightId,
         signal: controller.signal,
       });
+      if (controller.signal.aborted) throw new AnalysisError('CANCELLED', 'analysis cancelled');
       const finishedAt = this.now();
       const usage = { latencyMs: Date.now() - started, inputChars: JSON.stringify(context).length };
       if (outcome.kind === 'unavailable') {
@@ -100,18 +117,40 @@ export class AnalysisService {
         finishedAt,
       });
     } finally {
-      this.inflight.delete(input.projectId);
+      this.inflight.delete(id);
+      resolveDone();
     }
     const view = this.deps.store.get(id);
     if (view === null) throw new AnalysisError('NOT_FOUND', `run ${id} missing after persist`);
     return this.withStale(view, input.projectId);
   }
 
-  cancel(projectId: string): boolean {
-    const controller = this.inflight.get(projectId);
-    if (controller === undefined) return false;
-    controller.abort();
+  recoverInterrupted(): number { return this.deps.store.recoverInterrupted(this.now()); }
+
+  cancel(runId: string): boolean {
+    const entry = this.inflight.get(runId);
+    if (!entry) return false;
+    entry.controller.abort();
     return true;
+  }
+
+  async removeProject(projectId: string): Promise<void> {
+    this.deps.store.requestDeletion(projectId, this.now());
+    const running = [...this.inflight.values()].filter(entry => entry.projectId === projectId);
+    for (const entry of running) entry.controller.abort();
+    await Promise.all(running.map(entry => entry.done));
+    try { await this.deps.observer.removeProject(projectId); }
+    catch (cause) { if ((cause as {code?: string}).code !== 'PROJECT_NOT_FOUND') throw cause; }
+    this.deps.insight?.purgeProject(projectId);
+    this.deps.store.finishDeletion(projectId);
+  }
+
+  async recoverDeletions(): Promise<void> {
+    for (const id of this.deps.store.pendingDeletions()) await this.removeProject(id);
+  }
+
+  identity(): {provider: string; model: string | null} {
+    return { provider: this.deps.provider.id, model: this.deps.provider.model };
   }
 
   get(id: string): AnalysisRunView | null {

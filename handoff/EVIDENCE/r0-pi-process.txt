@@ -1,0 +1,35 @@
+
+ RUN  v3.2.7 /Users/v/new-idea/hark
+
+ ✓ packages/project-analysis/src/providers/pi.test.ts (11 tests) 3046ms
+   ✓ caps infinite stdout output and waits for the TERM-ignoring child to exit  426ms
+   ✓ caps infinite stderr output and waits for the TERM-ignoring child to exit  448ms
+   ✓ escalates a timeout to SIGKILL and waits for process exit  1053ms
+   ✓ cancels a running TERM-ignoring child without leaving an abort listener  425ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  15:17:17
+   Duration  3.33s (transform 41ms, setup 0ms, collect 53ms, tests 3.05s, environment 0ms, prepare 44ms)
+
+$ tsc -p tsconfig.json --noEmit && pnpm --filter @hearth/web typecheck
+packages/project-observer/src/reports/junit.ts(50,11): error TS18048: 'parent' is possibly 'undefined'.
+packages/project-observer/src/reports/junit.ts(51,7): error TS18048: 'parent' is possibly 'undefined'.
+packages/project-observer/src/reports/junit.ts(65,9): error TS18048: 'frame' is possibly 'undefined'.
+packages/project-observer/src/reports/junit.ts(66,7): error TS18048: 'frame' is possibly 'undefined'.
+packages/project-observer/src/reports/junit.ts(67,7): error TS18048: 'frame' is possibly 'undefined'.
+packages/project-observer/src/reports/junit.ts(67,20): error TS18048: 'frame' is possibly 'undefined'.
+packages/project-observer/src/reports/junit.ts(68,24): error TS18048: 'frame' is possibly 'undefined'.
+packages/project-observer/src/reports/junit.ts(70,23): error TS18048: 'frame' is possibly 'undefined'.
+packages/project-observer/src/reports/junit.ts(72,95): error TS18048: 'frame' is possibly 'undefined'.
+packages/project-observer/src/reports/junit.ts(79,112): error TS18048: 'frame' is possibly 'undefined'.
+packages/project-observer/src/reports/junit.ts(89,18): error TS18048: 'root' is possibly 'undefined'.
+[ELIFECYCLE] Command failed with exit code 2.
+
+Command results:
+- pnpm exec vitest run packages/project-analysis/src/providers/pi.test.ts: exit 0, 11/11 tests.
+- pnpm typecheck: exit 2 during concurrent junit.ts edits; TS18048 diagnostics above belong to the other non-overlapping task. Earlier check before those edits exited 0. Integrator must rerun after merge.
+- pnpm exec eslint packages/project-analysis/src/providers/pi.ts packages/project-analysis/src/providers/pi.test.ts --max-warnings=0: exit 0.
+- git diff --check for pi.ts/pi.test.ts: exit 0.
+All child programs were synthetic local fixture programs; no real Pi/model request was made.
+Limits: POSIX process group TERM/KILL; Windows direct child only. This is not a sandbox against malicious provider extensions that escape the process group or external side effects. Global analysis concurrency/budget is handled by the integrating task.

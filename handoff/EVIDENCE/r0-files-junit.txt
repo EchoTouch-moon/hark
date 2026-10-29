@@ -1,0 +1,39 @@
+
+ RUN  v3.2.7 /Users/v/new-idea/hark
+
+ ✓ packages/project-analysis/src/context/files.r0.test.ts (4 tests) 12ms
+ ✓ packages/project-observer/src/junit.test.ts (17 tests) 11ms
+(node:77405) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:77404) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:77403) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-analysis/src/context/assemble.test.ts (2 tests) 190ms
+ ✓ packages/project-observer/src/observer.h03.test.ts (7 tests) 955ms
+ ✓ packages/project-observer/src/observer.p0.test.ts (17 tests) 3476ms
+   ✓ Project Observer P0 > T01 registers three fixtures and rejects duplicate paths  444ms
+   ✓ Project Observer P0 > T13 handles unborn, detached HEAD, and git worktree  417ms
+
+ Test Files  5 passed (5)
+      Tests  47 passed (47)
+   Start at  15:18:49
+   Duration  4.00s (transform 426ms, setup 0ms, collect 1.06s, tests 4.64s, environment 1ms, prepare 430ms)
+
+
+Changed-file lint:
+Command: pnpm exec eslint packages/project-analysis/src/context/files.ts packages/project-analysis/src/context/files.r0.test.ts packages/project-observer/src/reports/junit.ts packages/project-observer/src/junit.test.ts --max-warnings=0
+Exit: 0 (no output)
+
+Typecheck (parallel-workspace snapshot):
+Command: pnpm typecheck
+Exit: 2
+packages/project-analysis/src/engine/remediation.test.ts(83,217): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+This belongs to the parent-owned concurrent task; no remaining diagnostic named files owned by this task. Parent will run the final whole-repository gate after integration.
+
+Boundaries:
+- Context capture reads <=8192 bytes from an fd opened with O_NOFOLLOW/O_NONBLOCK where available, checks canonical containment and opened inode before/after reading, and rejects files changed during the read.
+- SHA256 describes captured prefix bytes; bytes is full file size; truncated flags unread suffix. It is not a whole-file hash for large files.
+- A 100MiB sparse synthetic file test observes only fixed-prefix readSync request sizes.
+- XML: strict saxes 6.0.0; no DTD/entity support; 16MiB input, 64 levels, 200000 node caps; suite counters must agree with case outcomes; skipped-only remains UNKNOWN.
+- No claim of an OS sandbox or complete protection from adversarial kernel/filesystem behavior.

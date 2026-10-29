@@ -58,3 +58,7 @@ M2-GATE（全部 20 个 overnight 任务完成）。
 ## 2026-10-29 · GitHub 同步准备
 
 已创建私有仓库 EchoTouch-moon/hark 并配置 origin；源码/测试/验收文档快照纳入同步提交，未跟踪截图保留本地。全仓 306 tests/typecheck 复用本次 P2-A 验证（同一源码工作区），本次新增验证完整 web+server build exit 0，证据 handoff/EVIDENCE/github-sync-build.txt。提交内容密钥特征扫描无命中；历史唯一特征命中是 assemble.test.ts 的合成测试字符串。远端是否最新以 git rev-parse HEAD 与 git ls-remote origin refs/heads/master 对比为准。多端使用说明见 README-dev.md。
+
+## 2026-10-29 · R0 PASS
+
+审计H02/03/04/05/06/07/09/10修复与故障注入通过；40文件338测试、全仓typecheck、改动文件lint通过。证据 docs/verification/remediation-r0.md 与 handoff/EVIDENCE/r0-*。开始R1前已完成该门禁；尚未验收R1/R2。

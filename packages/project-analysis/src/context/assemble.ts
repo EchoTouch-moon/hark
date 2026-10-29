@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { InsightStore } from '@hearth/project-insight';
-import { listInsights } from '@hearth/project-insight';
+import { getInsight, listInsights } from '@hearth/project-insight';
 import type { ProjectObserver } from '@hearth/project-observer';
 import { AnalysisError } from '../errors.js';
 import type { AnalysisEvidenceRef, ProjectContext } from '../contracts.js';
@@ -48,19 +48,30 @@ export function assembleProjectContext(
   insight: InsightStore | undefined,
   projectId: string,
   nowIso: string,
+  insightId?: string,
 ): ProjectContext {
   const project = observer.getProject(projectId);
   const snapshot = observer.getLatestSnapshot(projectId);
   const health = observer.getObserverHealth(projectId);
   const events = observer.listEvents(projectId, { limit: 12 }).events;
   const forward = observer.listEventsForward(projectId, { limit: 1 });
-  const insights = insight
+  let targetDetail: ReturnType<typeof getInsight> = null;
+  let insights = insight
     ? listInsights(insight, {
         projectId,
         statuses: ['OPEN', 'ACKNOWLEDGED', 'DISMISSED', 'RESOLVED', 'WITHDRAWN'],
         limit: 8,
       }).items
     : [];
+  if (insightId) {
+    const target = insight ? getInsight(insight, insightId) : null;
+    if (!target || target.projectId !== projectId) throw new AnalysisError('INVALID_INSIGHT', '目标洞察不存在或不属于当前项目');
+    if (target.streamEpoch !== forward.streamEpoch || target.engineFrozen || target.historical || target.evidenceAvailability !== 'AVAILABLE') {
+      throw new AnalysisError('STALE_INSIGHT', '目标洞察的证据或事件代次不可用于当前分析');
+    }
+    targetDetail = target;
+    insights = [target, ...insights.filter(item => item.id !== insightId)].slice(0, 8);
+  }
   const test = snapshot?.test;
   const testResult = test?.result ?? 'UNKNOWN';
   const testQuality = test?.evidenceQuality ?? 'UNKNOWN';
@@ -133,12 +144,16 @@ export function assembleProjectContext(
       status: item.status,
       title: item.title,
       summary: item.summary,
+      ...(targetDetail?.id === item.id ? {
+        reasonCodes: targetDetail.reasonCodes,
+        evidence: targetDetail.evidence.map(ref => ({sourceKind: ref.sourceKind, sourceId: ref.sourceId, quality: ref.quality})),
+      } : {}),
     })),
     files,
     availableEvidence,
-    assembledAt: nowIso,
+
   };
-  return { ...body, contextFingerprint: fingerprint(body) };
+  return { ...body, assembledAt: nowIso, contextFingerprint: fingerprint(body) };
 }
 
 export function requireProjectContext(
@@ -146,9 +161,10 @@ export function requireProjectContext(
   insight: InsightStore | undefined,
   projectId: string,
   nowIso: string,
+  insightId?: string,
 ): ProjectContext {
   try {
-    return assembleProjectContext(observer, insight, projectId, nowIso);
+    return assembleProjectContext(observer, insight, projectId, nowIso, insightId);
   } catch (cause) {
     if (cause instanceof AnalysisError) throw cause;
     throw new AnalysisError('CONTEXT_FAILED', cause instanceof Error ? cause.message : 'context assembly failed', {

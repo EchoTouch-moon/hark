@@ -29,7 +29,7 @@ function requireAnalysis(deps: AppDeps): AnalysisService {
 function sendAnalysisError(reply: { status: (code: number) => { send: (body: unknown) => unknown } }, cause: unknown) {
   if (isAnalysisError(cause)) {
     const status =
-      cause.code === 'NOT_FOUND' ? 404 : cause.code === 'IN_FLIGHT' ? 409 : cause.code === 'CANCELLED' ? 409 : 400;
+      cause.code === 'NOT_FOUND' ? 404 : ['IN_FLIGHT', 'STALE_INSIGHT', 'CAPACITY', 'BUDGET', 'PROJECT_DELETING'].includes(cause.code) ? 409 : cause.code === 'CANCELLED' ? 409 : 400;
     return reply.status(status).send({ error: { code: cause.code, message: cause.message } });
   }
   throw cause;
@@ -70,7 +70,7 @@ export function registerAnalysisRoutes(app: FastifyInstance, deps: AppDeps): voi
     if (run === null) {
       return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'analysis run not found' } });
     }
-    analysis.cancel(run.projectId);
+    analysis.cancel(id);
     return reply.send({ ok: true });
   });
 

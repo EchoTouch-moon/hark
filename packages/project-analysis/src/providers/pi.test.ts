@@ -1,7 +1,8 @@
 import { afterEach, expect, it } from 'vitest';
-import { mkdtempSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, chmodSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { PiAnalysisProvider } from './pi.js';
 import type { ProjectContext } from '../contracts.js';
 
@@ -52,4 +53,79 @@ it('accepts an honest no-recommendation outcome', async () => {
   const bin = cli(`console.log(JSON.stringify({kind:'no_recommendation',reason:'Insufficient evidence'}));`);
   const provider = new PiAnalysisProvider({ bin, provider: 'p', model: 'm' });
   await expect(provider.analyze(input)).resolves.toEqual({ kind: 'no_recommendation', reason: 'Insufficient evidence' });
+});
+
+function marker(): string {
+  const dir = mkdtempSync(path.join(tmpdir(), 'hearth-pi-pid-'));
+  dirs.push(dir);
+  return path.join(dir, 'pid');
+}
+async function waitStarted(file: string): Promise<number> {
+  for (let i = 0; i < 150; i += 1) {
+    if (existsSync(file)) return Number(readFileSync(file, 'utf8'));
+    await delay(10);
+  }
+  throw new Error('synthetic child did not start');
+}
+function expectExited(pid: number): void {
+  expect(() => process.kill(pid, 0)).toThrow();
+}
+function hangingCli(file: string, tail = ''): string {
+  return cli(`const fs=require('node:fs');
+    process.on('SIGTERM',()=>{});
+    fs.writeFileSync(${JSON.stringify(file)}, String(process.pid));
+    setInterval(()=>{},1000);
+    ${tail}`);
+}
+it.each(['stdout', 'stderr'] as const)('caps infinite %s output and waits for the TERM-ignoring child to exit', async (stream) => {
+  const file = marker();
+  const bin = hangingCli(file, `setInterval(()=>process.${stream}.write(Buffer.alloc(4096,120)),5);`);
+  const provider = new PiAnalysisProvider({ bin, provider: 'p', model: 'm', maxStdoutBytes: 128, maxStderrBytes: 128, killGraceMs: 40 });
+  const result = provider.analyze(input);
+  // Register the rejection assertion immediately to avoid an unhandled rejection.
+  const settled = expect(result).rejects.toMatchObject({ code: 'OUTPUT_LIMIT', message: `Pi ${stream} exceeded the byte limit` });
+  const pid = await waitStarted(file);
+  await settled;
+  expectExited(pid);
+});
+it('escalates a timeout to SIGKILL and waits for process exit', async () => {
+  const file = marker();
+  const provider = new PiAnalysisProvider({ bin: hangingCli(file), provider: 'p', model: 'm', timeoutMs: 1000, killGraceMs: 40 });
+  const result = provider.analyze(input);
+  const settled = expect(result).rejects.toMatchObject({ code: 'TIMEOUT' });
+  const pid = await waitStarted(file);
+  await settled;
+  expectExited(pid);
+});
+it('cancels a running TERM-ignoring child without leaving an abort listener', async () => {
+  const file = marker();
+  const controller = new AbortController();
+  let added = 0, removed = 0;
+  const add = controller.signal.addEventListener.bind(controller.signal);
+  const remove = controller.signal.removeEventListener.bind(controller.signal);
+  controller.signal.addEventListener = (...args: Parameters<typeof add>) => { added += 1; return add(...args); };
+  controller.signal.removeEventListener = (...args: Parameters<typeof remove>) => { removed += 1; return remove(...args); };
+  const provider = new PiAnalysisProvider({ bin: hangingCli(file), provider: 'p', model: 'm', killGraceMs: 40 });
+  const result = provider.analyze({ ...input, signal: controller.signal });
+  const settled = expect(result).rejects.toMatchObject({ code: 'CANCELLED' });
+  const pid = await waitStarted(file);
+  controller.abort();
+  await settled;
+  expectExited(pid);
+  expect(added).toBe(1);
+  expect(removed).toBe(1);
+});
+it('does not spawn a child when the signal is already aborted', async () => {
+  const file = marker();
+  const controller = new AbortController();
+  controller.abort();
+  const provider = new PiAnalysisProvider({ bin: hangingCli(file), provider: 'p', model: 'm' });
+  await expect(provider.analyze({ ...input, signal: controller.signal })).rejects.toMatchObject({ code: 'CANCELLED' });
+  expect(existsSync(file)).toBe(false);
+});
+it('rejects invalid byte/deadline limits and reports spawn failure without leaking paths', async () => {
+  const provider = new PiAnalysisProvider({ provider: 'p', model: 'm', maxStdoutBytes: Number.NaN });
+  await expect(provider.analyze(input)).rejects.toMatchObject({ code: 'CONFIGURATION' });
+  const missing = new PiAnalysisProvider({ provider: 'p', model: 'm', bin: '/missing/synthetic/pi' });
+  await expect(missing.analyze(input)).rejects.toMatchObject({ code: 'UNAVAILABLE', message: 'Pi executable unavailable' });
 });

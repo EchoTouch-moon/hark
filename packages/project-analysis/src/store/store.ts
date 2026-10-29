@@ -18,6 +18,30 @@ export class AnalysisStore {
     this.db.close();
   }
 
+  recoverInterrupted(now: string): number {
+    return Number(this.db.prepare(`UPDATE analysis_runs SET status='failed', error_code='INTERRUPTED',
+      error_message='服务已中断；未自动重新调用模型', finished_at=? WHERE status IN ('queued','running')`).run(now).changes);
+  }
+
+  requestDeletion(projectId: string, now: string): void {
+    this.db.prepare('INSERT OR IGNORE INTO analysis_deletions VALUES (?,?)').run(projectId, now);
+  }
+  pendingDeletions(): string[] {
+    return (this.db.prepare('SELECT project_id FROM analysis_deletions').all() as Array<{project_id: string}>).map(r => r.project_id);
+  }
+  finishDeletion(projectId: string): void {
+    this.db.exec('BEGIN');
+    try {
+      this.db.prepare('DELETE FROM analysis_feedback WHERE run_id IN (SELECT run_id FROM analysis_runs WHERE project_id=?)').run(projectId);
+      this.db.prepare('DELETE FROM analysis_runs WHERE project_id=?').run(projectId);
+      this.db.prepare('DELETE FROM analysis_deletions WHERE project_id=?').run(projectId);
+      this.db.exec('COMMIT');
+    } catch (cause) { this.db.exec('ROLLBACK'); throw cause; }
+  }
+  requestsSince(since: string): number {
+    return Number((this.db.prepare("SELECT COUNT(*) AS n FROM analysis_runs WHERE provider != 'mock' AND started_at >= ?").get(since) as {n: number}).n);
+  }
+
   insertRunning(input: {
     id: string;
     projectId: string;
@@ -70,7 +94,7 @@ export class AnalysisStore {
     this.db
       .prepare(
         `UPDATE analysis_runs SET status = ?, recommendation_json = ?, error_code = ?, error_message = ?, usage_json = ?, finished_at = ?
-         WHERE run_id = ?`,
+         WHERE run_id = ? AND status IN ('queued','running')`,
       )
       .run(
         patch.status,

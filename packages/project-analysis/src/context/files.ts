@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { closeSync, constants, existsSync, fstatSync, lstatSync, openSync, readSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { AnalysisError } from '../errors.js';
@@ -31,7 +31,8 @@ export function listCandidateRelativePaths(root: string): string[] {
     if (existsSync(path.join(root, name))) out.push(name);
   }
   const docsDir = path.join(root, 'docs');
-  if (existsSync(docsDir) && statSync(docsDir).isDirectory()) {
+  if (existsSync(docsDir) && !lstatSync(docsDir).isSymbolicLink() && lstatSync(docsDir).isDirectory()
+      && isInsideRoot(realpathSync.native(root), realpathSync.native(docsDir))) {
     const names = listMarkdown(docsDir, 'docs', 4);
     out.push(...names);
   }
@@ -53,28 +54,64 @@ export function readAllowedFile(root: string, relativePath: string): FileExcerpt
   }
   const lexical = path.resolve(root, relativePath);
   if (!isInsideRoot(root, lexical) || !existsSync(lexical)) return null;
-  let real: string;
+  const canonicalRoot = realpathSync.native(root);
+  // Reject links in every path component, not only the leaf. The opened fd is
+  // checked against the current canonical path before and after bounded reads.
+  let current = canonicalRoot;
+  for (const component of path.relative(root, lexical).split(path.sep)) {
+    current = path.join(current, component);
+    if (lstatSync(current).isSymbolicLink()) {
+      throw new AnalysisError('PATH_ESCAPE', `symbolic context path rejected: ${relativePath}`);
+    }
+  }
+  let fd: number;
   try {
-    real = realpathSync.native(lexical);
-  } catch {
-    throw new AnalysisError('PATH_ESCAPE', `unable to resolve ${relativePath}`);
+    fd = openSync(lexical, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0));
+  } catch (cause) {
+    throw new AnalysisError('PATH_ESCAPE', `unable to open context path: ${relativePath}`, { cause });
   }
-  if (!isInsideRoot(root, real)) {
-    throw new AnalysisError('PATH_ESCAPE', `file escapes project root: ${relativePath}`);
+  try {
+    const opened = fstatSync(fd);
+    if (!opened.isFile()) return null;
+    const validateOpenedPath = () => {
+      const real = realpathSync.native(lexical);
+      if (!isInsideRoot(canonicalRoot, real)) {
+        throw new AnalysisError('PATH_ESCAPE', `file escapes project root: ${relativePath}`);
+      }
+      const atPath = statSync(real);
+      if (atPath.dev !== opened.dev || atPath.ino !== opened.ino || lstatSync(lexical).isSymbolicLink()) {
+        throw new AnalysisError('PATH_ESCAPE', `context path changed during read: ${relativePath}`);
+      }
+    };
+    validateOpenedPath();
+    const raw = Buffer.alloc(Math.min(opened.size, MAX_FILE_BYTES));
+    let offset = 0;
+    while (offset < raw.length) {
+      const count = readSync(fd, raw, offset, raw.length - offset, offset);
+      if (count === 0) break;
+      offset += count;
+    }
+    validateOpenedPath();
+    const after = fstatSync(fd);
+    if (after.size !== opened.size || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs) {
+      throw new AnalysisError('PATH_ESCAPE', `context file changed during read: ${relativePath}`);
+    }
+    const prefix = raw.subarray(0, offset);
+    const excerpt = redactSecrets(stripControlChars(prefix.toString('utf8')));
+    return {
+      relativePath: relativePath.replaceAll('\\', '/'),
+      // This is the hash of the captured prefix, not an unbounded whole-file hash.
+      sha256: createHash('sha256').update(prefix).digest('hex'),
+      bytes: opened.size,
+      excerpt,
+      truncated: opened.size > prefix.length,
+    };
+  } catch (cause) {
+    if (cause instanceof AnalysisError) throw cause;
+    throw new AnalysisError('PATH_ESCAPE', `context path unavailable during read: ${relativePath}`, { cause });
+  } finally {
+    closeSync(fd);
   }
-  const stat = statSync(real);
-  if (!stat.isFile()) return null;
-  const raw = readFileSync(real);
-  const truncated = raw.byteLength > MAX_FILE_BYTES;
-  const slice = raw.subarray(0, MAX_FILE_BYTES);
-  const excerpt = redactSecrets(stripControlChars(slice.toString('utf8')));
-  return {
-    relativePath: relativePath.replaceAll('\\', '/'),
-    sha256: createHash('sha256').update(raw).digest('hex'),
-    bytes: raw.byteLength,
-    excerpt,
-    truncated,
-  };
 }
 
 export function collectProjectFiles(root: string): FileExcerpt[] {

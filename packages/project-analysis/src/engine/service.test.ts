@@ -93,7 +93,8 @@ describe('analysis service', () => {
     for (let i = 0; i < 40 && store.runningCount(project.id) === 0; i += 1) {
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
-    expect(service.cancel(project.id)).toBe(true);
+    const active = store.list(project.id).find(run => run.status === 'running');
+    expect(service.cancel(active!.id)).toBe(true);
     const run = await pending;
     expect(run.status).toBe('cancelled');
     release();

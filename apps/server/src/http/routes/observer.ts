@@ -178,8 +178,8 @@ export function registerObserverRoutes(app: FastifyInstance, deps: AppDeps): voi
     const observer = requireObserver(deps);
     const { id } = req.params as { id: string };
     try {
-      await observer.removeProject(id);
-      deps.insight?.purgeProject(id);
+      if (deps.analysis) await deps.analysis.removeProject(id);
+      else { await observer.removeProject(id); deps.insight?.purgeProject(id); }
       return reply.status(204).send();
     } catch (cause) {
       return sendObserverError(reply, cause);

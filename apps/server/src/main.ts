@@ -76,6 +76,9 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
       : new MockAnalysisProvider();
   const analysis = new AnalysisService({ observer, insight, store: analysisStore, provider: analysisProvider });
 
+  analysis.recoverInterrupted();
+  await analysis.recoverDeletions();
+
   const deps: AppDeps = {
     config,
     storage,
@@ -115,10 +118,11 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
 
   const app = buildApp(deps);
   app.addHook('onClose', async () => {
+    await analysis.shutdown();
     await observer.stop();
     observer.close();
     insight.close();
-    analysis.close();
+
   });
 
   // serve the built SPA when present (same-origin for E2E/demo)

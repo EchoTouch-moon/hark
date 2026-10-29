@@ -1,0 +1,12 @@
+
+ RUN  v3.2.7 /Users/v/new-idea/hark
+
+(node:79490) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-analysis/src/engine/remediation.test.ts (8 tests) 1253ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  15:19:09
+   Duration  1.83s (transform 207ms, setup 0ms, collect 312ms, tests 1.25s, environment 0ms, prepare 57ms)
+

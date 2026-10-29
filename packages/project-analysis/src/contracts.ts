@@ -111,6 +111,8 @@ export const ProjectContextSchema = z
           status: z.string(),
           title: z.string(),
           summary: z.string(),
+          reasonCodes: z.array(z.string()).optional(),
+          evidence: z.array(z.object({ sourceKind: z.string(), sourceId: z.string(), quality: z.string() }).strict()).optional(),
         })
         .strict(),
     ),
