@@ -1,0 +1,20 @@
+$ eslint .
+
+/Users/v/new-idea/hark/packages/contracts/src/contracts.test.ts
+  71:24  warning  '_drop' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/v/new-idea/hark/packages/core/src/orchestration/orchestrator.test.ts
+  206:13  warning  'run' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/v/new-idea/hark/packages/core/src/orchestration/orchestrator.ts
+   7:27  warning  'ActionSpec' is defined but never used              @typescript-eslint/no-unused-vars
+  52:7   warning  'CARD_TERMINAL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/v/new-idea/hark/packages/storage/src/storage.ts
+  31:67  warning  'ctx' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/v/new-idea/hark/scripts/register-observer-pilots.ts
+  39:61  warning  'canonicalPath' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+✖ 6 problems (0 errors, 6 warnings)
+

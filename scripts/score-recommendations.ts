@@ -1,0 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { RecommendationRatingsSchema } from '../packages/project-analysis/src/evaluation.js';
+const file=new URL('../docs/evaluation/recommendation-ratings.json',import.meta.url);
+const data=RecommendationRatingsSchema.parse(JSON.parse(readFileSync(file,'utf8')));
+const rated=data.samples.filter(s=>s.humanRating!==null);
+const projects = new Set(rated.map(s=>s.project)).size;
+if(new Set(data.samples.map(s=>s.id)).size !== data.samples.length) throw new Error('Duplicate sample IDs');
+const useful=rated.filter(s=>s.humanRating?.useful).length,noise=rated.filter(s=>s.humanRating?.noise).length;
+console.log(JSON.stringify({status:rated.length>=data.target && projects>=2?'MEASURED':'NOT_MEASURED',collected:data.samples.length,humanRated:rated.length,projectsRated:projects,target:data.target,usefulPrecision:rated.length?useful/rated.length:null,noiseRate:rated.length?noise/rated.length:null,remainingSamples:Math.max(0,data.target-data.samples.length),remainingLabels:Math.max(0,data.target-rated.length)},null,2));
+if(rated.length<data.target || projects<2) process.exitCode=2;

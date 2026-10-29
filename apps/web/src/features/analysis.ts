@@ -20,6 +20,8 @@ export interface Recommendation {
   risks: string[];
 }
 
+export type AnalysisFeedback = 'useful' | 'not_useful';
+
 export interface AnalysisRun {
   id: string;
   projectId: string;
@@ -37,6 +39,8 @@ export interface AnalysisRun {
   errorMessage: string | null;
   usage: { latencyMs: number } | null;
   stale: boolean;
+  staleReason: 'head' | 'context' | 'unavailable' | null;
+  feedback: AnalysisFeedback | null;
   startedAt: string;
   finishedAt: string | null;
 }
@@ -58,15 +62,37 @@ export async function fetchAnalysisRuns(projectId: string, signal?: AbortSignal)
   return body.runs;
 }
 
-export async function startAnalysis(input: {
+export interface AnalysisInput {
   projectId: string;
   insightId?: string;
   trigger: AnalysisRun['trigger'];
-}): Promise<AnalysisRun> {
+}
+
+export interface AnalysisPreview {
+  provider: string;
+  model: string | null;
+  context: {
+    contextFingerprint: string;
+    files: Array<{ relativePath: string; bytes: number; excerpt: string; truncated: boolean; sha256: string }>;
+    [key: string]: unknown;
+  };
+  excludedPaths: string[];
+}
+
+export function previewAnalysis(input: AnalysisInput): Promise<AnalysisPreview> {
+  return apiFetch<AnalysisPreview>('/api/v1/analysis/preview', { method: 'POST', json: input });
+}
+
+export async function saveAnalysisPrivacy(projectId: string, excludedPaths: string[]): Promise<void> {
+  await apiFetch('/api/v1/analysis/privacy', { method: 'PUT', json: { projectId, excludedPaths } });
+}
+
+export async function startAnalysis(input: AnalysisInput & { consentFingerprint?: string }): Promise<AnalysisRun> {
   const body = await apiFetch<{ run: AnalysisRun }>('/api/v1/analysis/runs', { method: 'POST', json: input });
   return body.run;
 }
 
-export async function sendAnalysisFeedback(id: string, kind: 'useful' | 'not_useful'): Promise<void> {
-  await apiFetch(`/api/v1/analysis/runs/${encodeURIComponent(id)}/feedback`, { method: 'POST', json: { kind } });
+export async function sendAnalysisFeedback(id: string, kind: AnalysisFeedback): Promise<AnalysisFeedback> {
+  const body = await apiFetch<{ feedback: AnalysisFeedback }>(`/api/v1/analysis/runs/${encodeURIComponent(id)}/feedback`, { method: 'POST', json: { kind } });
+  return body.feedback;
 }

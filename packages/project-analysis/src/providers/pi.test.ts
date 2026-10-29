@@ -62,7 +62,12 @@ function marker(): string {
 }
 async function waitStarted(file: string): Promise<number> {
   for (let i = 0; i < 150; i += 1) {
-    if (existsSync(file)) return Number(readFileSync(file, 'utf8'));
+    if (existsSync(file)) {
+      const pid = Number(readFileSync(file, 'utf8'));
+      // File creation is observable before its contents are flushed. PID 0
+      // means the caller's process group to kill(0), not the child.
+      if (Number.isInteger(pid) && pid > 0) return pid;
+    }
     await delay(10);
   }
   throw new Error('synthetic child did not start');

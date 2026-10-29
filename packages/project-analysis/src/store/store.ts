@@ -34,9 +34,24 @@ export class AnalysisStore {
     try {
       this.db.prepare('DELETE FROM analysis_feedback WHERE run_id IN (SELECT run_id FROM analysis_runs WHERE project_id=?)').run(projectId);
       this.db.prepare('DELETE FROM analysis_runs WHERE project_id=?').run(projectId);
+      this.db.prepare('DELETE FROM analysis_privacy WHERE project_id=?').run(projectId);
+      this.db.prepare('DELETE FROM analysis_consents WHERE project_id=?').run(projectId);
       this.db.prepare('DELETE FROM analysis_deletions WHERE project_id=?').run(projectId);
       this.db.exec('COMMIT');
     } catch (cause) { this.db.exec('ROLLBACK'); throw cause; }
+  }
+  recordConsent(runId: string, projectId: string, fingerprint: string, recipient: string, now: string): void {
+    this.db.prepare('INSERT INTO analysis_consents VALUES (?,?,?,?,?)').run(runId,projectId,fingerprint,recipient,now);
+  }
+  hasConsent(runId: string, fingerprint: string, recipient: string): boolean {
+    return this.db.prepare('SELECT 1 FROM analysis_consents WHERE run_id=? AND context_fingerprint=? AND recipient=?').get(runId,fingerprint,recipient) !== undefined;
+  }
+  excludedPaths(projectId: string): string[] {
+    const row = this.db.prepare('SELECT excluded_paths_json AS paths FROM analysis_privacy WHERE project_id=?').get(projectId) as {paths: string} | undefined;
+    return row ? JSON.parse(row.paths) as string[] : [];
+  }
+  setExcludedPaths(projectId: string, paths: string[]): void {
+    this.db.prepare('INSERT INTO analysis_privacy VALUES (?,?) ON CONFLICT(project_id) DO UPDATE SET excluded_paths_json=excluded.excluded_paths_json').run(projectId,JSON.stringify(paths));
   }
   requestsSince(since: string): number {
     return Number((this.db.prepare("SELECT COUNT(*) AS n FROM analysis_runs WHERE provider != 'mock' AND started_at >= ?").get(since) as {n: number}).n);
@@ -156,6 +171,8 @@ export class AnalysisStore {
       errorCode: row['error_code'] == null ? null : String(row['error_code']),
       errorMessage: row['error_message'] == null ? null : String(row['error_message']),
       usage: typeof usageJson === 'string' ? (JSON.parse(usageJson) as AnalysisRunView['usage']) : null,
+      feedback: (this.db.prepare('SELECT kind FROM analysis_feedback WHERE run_id=?').get(String(row['run_id'])) as {kind: 'useful' | 'not_useful'} | undefined)?.kind ?? null,
+      staleReason: null,
       stale: currentFingerprint !== null && currentFingerprint !== fingerprint,
       startedAt: String(row['started_at']),
       finishedAt: row['finished_at'] == null ? null : String(row['finished_at']),

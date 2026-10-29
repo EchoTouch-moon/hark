@@ -114,10 +114,11 @@ export function readAllowedFile(root: string, relativePath: string): FileExcerpt
   }
 }
 
-export function collectProjectFiles(root: string): FileExcerpt[] {
+export function collectProjectFiles(root: string, excludedPaths: string[] = []): FileExcerpt[] {
   const files: FileExcerpt[] = [];
   let total = 0;
   for (const relative of listCandidateRelativePaths(root)) {
+    if (excludedPaths.some(excluded => relative === excluded || relative.startsWith(excluded.replace(/\/$/, '') + '/'))) continue;
     const item = readAllowedFile(root, relative);
     if (item === null) continue;
     if (total + Math.min(item.bytes, MAX_FILE_BYTES) > MAX_TOTAL_BYTES) break;

@@ -33,9 +33,11 @@ it('a new report automatically creates one Insight; restart, repeat and idle do 
  await observer.stop();await coordinator.stop();
  // Restart may legitimately append an observation-gap signal. Once reconciled,
  // unchanged source ticks must not write anything to the Insight database.
- coordinator.start();await expect.poll(()=>coordinator.health().ticks).toBeGreaterThan(6);await coordinator.stop();
+ let targetTicks=coordinator.health().ticks+4;
+ coordinator.start();await expect.poll(()=>coordinator.health().ticks).toBeGreaterThan(targetTicks);await coordinator.stop();
  const changes=store.db.prepare('SELECT total_changes() AS n').get();
- coordinator.start();await expect.poll(()=>coordinator.health().ticks).toBeGreaterThan(10);await coordinator.stop();
+ targetTicks=coordinator.health().ticks+4;
+ coordinator.start();await expect.poll(()=>coordinator.health().ticks).toBeGreaterThan(targetTicks);await coordinator.stop();
  expect(store.db.prepare('SELECT total_changes() AS n').get()).toEqual(changes);
 });
 it('frozen source stays frozen and no writes occur during empty ticks',async()=>{

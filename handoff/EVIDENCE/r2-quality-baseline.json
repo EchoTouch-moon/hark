@@ -1,0 +1,11 @@
+{
+  "status": "NOT_MEASURED",
+  "collected": 6,
+  "humanRated": 0,
+  "projectsRated": 0,
+  "target": 30,
+  "usefulPrecision": null,
+  "noiseRate": null,
+  "remainingSamples": 24,
+  "remainingLabels": 30
+}

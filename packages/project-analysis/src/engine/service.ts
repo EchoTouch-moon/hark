@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
 import type { InsightStore } from '@hearth/project-insight';
 import type { ProjectObserver } from '@hearth/project-observer';
@@ -12,6 +13,7 @@ export interface StartAnalysisInput {
   projectId: string;
   insightId?: string;
   trigger: AnalysisTrigger;
+  consentFingerprint?: string;
 }
 
 export class AnalysisService {
@@ -52,7 +54,10 @@ export class AnalysisService {
     if (this.deps.provider.id !== 'mock' && this.deps.store.requestsSince(now.slice(0, 10)) >= (this.deps.maxDailyRequests ?? 20)) {
       throw new AnalysisError('BUDGET', '模型每日请求预算已用完');
     }
-    const context = requireProjectContext(this.deps.observer, this.deps.insight, input.projectId, now, input.insightId);
+    const context = this.context(input);
+    if (this.deps.provider.id !== 'mock' && input.consentFingerprint !== context.contextFingerprint) {
+      throw new AnalysisError('CONSENT_REQUIRED', '请先预览并确认本次发往外部模型的上下文；内容变化后需重新确认');
+    }
     const id = `anl_${randomBytes(8).toString('hex')}`;
     this.deps.store.insertRunning({
       id,
@@ -73,6 +78,11 @@ export class AnalysisService {
     this.inflight.set(id, { projectId: input.projectId, controller, done });
     const started = Date.now();
     try {
+      if (this.deps.provider.id !== 'mock') {
+        const recipient = `${this.deps.provider.id}:${this.deps.provider.model ?? 'unknown'}`;
+        this.deps.store.recordConsent(id, input.projectId, context.contextFingerprint, recipient, now);
+        if (!this.deps.store.hasConsent(id, context.contextFingerprint, recipient)) throw new AnalysisError('CONSENT_REQUIRED', '缺少持久化发送确认');
+      }
       const outcome = await this.deps.provider.analyze({
         context,
         insightId: input.insightId,
@@ -125,6 +135,19 @@ export class AnalysisService {
     return this.withStale(view, input.projectId);
   }
 
+  private context(input: StartAnalysisInput) {
+    return requireProjectContext(this.deps.observer, this.deps.insight, input.projectId, this.now(), input.insightId, this.deps.store.excludedPaths(input.projectId));
+  }
+  preview(input: StartAnalysisInput) {
+    if (input.trigger === 'insight' && !input.insightId) throw new AnalysisError('INVALID_INSIGHT', '洞察入口必须指定目标洞察');
+    return { ...this.identity(), context: this.context(input), excludedPaths: this.deps.store.excludedPaths(input.projectId) };
+  }
+  setPrivacy(projectId: string, paths: string[]): void {
+    this.deps.observer.getProject(projectId);
+    const parsed = z.array(z.string().min(1).max(256).refine(value => !value.startsWith('/') && !value.includes('\\') && !value.includes('\0') && !value.split('/').includes('..'))).max(32).parse(paths);
+    this.deps.store.setExcludedPaths(projectId, [...new Set(parsed)]);
+  }
+
   recoverInterrupted(): number { return this.deps.store.recoverInterrupted(this.now()); }
 
   cancel(runId: string): boolean {
@@ -171,10 +194,12 @@ export class AnalysisService {
   private withStale(run: AnalysisRunView, projectId: string): AnalysisRunView {
     try {
       const snapshot = this.deps.observer.getLatestSnapshot(projectId);
-      const stale = (snapshot?.id ?? null) !== run.snapshotId || (snapshot?.headSha ?? null) !== run.headSha;
-      return { ...run, stale };
+      const headStale = (snapshot?.id ?? null) !== run.snapshotId || (snapshot?.headSha ?? null) !== run.headSha;
+      const current = this.context({ projectId, trigger: run.trigger, ...(run.insightId ? {insightId: run.insightId} : {}) });
+      const staleReason = headStale ? 'head' as const : current.contextFingerprint !== run.contextFingerprint ? 'context' as const : null;
+      return { ...run, stale: staleReason !== null, staleReason };
     } catch {
-      return { ...run, stale: true };
+      return { ...run, stale: true, staleReason: 'unavailable' };
     }
   }
 

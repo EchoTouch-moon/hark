@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { InsightStore } from '@hearth/project-insight';
-import { getInsight, listInsights } from '@hearth/project-insight';
+import { getInsight, listInsights, RULESET_VERSION } from '@hearth/project-insight';
 import type { ProjectObserver } from '@hearth/project-observer';
 import { AnalysisError } from '../errors.js';
 import type { AnalysisEvidenceRef, ProjectContext } from '../contracts.js';
@@ -49,6 +49,7 @@ export function assembleProjectContext(
   projectId: string,
   nowIso: string,
   insightId?: string,
+  excludedPaths: string[] = [],
 ): ProjectContext {
   const project = observer.getProject(projectId);
   const snapshot = observer.getLatestSnapshot(projectId);
@@ -75,7 +76,7 @@ export function assembleProjectContext(
   const test = snapshot?.test;
   const testResult = test?.result ?? 'UNKNOWN';
   const testQuality = test?.evidenceQuality ?? 'UNKNOWN';
-  const files = collectProjectFiles(project.canonicalPath);
+  const files = collectProjectFiles(project.canonicalPath, excludedPaths);
   const streamEpoch = forward.streamEpoch || insights[0]?.streamEpoch || 1;
   const availableEvidence: AnalysisEvidenceRef[] = [];
   if (snapshot) {
@@ -113,6 +114,7 @@ export function assembleProjectContext(
   }
 
   const body = {
+    rulesetVersion: RULESET_VERSION,
     projectId: project.id,
     projectName: project.name,
     gitIdentity: project.gitIdentity,
@@ -162,9 +164,10 @@ export function requireProjectContext(
   projectId: string,
   nowIso: string,
   insightId?: string,
+  excludedPaths: string[] = [],
 ): ProjectContext {
   try {
-    return assembleProjectContext(observer, insight, projectId, nowIso, insightId);
+    return assembleProjectContext(observer, insight, projectId, nowIso, insightId, excludedPaths);
   } catch (cause) {
     if (cause instanceof AnalysisError) throw cause;
     throw new AnalysisError('CONTEXT_FAILED', cause instanceof Error ? cause.message : 'context assembly failed', {

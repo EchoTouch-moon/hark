@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { apiFetch } from '../features/api/client';
 import { ConnectionBadge } from '../components';
 import './AppShell.css';
 
@@ -48,8 +49,8 @@ interface NavItemDefinition {
 
 /** 顺序固定：Home / Chat / Projects / Insights / Activity / Settings */
 const NAV_ITEMS: readonly NavItemDefinition[] = [
-  { to: '/', label: 'Home', icon: 'home', end: true },
-  { to: '/chat', label: 'Chat', icon: 'chat' },
+  { to: '/', label: 'Demo Home', icon: 'home', end: true },
+  { to: '/chat', label: 'Chat · Mock', icon: 'chat' },
   { to: '/projects', label: 'Projects', icon: 'projects' },
   { to: '/insights', label: 'Insights', icon: 'insights' },
   { to: '/activity', label: 'Activity', icon: 'activity' },
@@ -166,6 +167,12 @@ function sectionLabel(pathname: string): string {
 
 function TopBar() {
   const location = useLocation();
+  const [mode, setMode] = useState<boolean | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    void apiFetch<{demoMode: boolean}>('/api/v1/health', {signal:controller.signal}).then(health=>setMode(health.demoMode)).catch(()=>{});
+    return ()=>controller.abort();
+  }, []);
   return (
     <header className="topbar">
       <div className="topbar-identity">
@@ -176,7 +183,7 @@ function TopBar() {
         <span className="topbar-section">{sectionLabel(location.pathname)}</span>
       </div>
       <div className="topbar-badges">
-        <span className="badge badge-notice">本地存储</span>
+        <span className="badge badge-notice">{mode === null ? '模式读取中' : mode ? 'Demo 合成数据模式' : '真实项目 · 本地存储'}</span>
         <ConnectionBadge mode="demo" label={location.pathname.startsWith('/chat') ? '对话：离线演示' : '分析来源见建议卡'} />
       </div>
     </header>

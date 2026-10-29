@@ -54,3 +54,7 @@
 ## 2026-10-29 · P2-A Live Verification 增量交付
 
 真实 stepfun-plan/step-5-preview 在 pindou 上生成建议卡，工程闭环 PASS；默认 Mock 保留。修复 Provider 扩展注册缺失、显式模型选择、结构化输出合同和 UI 来源标识。全仓 306 tests、类型检查、改动文件 lint、web build 通过。未执行模型建议、未更改 pindou、未修改全局 Pi/Hermes 配置。人工有用性判断尚未完成，未进入 P2-B/C。详情与截图：docs/verification/hearth-p2a-live-verification.md、handoff/EVIDENCE/p2a-live-card.png。原有工作区改动保留；全仓 diff-check 的既有空白问题不属于此次变更。
+
+## 2026-10-29 · R0/R1/R2整改增量
+
+R0 PASS（cca95e0），R1 PASS（1642215）。R2工程本地检查通过：343测试、typecheck、lint零错误、完整build、16项E2E。隐私预览/逐次确认与持久化记录、排除路径、稳定上下文、真实模式与Mock标识、反馈、README及最小CI已实现；远端CI需以新运行确认。R2人工价值门禁NOT_MEASURED，用户定性反馈已保存，未执行新的真实模型请求。数据migration至analysis v4；启动补偿清理任务，不自动重试中断模型。运行方式与限制见README及docs/verification/remediation-r*.md。

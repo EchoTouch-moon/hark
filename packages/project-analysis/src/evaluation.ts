@@ -1,0 +1,3 @@
+import { z } from 'zod';
+const Rating=z.object({rater:z.string().min(1),ratedAt:z.string().datetime(),accurate:z.boolean(),actionable:z.boolean(),useful:z.boolean(),noise:z.boolean(),note:z.string().min(1)}).strict();
+export const RecommendationRatingsSchema=z.object({target:z.literal(30),status:z.string(),qualitativeFeedback:z.array(z.object({source:z.literal('user'),date:z.string(),text:z.string(),assessment:z.string()}).strict()).optional(),samples:z.array(z.object({id:z.string(),project:z.string(),runId:z.string(),title:z.string(),detail:z.string(),humanRating:Rating.nullable()}).strict())}).strict();

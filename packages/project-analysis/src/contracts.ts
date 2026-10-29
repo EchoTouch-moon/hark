@@ -62,6 +62,7 @@ export type Recommendation = z.infer<typeof RecommendationSchema>;
 export const FileExcerptSchema = z
   .object({
     relativePath: z.string().min(1).max(1024),
+    /** SHA256 of the bounded captured prefix; bytes/truncated describe the source. */
     sha256: z.string().min(16).max(64),
     bytes: z.number().int().nonnegative(),
     excerpt: z.string().max(16_000),
@@ -72,6 +73,7 @@ export type FileExcerpt = z.infer<typeof FileExcerptSchema>;
 
 export const ProjectContextSchema = z
   .object({
+    rulesetVersion: z.string(),
     projectId: z.string().min(1).max(128),
     projectName: z.string().min(1).max(200),
     gitIdentity: z.string().max(4096).nullable(),
@@ -157,6 +159,8 @@ export const AnalysisRunViewSchema = z
     errorCode: z.string().nullable(),
     errorMessage: z.string().nullable(),
     usage: AnalysisUsageSchema.nullable(),
+    feedback: z.enum(['useful', 'not_useful']).nullable().default(null),
+    staleReason: z.enum(['head', 'context', 'unavailable']).nullable().default(null),
     stale: z.boolean(),
     startedAt: z.string(),
     finishedAt: z.string().nullable(),

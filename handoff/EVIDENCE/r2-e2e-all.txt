@@ -1,0 +1,31 @@
+$ playwright test -c tests/e2e/playwright.config.ts
+[WebServer] (node:25573) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node:25687) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 16 tests using 1 worker
+
+(node:25767) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+R2_BROWSER_PASS: Pi UI identity simulated only; cancel+ESC zero runs; exclusions persisted and re-previewed; exact consent fingerprint sent once; actual Mock result; feedback persists and failure is visible. No real model was called.
+  ✓   1 tests/e2e/analysis-privacy.spec.ts:8:1 › R2: explicit privacy confirmation, exclusions and persisted feedback (1.4s)
+R1_BROWSER_PASS: watched report -> one evidence-backed Insight; repeated notification deduped; zero manual scan/consume and zero analysis runs.
+  ✓   2 tests/e2e/coordinator.spec.ts:8:1 › R1: watched JUnit automatically becomes one Insight without a model run (10.2s)
+  ✓   3 tests/e2e/hearth.spec.ts:41:1 › E2E-11: 首次运行是真实空态，不制造假任务 (207ms)
+  ✓   4 tests/e2e/hearth.spec.ts:46:1 › E2E-01: 初始化 Demo → 3 张卡片含 whyNow/来源/风险 (378ms)
+  ✓   5 tests/e2e/hearth.spec.ts:58:1 › E2E-02: 查看证据 → 执行 → completed + 真实 artifact + sha256 (1.6s)
+  ✓   6 tests/e2e/hearth.spec.ts:81:1 › E2E-03: 刷新后状态保持一致（服务端持久化） (619ms)
+  ✓   7 tests/e2e/hearth.spec.ts:91:1 › E2E-04: 快速双击不产生双副作用（幂等） (1.8s)
+  ✓   8 tests/e2e/hearth.spec.ts:108:1 › E2E-06: 忽略后卡片不再出现在主动建议（刷新也不重现） (270ms)
+  ✓   9 tests/e2e/hearth.spec.ts:120:1 › E2E-07: 项目隔离由服务端保证 (256ms)
+  ✓  10 tests/e2e/hearth.spec.ts:130:1 › E2E-08: Chat mock 回复、持久化、明确 Demo 标识 (257ms)
+  ✓  11 tests/e2e/hearth.spec.ts:143:1 › Settings 保存可持久化 (405ms)
+  ✓  12 tests/e2e/hearth.spec.ts:155:1 › 视口 1280×800 无水平滚动 (145ms)
+  ✓  13 tests/e2e/hearth.spec.ts:164:1 › Activity 页可见 run 时间线与验证证据 (307ms)
+  ✓  14 tests/e2e/insights.spec.ts:3:1 › insights empty feed is not a fake-success wall (187ms)
+  ✓  15 tests/e2e/insights.spec.ts:12:1 › insight detail missing id is an error, not a fake card (194ms)
+  ✓  16 tests/e2e/insights.spec.ts:18:1 › projects and observe navigation still work (213ms)
+
+  16 passed (24.3s)

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { AnalysisError } from '../errors.js';
 
-export const ANALYSIS_SCHEMA_VERSION = 2;
+export const ANALYSIS_SCHEMA_VERSION = 4;
 
 export function defaultAnalysisDbPath(repoRoot: string): string {
   return process.env['HEARTH_ANALYSIS_DB'] ?? path.join(repoRoot, 'data', 'analysis.sqlite');
@@ -68,6 +68,18 @@ export function openAnalysisDatabase(dbPath: string): DatabaseSync {
     db.exec(`BEGIN;
       CREATE TABLE analysis_deletions (project_id TEXT PRIMARY KEY, requested_at TEXT NOT NULL);
       INSERT INTO schema_version VALUES (2, 'analysis-deletion-journal', datetime('now'));
+      COMMIT;`);
+  }
+  if (current < 3) {
+    db.exec(`BEGIN;
+      CREATE TABLE analysis_privacy (project_id TEXT PRIMARY KEY, excluded_paths_json TEXT NOT NULL);
+      INSERT INTO schema_version VALUES (3, 'analysis-privacy-policy', datetime('now'));
+      COMMIT;`);
+  }
+  if (current < 4) {
+    db.exec(`BEGIN;
+      CREATE TABLE analysis_consents (run_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, context_fingerprint TEXT NOT NULL, recipient TEXT NOT NULL, accepted_at TEXT NOT NULL);
+      INSERT INTO schema_version VALUES (4, 'analysis-explicit-disclosure-consent', datetime('now'));
       COMMIT;`);
   }
   return db;

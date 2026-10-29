@@ -38,7 +38,7 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
   const storage = new Storage(config.dbPath);
 
   // ensure settings defaults exist
-  if (storage.getSetting('settings') === null) storage.setSetting('settings', DEFAULT_SETTINGS);
+  if (storage.getSetting('settings') === null) storage.setSetting('settings', {...DEFAULT_SETTINGS, demoMode: config.demoMode});
 
   const orchestrator = new Orchestrator({
     storage,

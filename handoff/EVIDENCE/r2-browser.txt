@@ -1,0 +1,22 @@
+[WebServer] (node:14920) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node:14995) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:15044) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+R2_BROWSER_PASS: Pi UI identity simulated only; cancel+ESC zero runs; exclusions persisted and re-previewed; exact consent fingerprint sent once; actual Mock result; feedback persists and failure is visible. No real model was called.
+  ✓  1 tests/e2e/analysis-privacy.spec.ts:8:1 › R2: explicit privacy confirmation, exclusions and persisted feedback (1.6s)
+
+  1 passed (7.2s)
+
+Additional checks:
+- pnpm exec eslint tests/e2e/analysis-privacy.spec.ts --max-warnings=0: exit 0, no output.
+- pnpm exec tsc -p tests/e2e/tsconfig.json --noEmit: exit 0, no output.
+
+Evidence scope:
+The browser overrides only preview response provider/model to pi/synthetic-ui-only. Server health is asserted to use the real Mock provider; context/fingerprint, privacy PUT, runs POST and successful feedback are the actual isolated backend. Consent is UI-flow coverage only; real-provider server consent enforcement remains covered by service/HTTP tests. Cancel and Escape produced zero analysis Runs, while one confirmed request carried exactly the latest preview fingerprint. Feedback failure is a synthetic 503 response, visibly reported without overwriting the prior persisted useful choice.
+Screenshot: handoff/EVIDENCE/r2-privacy.png (synthetic project disclosure preview only).

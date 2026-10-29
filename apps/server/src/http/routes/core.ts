@@ -40,7 +40,7 @@ export function registerCoreRoutes(app: FastifyInstance, deps: AppDeps, sessions
 
   app.get('/api/v1/settings', async (_req, reply) => {
     const stored = deps.storage.getSetting<SettingsDto>(SETTINGS_KEY);
-    return reply.send(stored ?? DEFAULT_SETTINGS);
+    return reply.send({...(stored ?? DEFAULT_SETTINGS), demoMode:deps.config.demoMode});
   });
 
   app.put('/api/v1/settings', async (req, reply) => {

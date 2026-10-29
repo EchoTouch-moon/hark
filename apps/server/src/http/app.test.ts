@@ -22,6 +22,7 @@ beforeEach(async () => {
   dir = await mkdtemp(path.join(tmpdir(), 'hearth-api-'));
   store = new Storage(path.join(dir, 'test.sqlite'));
   const config = loadConfig({
+    demoMode: true,
     dbPath: path.join(dir, 'test.sqlite'),
     artifactRoot: path.join(dir, 'artifacts'),
     staticDir: null,

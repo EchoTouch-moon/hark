@@ -12,3 +12,13 @@ R1_BROWSER_PASS: watched report -> one evidence-backed Insight; repeated notific
   ✓  1 tests/e2e/coordinator.spec.ts:8:1 › R1: watched JUnit automatically becomes one Insight without a model run (10.5s)
 
   1 passed (16.1s)
+
+Changed-file eslint:
+pnpm exec eslint tests/e2e/playwright.config.ts tests/e2e/coordinator.spec.ts --max-warnings=0
+exit 0, no output.
+
+E2E TypeScript:
+pnpm exec tsc -p tests/e2e/tsconfig.json --noEmit
+exit 2: existing hearth.spec.ts(159,11)/(159,50) TS2584 document missing DOM lib.
+pnpm exec tsc -p tests/e2e/tsconfig.json --noEmit --lib ES2022,DOM,DOM.Iterable
+exit 0, no output. No tsconfig change made by this subtask.

@@ -9,13 +9,15 @@ pnpm build              # 构建 web (vite build) + server (esbuild bundle)
 pnpm test:e2e           # Playwright E2E（需要浏览器；不可用时输出 BLOCKED 说明）
 ```
 
-## 本地运行（Demo 闭环）
+## 本地运行（默认真实项目模式）
 ```bash
 pnpm dev:server         # Fastify API，仅监听 127.0.0.1:4317
 pnpm dev:web            # Vite UI，代理 /api 到 127.0.0.1:4317
 ```
 
-首屏 Home 为空时：调用 `POST /api/v1/demo/seed`（或 UI Settings 里的「初始化 Demo 数据」），然后 `POST /api/v1/discover`。
+默认模式从 Projects 登记授权仓库，Insights 后台只运行确定性规则。Chat 仍为 Mock。
+
+需要独立 Demo 闭环时以 `HEARTH_DEMO=1` 启动服务；仅在该模式下调用 `POST /api/v1/demo/seed`（或 UI Settings 里的「初始化 Demo 数据」），然后 `POST /api/v1/discover`。
 
 ## 仓库布局（pnpm workspace）
 - `packages/contracts` — Zod DTO / 枚举 / 状态转换表，唯一事实来源
@@ -73,3 +75,5 @@ pnpm dev:server
 需要 Node >=22.13 和 pnpm。已有工作副本时，先提交本机修改，再 `git pull --ff-only`；完成一段工作后 `git add <本次文件>`、`git commit`、`git push`。分支出现分歧时先处理合并，不使用强制推送覆盖另一台设备的工作。
 
 Git 同步源码、合同、测试与文档。本地 SQLite、注册项目的绝对路径、会话、密钥、依赖、构建产物不参与同步；每台设备单独安装依赖、登记授权项目，并配置 Pi 认证及 Provider 扩展路径。历史验收证据含当时本机的路径与状态，不应当作另一台设备的当前运行结果。
+
+真实分析现在先预览上下文并确认发送；项目排除路径会持久化。本次确认绑定稳定内容指纹及接收方，内容变动需重新确认。Run 中的引用已匹配不代表结论已核实。建议评分见 docs/evaluation/README.md。

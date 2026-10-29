@@ -42,7 +42,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     observerDbPath:
       process.env['HEARTH_OBSERVER_DB'] ?? path.join(repoRoot, 'data', 'observer.sqlite'),
     artifactRoot: process.env['HEARTH_ARTIFACTS'] ?? path.join(repoRoot, '.hearth-demo-artifacts'),
-    demoMode: (process.env['HEARTH_DEMO'] ?? '1') !== '0',
+    demoMode: (process.env['HEARTH_DEMO'] ?? '0') !== '0',
     allowedOrigins: [
       `http://127.0.0.1:${port}`,
       `http://localhost:${port}`,

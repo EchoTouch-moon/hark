@@ -5,6 +5,11 @@ import { AnalysisError } from '../errors.js';
 import type { AnalysisProvider, AnalyzeInput } from './types.js';
 
 const SYSTEM = `You are Hearth's read-only project analyst.
+Write user-facing fields in Chinese.
+Assess the documented project goals, current stage, evidence of evolution, and next priorities.
+Useful directions may include product value, goal/stage gaps, architecture tradeoffs, and engineering health.
+Do not fill a category quota: include only evidence-supported findings, state missing context, and do not invent a roadmap.
+Local checks are appropriate when they resolve a concrete uncertainty; do not make commit/stash a prerequisite for validation.
 Return ONLY a JSON object with keys:
 target, scope, statusSummary, findings, confidence, uncertainties, nextActions, risks.
 findings[].evidenceRefs must use kind/id/label/verified from the provided availableEvidence.

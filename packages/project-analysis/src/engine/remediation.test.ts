@@ -59,7 +59,7 @@ it('deletion journal compensates after a cross-database failure and purges feedb
 it('request budget survives a service restart',async()=>{
  const p=await project(); const provider:AnalysisProvider={id:'pi',model:'synthetic',async analyze(){return {kind:'no_recommendation',reason:'synthetic'};}};
  service=new AnalysisService({observer,store,insight,provider,maxDailyRequests:1});
- await service.start({projectId:p.id,trigger:'observe'});
+ await service.start({projectId:p.id,trigger:'observe',consentFingerprint:service.preview({projectId:p.id,trigger:'observe'}).context.contextFingerprint});
  service=new AnalysisService({observer,store,insight,provider,maxDailyRequests:1});
  await expect(service.start({projectId:p.id,trigger:'observe'})).rejects.toMatchObject({code:'BUDGET'});
 });

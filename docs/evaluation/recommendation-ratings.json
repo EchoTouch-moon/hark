@@ -1,0 +1,62 @@
+{
+  "target": 30,
+  "status": "NEEDS_HUMAN_LABELS_AND_MORE_USER_TRIGGERED_SAMPLES",
+  "samples": [
+    {
+      "id": "pindou-01",
+      "project": "pindou",
+      "runId": "anl_a61d0864a8bf28a7",
+      "title": "Establish a clean baseline from uncommitted work",
+      "detail": "Review the 28 unstaged files and either commit them with a descriptive message or stash them to create a clean, verifiable baseline before running checks.",
+      "humanRating": null
+    },
+    {
+      "id": "pindou-02",
+      "project": "pindou",
+      "runId": "anl_a61d0864a8bf28a7",
+      "title": "Run local checks against the current head and worktree",
+      "detail": "Execute npm run lint, npm run typecheck, npm test, and npm run build to determine the actual current test and build status, since testResult is UNKNOWN.",
+      "humanRating": null
+    },
+    {
+      "id": "pindou-03",
+      "project": "pindou",
+      "runId": "anl_a61d0864a8bf28a7",
+      "title": "Reconcile documentation with the snapshot head",
+      "detail": "Compare README's 'not committed' UI-R1 claim and DEVELOPMENT.md's UI-R2 commit references against the actual current head f57fc770, then update docs to match reality before any future push.",
+      "humanRating": null
+    },
+    {
+      "id": "pindou-04",
+      "project": "pindou",
+      "runId": "anl_a61d0864a8bf28a7",
+      "title": "Verify palette and recognition scripts locally",
+      "detail": "Run npm run palettes:verify and npm run recognition:eval to confirm MARD data integrity and recognition behavior on the current code state.",
+      "humanRating": null
+    },
+    {
+      "id": "pindou-05",
+      "project": "pindou",
+      "runId": "anl_a61d0864a8bf28a7",
+      "title": "Audit AI and stock boundaries for implicit side effects",
+      "detail": "Review packages/ai-adapter integration points and stock/ledger transaction paths to ensure no UI or AI flow implicitly deducts stock, generates images, or bypasses idempotent transactions.",
+      "humanRating": null
+    },
+    {
+      "id": "pindou-06",
+      "project": "pindou",
+      "runId": "anl_a61d0864a8bf28a7",
+      "title": "Prepare for E2E validation if a clean baseline is established",
+      "detail": "After building, run npm run test:e2e against the built dist to validate browser regressions for the current UI work, using an existing Chromium if needed.",
+      "humanRating": null
+    }
+  ],
+  "qualitativeFeedback": [
+    {
+      "source": "user",
+      "date": "2026-10-29",
+      "text": "感觉这几条建议都有些过于简短了，是你总结过了还是本来就这么短？我发现这些更偏向于我本地构建的建议，我想要的是核对项目发展、演进的这种建议。当然本地的这些建议也是可以有的，就是我希望建议更加的多元化。",
+      "assessment": "方向偏本地工程检查；需要项目发展与演进视角，保留必要工程建议，避免为多样性凑数。未逐条二元评分。"
+    }
+  ]
+}

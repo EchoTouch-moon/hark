@@ -9,7 +9,18 @@ export function isSensitiveRelativePath(relativePath: string): boolean {
 }
 
 export function redactSecrets(text: string): string {
-  return text.replace(SECRET, '<redacted-secret>');
+  const masked = text.replace(SECRET, '<redacted-secret>').replace(
+    /((?:[a-z0-9_]*?(?:api[_-]?key|secret|password|token|authorization)[a-z0-9_]*)["']?\s*[:=]\s*)["']?[^\s,"'<>;]+/gi,
+    '$1<redacted-secret>',
+  );
+  // Conservative heuristic, not a guarantee that arbitrary documents are safe.
+  return masked.replace(/[A-Za-z0-9+/_=-]{24,}/g, candidate => {
+    if (!/[a-zA-Z]/.test(candidate) || !/[0-9]/.test(candidate)) return candidate;
+    const counts = new Map<string, number>();
+    for (const ch of candidate) counts.set(ch, (counts.get(ch) ?? 0) + 1);
+    const entropy = [...counts.values()].reduce((sum, n) => { const p = n / candidate.length; return sum - p * Math.log2(p); }, 0);
+    return entropy >= 3.5 ? '<redacted-suspected-secret>' : candidate;
+  });
 }
 
 export function stripControlChars(text: string): string {

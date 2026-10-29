@@ -29,7 +29,8 @@ import {
 } from '../features/observer';
 import { formatDateTime } from '../features/runs';
 import { fetchInsightSummary } from '../features/insights';
-import { fetchAnalysisRuns, startAnalysis, type AnalysisRun } from '../features/analysis';
+import { fetchAnalysisRuns, type AnalysisRun } from '../features/analysis';
+import { AnalysisLaunch } from '../components/AnalysisLaunch';
 import { RecommendationCard } from '../components/RecommendationCard';
 import './ObserverDetailPage.css';
 import './InsightsPage.css';
@@ -62,7 +63,6 @@ export function ObserverDetailPage() {
   const [confirmPause, setConfirmPause] = useState(false);
   const [openInsights, setOpenInsights] = useState(0);
   const [analysisRuns, setAnalysisRuns] = useState<AnalysisRun[]>([]);
-  const [analyzing, setAnalyzing] = useState(false);
 
   const load = useCallback(async (projectId: string, signal?: AbortSignal) => {
     const next = await fetchObserverDetail(projectId, signal);
@@ -326,20 +326,12 @@ export function ObserverDetailPage() {
                 <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void onScan()}>
                   立即只读重扫
                 </button>
-                <button
-                  className="btn btn-ghost"
-                  type="button"
-                  disabled={busy || analyzing}
-                  onClick={() => {
-                    setAnalyzing(true);
-                    void startAnalysis({ projectId, trigger: 'observe' })
-                      .then((run) => setAnalysisRuns((current) => [run, ...current.filter((item) => item.id !== run.id)]))
-                      .catch((cause) => setError(cause instanceof Error ? cause.message : '分析失败'))
-                      .finally(() => setAnalyzing(false));
-                  }}
-                >
-                  {analyzing ? '分析中…' : '分析当前项目'}
-                </button>
+                <AnalysisLaunch
+                  input={{ projectId, trigger: 'observe' }}
+                  label="分析当前项目"
+                  disabled={busy}
+                  onComplete={(run) => setAnalysisRuns((current) => [run, ...current.filter((item) => item.id !== run.id)])}
+                />
                 <button
                   className="btn btn-ghost"
                   type="button"

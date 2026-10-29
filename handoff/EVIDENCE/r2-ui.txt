@@ -1,0 +1,15 @@
+$ tsc -p tsconfig.json --noEmit
+
+Verification commands:
+- pnpm --filter @hearth/web typecheck: exit 0.
+- pnpm exec eslint apps/web/src/features/analysis.ts apps/web/src/components/RecommendationCard.tsx apps/web/src/components/AnalysisLaunch.tsx apps/web/src/pages/ObserverDetailPage.tsx apps/web/src/pages/InsightDetailPage.tsx --max-warnings=0: exit 0, no output.
+
+Implementation scope:
+- Shared AnalysisLaunch used by observe and insight detail pages.
+- Preview endpoint only assembles context; Pi confirmation dialog names external provider/model, explains metadata/events/insights/allowed-doc excerpts and potential cost, exposes file list + full context JSON, and warns redaction is incomplete.
+- Cancel/ESC dismisses preview without calling runs; confirmed Pi requests include preview contextFingerprint as consentFingerprint.
+- Project excluded paths can be saved via privacy PUT; confirm disabled while pending edits; successful save regenerates preview before consent.
+- Mock still starts without external consent dialog after checking preview provider identity.
+- RecommendationCard awaits persisted feedback response, shows busy/success/error state, selects previous feedback on refresh, differentiates head/context/unavailable staleness, and labels reference matches without claiming semantic verification.
+- Insight detail no longer shows another insight's analysis as a fallback.
+- This subtask did not call a real model, run a browser privacy scenario, or create commits; final integration/browser verification belongs to parent task.

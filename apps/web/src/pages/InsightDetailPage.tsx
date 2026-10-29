@@ -14,7 +14,8 @@ import {
   type InsightDetail,
 } from '../features/insights';
 import { formatDateTime } from '../features/runs';
-import { fetchAnalysisRuns, startAnalysis, type AnalysisRun } from '../features/analysis';
+import { fetchAnalysisRuns, type AnalysisRun } from '../features/analysis';
+import { AnalysisLaunch } from '../components/AnalysisLaunch';
 import { RecommendationCard } from '../components/RecommendationCard';
 import './InsightsPage.css';
 
@@ -32,7 +33,7 @@ export function InsightDetailPage() {
     setError(null);
     try {
       const runs = await fetchAnalysisRuns(next.projectId, signal);
-      setAnalysisRun(runs.find((item) => item.insightId === insightId) ?? runs[0] ?? null);
+      setAnalysisRun(runs.find((item) => item.insightId === insightId) ?? null);
     } catch {
       setAnalysisRun(null);
     }
@@ -206,19 +207,12 @@ export function InsightDetailPage() {
         <button type="button" className="btn btn-ghost" disabled={busy || !canDismiss} onClick={() => void run(() => dismissInsight(detail.id))}>
           不再关注这条
         </button>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          disabled={busy}
-          onClick={() =>
-            void run(async () => {
-              const next = await startAnalysis({ projectId: detail.projectId, insightId: detail.id, trigger: 'insight' });
-              setAnalysisRun(next);
-            })
-          }
-        >
-          深入分析
-        </button>
+        <AnalysisLaunch
+          input={{ projectId: detail.projectId, insightId: detail.id, trigger: 'insight' }}
+          label="深入分析"
+          disabled={busy || detail.evidenceAvailability !== 'AVAILABLE' || detail.engineFrozen || detail.historical}
+          onComplete={setAnalysisRun}
+        />
         <button
           type="button"
           className={`btn btn-ghost ${detail.feedback === 'useful' ? 'is-active' : ''}`}

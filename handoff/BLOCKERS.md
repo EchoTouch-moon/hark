@@ -30,3 +30,7 @@
 ## 2026-10-29 · P2-A live 更新
 
 本次选定 StepFun 的真实请求已通；旧 Pi 认证阻塞对这一显式配置已解除。第一次真实分析因输出结构不匹配失败，补全提示合同后成功。无需用户提供密钥。复现配置见 README-dev.md，证据见 docs/verification/hearth-p2a-live-verification.md。剩余：建议质量待人工评价；ignored 文件未纳入指纹；英文/冗长建议及“先 commit/stash”措辞需后续按评价改进。
+
+## 2026-10-29 · R2价值门禁未满足
+
+工程可继续验证CI；人工价值基线缺少至少第二个真实项目、24条新增用户触发建议和30条逐项人工标签。现有6条历史建议收到“偏本地检查，希望发展/演进且更多元”的定性评价，已记录而未转换为虚构量化分数。恢复：用户触发真实分析并在docs/evaluation/recommendation-ratings.json逐项标注，再运行pnpm exec tsx scripts/score-recommendations.ts。不自动调用Pi补样本/不进入后续阶段。

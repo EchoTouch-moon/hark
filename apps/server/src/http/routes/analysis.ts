@@ -12,6 +12,7 @@ const StartBody = z
     projectId: z.string().min(1).max(128),
     insightId: z.string().min(1).max(128).optional(),
     trigger: AnalysisTriggerSchema.default('observe'),
+    consentFingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   })
   .strict();
 
@@ -29,13 +30,24 @@ function requireAnalysis(deps: AppDeps): AnalysisService {
 function sendAnalysisError(reply: { status: (code: number) => { send: (body: unknown) => unknown } }, cause: unknown) {
   if (isAnalysisError(cause)) {
     const status =
-      cause.code === 'NOT_FOUND' ? 404 : ['IN_FLIGHT', 'STALE_INSIGHT', 'CAPACITY', 'BUDGET', 'PROJECT_DELETING'].includes(cause.code) ? 409 : cause.code === 'CANCELLED' ? 409 : 400;
+      cause.code === 'NOT_FOUND' ? 404 : ['IN_FLIGHT', 'STALE_INSIGHT', 'CAPACITY', 'BUDGET', 'PROJECT_DELETING', 'CONSENT_REQUIRED'].includes(cause.code) ? 409 : cause.code === 'CANCELLED' ? 409 : 400;
     return reply.status(status).send({ error: { code: cause.code, message: cause.message } });
   }
   throw cause;
 }
 
 export function registerAnalysisRoutes(app: FastifyInstance, deps: AppDeps): void {
+  app.post('/api/v1/analysis/preview', async (req, reply) => {
+    try { return reply.send(requireAnalysis(deps).preview(StartBody.parse(req.body))); }
+    catch (cause) { return sendAnalysisError(reply, cause); }
+  });
+  app.put('/api/v1/analysis/privacy', async (req, reply) => {
+    try {
+      const body = z.object({ projectId: z.string().min(1).max(128), excludedPaths: z.array(z.string()).max(32) }).strict().parse(req.body);
+      requireAnalysis(deps).setPrivacy(body.projectId, body.excludedPaths);
+      return reply.send({ok: true});
+    } catch (cause) { return sendAnalysisError(reply,cause); }
+  });
   app.post('/api/v1/analysis/runs', async (req, reply) => {
     const analysis = requireAnalysis(deps);
     try {
@@ -80,7 +92,7 @@ export function registerAnalysisRoutes(app: FastifyInstance, deps: AppDeps): voi
     try {
       const body = FeedbackBody.parse(req.body);
       analysis.feedback(id, body.kind);
-      return reply.send({ ok: true });
+      return reply.send({ ok: true, feedback: analysis.get(id)?.feedback ?? null });
     } catch (cause) {
       return sendAnalysisError(reply, cause);
     }

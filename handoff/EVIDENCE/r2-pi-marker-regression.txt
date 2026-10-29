@@ -1,0 +1,17 @@
+
+ RUN  v3.2.7 /Users/v/new-idea/hark
+
+ ✓ packages/project-analysis/src/providers/pi.test.ts (11 tests) 3764ms
+   ✓ selects exact provider/model with only an explicit provider extension and text output  527ms
+   ✓ does not expose provider stderr or fall back to Mock on auth failure  382ms
+   ✓ accepts an honest no-recommendation outcome  377ms
+   ✓ caps infinite stdout output and waits for the TERM-ignoring child to exit  407ms
+   ✓ caps infinite stderr output and waits for the TERM-ignoring child to exit  412ms
+   ✓ escalates a timeout to SIGKILL and waits for process exit  1050ms
+   ✓ cancels a running TERM-ignoring child without leaving an abort listener  394ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  15:32:54
+   Duration  4.29s (transform 69ms, setup 0ms, collect 80ms, tests 3.76s, environment 0ms, prepare 89ms)
+
