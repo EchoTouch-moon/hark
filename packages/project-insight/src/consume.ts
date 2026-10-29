@@ -1,3 +1,10 @@
+/**
+ * @fileoverview 洞察消费器（Insight Consumer）
+ * 从 Observer 的事件流中按 Checkpoint 前向消费 ObserverEvent，
+ * 提取高价值业务信号（SignalBatch）并更新消费游标（Checkpoint）。
+ * 支持跨代次流重置（Epoch Mismatch / Reset）检测与优雅中断处理。
+ */
+
 import { EXTRACTOR_VERSION, type SignalBatch } from './contracts.js';
 import { KeyedMutex } from './concurrency.js';
 import type { ObserverReadPort } from './observer-read-port.js';
@@ -7,6 +14,7 @@ import type { ConsumerCheckpoint, InsightStore } from './store/store.js';
 export const DEFAULT_CONSUME_LIMIT = 50;
 export const MAX_CONSUME_LIMIT = 200;
 
+/** 消费请求入参 */
 export interface ConsumeProjectInput {
   projectId: string;
   limit?: number;
@@ -14,6 +22,7 @@ export interface ConsumeProjectInput {
   extractorVersion?: string;
 }
 
+/** 消费批次处理结果 */
 export interface ConsumeResult {
   outcome: 'OK' | 'NO_SIGNAL' | 'SOURCE_RESET_REQUIRED' | 'EVIDENCE_UNAVAILABLE' | 'FROZEN';
   eventsProcessed: number;
@@ -30,11 +39,19 @@ export interface ConsumeResult {
   reasonCode?: string;
 }
 
+/**
+ * 洞察事件消费者
+ */
 export class InsightConsumer {
   private readonly locks = new KeyedMutex();
 
   constructor(private readonly store: InsightStore) {}
 
+  /**
+   * 独占消费单个项目的事件批次
+   * @param port 观察者只读端点
+   * @param input 消费入参
+   */
   async consumeProjectBatch(port: ObserverReadPort, input: ConsumeProjectInput): Promise<ConsumeResult> {
     return this.locks.runExclusive(input.projectId, async () => this.consumeExclusive(port, input));
   }

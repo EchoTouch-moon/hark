@@ -1,3 +1,14 @@
+/**
+ * @fileoverview 快照比对引擎（Snapshot Differ）
+ * 比较新旧两次 ProjectSnapshot，精细检测出变更项并派生原子事件：
+ * - REPOSITORY_HEAD_CHANGED (commit 更新)
+ * - REPOSITORY_BRANCH_CHANGED (分支切换/分离头指针)
+ * - WORKTREE_STATE_CHANGED (工作区脏文件变化)
+ * - TEST_REPORT_UPDATED (测试结果更新)
+ * - OBSERVATION_GAP (服务停机或间隙超过阈值)
+ * - REPOSITORY_UNAVAILABLE / REPOSITORY_RECOVERED (仓库物理可达性变化)
+ */
+
 import type {
   Evidence,
   EventType,
@@ -7,6 +18,7 @@ import type {
 } from './contracts.js';
 import { newId } from './ids.js';
 
+/** 快照比对上下文参数 */
 export interface DiffContext {
   projectId: string;
   runId: string;
@@ -22,6 +34,7 @@ export interface DiffContext {
   fastForward: boolean | null;
 }
 
+/** 辅助构造 ObserverEvent */
 function event(
   ctx: DiffContext,
   type: EventType,
@@ -42,10 +55,12 @@ function event(
   };
 }
 
+/** 检查工作区状态是否发生变化 */
 function worktreeChanged(a: ProjectSnapshot, b: ProjectSnapshot): boolean {
   return JSON.stringify(a.worktree) !== JSON.stringify(b.worktree);
 }
 
+/** 检查测试报告与结果是否发生变化 */
 function testChanged(a: ProjectSnapshot, b: ProjectSnapshot): boolean {
   return (
     a.test.result !== b.test.result ||
@@ -56,6 +71,7 @@ function testChanged(a: ProjectSnapshot, b: ProjectSnapshot): boolean {
   );
 }
 
+/** 比对具体的字段变更并生成对应事件 */
 function fieldEvents(ctx: DiffContext, from: ProjectSnapshot, to: ProjectSnapshot): ObserverEvent[] {
   const events: ObserverEvent[] = [];
   const fromId = from.id;
@@ -122,6 +138,11 @@ function fieldEvents(ctx: DiffContext, from: ProjectSnapshot, to: ProjectSnapsho
   return events;
 }
 
+/**
+ * 核心比对函数：根据比对上下文生成变更事件流
+ * @param ctx 快照差异比对上下文
+ * @returns 派生的观察者事件数组
+ */
 export function diffSnapshots(ctx: DiffContext): ObserverEvent[] {
   const events: ObserverEvent[] = [];
   if (ctx.emitGap && ctx.lastSuccessAt !== null) {

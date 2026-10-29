@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 项目观察者契约模型（Project Observer Contracts）
+ * 定义本地代码仓监控、Git 状态快照（ProjectSnapshot）、工作区状态（WorktreeSummary）、
+ * 单元测试测试结果汇总（TestSummary）以及变更观察事件（ObserverEvent）的数据结构。
+ */
+
 import { z } from 'zod';
 
 export const IsoDateTimeSchema = z
@@ -11,21 +17,27 @@ export type IsoDateTime = z.infer<typeof IsoDateTimeSchema>;
 export const IdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{1,127}$/);
 export type Id = z.infer<typeof IdSchema>;
 
+/** 采集健康度状态：OK(正常), DEGRADED(降级), UNAVAILABLE(不可用) */
 export const CollectionStatusSchema = z.enum(['OK', 'DEGRADED', 'UNAVAILABLE']);
 export type CollectionStatus = z.infer<typeof CollectionStatusSchema>;
 
+/** 证据质量级别：OBSERVED(实测观察到), UNKNOWN(未知), STALE(已陈旧) */
 export const EvidenceQualitySchema = z.enum(['OBSERVED', 'UNKNOWN', 'STALE']);
 export type EvidenceQuality = z.infer<typeof EvidenceQualitySchema>;
 
+/** 测试汇总结论：PASS(通过), FAIL(失败), MIXED(混合), UNKNOWN(未检出) */
 export const TestResultSchema = z.enum(['PASS', 'FAIL', 'MIXED', 'UNKNOWN']);
 export type TestResult = z.infer<typeof TestResultSchema>;
 
+/** 文件监听器状态 */
 export const WatchStatusSchema = z.enum(['watching', 'polling', 'paused', 'unavailable']);
 export type WatchStatus = z.infer<typeof WatchStatusSchema>;
 
+/** 代码仓路径可达性状态 */
 export const AccessibilitySchema = z.enum(['OK', 'UNAVAILABLE']);
 export type Accessibility = z.infer<typeof AccessibilitySchema>;
 
+/** 触发扫描的原因分类 */
 export const ScanReasonSchema = z.enum([
   'register',
   'watch',
@@ -36,27 +48,36 @@ export const ScanReasonSchema = z.enum([
 ]);
 export type ScanReason = z.infer<typeof ScanReasonSchema>;
 
+/** 观察者产出的原子事件类型 */
 export const EventTypeSchema = z.enum([
-  'PROJECT_REGISTERED',
-  'REPOSITORY_HEAD_CHANGED',
-  'REPOSITORY_BRANCH_CHANGED',
-  'WORKTREE_STATE_CHANGED',
-  'TEST_REPORT_UPDATED',
-  'REPOSITORY_UNAVAILABLE',
-  'REPOSITORY_RECOVERED',
-  'OBSERVATION_GAP',
-  'ADAPTER_ERROR',
+  'PROJECT_REGISTERED',        // 项目首次注册
+  'REPOSITORY_HEAD_CHANGED',   // Git HEAD 指针变更
+  'REPOSITORY_BRANCH_CHANGED', // 分支切换
+  'WORKTREE_STATE_CHANGED',    // 工作区文件修改/暂存/未跟踪状态变更
+  'TEST_REPORT_UPDATED',       // 测试报告文件（JUnit XML）更新
+  'REPOSITORY_UNAVAILABLE',    // 仓库物理路径丢失或无法访问
+  'REPOSITORY_RECOVERED',      // 仓库重新恢复可达
+  'OBSERVATION_GAP',           // 观察间隙（如进程崩溃后恢复发现差异）
+  'ADAPTER_ERROR',             // Git 命令或适配器异常
 ]);
 export type EventType = z.infer<typeof EventTypeSchema>;
 
+/** Git 工作区文件状态统计 */
 export const WorktreeSummarySchema = z
   .object({
+    /** 工作区是否干净（无修改、无未跟踪文件） */
     clean: z.boolean(),
+    /** 是否存在合并冲突 */
     conflicted: z.boolean(),
+    /** 暂存区文件数 */
     staged: z.number().int().nonnegative(),
+    /** 未暂存但已修改文件数 */
     unstaged: z.number().int().nonnegative(),
+    /** 未跟踪文件数 */
     untracked: z.number().int().nonnegative(),
+    /** 重命名文件数 */
     renamed: z.number().int().nonnegative(),
+    /** 未合并冲突文件数 */
     unmerged: z.number().int().nonnegative(),
   })
   .strict();
@@ -72,6 +93,7 @@ export const emptyWorktree = (): WorktreeSummary => ({
   unmerged: 0,
 });
 
+/** 测试运行结果统计信息 */
 export const TestSummarySchema = z
   .object({
     result: TestResultSchema,
@@ -100,6 +122,7 @@ export const unknownTestSummary = (): TestSummary => ({
   sourceTimeKind: 'none',
 });
 
+/** 项目观察快照（每次扫描产生的完整状态指纹） */
 export const ProjectSnapshotSchema = z
   .object({
     id: IdSchema,
@@ -128,6 +151,7 @@ export const EvidenceSchema = z
   .strict();
 export type Evidence = z.infer<typeof EvidenceSchema>;
 
+/** 观察者派生的事件实体 */
 export const ObserverEventSchema = z
   .object({
     eventId: IdSchema,

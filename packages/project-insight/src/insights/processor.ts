@@ -1,3 +1,14 @@
+/**
+ * @fileoverview 项目洞察规则评估与事件流处理引擎
+ *
+ * 职责：
+ * 1. 增量拉取项目收件箱（inbox）未处理的信号流，按 appendSeq 批量顺序评估；
+ * 2. 状态机与历史基准线管理（BaselineMode），区分历史回填与实时新发生的洞察；
+ * 3. 冲突消解与降噪（如当检测到仓库不可访问时，压制观察健康报警）；
+ * 4. 连续性（streak）跟踪与规则匹配，产生 Candidate（触发开启洞察）与 Recovery（触发自动恢复闭环）；
+ * 5. 跨表事务原子性写入：创建/关闭 Episode、更新消费进度与修订版本号（revision）。
+ */
+
 import { SignalSchema, type Signal } from '../contracts.js';
 import { InsightError } from '../errors.js';
 import { pickPrimaryCandidate, suppressHealthIfRepoActive } from '../episodes/conflicts.js';
@@ -13,30 +24,55 @@ import { evaluateSignal } from '../rules/registry.js';
 import { RULESET_VERSION, type ActiveIssue, type RuleStateSnapshot, type StreakState } from '../rules/types.js';
 import type { InsightStore } from '../store/store.js';
 
+/** 测试用事务故障注入点 */
 export type RuleFault = 'after-episodes' | 'after-progress' | 'before-commit';
+
+/** 基准线处理模式：none 为全量评估；existing-inbox 为将现有历史信号作为基准线不产生新通知 */
 export type BaselineMode = 'none' | 'existing-inbox';
 
+/** 规则处理输入参数 */
 export interface ProcessRulesInput {
+  /** 目标项目 ID */
   projectId: string;
+  /** 流代际编号（streamEpoch） */
   streamEpoch: number;
+  /** 单批次最大处理信号数（默认 50，上限 200） */
   limit?: number;
+  /** 基准线模式 */
   baseline?: BaselineMode;
+  /** 故障注入（测试用） */
   fault?: RuleFault;
 }
 
+/** 规则批次处理结果 */
 export interface ProcessRulesResult {
+  /** 执行结果状态码：OK（正常且有产出）、NO_INSIGHT（无新洞察）、FROZEN（引擎冻结挂起）、EMPTY（收件箱无新信号） */
   outcome: 'OK' | 'NO_INSIGHT' | 'FROZEN' | 'EMPTY';
+  /** 是否向数据库写入了变更 */
   written: boolean;
+  /** 本批次新开启的 Episode 数 */
   episodesOpened: number;
+  /** 本批次自动恢复闭环的 Episode 数 */
   episodesResolved: number;
+  /** 本批次读取并评估的信号数 */
   signalsRead: number;
+  /** 最后处理成功的 appendSeq */
   lastAppendSeq: number;
+  /** 最后处理成功的 signalId */
   lastSignalId: string;
+  /** 当前项目的进度修订版本号 */
   revision: number;
 }
 
 type Row = Record<string, unknown>;
 
+/**
+ * 驱动单个项目的规则评估流程
+ *
+ * @param store 洞察持久化存储接口
+ * @param input 项目 ID 与处理批次参数
+ * @returns 批次评估产出与最新消费游标
+ */
 export function processProjectRules(store: InsightStore, input: ProcessRulesInput): ProcessRulesResult {
   const consumer = store.getCheckpoint(input.projectId, input.streamEpoch);
   if (consumer?.status === 'FROZEN') {

@@ -1,13 +1,21 @@
+/**
+ * @fileoverview 产物路径沙箱遏制与安全校验（Artifact Path Containment）
+ * 严格防范目录遍历（Path Traversal）、绝对路径越界及符号链接（Symlink）逃逸。
+ * 确保所有生成的文件产物均被局限在专用沙箱目录（.hearth-demo-artifacts）之内。
+ */
+
 import path from 'node:path';
 
+/** 产物路径解析结果 */
 export type ArtifactPathResult =
   | { ok: true; absPath: string; relPath: string }
   | { ok: false; code: 'PATH_ABSOLUTE' | 'PATH_TRAVERSAL' | 'PATH_EMPTY'; reason: string };
 
 /**
- * Pure containment logic for artifact paths under the dedicated demo root.
- * Rejects absolute paths and any `..` escape BEFORE normalization games.
- * Symlink escapes are caught separately by validateRealpathContainment (fs).
+ * 纯逻辑路径遏制校验
+ * 在未访问真实文件系统前，快速拦截空路径、绝对路径以及包含 `..` 的跨级跳跃
+ * @param demoRoot 允许写入的 demo-artifacts 根目录绝对路径
+ * @param relPath 声明的产物相对路径
  */
 export function resolveArtifactPath(demoRoot: string, relPath: string): ArtifactPathResult {
   if (typeof relPath !== 'string' || relPath.length === 0) {
@@ -30,9 +38,15 @@ export function resolveArtifactPath(demoRoot: string, relPath: string): Artifact
 }
 
 /**
- * FS-level guard (S03): realpath the deepest existing ancestor of the target
- * and require it to stay inside the realpath'd demo root. Catches symlinks
- * pointing outside the root even before the file exists.
+ * 文件系统级别深层防逃逸检查（安全守卫 S03）
+ * 向上探测目标路径上已存在的最近祖先目录，并调用 realpath 解析其真实物理路径，
+ * 验证解析后的真实路径是否依然严格处于 realpath(demoRoot) 之下。
+ * 可在文件实际被创建前有效阻止通过预埋符号链接逃逸到沙箱外的攻击。
+ * 
+ * @param absPath 待写入目标的绝对路径
+ * @param demoRoot 沙箱根目录
+ * @param fsRealpath realpath 异步方法
+ * @param fsStat stat 异步方法
  */
 export async function validateRealpathContainment(
   absPath: string,

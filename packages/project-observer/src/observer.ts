@@ -1,3 +1,14 @@
+/**
+ * @fileoverview 项目观察器核心服务（ProjectObserver）
+ * 
+ * 职责：
+ * 1. 本地 Git 仓库注册、路径规范化与可访问性探针；
+ * 2. 状态扫描调度：周期轮询（reconcile）、文件监听（watch）与按需手动触发（manual/startup）；
+ * 3. 并发与限流控制：基于信号量限制最大全局并发扫描数，基于项目 ID 互斥锁（KeyedMutex）保证单项目串行；
+ * 4. 快照比对与事件生成（Git 分支、HEAD 切换、工作区脏状态、测试报告解析与健康度变更）；
+ * 5. 异常弹性与容错：CAS 冲突重试、进程崩溃未完成运行清理、文件系统监听异常自动降级为轮询模式。
+ */
+
 import path from 'node:path';
 import {
   RegisterProjectOptionsSchema,
@@ -28,19 +39,33 @@ import { ObserverStore, type TxFault } from './state/store.js';
 import type { Clock } from './time.js';
 import { nowUtcIso } from './time.js';
 
+/** 项目观察器配置选项 */
 export interface ProjectObserverOptions {
+  /** SQLite 数据库文件路径 */
   dbPath: string;
+  /** 可注入时钟函数（测试用，默认真实系统时间） */
   clock?: Clock;
+  /** Git 执行器函数（可注入模拟执行器） */
   gitRunner?: GitRunner;
+  /** 是否启用文件系统监听（默认 false） */
   watchEnabled?: boolean;
+  /** 防抖延迟毫秒数（默认 1500ms） */
   debounceMs?: number;
+  /** 全局对齐扫描间隔毫秒数（默认 5 分钟） */
   reconcileIntervalMs?: number;
+  /** 单次 Git 扫描超时毫秒数（默认 15s） */
   scanTimeoutMs?: number;
+  /** 最大并发扫描任务数（默认 2） */
   maxConcurrentScans?: number;
+  /** 测试报告单文件最大字节数（默认 16MB） */
   maxReportBytes?: number;
+  /** 判定出现观察中断（gap）的超时阈值毫秒数 */
   gapThresholdMs?: number;
 }
 
+/**
+ * 项目观察器服务类
+ */
 export class ProjectObserver {
   readonly store: ObserverStore;
   private readonly git: GitSource;
@@ -73,6 +98,13 @@ export class ProjectObserver {
     });
   }
 
+  /**
+   * 注册本地 Git 仓库并执行首次初始扫描
+   * 
+   * @param localPath 本地仓库路径（自动转为绝对规范路径）
+   * @param options 注册选项（名称、测试报告路径、自定义扫描间隔等）
+   * @returns 注册成功的项目元信息
+   */
   async registerProject(localPath: string, options: RegisterProjectOptions = {}): Promise<RegisteredProject> {
     const parsed = RegisterProjectOptionsSchema.parse(options);
     const canonicalPath = canonicalizeProjectPath(localPath);
@@ -117,20 +149,31 @@ export class ProjectObserver {
     return saved;
   }
 
+  /** 列出所有已注册项目的摘要信息 */
   listProjects(): ProjectSummary[] {
     return this.store.listSummaries();
   }
 
+  /** 获取指定项目的元数据配置，不存在则抛出 ObserverError('PROJECT_NOT_FOUND') */
   getProject(projectId: string): RegisteredProject {
     const project = this.store.getProject(projectId);
     if (project === null) throw new ObserverError('PROJECT_NOT_FOUND', `project ${projectId} not found`);
     return project;
   }
 
+  /** 获取 Git 扫描统计指标（累计扫描次数与当前峰值并发数） */
   scanStats(): { scanCount: number; maxActiveScans: number } {
     return { scanCount: this.git.scanCount, maxActiveScans: this.git.maxActiveScans };
   }
 
+  /**
+   * 触发项目状态扫描
+   * 
+   * @param projectId 项目 ID
+   * @param reason 触发原因（startup/reconcile/watch/manual/register/resume）
+   * @param fault 事务故障注入（测试用）
+   * @returns 本次扫描生成的 ObservationRun 记录
+   */
   async scanProject(projectId: string, reason: ScanReason, fault?: TxFault): Promise<ObservationRun> {
     const project = this.getProject(projectId);
     if (!project.enabled && reason !== 'manual' && reason !== 'register' && reason !== 'resume') {
@@ -194,11 +237,18 @@ export class ProjectObserver {
     throw last instanceof ObserverError ? last : new ObserverError('SCAN_FAILED', 'scan failed');
   }
 
+  /** 获取指定项目的最新状态快照（包含 Git 与测试报告聚合状态） */
   getLatestSnapshot(projectId: string): ProjectSnapshot | null {
     this.getProject(projectId);
     return this.store.getLatestSnapshot(projectId);
   }
 
+  /**
+   * 分页逆序查询项目事件日志（适合 UI 时间线展示）
+   * 
+   * @param projectId 项目 ID
+   * @param query 查询参数（游标、条数、事件类型筛选）
+   */
   listEvents(
     projectId: string,
     query: { cursor?: string; limit?: number; types?: EventType[] } = {},
@@ -208,13 +258,16 @@ export class ProjectObserver {
   }
 
   /**
-   * Append-order consume API. Does not require a live project so callers can
-   * observe PROJECT_REMOVED / STREAM_EPOCH_MISMATCH after hard delete.
+   * 按追加顺序正向拉取事件流（供 Insight 消费者递增消费与断点续传）
+   * 
+   * 无需项目必须处于活跃注册状态，使得调用方即便在项目硬删除后仍能感知到
+   * PROJECT_REMOVED 与 STREAM_EPOCH_MISMATCH 等生命周期事件。
    */
   listEventsForward(projectId: string, query: ListEventsForwardQuery = {}): ForwardEventPage {
     return this.store.listEventsForward(projectId, query);
   }
 
+  /** 获取指定项目的观察运行健康度（包含采集状态、监听模式与最近错误） */
   getObserverHealth(projectId: string): ObserverHealth {
     this.getProject(projectId);
     const health = this.store.getHealth(projectId);
@@ -224,6 +277,7 @@ export class ProjectObserver {
     return health;
   }
 
+  /** 启用或暂停项目的观察扫描；暂停时会停止文件系统监听 */
   async setProjectEnabled(projectId: string, enabled: boolean): Promise<void> {
     this.getProject(projectId);
     this.store.setEnabled(projectId, enabled);
@@ -244,6 +298,7 @@ export class ProjectObserver {
     }
   }
 
+  /** 添加测试报告文件监控源（例如 JUnit XML） */
   addReportSource(projectId: string, relativePath: string, format: 'junit-xml' = 'junit-xml'): ReportSource {
     const project = this.getProject(projectId);
     const normalized = relativePath.replace(/\\/g, '/');
@@ -262,22 +317,26 @@ export class ProjectObserver {
     return source;
   }
 
+  /** 列出项目配置的所有测试报告数据源 */
   listReportSources(projectId: string): ReportSource[] {
     this.getProject(projectId);
     return this.store.listReportSources(projectId);
   }
 
+  /** 移除指定的测试报告数据源 */
   removeReportSource(projectId: string, sourceId: string): void {
     this.getProject(projectId);
     this.store.removeReportSource(projectId, sourceId);
   }
 
+  /** 注销并删除项目，停止关联的文件监听并清理元数据 */
   async removeProject(projectId: string): Promise<void> {
     this.getProject(projectId);
     await this.stopWatch(projectId);
     this.store.deleteProject(projectId);
   }
 
+  /** 启动观察器后台引擎：清理未完成异常运行、对已启用项目执行启动扫描、开启监听与定时对齐 */
   async start(): Promise<void> {
     if (this.started) return;
     this.started = true;
@@ -312,6 +371,7 @@ export class ProjectObserver {
     this.reconcileTimer.unref?.();
   }
 
+  /** 停止后台轮询定时器与所有活跃的文件系统监听器，等待处理中任务收尾 */
   async stop(): Promise<void> {
     this.started = false;
     if (this.reconcileTimer !== null) {
@@ -324,10 +384,12 @@ export class ProjectObserver {
     await Promise.all(ids.map((id) => this.stopWatch(id)));
   }
 
+  /** 关闭 SQLite 存储连接 */
   close(): void {
     this.store.close();
   }
 
+  /** 收到文件系统变动提示，写入防抖缓冲区并调度延时扫描 */
   hintDirty(projectId: string, relativePath: string): void {
     const project = this.store.getProject(projectId);
     if (project === null || !project.enabled) return;

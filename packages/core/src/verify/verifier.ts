@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 独立产物验证器（Independent Verifier，S11）
+ * 绝不信任执行器的自我汇报。独立核验器从磁盘物理读取产物文件，
+ * 重新计算 SHA-256 哈希值或校验 JSON Schema，核验通过才允许任务进入 completed 终态。
+ */
+
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ActionSpec } from '@hearth/contracts';
@@ -5,8 +11,10 @@ import { sha256Hex } from '@hearth/contracts';
 import { resolveArtifactPath } from '../policy/artifact-path.js';
 import type { ExecutorResult } from '../orchestration/executor.js';
 
+/** 验证裁决结果：pass(通过), fail(失败), unknown(未知) */
 export type VerifyVerdict = 'pass' | 'fail' | 'unknown';
 
+/** 验证详细报告结构 */
 export interface VerifyResult {
   verdict: VerifyVerdict;
   kind: string;
@@ -16,9 +24,8 @@ export interface VerifyResult {
 }
 
 /**
- * Independent verifier: re-reads the artifact from disk itself and re-hashes
- * it. Never trusts the executor's self-report (S11: executor claiming
- * completion without an artifact can never reach `completed`).
+ * 独立物理产物验证器
+ * 从磁盘重新读取产物并重新计算哈希与校验结构
  */
 export class IndependentVerifier {
   constructor(private readonly artifactRoot: string) {}

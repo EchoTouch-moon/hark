@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 任务运行与审批路由模块（Runs & Approvals Routes）
+ * 包含：动作执行触发（POST /cards/:id/execute）、运行状态列表与详情（含步骤和证据）、
+ * 人工审批决策（POST /approvals/:runId）以及运行取消（POST /runs/:id/cancel）。
+ */
+
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
@@ -7,6 +13,9 @@ const ApprovalBodySchema = z
   .object({ decision: z.enum(['approve', 'deny']) })
   .strict();
 
+/**
+ * 注册任务运行与审批相关 HTTP API 路由
+ */
 export function registerRunRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.post('/api/v1/cards/:id/execute', async (req, reply) => {
     const { id } = req.params as { id: string };

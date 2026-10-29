@@ -18,3 +18,7 @@ data/
 
 .DS_Store
 *.log
+
+# Machine-local development caches/preferences
+.pnpm-store/
+.vscode/

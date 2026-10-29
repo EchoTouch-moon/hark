@@ -55,3 +55,21 @@ pnpm dev:server
 Pi 继续使用 `--no-tools --no-extensions --no-mcp --no-context-files --no-session --offline`；仅用 `-e` 加载上面显式指定的 Provider 注册扩展。`--offline` 关闭启动联网，不关闭本次模型请求。凭证由 Pi 自身认证机制解析，Hearth 不复制密钥；不要把凭证放到命令参数或报告。第三方扩展本身是本地代码，因此仍需独立文件指纹核验，不能仅凭 `--no-tools` 宣称无副作用。
 
 验证前先构建 web，再显式设置 `HEARTH_PILOT_PINDOU` 后运行 `pnpm exec tsx scripts/p2a-live-verify.ts`。该脚本在 `data/p2a-live-*/` 使用独立数据库，通过浏览器点击触发真实调用，输出脱敏 Run 证据及建议卡截图；比较 HEAD、index 内容、工作区状态以及 tracked/nonignored untracked 文件内容与 mode。ignored 文件不在指纹覆盖范围。真实请求失败不回退 Mock。
+
+## 多端代码同步
+
+GitHub 私有仓库：`EchoTouch-moon/hark`，默认开发分支 `master`。
+
+首次在另一台设备运行：
+
+```bash
+gh repo clone EchoTouch-moon/hark
+cd hark
+pnpm install
+pnpm build
+pnpm dev:server
+```
+
+需要 Node >=22.13 和 pnpm。已有工作副本时，先提交本机修改，再 `git pull --ff-only`；完成一段工作后 `git add <本次文件>`、`git commit`、`git push`。分支出现分歧时先处理合并，不使用强制推送覆盖另一台设备的工作。
+
+Git 同步源码、合同、测试与文档。本地 SQLite、注册项目的绝对路径、会话、密钥、依赖、构建产物不参与同步；每台设备单独安装依赖、登记授权项目，并配置 Pi 认证及 Provider 扩展路径。历史验收证据含当时本机的路径与状态，不应当作另一台设备的当前运行结果。

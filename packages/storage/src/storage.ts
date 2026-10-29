@@ -33,7 +33,20 @@ function parse<T>(schema: { parse(x: unknown): T }, raw: unknown, ctx: string): 
   return schema.parse(value);
 }
 
-/** Typed persistence facade over node:sqlite. All writes go through here. */
+/**
+ * @fileoverview 强类型 SQLite 持久化门面（Storage Layer）
+ * 
+ * 核心设计规范：
+ * 1. 系统所有状态读写、迁移、审计均统一收口于此类
+ * 2. 状态机流转强事务与原子审计：transitionRun 内部开启 BEGIN/COMMIT 事务，
+ *    在更新状态的同时强制校验流转合法性（assertRunTransition）并同步写入 audit_log
+ * 3. 幂等控制：
+ *    - ingestEvent: 按 dedupe_key 去重
+ *    - upsertCandidate: 按 suppression_key 去重
+ *    - createRun: 按 idempotency_key 保证单一执行记录
+ * 4. 纯追加审计日志（Append-only Audit Log）：只提供插入与查询，不暴露任何 UPDATE/DELETE 接口
+ * 5. 安全护栏：resetDemoData 仅在全部项目均为 demo 属性时才允许执行
+ */
 export class Storage {
   readonly db: DatabaseSync;
   private closed = false;
@@ -70,7 +83,12 @@ export class Storage {
   }
 
   // ---------- events ----------
-  /** Idempotent ingest by dedupe_key; returns whether this call inserted. */
+  /**
+   * 写入源事件（按 dedupe_key 实现幂等写入）
+   * @param event 待入库的源事件
+   * @param meta 针对黄金测试集的标注元数据（可选）
+   * @returns inserted: 是否真正执行了数据库插入（若已存在相同 dedupe_key 则为 false）
+   */
   ingestEvent(event: Event, meta?: { goldenAction?: string | null; goldenUseful?: boolean | null }): { inserted: boolean } {
     const existing = this.db.prepare('SELECT id FROM events WHERE dedupe_key = ?').get(event.dedupeKey) as Row | undefined;
     if (existing) return { inserted: false };
@@ -142,7 +160,11 @@ export class Storage {
   }
 
   // ---------- candidates ----------
-  /** Upsert by unique suppression_key: later duplicates return the existing id. */
+  /**
+   * 插入或复用候选建议（按唯一 suppression_key 去重）
+   * @param c 候选建议实体
+   * @returns id: 候选 ID；existing: 是否命中已存在记录
+   */
   upsertCandidate(c: Candidate): { id: string; existing: boolean } {
     const dup = this.db.prepare('SELECT id FROM candidates WHERE suppression_key = ?').get(c.suppressionKey) as Row | undefined;
     if (dup) return { id: String(dup['id']), existing: true };
@@ -221,7 +243,11 @@ export class Storage {
   }
 
   // ---------- runs ----------
-  /** Create run keyed by unique idempotency_key; second submit returns existing. */
+  /**
+   * 创建任务运行记录（强绑定唯一 idempotency_key，防重入）
+   * @param run 运行初始状态实体
+   * @param actionSnapshot 触发瞬间的动作规范静态快照（避免后续修改导致快照漂移）
+   */
   createRun(run: TaskRun, actionSnapshot: ActionSpec): { run: TaskRun; existing: boolean } {
     const dup = this.db.prepare('SELECT id FROM runs WHERE idempotency_key = ?').get(run.idempotencyKey) as Row | undefined;
     if (dup) return { run: this.getRun(String(dup['id']))!, existing: true };
@@ -278,8 +304,13 @@ export class Storage {
   }
 
   /**
-   * Atomic state transition (contract state machine enforced in-transaction).
-   * Audit row written in the same transaction.
+   * 运行状态原子流转（在单个 SQLite 事务中完成状态校验、字段更新与审计日志写入）
+   * 严格调用 assertRunTransition 保证符合契约状态机，任何非法流转立即触发 ROLLBACK。
+   * 
+   * @param runId 运行 ID
+   * @param to 目标状态
+   * @param patch 更新字段补丁
+   * @param audit 审计主体与元数据详情
    */
   transitionRun(
     runId: string,
@@ -427,7 +458,13 @@ export class Storage {
     }));
   }
 
-  /** Append-only audit log. No update/delete surface is exposed. */
+  /**
+   * 追加不可篡改的审计日志（纯追加，不提供任何修改或删除接口）
+   * @param eventType 审计事件类型标识
+   * @param actor 触发主体（user / system / verifier / discovery 等）
+   * @param objectId 关联的操作对象唯一 ID
+   * @param details 经过脱敏的详情字典
+   */
   audit(eventType: string, actor: string, objectId: string, details: Record<string, unknown> = {}): void {
     this.db
       .prepare('INSERT INTO audit_log (at, event_type, actor, object_id, sanitized_details_json) VALUES (?, ?, ?, ?, ?)')
@@ -444,7 +481,9 @@ export class Storage {
     }));
   }
 
-  /** Demo-only reset. Refuses when any project is non-demo (safety rail). */
+  /**
+   * 重置演示环境数据（安全护栏：若检测到任何非 demo 属性的项目，坚决拒绝重置）
+   */
   resetDemoData(): void {
     const nonDemo = this.db.prepare("SELECT COUNT(*) AS n FROM projects WHERE visibility != 'demo'").get() as Row;
     if (Number(nonDemo['n']) > 0) throw new Error('refusing reset: non-demo projects present');

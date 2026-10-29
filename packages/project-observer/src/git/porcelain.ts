@@ -1,16 +1,37 @@
+/**
+ * @fileoverview Git Porcelain V2 协议解析器
+ * 
+ * 解析 `git status --porcelain=v2 -z --branch` 输出：
+ * - 记录以 NUL 字节（\0）分隔，路径名中的空格和特殊字符无需转义；
+ * - 开头携带 `# branch.oid` 与 `# branch.head` 头部字段；
+ * - 记录种类：
+ *   - `?`：未跟踪文件（untracked）；
+ *   - `1`：普通已跟踪文件修改（包含暂存区与工作区两处状态字符 XY）；
+ *   - `2`：重命名或复制（包含目标路径与随后的原路径）；
+ *   - `u`：未合并冲突条目（unmerged conflict）。
+ */
+
 import { emptyWorktree, type WorktreeSummary } from '../contracts.js';
 
+/** Git 分支与 HEAD 解析状态 */
 export interface ParsedBranch {
+  /** HEAD 提交哈希（null 表示 unborn） */
   oid: string | null;
+  /** 当前分支名（null 表示游离 HEAD 或 unborn） */
   head: string | null;
+  /** 是否游离 HEAD */
   detached: boolean;
+  /** 是否尚未创建任何提交（初始分支） */
   unborn: boolean;
 }
 
+/** 工作区与分支综合状态解析结果 */
 export interface ParsedStatus {
+  /** 分支与游离状态 */
   branch: ParsedBranch;
+  /** 工作区变更聚合统计 */
   worktree: WorktreeSummary;
-  /** Parsed paths, used only in tests. Never persisted. */
+  /** 解析出的所有文件路径（测试断言用，不入库） */
   paths: string[];
 }
 
@@ -66,9 +87,10 @@ function consumeHeaders(chunk: string, branch: ParsedBranch): string {
 }
 
 /**
- * Parse `git status --porcelain=v2 -z --branch`.
- * Records are NUL-terminated; pathnames are not split on spaces.
- * Rename records separate the new path and origPath with an extra NUL.
+ * 解析 `git status --porcelain=v2 -z --branch` 的输出缓冲区
+ * 
+ * @param buffer Git status 命令的标准输出字节流
+ * @returns 解析得到的完整工作区状态及分支元信息
  */
 export function parsePorcelainV2(buffer: Buffer): ParsedStatus {
   const branch: ParsedBranch = { oid: null, head: null, detached: false, unborn: false };

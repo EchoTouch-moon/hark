@@ -1,3 +1,13 @@
+/**
+ * @fileoverview 对话页（ChatPage，U03）
+ *
+ * 职责：
+ * 1. 与本地 Agent 进行多轮自然语言对话；
+ * 2. 状态徽章：展示当前 Agent 适配器连接状态（Hermes 在线 vs 离线 Mock 演示）；
+ * 3. 安全渲染文本流，防止 HTML 注入，同时格式化 Markdown 基础语法（粗体、代码块）；
+ * 4. 步骤可解释性：支持展开查看 Assistant 本轮生成的内部规划步骤（ChatStep）。
+ */
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ConnectionBadge, EmptyState, ErrorState, PageHeader } from '../components';

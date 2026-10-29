@@ -1,3 +1,10 @@
+/**
+ * @fileoverview 本地执行器（MockExecutor）
+ * 仅在指定的 demo-artifacts 根目录下进行真实的本地文件落盘（绝不触碰用户真实目录），
+ * 生成带有时间戳与内容哈希的真实产物，供独立的 Verifier 验证。
+ * 同时记录 RunStep 步骤并模拟短延时，驱动前端交互动效。
+ */
+
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -6,25 +13,35 @@ import { sha256Hex } from '@hearth/contracts';
 import type { Storage } from '@hearth/storage';
 import { resolveArtifactPath } from '../policy/artifact-path.js';
 
+/** 执行器产出结果 */
 export interface ExecutorResult {
+  /** 是否执行成功并生成有效产物 */
   ok: boolean;
+  /** 产物相对于 demoRoot 的相对路径 */
   artifactRelPath?: string;
+  /** 产物文件的真实 SHA-256 哈希值 */
   sha256?: string;
+  /** 失败归类 */
   failureClass?: FailureClass;
+  /** 错误描述信息 */
   error?: string;
 }
 
+/** 执行器依赖配置 */
 export interface ExecutorDeps {
+  /** 专用演示产物存放根目录绝对路径 */
   artifactRoot: string;
+  /** 持久化存储实例 */
   storage: Storage;
+  /** 统一时间戳生成器 */
   clock: () => string;
+  /** 单步骤执行延时（毫秒，默认 90ms） */
   stepDelayMs?: number;
 }
 
 /**
- * MockExecutor performs REAL local writes inside the dedicated demo-artifacts
- * root (never anywhere else) so the Verifier has something genuine to check.
- * It is deliberately slow-ish so the UI can show live step progression.
+ * 本地安全演示执行器
+ * 在受控 demo-artifacts 根目录中执行真实的本地写入
  */
 export class MockExecutor {
   constructor(private readonly deps: ExecutorDeps) {}

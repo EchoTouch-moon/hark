@@ -1,23 +1,26 @@
 /**
- * Hermes read-only capability probe (M2-T03).
- *
- * STRICTLY a health/capabilities GET probe against the local loopback
- * gateway. It never starts tool-enabled runs, never sends credentials we
- * don't already have, and reports `unconfigured` rather than pretending a
- * connection exists.
+ * @fileoverview Hermes 只读能力探测适配器（Hermes Read-only Probe，M2-T03）
+ * 
+ * 安全红线：
+ * 1. 严格仅限发送只读的 GET /capabilities 健康探测
+ * 2. 绝不擅自执行工具，绝不发送未经授权的系统密钥
+ * 3. 若未配置环境变量则诚实报告 `unconfigured`，严禁伪造已连接状态
  */
 
+/** Hermes 连接状态结构 */
 export type HermesStatus =
   | { state: 'unconfigured'; detail: string }
   | { state: 'unreachable'; detail: string }
   | { state: 'reachable'; version?: string; capabilities: string[]; detail: string };
 
+/** 探测结果报告 */
 export interface HermesProbeResult {
   status: HermesStatus;
   probedAt: string;
   url: string | null;
 }
 
+/** HTTP 探测 fetch 注入接口 */
 export interface HermesFetch {
   (url: string, init?: { signal?: AbortSignal }): Promise<{
     ok: boolean;
@@ -26,9 +29,12 @@ export interface HermesFetch {
   }>;
 }
 
+/**
+ * Hermes 接口适配器
+ */
 export class HermesApiAdapter {
   readonly id = 'hermes';
-  readonly live = true; // capable of live use WHEN configured & reachable
+  readonly live = true; // 当配置并可达时具备实时连接能力
 
   constructor(
     private readonly deps: {
@@ -39,11 +45,14 @@ export class HermesApiAdapter {
     },
   ) {}
 
+  /** 是否已显式配置 Hermes URL */
   get configured(): boolean {
     return typeof this.deps.url === 'string' && this.deps.url.length > 0;
   }
 
-  /** Read-only health/capabilities probe. Never executes tools. */
+  /**
+   * 执行只读健康与能力探测（绝不调用任何工具副作用）
+   */
   async probe(): Promise<HermesProbeResult> {
     const now = this.deps.now ?? (() => new Date().toISOString());
     if (!this.configured) {

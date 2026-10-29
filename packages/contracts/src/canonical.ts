@@ -1,9 +1,9 @@
 /**
- * Canonical JSON + SHA-256 digests.
- *
- * Pure TypeScript on purpose: `@hearth/contracts` is imported by the browser
- * bundle, so `node:crypto` is not allowed here. Correctness is pinned by
- * tests against node:crypto vectors.
+ * @fileoverview 规范化 JSON 编码与 SHA-256 摘要实现
+ * 
+ * 纯 TypeScript 原生实现：由于 `@hearth/contracts` 同时供浏览器前端与 Node 服务端引用，
+ * 禁止依赖 `node:crypto`。通过测试用例与 Node 原生加密向量比对保证跨环境结果一致性。
+ * 用于计算稳定的 ActionDigest、TargetDigest 以及幂等键（IdempotencyKey）。
  */
 
 const K = [
@@ -17,11 +17,16 @@ const K = [
   0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ];
 
+/** 循环右移操作 */
 function rotr(x: number, n: number): number {
   return ((x >>> n) | (x << (32 - n))) >>> 0;
 }
 
-/** SHA-256 of a UTF-8 string, hex-encoded lowercase. */
+/**
+ * 计算 UTF-8 字符串的 SHA-256 哈希值
+ * @param input 输入字符串
+ * @returns 64位小写十六进制哈希字符串
+ */
 export function sha256Hex(input: string): string {
   const bytes = new TextEncoder().encode(input);
   const bitLen = bytes.length * 8;
@@ -80,7 +85,12 @@ export function sha256Hex(input: string): string {
   return H.map((x) => x.toString(16).padStart(8, '0')).join('');
 }
 
-/** Deterministic JSON: object keys sorted lexicographically, stable encoding. */
+/**
+ * 确定性 JSON 序列化（Canonical JSON）
+ * 对象属性按字典序升序排序，保证相同内容在不同平台生成完全一致的文本表征
+ * @param value 任意 JavaScript 对象或值
+ * @returns 规范化的 JSON 字符串
+ */
 export function canonicalize(value: unknown): string {
   if (value === null || typeof value !== 'object') {
     return JSON.stringify(value) ?? 'null';
@@ -95,6 +105,12 @@ export function canonicalize(value: unknown): string {
     .join(',')}}`;
 }
 
+/**
+ * 计算任意对象的确定性 SHA-256 摘要
+ * 内部先通过 canonicalize 进行规范化，再计算哈希
+ * @param value 任意对象
+ * @returns 64位十六进制哈希
+ */
 export function canonicalDigest(value: unknown): string {
   return sha256Hex(canonicalize(value));
 }

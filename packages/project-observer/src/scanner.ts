@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 项目状态扫描主流程（Project Scanner）
+ * 协调采集 Git 信息（HEAD、分支、工作区状态）、测试报告（JUnit XML），
+ * 计算状态指纹（fingerprint）、与上一版本快照比对产生增量事件（ObserverEvent），并写入数据库。
+ */
+
 import {
   unknownTestSummary,
   type CollectionStatus,
@@ -20,6 +26,7 @@ import type { ObserverStore, TxFault } from './state/store.js';
 import type { Clock } from './time.js';
 import { nowUtcIso } from './time.js';
 
+/** 扫描执行上下文依赖 */
 export interface ScanDeps {
   store: ObserverStore;
   git: GitSource;
@@ -29,6 +36,13 @@ export interface ScanDeps {
   fault?: TxFault;
 }
 
+/**
+ * 对指定项目执行单次完整状态采集与增量快照计算
+ * @param deps 扫描依赖集合
+ * @param projectId 目标项目唯一 ID
+ * @param reason 触发本次扫描的原因（如 watch, reconcile, manual 等）
+ * @returns 扫描运行结果报告（包含成功或错误信息）
+ */
 export async function scanProject(deps: ScanDeps, projectId: string, reason: ScanReason): Promise<ObservationRun> {
   const project = deps.store.getProject(projectId);
   if (project === null) {

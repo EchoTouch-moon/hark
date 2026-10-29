@@ -22,3 +22,7 @@
 ## 2026-10-29 · P2-A live provider
 
 用户明确选定 stepfun-plan/step-5-preview。该 Provider 由已安装 StepFun 扩展注册；全部禁扩展会令其不可用。保留 --no-extensions，新增显式 HEARTH_PI_PROVIDER_EXTENSION，仅加载经审阅的 Provider 注册代码；不启用自动发现或其他扩展。模型身份必须显式指定并记入 Run。CLI 用 text 模式接收最终结构化文本，补充嵌套字段合同；真实错误不回退 Mock、不保存原始 stderr。默认服务仍为 Mock，真实验证使用独立 DB，未修改全局 Pi/Hermes 配置。
+
+## 2026-10-29 · GitHub 代码同步
+
+用户明确授权推送 GitHub，用于多端同步，覆盖此前默认不推送的任务边界。当前 GitHub 登录账号 EchoTouch-moon，无既有 hark/hearth 远端；目标为新建私有 EchoTouch-moon/hark，保留现有 master 分支与历史。纳入已有源码/测试/验收文档改动；缓存与编辑器配置加入忽略规则，未跟踪截图保留本地。数据库、凭证和本机注册路径不作为运行状态同步。

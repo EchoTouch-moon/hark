@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 观察者专用 SQLite 存储引擎（Observer Store）
+ * 包含单写锁保护（WriterLock）、顺序事件流（Event Stream with Epoch & Monotonic Sequence）、
+ * 快照留存与健康状态更新，并支持测试断言专用的事务注入（TxFault）。
+ */
+
 import { DatabaseSync } from 'node:sqlite';
 import {
   ObserverEventSchema,
@@ -47,6 +53,9 @@ function asInt(value: unknown): number {
 
 export type TxFault = 'after-run' | 'after-snapshot' | 'after-events' | 'after-pointer';
 
+/**
+ * 观察者存储管理类
+ */
 export class ObserverStore {
   readonly db: DatabaseSync;
   readonly dbPath: string;

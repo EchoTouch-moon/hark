@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 任务执行编排器（Orchestrator）
+ * 核心调度流水线：Policy Gate 策略门禁 -> Executor 执行 -> Verifier 独立产物核验 -> 终态流转。
+ * 强制以数据库为权威事实来源，所有状态流转受契约状态机约束，并具备启动时中断任务对账恢复（S09）能力。
+ */
+
 import type { ActionCard, ActionSpec, ApprovalGrant, SourceRef, TaskRun } from '@hearth/contracts';
 import { actionDigest, targetDigest } from '@hearth/contracts';
 import type { Storage } from '@hearth/storage';
@@ -8,6 +14,7 @@ import { IndependentVerifier, type VerifyResult } from '../verify/verifier.js';
 import { promises as fsPromises } from 'node:fs';
 import { mkdirSync } from 'node:fs';
 
+/** 卡片已过期异常 */
 export class CardExpiredError extends Error {
   code = 'CARD_EXPIRED';
   constructor(cardId: string) {
@@ -15,6 +22,7 @@ export class CardExpiredError extends Error {
   }
 }
 
+/** 实体未找到异常 */
 export class NotFoundError extends Error {
   code = 'NOT_FOUND';
   statusCode = 404;
@@ -23,6 +31,7 @@ export class NotFoundError extends Error {
   }
 }
 
+/** 状态冲突异常 */
 export class ConflictError extends Error {
   code = 'CONFLICT';
   statusCode = 409;
@@ -31,6 +40,7 @@ export class ConflictError extends Error {
   }
 }
 
+/** 编排器依赖接口 */
 export interface OrchestratorDeps {
   storage: Storage;
   artifactRoot: string;
@@ -42,9 +52,8 @@ export interface OrchestratorDeps {
 const CARD_TERMINAL = new Set(['completed', 'failed', 'dismissed', 'expired', 'cancelled']);
 
 /**
- * Durable Task orchestrator: policy -> execute -> verify -> complete.
- * The DB is the authority for run state; every transition goes through
- * Storage.transitionRun which enforces the contract state machine.
+ * 任务生命周期编排器
+ * 核心流水线：Policy Gate 检查 -> 执行器调度 -> 独立核验器验证 -> 状态流转
  */
 export class Orchestrator {
   private readonly executor: MockExecutor;

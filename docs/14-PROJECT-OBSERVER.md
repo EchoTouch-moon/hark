@@ -48,7 +48,8 @@ pnpm exec tsx scripts/register-observer-pilots.ts
 
 ## P0.5 hardening
 
-Reliability gates, writer lock, CAS revision, Git output limits, report TOCTOU checks, and verification notes live in `docs/verification/`.
+Gate list: `docs/15-PROJECT-OBSERVER-P05-HARDENING.md`. Evidence: `docs/verification/`.
+Performance: `OBSERVER_BENCH_ITERS=30 OBSERVER_BENCH_IDLE_MS=1800000 pnpm exec tsx scripts/observer-bench.ts`.
 
 ## 与既有 Hearth 架构的差异
 

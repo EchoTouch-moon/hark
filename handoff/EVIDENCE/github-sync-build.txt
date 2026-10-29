@@ -1,0 +1,16 @@
+$ pnpm --filter @hearth/web build && pnpm --filter @hearth/server build
+$ tsc -p tsconfig.json --noEmit && vite build
+vite v6.4.5 building for production...
+transforming...
+✓ 90 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.59 kB │ gzip:   0.41 kB
+dist/assets/index-BZsz2AZ_.css   41.10 kB │ gzip:   6.78 kB
+dist/assets/index-eCvbcqw5.js   372.70 kB │ gzip: 112.22 kB
+✓ built in 627ms
+$ esbuild src/main.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs --external:fsevents --external:chokidar
+
+  dist/server.mjs  1.9mb ⚠️
+
+⚡ Done in 118ms

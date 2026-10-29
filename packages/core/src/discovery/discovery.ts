@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 主动建议发现引擎服务（Discovery Service，R-02）
+ * 规则驱动扫描已持久化的源事件，按规则匹配构建 Candidate 并上屏为 ActionCard。
+ * 遵循严格的去重抑制、静默时段控制（quiet hours）与每日卡片配额预算（daily budget）。
+ */
+
 import type { ActionCard, Candidate, Event } from '@hearth/contracts';
 import { sha256Hex } from '@hearth/contracts';
 import type { Storage } from '@hearth/storage';
@@ -9,23 +15,29 @@ import {
   type SuppressionSettings,
 } from './suppression.js';
 
+/** 主动发现扫描结果报告 */
 export interface DiscoverResult {
+  /** 扫描的总事件数量 */
   scannedEvents: number;
+  /** 判定为噪声并跳过的数量 */
   noiseSkipped: number;
+  /** 成功生成的建议候选数量 */
   candidatesCreated: number;
+  /** 因重复而被抑制的数量 */
   duplicatesSuppressed: number;
+  /** 最终创建上屏的卡片数量 */
   cardsCreated: number;
+  /** 遵循用户此前忽略操作而跳过的数量 */
   dismissedRespected: number;
+  /** 扫描时是否处于静默时段 */
   quietHoursActive: boolean;
+  /** 当日卡片配额是否已耗尽 */
   budgetExhausted: boolean;
 }
 
 /**
- * Rule-first discovery over persisted events (R-02). Deterministic for a
- * fixed clock: duplicate dedupe_keys never create a second card, dismissed
- * suppression keys are never re-surfaced, unexpired cards are not duplicated.
- * During quiet hours or after the daily budget is exhausted, NEW cards are
- * deferred (existing cards remain actionable).
+ * 主动发现服务
+ * Rule-first discovery over persisted events (R-02).
  */
 export class DiscoveryService {
   constructor(

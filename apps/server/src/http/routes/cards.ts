@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 动作卡片路由模块（Card Routes）
+ * 包含：卡片列表查询、卡片详情与证据聚合查询、忽略（dismiss）、延后（snooze）以及主动发现触发（discover，带 1.5s 频控）。
+ */
+
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
@@ -12,6 +17,9 @@ const DismissBodySchema = z
 /** Per-app rate limiting (keyed by storage instance so tests/isolated apps don't share state). */
 const lastDiscoverAtByStorage = new WeakMap<object, number>();
 
+/**
+ * 注册卡片相关 HTTP API 路由
+ */
 export function registerCardRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/v1/cards', async (req, reply) => {
     const q = req.query as { status?: string; projectId?: string };

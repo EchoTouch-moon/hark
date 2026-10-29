@@ -1,3 +1,10 @@
+/**
+ * @fileoverview 业务信号提取器（Signal Extractor）
+ * 从低级系统观察事件（ObserverEvent）中纯函数式提炼高层业务信号（ExtractedSignal），
+ * 包括：Git HEAD 跃迁、分支切换、工作区脏状态、测试报告失败与测试结果指标变化。
+ * 计算确定性 signalKey，保证无论如何重放，信号 ID 完全恒定。
+ */
+
 import { TestSummarySchema, type ObserverEvent, type ProjectSnapshot, type TestSummary } from '@hearth/project-observer';
 import { canonicalSerialize, sha256Hex } from '../canonical.js';
 import {
@@ -12,6 +19,7 @@ import {
   type SignalKind,
 } from '../contracts.js';
 
+/** 信号提取上下文 */
 export interface ExtractContext {
   streamEpoch: number;
   fromSnapshot: ProjectSnapshot | null;
@@ -21,6 +29,9 @@ export interface ExtractContext {
 
 const HEAD_BINDING: HeadBinding = 'UNDETERMINED';
 
+/**
+ * 确定性派生信号唯一键（Signal Key）
+ */
 export function signalKeyFor(input: {
   projectId: string;
   streamEpoch: number;

@@ -1,17 +1,29 @@
+/**
+ * @fileoverview SQLite 数据库显式版本化迁移管理（Database Migrations）
+ * 
+ * 核心要求：
+ * 1. 显式版本记录在 schema_version 表中，支持安全重复运行（幂等升级）
+ * 2. 强事务保护：每版本迁移在单独事务内执行，失败自动 ROLLBACK
+ * 3. 性能与一致性配置：强制启用 WAL 日志模式、busy_timeout = 5000ms、外键约束 foreign_keys = ON
+ * 4. 包含核心业务表：projects, sources, events, candidates, cards, runs, run_steps, evidence, approvals, settings, feedback, chat_messages, audit_log
+ */
+
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
+/** 迁移版本定义接口 */
 export interface Migration {
+  /** 迁移版本号（严格递增正整数） */
   version: number;
+  /** 迁移语义名称 */
   name: string;
+  /** 执行的 SQL 语句集合 */
   up: string[];
 }
 
 /**
- * Explicit versioned migrations (docs/04). Each runs inside a transaction;
- * applied versions are recorded in schema_version. WAL + busy_timeout +
- * foreign_keys=ON are enforced on every connection.
+ * 核心版本迁移定义列表
  */
 export const MIGRATIONS: readonly Migration[] = [
   {
@@ -159,6 +171,11 @@ export const MIGRATIONS: readonly Migration[] = [
   },
 ];
 
+/**
+ * 打开并配置 SQLite 连接
+ * 自动建立父目录并配置 WAL 模式、忙时等待与外键级联
+ * @param dbPath SQLite 数据库文件绝对路径
+ */
 export function openDatabase(dbPath: string): DatabaseSync {
   mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
@@ -168,7 +185,12 @@ export function openDatabase(dbPath: string): DatabaseSync {
   return db;
 }
 
-/** Applies pending migrations; safe to call repeatedly (records versions). */
+/**
+ * 执行待生效的数据库迁移
+ * 安全且幂等，可反复在服务启动时调用
+ * @param db 打开的 SQLite DatabaseSync 句柄
+ * @returns 本次应用的版本号数组以及当前最新版本号
+ */
 export function migrate(db: DatabaseSync): { applied: number[]; currentVersion: number } {
   db.exec('CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)');
   const row = db.prepare('SELECT MAX(version) AS v FROM schema_version').get() as { v: number | null };

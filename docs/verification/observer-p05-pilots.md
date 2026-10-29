@@ -2,12 +2,18 @@
 
 Read-only. No files, index, or HEAD were modified in the real repos.
 
-Command: `pnpm exec tsx scripts/observer-pilot-verify.ts` (temp DB, not `data/observer.sqlite`).
+```bash
+HEARTH_PILOT_PINDOU=<absolute git path>
+HEARTH_PILOT_SKILL_LAB=<absolute git path>
+pnpm exec tsx scripts/observer-pilot-verify.ts
+```
 
-| Repo | Result | HEAD | Branch | Two extra scans | Repo fingerprint |
-|---|---|---|---|---|---|
-| pindou | PASS | `f57fc770361e` | main | 0 change events | unchanged |
-| prototype-skill-lab | PASS | `3352b3615e49` | feat/m3-host-native | 0 change events | unchanged |
-| agent-internet-lab | BLOCKED_PATH_UNAVAILABLE | — | — | — | path not present; not searched beyond the documented location |
+Temp observer DB (not `data/observer.sqlite`).
 
-Test status: UNKNOWN / UNKNOWN (no declared JUnit). Collection OK. Worktrees were already dirty before observation.
+| Repo | Result | HEAD | Branch | Two extra scans | Repo fingerprint | Test |
+|---|---|---|---|---|---|---|
+| pindou | PASS | `f57fc770361e` | main | 0 change events | unchanged | UNKNOWN / UNKNOWN |
+| prototype-skill-lab | PASS | `3352b3615e49` | feat/m3-host-native | 0 change events | unchanged | UNKNOWN / UNKNOWN |
+| agent-internet-lab | BLOCKED_PATH_UNAVAILABLE | — | — | — | path not present at the documented location; no extra search | — |
+
+Worktrees were already dirty before observation. Collection OK.
