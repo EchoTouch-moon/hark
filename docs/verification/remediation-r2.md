@@ -1,6 +1,6 @@
 # R2 产品质量整改 · 2026-10-29
 
-状态：工程实现及本地验证通过；远端CI等待实际运行；建议价值门禁仍未通过。不得进入P2-B/C/P3。
+状态：工程实现及本地验证通过；远端CI已通过（源码提交00121a2，Run40836527163）；建议价值门禁仍未通过。不得进入P2-B/C/P3。
 
 ## 实现与本地验证
 
@@ -14,7 +14,7 @@
 
 本地：42文件343测试、全仓typecheck、lint零错误（6个既有warning）、web+server build通过；浏览器16/16通过。r2-browser.txt单项验证Pi预览身份拦截+实际Mock后端，取消/ESC零Run、保存排除、最新指纹确认、反馈刷新恢复与失败。新隐私截图r2-privacy.png，不是真实Pi调用截图。
 
-r2-tests-initial-failure.txt保留首次子进程测试marker读取空内容误当PID0的竞态；修复marker需正整数后通过。r2-tests-initial-coordinator-failure.txt保留tick累计计数测试提前返回，改为相对tick目标后验证静默零写入。未掩盖失败或用重跑替代定位。
+r2-tests-initial-failure.txt保留首次子进程PID退出断言失败。排查发现marker文件创建与内容可见之间存在读取空字符串→PID0的潜在竞态；已要求正整数PID。首次失败未捕获实际PID，因此不将这一推断写成已证实根因；补强后局部和全量通过。r2-tests-initial-coordinator-failure.txt保留tick累计计数测试提前返回，改为相对tick目标后验证静默零写入。未掩盖失败或用重跑替代定位。
 
 ## 价值门禁
 

@@ -36,3 +36,9 @@ Action 以完整 commit SHA 引用。pnpm setup 的自身运行时为 node24，�
 | GitHub 实际 CI | **NOT_RUN**，本子任务不提交/推送；须由主线提交后触发并监测，不能将本表当远端通过 |
 
 本任务没有改动源码、package、锁文件或测试配置，没有执行真实模型请求。全仓检查、远端运行与平台差异由主线统一收口。首次 Linux 运行可能揭示 macOS 本地检查未覆盖的差异；如果失败，应保留错误并修复后再报告通过。
+
+## 主线远端验收结果
+
+PASS：[GitHub CI Run 40836527163](https://github.com/EchoTouch-moon/hark/actions/runs/40836527163)，提交 `00121a273d594107fbcf337ef9ee48949b79278d`，Ubuntu托管runner / Node22，job 2m31s。frozen install、typecheck、lint、unit/integration、完整build、Chromium依赖和Mock E2E全部通过；6个既有lint warning未升级为error。结构化实际结果见handoff/EVIDENCE/r2-ci-run.json。此处更新覆盖上面子任务交付时NOT_RUN状态。
+
+R2人工价值门禁仍未通过；远端绿色不等于建议质量达标。后续文档记录提交不改变已验收源码。
