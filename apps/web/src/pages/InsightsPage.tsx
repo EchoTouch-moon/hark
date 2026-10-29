@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { EmptyState, ErrorState, PageHeader } from '../components';
 import {
@@ -13,6 +13,15 @@ import {
   type InsightSeverity,
   type InsightSummary,
 } from '../features/insights';
+import {
+  fetchAnalysisRuns,
+  ANALYSIS_STATUS_LABEL,
+  type AnalysisRun,
+} from '../features/analysis';
+import {
+  fetchObserverProjects,
+  type ObserverProjectSummary,
+} from '../features/observer';
 import { formatDateTime } from '../features/runs';
 import './InsightsPage.css';
 
@@ -42,57 +51,117 @@ export function InsightsPage() {
   const [params, setParams] = useSearchParams();
   const projectId = params.get('projectId') ?? undefined;
   const filterId = params.get('filter') === 'all-open' ? 'all-open' : 'open';
+  const tab = params.get('tab') === 'history' ? 'history' : 'insights';
   const severityParam = params.get('severity');
   const severity: InsightSeverity | undefined =
     severityParam === 'important' || severityParam === 'attention' || severityParam === 'info'
       ? severityParam
       : undefined;
+
   const [items, setItems] = useState<InsightListItem[] | null>(null);
+  const [historyRuns, setHistoryRuns] = useState<AnalysisRun[] | null>(null);
+  const [projects, setProjects] = useState<ObserverProjectSummary[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [summary, setSummary] = useState<InsightSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  const isFetchingRef = useRef(false);
+
   const status = STATUS_FILTERS.find((item) => item.id === filterId)?.status;
+
+  // 加载项目列表用于项目名称映射
+  useEffect(() => {
+    let active = true;
+    fetchObserverProjects()
+      .then((res) => {
+        if (active) setProjects(res);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const projectNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) {
+      map.set(p.id, p.name);
+    }
+    return map;
+  }, [projects]);
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
-      const [page, nextSummary] = await Promise.all([
-        fetchInsights({ projectId, status, severity, limit: 20 }, signal),
-        fetchInsightSummary(signal),
-      ]);
-      setItems(page.items);
-      setNextCursor(page.nextCursor);
-      setSummary(nextSummary);
-      setError(null);
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+      try {
+        if (tab === 'insights') {
+          const [page, nextSummary] = await Promise.all([
+            fetchInsights({ projectId, status, severity, limit: 20 }, signal),
+            fetchInsightSummary(signal),
+          ]);
+          setItems(page.items);
+          setNextCursor(page.nextCursor);
+          setSummary(nextSummary);
+        } else {
+          // tab === 'history'
+          if (projectId) {
+            const runs = await fetchAnalysisRuns(projectId, signal);
+            setHistoryRuns(runs);
+          } else if (projects.length > 0) {
+            const allRuns = await Promise.all(
+              projects.map((p) =>
+                fetchAnalysisRuns(p.id, signal).catch(() => [] as AnalysisRun[]),
+              ),
+            );
+            const flat = allRuns.flat().sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
+            setHistoryRuns(flat);
+          } else {
+            setHistoryRuns([]);
+          }
+        }
+        setError(null);
+      } catch (cause) {
+        if (signal?.aborted) return;
+        setError(cause instanceof Error ? cause.message : '加载失败');
+      } finally {
+        isFetchingRef.current = false;
+      }
     },
-    [projectId, status, severity],
+    [projectId, status, severity, tab, projects],
   );
 
   useEffect(() => {
     const controller = new AbortController();
-    setItems(null);
-    void load(controller.signal).catch((cause) => {
-      if (cause instanceof DOMException && cause.name === 'AbortError') return;
-      setItems(null);
-      setError(cause instanceof Error ? cause.message : '加载洞察失败');
-    });
+    if (tab === 'insights') setItems(null);
+    else setHistoryRuns(null);
+    void load(controller.signal);
     return () => controller.abort();
   }, [load, reloadKey]);
 
+  // 3 秒只读不重叠轮询 + 后台暂停 + 切回前台立即刷新
   useEffect(() => {
-    const controller = new AbortController();
-    let busy = false;
-    const timer = setInterval(() => {
-      // Preserve explicitly expanded pagination; refresh only the first page.
-      if (busy || loadingMore || (items?.length ?? 0) > 20) return;
-      busy = true;
-      void load(controller.signal).catch((cause) => {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : '刷新洞察失败');
-      }).finally(() => { busy = false; });
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void load();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        if (loadingMore || (items?.length ?? 0) > 20) return;
+        void load();
+      }
     }, 3000);
-    return () => { clearInterval(timer); controller.abort(); };
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [load, loadingMore, items?.length]);
 
   async function loadMore(): Promise<void> {
@@ -134,40 +203,63 @@ export function InsightsPage() {
       />
 
       <div className="insight-toolbar">
-        <div className="insight-filters" role="tablist" aria-label="状态筛选">
-          {STATUS_FILTERS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`btn ${filterId === item.id ? 'btn-primary' : 'btn-ghost'}`}
-              onClick={() =>
-                updateParams((next) => {
-                  if (item.id === 'open') next.delete('filter');
-                  else next.set('filter', item.id);
-                })
-              }
-            >
-              {item.label}
-            </button>
-          ))}
+        {/* 顶层视图切换：发现 vs 分析历史 */}
+        <div className="insight-view-tabs" role="tablist" aria-label="视图模式">
+          <button
+            type="button"
+            className={`btn ${tab === 'insights' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => updateParams((next) => next.delete('tab'))}
+          >
+            发现列表
+          </button>
+          <button
+            type="button"
+            className={`btn ${tab === 'history' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => updateParams((next) => next.set('tab', 'history'))}
+          >
+            分析建议历史
+          </button>
         </div>
-        <div className="insight-filters" role="tablist" aria-label="严重程度">
-          {SEVERITY_FILTERS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`btn ${ (severity ?? 'all') === item.id ? 'btn-primary' : 'btn-ghost'}`}
-              onClick={() =>
-                updateParams((next) => {
-                  if (item.id === 'all') next.delete('severity');
-                  else next.set('severity', item.id);
-                })
-              }
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+
+        {tab === 'insights' ? (
+          <>
+            <div className="insight-filters" role="tablist" aria-label="状态筛选">
+              {STATUS_FILTERS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`btn ${filterId === item.id ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() =>
+                    updateParams((next) => {
+                      if (item.id === 'open') next.delete('filter');
+                      else next.set('filter', item.id);
+                    })
+                  }
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div className="insight-filters" role="tablist" aria-label="严重程度">
+              {SEVERITY_FILTERS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`btn ${(severity ?? 'all') === item.id ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() =>
+                    updateParams((next) => {
+                      if (item.id === 'all') next.delete('severity');
+                      else next.set('severity', item.id);
+                    })
+                  }
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
         {summary && summary.projects.length > 0 ? (
           <div className="insight-filters" role="tablist" aria-label="项目筛选">
             <button
@@ -177,65 +269,134 @@ export function InsightsPage() {
             >
               全部项目
             </button>
-            {summary.projects.map((item) => (
-              <button
-                key={item.projectId}
-                type="button"
-                className={`btn ${projectId === item.projectId ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => updateParams((next) => next.set('projectId', item.projectId))}
-              >
-                {item.projectId.slice(0, 12)} · {item.openCount}
-              </button>
-            ))}
+            {summary.projects.map((item) => {
+              const displayName = projectNameMap.get(item.projectId) ?? item.projectId.slice(0, 12);
+              return (
+                <button
+                  key={item.projectId}
+                  type="button"
+                  className={`btn ${projectId === item.projectId ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => updateParams((next) => next.set('projectId', item.projectId))}
+                >
+                  {displayName} · {item.openCount}
+                </button>
+              );
+            })}
           </div>
         ) : null}
         {projectId ? (
           <p className="insight-filter-note">
-            正在筛选项目 <span className="mono">{projectId}</span>
+            正在筛选项目 <span className="mono">{projectNameMap.get(projectId) ?? projectId}</span>
           </p>
         ) : null}
       </div>
 
       {error !== null ? <ErrorState message={error} onRetry={() => setReloadKey((key) => key + 1)} /> : null}
-      {items === null && error === null ? (
-        <div className="insight-list" aria-hidden="true">
-          <div className="skeleton skeleton-tile" />
-          <div className="skeleton skeleton-tile" />
-        </div>
-      ) : null}
-      {items !== null && items.length === 0 && error === null ? <EmptyState title={empty.title} hint={empty.hint} /> : null}
-      {items !== null && items.length > 0 ? (
+
+      {/* 视图 1：发现列表 */}
+      {tab === 'insights' ? (
         <>
-          <ul className="insight-list">
-            {items.map((item) => (
-              <li key={item.id}>
-                <Link to={`/insights/${encodeURIComponent(item.id)}`} className="card insight-card">
-                  <span className="insight-card-head">
-                    <span className={`status-badge is-${SEVERITY_TONE[item.severity]}`}>{SEVERITY_LABEL[item.severity]}</span>
-                    <span className={`status-badge is-${STATUS_TONE[item.status]}`}>{STATUS_LABEL[item.status]}</span>
-                    {item.historical ? <span className="status-badge is-neutral">历史世代 {item.streamEpoch}</span> : null}
-                    {item.evidenceAvailability !== 'AVAILABLE' ? (
-                      <span className="status-badge is-warning">
-                        {item.evidenceAvailability === 'UNAVAILABLE' ? '来源不可用' : '证据缺失'}
+          {items === null && error === null ? (
+            <div className="insight-list" aria-hidden="true">
+              <div className="skeleton skeleton-tile" />
+              <div className="skeleton skeleton-tile" />
+            </div>
+          ) : null}
+          {items !== null && items.length === 0 && error === null ? <EmptyState title={empty.title} hint={empty.hint} /> : null}
+          {items !== null && items.length > 0 ? (
+            <>
+              <ul className="insight-list">
+                {items.map((item) => (
+                  <li key={item.id}>
+                    <Link to={`/insights/${encodeURIComponent(item.id)}`} className="card insight-card">
+                      <span className="insight-card-head">
+                        <span className={`status-badge is-${SEVERITY_TONE[item.severity]}`}>{SEVERITY_LABEL[item.severity]}</span>
+                        <span className={`status-badge is-${STATUS_TONE[item.status]}`}>{STATUS_LABEL[item.status]}</span>
+                        <span className="status-badge is-neutral">
+                          {projectNameMap.get(item.projectId) ?? item.projectId.slice(0, 8)}
+                        </span>
+                        {item.historical ? <span className="status-badge is-neutral">历史世代 {item.streamEpoch}</span> : null}
+                        {item.evidenceAvailability !== 'AVAILABLE' ? (
+                          <span className="status-badge is-warning">
+                            {item.evidenceAvailability === 'UNAVAILABLE' ? '来源不可用' : '证据缺失'}
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
-                  </span>
-                  <span className="insight-card-title">{item.title}</span>
-                  <span className="insight-card-summary">{item.summary}</span>
-                  <span className="insight-card-meta">
-                    {formatDateTime(item.observedAt)} · {item.primaryRuleId} · 证据 {item.evidenceCount} · HEAD 绑定未确定
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          {nextCursor !== null ? (
-            <button type="button" className="btn btn-ghost" disabled={loadingMore} onClick={() => void loadMore()}>
-              {loadingMore ? '加载中…' : '加载更多'}
-            </button>
+                      <span className="insight-card-title">{item.title}</span>
+                      <span className="insight-card-summary">{item.summary}</span>
+                      <span className="insight-card-meta">
+                        {formatDateTime(item.observedAt)} · {item.primaryRuleId} · 证据 {item.evidenceCount} 条
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {nextCursor !== null ? (
+                <button type="button" className="btn btn-ghost" disabled={loadingMore} onClick={() => void loadMore()}>
+                  {loadingMore ? '加载中…' : '加载更多'}
+                </button>
+              ) : null}
+            </>
           ) : null}
         </>
-      ) : null}
+      ) : (
+        /* 视图 2：分析历史 */
+        <div className="insight-history-view">
+          {historyRuns === null && error === null ? (
+            <div className="insight-list" aria-hidden="true">
+              <div className="skeleton skeleton-tile" />
+            </div>
+          ) : null}
+          {historyRuns !== null && historyRuns.length === 0 && error === null ? (
+            <EmptyState
+              title="暂无分析建议历史"
+              hint="分析建议仅在用户于洞察详情页面显式确认外发预览后才会触发运行。"
+            />
+          ) : null}
+          {historyRuns !== null && historyRuns.length > 0 ? (
+            <ul className="insight-list">
+              {historyRuns.map((run) => (
+                <li key={run.id}>
+                  <div className="card insight-card">
+                    <div className="insight-card-head">
+                      <span className="status-badge is-info">
+                        {ANALYSIS_STATUS_LABEL[run.status] ?? run.status}
+                      </span>
+                      <span className="status-badge is-neutral">
+                        {projectNameMap.get(run.projectId) ?? run.projectId}
+                      </span>
+                      <span className="status-badge is-neutral">
+                        Provider: {run.provider}
+                        {run.model ? ` (${run.model})` : ''}
+                      </span>
+                      {run.feedback ? (
+                        <span className="status-badge is-success">
+                          反馈: {run.feedback === 'useful' ? '有用' : '需改进'}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="insight-card-title">
+                      {run.recommendation?.statusSummary ?? `分析任务 #${run.id.slice(0, 8)}`}
+                    </div>
+                    {run.insightId ? (
+                      <div className="insight-card-meta">
+                        关联洞察：
+                        <Link to={`/insights/${encodeURIComponent(run.insightId)}`}>
+                          查看关联洞察 →
+                        </Link>
+                      </div>
+                    ) : null}
+                    <div className="insight-card-meta">
+                      开始时间: {formatDateTime(run.startedAt)}
+                      {run.usage ? ` · 耗时 ${run.usage.latencyMs}ms` : ''}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      )}
     </section>
   );
 }

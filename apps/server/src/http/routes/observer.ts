@@ -101,6 +101,28 @@ export function registerObserverRoutes(app: FastifyInstance, deps: AppDeps): voi
     }
   });
 
+  app.get('/api/v1/observer/events', async (req, reply) => {
+    const observer = requireObserver(deps);
+    const q = req.query as { projectId?: string; cursor?: string; limit?: string; types?: string };
+    const types = (q.types ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item): item is EventType => (EVENT_TYPES as readonly string[]).includes(item));
+    const parsedLimit = q.limit === undefined ? undefined : Number.parseInt(q.limit, 10);
+    const limit = parsedLimit === undefined || Number.isNaN(parsedLimit) ? undefined : parsedLimit;
+    try {
+      return reply.send(
+        observer.listEvents(q.projectId, {
+          cursor: q.cursor,
+          limit,
+          types: types.length > 0 ? types : undefined,
+        }),
+      );
+    } catch (cause) {
+      return sendObserverError(reply, cause);
+    }
+  });
+
   app.get('/api/v1/observer/projects/:id/events', async (req, reply) => {
     const observer = requireObserver(deps);
     const { id } = req.params as { id: string };

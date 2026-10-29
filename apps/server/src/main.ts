@@ -24,7 +24,7 @@ import {
   PiAnalysisProvider,
   defaultAnalysisDbPath,
 } from '@hearth/project-analysis';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DEFAULT_SETTINGS } from './http/services.js';
@@ -148,9 +148,10 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
       if (req.url.startsWith('/api/')) {
         return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'no such api route' } });
       }
-      const rel = req.url === '/' ? 'index.html' : (req.url.split('?')[0] ?? req.url).replace(/^\//, '');
+      const pathname = (req.url.split('?')[0] ?? req.url).replace(/^\//, '');
+      const rel = pathname === '' ? 'index.html' : pathname;
       const abs = path.resolve(root, rel);
-      if (!abs.startsWith(path.resolve(root)) || !existsSync(abs)) {
+      if (!abs.startsWith(path.resolve(root)) || !existsSync(abs) || statSync(abs).isDirectory()) {
         return reply.type('text/html').send(await fsReadFile(path.join(root, 'index.html')));
       }
       return reply.type(mime[path.extname(abs)] ?? 'application/octet-stream').send(await fsReadFile(abs));

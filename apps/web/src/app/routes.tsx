@@ -9,6 +9,7 @@ import { useRuntimeMode } from '../features/runtime-mode';
 import { AppShell } from './AppShell';
 import { ErrorState } from '../components';
 import { HomePage } from '../pages/HomePage';
+import { DemoHomePage } from '../pages/DemoHomePage';
 import { ChatPage } from '../pages/ChatPage';
 import { ProjectsPage } from '../pages/ProjectsPage';
 import { ProjectDetailPage } from '../pages/ProjectDetailPage';
@@ -17,6 +18,7 @@ import { ActivityPage } from '../pages/ActivityPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { InsightsPage } from '../pages/InsightsPage';
 import { InsightDetailPage } from '../pages/InsightDetailPage';
+import { ObservationsPage } from '../pages/ObservationsPage';
 
 /** Defense for direct URLs as well as navigation: never mount Demo actions outside server Demo mode. */
 function DemoGate() {
@@ -52,14 +54,15 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     errorElement: <RouteError />,
     children: [
-      { index: true, element: <InsightsPage /> },
+      { index: true, element: <HomePage /> },
       { path: 'chat', element: <ChatPage /> },
       { path: 'projects', element: <ProjectsPage /> },
       { path: 'observe/:id', element: <ObserverDetailPage /> },
       { path: 'insights', element: <InsightsPage /> },
       { path: 'insights/:id', element: <InsightDetailPage /> },
+      { path: 'observations', element: <ObservationsPage /> },
       { element: <DemoGate/>, children: [
-        { path: 'demo', element: <HomePage/> },
+        { path: 'demo', element: <DemoHomePage/> },
         { path: 'projects/:id', element: <ProjectDetailPage/> },
         { path: 'activity', element: <ActivityPage/> },
         { path: 'activity/:runId', element: <ActivityPage/> },

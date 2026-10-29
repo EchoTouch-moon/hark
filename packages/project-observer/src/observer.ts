@@ -13,6 +13,7 @@ import path from 'node:path';
 import {
   RegisterProjectOptionsSchema,
   type EventType,
+  type ObserverEvent,
   type ObservationRun,
   type ObserverHealth,
   type ForwardEventPage,
@@ -250,11 +251,20 @@ export class ProjectObserver {
    * @param query 查询参数（游标、条数、事件类型筛选）
    */
   listEvents(
-    projectId: string,
+    projectId?: string,
     query: { cursor?: string; limit?: number; types?: EventType[] } = {},
   ): PagedEvents {
-    this.getProject(projectId);
+    if (projectId !== undefined && projectId.trim() !== '') {
+      this.getProject(projectId);
+    }
     return this.store.listEvents(projectId, query);
+  }
+
+  /**
+   * 有界拉取全项目或单个项目的最新观察事件
+   */
+  listRecentEvents(limit: number = 10, projectId?: string): ObserverEvent[] {
+    return this.store.listRecentEvents(limit, projectId);
   }
 
   /**

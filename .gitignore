@@ -22,3 +22,4 @@ data/
 # Machine-local development caches/preferences
 .pnpm-store/
 .vscode/
+hearth-ui-reference-pack/

@@ -72,3 +72,14 @@ UI-01.2基础完成：真实根页只读洞察、Demo受模式门禁、Mock/Demo
 ## UI-REFRESH-01 · 第三块交付（UI-01 阶段门禁 PASS）
 
 UI-01.3完成：响应式导航（1024px紧凑72px图标导航并保留可访问名称、>=1280px 200px）、主内容最大1200px居中；按需详情面板（空时不渲染、>=1600px 360px内联列、1024/1440px覆盖式抽屉、600px底部模态）；顶栏常驻说明；Esc/关闭按钮/点击遮罩退出并自动归还焦点。全仓typecheck、web build、lint零错误、Playwright全量22/22通过。证据：handoff/EVIDENCE/ui-01-layout-*。至此UI-01全部完成并通过阶段门禁。下一步进入UI-02.1（只读overview聚合接口）。
+
+## UI-REFRESH-01 · 第四块交付（UI-02 阶段门禁 PASS）
+
+UI-02 完成（UI-02.1、UI-02.2、UI-02.3 全部交付）：
+1. 只读概览聚合接口 `GET /api/v1/overview?projectId=…`：有界聚合优先最多 3 条 Insight、全部项目摘要、最近 10 条真实观察事件、分区独立可用性（`AVAILABLE`/`DEGRADED`/`UNAVAILABLE`）；零模型调用；
+2. 真实项目工作台首页（`/`）：四大固定区域（今日概览叙事与三大核心指标、值得关注列表、项目概况网格、最近观察记录），状态文案覆盖未登记/无信号/全部正常/待关注/降级/暂停，URL 项目筛选 `?projectId=...` 同步与刷新恢复，旧 Demo 移至 `/demo`；
+3. 真实观察时间线（`/observations`）与导航：主导航正式加入“观察记录”入口，时间线倒序展示真实事件与来源质量，支持项目筛选与保留分页的加载更多；
+4. 活跃页面 3 秒只读非重叠静默轮询：后台标签页自动暂停轮询，切回前台立即单次刷新；
+5. 发现与建议（`InsightsPage`）：增加“发现列表”与“分析建议历史”双视图，项目标签采用真实项目名称映射；
+6. 阶段门禁通过：合成 JUnit 失败测试报告自动经后台流水线生成新 Insight 并呈现在首页，重复扫描不重复展示，全过程零模型调用；
+7. 验收测试：全仓 43 文件 / 348 个单测 PASS；全仓 `typecheck` PASS；`eslint` 0 错误；Playwright **25/25 PASS**。证据：`handoff/EVIDENCE/ui-02-workbench-home.png`、`ui-02-workbench-filter.png`、`ui-02-observations-timeline.png`、`ui-02-gate-insight.png`。下一步进入 UI-03.1。

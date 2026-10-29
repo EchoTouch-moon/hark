@@ -19,7 +19,7 @@ test('unknown and real mode never mount Demo actions, including direct URLs', as
   release();
   await expect(page.getByRole('heading', { name: '演示模式未启用' })).toBeVisible();
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: '洞察', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '今日概览', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /初始化.*Demo/ })).toHaveCount(0);
   await page.goto('/projects');
   await expect(page.getByRole('heading', { name: '项目', exact: true })).toBeVisible();

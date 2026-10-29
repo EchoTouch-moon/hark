@@ -1,400 +1,410 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isTerminalRunState } from '@hearth/contracts';
-import type { ActionCard as HearthCard, TaskRun } from '@hearth/contracts';
-import { ConfirmDialog, EmptyState, ErrorState, PageHeader } from '../components';
-import { ActionCard, type CardPendingAction } from '../components/ActionCard';
-import { EvidenceDrawer } from '../components/EvidenceDrawer';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { EmptyState, ErrorState, PageHeader } from '../components';
 import {
-  CARD_POLL_INTERVAL_MS,
-  POLLING_CARD_STATUSES,
-  RUNGED_TERMINAL_STATUSES,
-  SNOOZE_2H_MS,
-  fetchCardDetail,
-  friendlyCardError,
-  isProactiveCard,
-  toSecondPrecisionIso,
-  useCardActions,
-  useCards,
-  useProjects,
-} from '../features/cards';
+  fetchOverview,
+  type OverviewResponse,
+  OVERVIEW_STATUS_LABELS,
+  OVERVIEW_STATUS_TONE,
+  TEST_STATUS_LABELS,
+  TEST_STATUS_TONE,
+} from '../features/overview';
+import { SEVERITY_LABEL, SEVERITY_TONE } from '../features/insights';
+import { EVENT_TYPE_LABELS, type ObserverEventType } from '../features/observer';
+import { formatDateTime } from '../features/runs';
 import './HomePage.css';
 
-/** 主动建议区最多展示的卡片数（docs/02-UX U01） */
-const PRIMARY_LIMIT = 3;
+const REFRESH_INTERVAL_MS = 3000;
 
-/** 相对时间 / TTL / 到期判断的心跳间隔 */
-const NOW_TICK_MS = 30_000;
-
-/** 页面顶部提示的自动消失时间 */
-const NOTICE_TTL_MS = 8_000;
-
-interface HomeNotice {
-  tone: 'info' | 'error';
-  text: string;
-}
-
-/**
- * U01 Home：今天值得处理的事。
- *
- * - 主动建议区最多 3 张（proposed / snoozed 到期 / 审批与执行进行中），
- *   其余折叠在「查看全部」；
- * - 操作：查看证据（页面内 EvidenceDrawer）/ 开始处理（L2 显示为请求批准）/
- *   忽略（二次确认）/ 稍后（2 小时）；
- * - 执行后轮询 GET /cards/:id（900ms），run 终态即停；刷新后状态全部
- *   来自 API，不用 localStorage 存业务状态。
- */
 export function HomePage() {
-  const { cards, loading, error, refetch, mergeCard } = useCards();
-  const { projects, loading: projectsLoading, error: projectsError } = useProjects();
-  const actions = useCardActions();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectId = searchParams.get('projectId') ?? undefined;
 
-  const [runsByCard, setRunsByCard] = useState<Record<string, TaskRun | null>>({});
-  /** 本会话内执行过的卡片：终态后仍钉在主动建议区，避免执行完就消失 */
-  const [pinned, setPinned] = useState<ReadonlySet<string>>(() => new Set());
-  const [expandedAll, setExpandedAll] = useState(false);
-  const [evidenceId, setEvidenceId] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [pending, setPending] = useState<Record<string, CardPendingAction>>({});
-  const [actionErrors, setActionErrors] = useState<Record<string, string | null>>({});
-  const [notice, setNotice] = useState<HomeNotice | null>(null);
-  const [scanBusy, setScanBusy] = useState(false);
-  const [seedBusy, setSeedBusy] = useState(false);
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [data, setData] = useState<OverviewResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  /* ---------- 心跳与提示自动消失 ---------- */
+  const isFetchingRef = useRef(false);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setNowMs(Date.now()), NOW_TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
+  const loadData = useCallback(
+    async (isBackground = false) => {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+      if (!isBackground) setLoading(true);
 
-  useEffect(() => {
-    if (notice === null) return undefined;
-    const timer = window.setTimeout(() => setNotice(null), NOTICE_TTL_MS);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
-
-  /* ---------- 列表划分 ---------- */
-
-  const visibleCards = useMemo(
-    () => cards.filter((c) => c.status !== 'dismissed'),
-    [cards],
-  );
-
-  const primaryCards = useMemo(() => {
-    const active = visibleCards.filter(
-      (c) => isProactiveCard(c, nowMs) || pinned.has(c.id),
-    );
-    return active
-      .slice()
-      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-      .slice(0, PRIMARY_LIMIT);
-  }, [visibleCards, nowMs, pinned]);
-
-  const primaryIds = useMemo(() => new Set(primaryCards.map((c) => c.id)), [primaryCards]);
-
-  const restCards = useMemo(
-    () => visibleCards.filter((c) => !primaryIds.has(c.id)),
-    [visibleCards, primaryIds],
-  );
-
-  /* ---------- 终态卡片回填 run（刷新后仍能给出「查看 Run」链接） ---------- */
-
-  const missingRunKey = useMemo(
-    () =>
-      visibleCards
-        .filter((c) => RUNGED_TERMINAL_STATUSES.has(c.status) && !(c.id in runsByCard))
-        .map((c) => c.id)
-        .join(','),
-    [visibleCards, runsByCard],
-  );
-
-  useEffect(() => {
-    if (missingRunKey === '') return undefined;
-    let cancelled = false;
-    const ids = missingRunKey.split(',');
-    void (async () => {
-      for (const id of ids) {
-        try {
-          const detail = await fetchCardDetail(id);
-          if (cancelled) return;
-          setRunsByCard((prev) => ({ ...prev, [id]: detail.run }));
-        } catch {
-          // 回填失败不重试：打开证据面板时会再次拉取
-          if (!cancelled) setRunsByCard((prev) => ({ ...prev, [id]: null }));
+      try {
+        const res = await fetchOverview(projectId);
+        setData(res);
+        setError(null);
+      } catch (err) {
+        if (!isBackground) {
+          setError(err instanceof Error ? err.message : '获取今日概览失败');
         }
+      } finally {
+        isFetchingRef.current = false;
+        if (!isBackground) setLoading(false);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [missingRunKey]);
-
-  /* ---------- 进行中的卡每 900ms 轮询（run 终态即停） ---------- */
-
-  const activeKey = useMemo(
-    () =>
-      visibleCards
-        .filter(
-          (c) =>
-            POLLING_CARD_STATUSES.has(c.status) ||
-            // execute 刚返回时 card 可能仍是 proposed，但已有关联的非终态 run
-            (runsByCard[c.id] !== undefined && !isTerminalRunState(runsByCard[c.id]!.state)),
-        )
-        .map((c) => c.id)
-        .join(','),
-    [visibleCards, runsByCard],
+    },
+    [projectId],
   );
 
+  // 初次加载与参数变化加载
   useEffect(() => {
-    if (activeKey === '') return undefined;
-    let cancelled = false;
-    const ids = activeKey.split(',');
-    const tick = async (): Promise<void> => {
-      for (const id of ids) {
-        try {
-          const detail = await fetchCardDetail(id);
-          if (cancelled) return;
-          mergeCard(detail.card);
-          setRunsByCard((prev) => ({ ...prev, [id]: detail.run }));
-        } catch {
-          // 单轮网络抖动忽略，下一轮继续
-        }
+    loadData(false);
+  }, [loadData]);
+
+  // 3 秒只读不重叠静默轮询 + 后台暂停 + 切回前台立即刷新
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadData(true);
       }
     };
-    // 变化时立即跑一轮：刷新页面后马上恢复 run 状态
-    void tick();
-    const timer = window.setInterval(() => void tick(), CARD_POLL_INTERVAL_MS);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadData(true);
+      }
+    }, REFRESH_INTERVAL_MS);
+
     return () => {
-      cancelled = true;
       window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [activeKey, mergeCard]);
+  }, [loadData]);
 
-  /* ---------- 项目 badge 名称映射（project-atlas → Atlas） ---------- */
-
-  const projectNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const project of projects) {
-      map.set(project.id, project.name.replace(/^Project\s+/, ''));
-    }
-    return map;
-  }, [projects]);
-
-  const firstRun = !projectsLoading && projectsError === null && projects.length === 0;
-
-  /* ---------- 操作 ---------- */
-
-  const beginAction = useCallback((cardId: string, action: CardPendingAction): void => {
-    setPending((prev) => ({ ...prev, [cardId]: action }));
-    setActionErrors((prev) => ({ ...prev, [cardId]: null }));
-  }, []);
-
-  const endAction = useCallback(
-    (cardId: string, failure: string | null): void => {
-      setPending((prev) => ({ ...prev, [cardId]: null }));
-      if (failure !== null) setActionErrors((prev) => ({ ...prev, [cardId]: failure }));
-    },
-    [],
-  );
-
-  const handleExecute = useCallback(
-    async (cardId: string): Promise<void> => {
-      beginAction(cardId, 'execute');
-      const result = await actions.execute(cardId);
-      if (result.ok) {
-        mergeCard(result.data.card);
-        setRunsByCard((prev) => ({ ...prev, [cardId]: result.data.run }));
-        setPinned((prev) => {
-          const next = new Set(prev);
-          next.add(cardId);
-          return next;
-        });
-        if (result.data.alreadyRunning) {
-          setNotice({ tone: 'info', text: '该建议已有任务在执行，已恢复状态跟踪' });
-        }
-        endAction(cardId, null);
-      } else {
-        endAction(cardId, friendlyCardError(result.error));
-      }
-    },
-    [actions, beginAction, endAction, mergeCard],
-  );
-
-  const handleSnooze = useCallback(
-    async (cardId: string): Promise<void> => {
-      beginAction(cardId, 'snooze');
-      const until = toSecondPrecisionIso(new Date(Date.now() + SNOOZE_2H_MS));
-      const result = await actions.snooze(cardId, until);
-      if (result.ok) {
-        mergeCard(result.data.card);
-        endAction(cardId, null);
-      } else {
-        endAction(cardId, friendlyCardError(result.error));
-      }
-    },
-    [actions, beginAction, endAction, mergeCard],
-  );
-
-  const confirmCard = useMemo(
-    () => cards.find((c) => c.id === confirmId) ?? null,
-    [cards, confirmId],
-  );
-
-  const handleConfirmDismiss = useCallback(async (): Promise<void> => {
-    const cardId = confirmId;
-    setConfirmId(null);
-    if (cardId === null) return;
-    beginAction(cardId, 'dismiss');
-    const result = await actions.dismiss(cardId, 'not_useful');
-    if (result.ok) {
-      mergeCard(result.data.card);
-      setEvidenceId((cur) => (cur === cardId ? null : cur));
-      endAction(cardId, null);
+  const handleProjectFilterChange = (selectedId: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (!selectedId) {
+      next.delete('projectId');
     } else {
-      endAction(cardId, friendlyCardError(result.error));
+      next.set('projectId', selectedId);
     }
-  }, [actions, beginAction, confirmId, endAction, mergeCard]);
+    setSearchParams(next, { replace: true });
+  };
 
-  const handleDiscover = useCallback(async (): Promise<void> => {
-    setScanBusy(true);
-    const result = await actions.discover();
-    setScanBusy(false);
-    if (result.ok) {
-      setNotice({ tone: 'info', text: `扫描完成：新增 ${result.data.cardsCreated} 张建议` });
-      refetch();
-    } else if (result.error.status === 429) {
-      setNotice({ tone: 'error', text: '扫描太频繁，请稍后再试' });
-    } else {
-      setNotice({ tone: 'error', text: `扫描失败：${result.error.message}` });
-    }
-  }, [actions, refetch]);
+  if (loading && !data) {
+    return (
+      <section className="page home-page">
+        <PageHeader title="今日概览" subtitle="基于真实本地事实聚合 · 零未授权模型调用" />
+        <div className="home-loading" role="status">正在加载今日工作台概览…</div>
+      </section>
+    );
+  }
 
-  const handleSeed = useCallback(async (): Promise<void> => {
-    setSeedBusy(true);
-    const seeded = await actions.seedDemo();
-    if (seeded.ok) {
-      const discovered = await actions.discover();
-      setNotice({
-        tone: 'info',
-        text: `已初始化 Demo 数据：${seeded.data.projects} 个项目、${seeded.data.eventsIngested} 条事件${
-          discovered.ok ? `，新增 ${discovered.data.cardsCreated} 张建议` : ''
-        }`,
-      });
-      refetch();
-      setSeedBusy(false);
-    } else {
-      setNotice({ tone: 'error', text: `初始化失败：${seeded.error.message}` });
-      setSeedBusy(false);
-    }
-  }, [actions, refetch]);
+  if (error && !data) {
+    return (
+      <section className="page home-page">
+        <PageHeader title="今日概览" subtitle="基于真实本地事实聚合 · 零未授权模型调用" />
+        <ErrorState message={error} onRetry={() => loadData(false)} />
+      </section>
+    );
+  }
 
-  /* ---------- 渲染 ---------- */
+  const summary = data?.summary;
+  const sectionsAvailability = data?.sectionsAvailability;
+  const hasDegradedSection =
+    sectionsAvailability &&
+    (sectionsAvailability.projects !== 'AVAILABLE' ||
+      sectionsAvailability.insights !== 'AVAILABLE' ||
+      sectionsAvailability.observations !== 'AVAILABLE');
 
-  const renderCard = (card: HearthCard) => (
-    <ActionCard
-      key={card.id}
-      card={card}
-      projectName={projectNameById.get(card.projectId) ?? null}
-      run={runsByCard[card.id] ?? null}
-      pending={pending[card.id] ?? null}
-      evidenceOpen={evidenceId === card.id}
-      actionError={actionErrors[card.id] ?? null}
-      onToggleEvidence={() =>
-        setEvidenceId((cur) => (cur === card.id ? null : card.id))
-      }
-      onExecute={() => void handleExecute(card.id)}
-      onDismissRequest={() => setConfirmId(card.id)}
-      onSnooze={() => void handleSnooze(card.id)}
-    >
-      {evidenceId === card.id ? (
-        <EvidenceDrawer card={card} onClose={() => setEvidenceId(null)} />
-      ) : null}
-    </ActionCard>
-  );
+  const prioritized = data?.prioritizedInsights;
+  const projects = data?.projects ?? [];
+  const recentObservations = data?.recentObservations;
 
   return (
     <section className="page home-page">
-      <PageHeader title="今天" subtitle="值得你注意的事，会安静地出现在这里" />
+      <PageHeader
+        title="今日概览"
+        subtitle={`本地事实聚合 · ${summary?.date ?? '今日'}`}
+        actions={
+          <div className="home-filter-bar">
+            <label htmlFor="home-project-select" className="home-filter-label">
+              项目范围：
+            </label>
+            <select
+              id="home-project-select"
+              className="home-filter-select"
+              value={projectId ?? ''}
+              onChange={(e) => handleProjectFilterChange(e.target.value)}
+            >
+              <option value="">全部项目 ({projects.length})</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        }
+      />
 
-      {notice ? (
-        <p className={`home-notice home-notice-${notice.tone}`} role="status" aria-live="polite">
-          {notice.text}
-        </p>
+      {/* 降级警示横幅：不吞噬正常区块 */}
+      {hasDegradedSection ? (
+        <div className="home-degraded-banner" role="alert">
+          <span className="home-banner-badge tone-warning">部分数据源降级</span>
+          <span>
+            {sectionsAvailability?.projects !== 'AVAILABLE' ? '项目状态不可用；' : ''}
+            {sectionsAvailability?.insights !== 'AVAILABLE' ? '洞察引擎状态不可用；' : ''}
+            {sectionsAvailability?.observations !== 'AVAILABLE' ? '观察事件流不可用；' : ''}
+            未受影响的数据区域正常展示。
+          </span>
+        </div>
       ) : null}
 
-      {error ? (
-        <ErrorState message={error.message} onRetry={refetch} />
-      ) : loading ? (
-        <p className="home-loading" role="status">
-          正在加载建议…
-        </p>
-      ) : visibleCards.length === 0 ? (
-        <EmptyState
-          title="目前没有值得打扰你的事情"
-          hint="Hearth 会在有把握、且确实值得的时候才打扰你"
-          action={
-            <div className="home-empty-actions">
-              {firstRun ? (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => void handleSeed()}
-                  disabled={seedBusy || scanBusy}
-                  title={seedBusy ? '正在初始化合成数据…' : '写入两个合成项目与示例事件，并立即扫描'}
-                >
-                  {seedBusy ? '初始化中…' : '初始化 Demo 数据'}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => void handleDiscover()}
-                disabled={scanBusy || seedBusy}
-                title={scanBusy ? '正在扫描…' : '立即扫描事件源，生成新的建议'}
-              >
-                {scanBusy ? '扫描中…' : '重新扫描'}
-              </button>
+      {/* 第 1 区：今日概览叙事与指标 */}
+      {summary ? (
+        <article className="home-section home-summary-card">
+          <div className="home-summary-header">
+            <div className="home-summary-title-wrap">
+              <span className={`home-status-badge tone-${OVERVIEW_STATUS_TONE[summary.status]}`}>
+                {OVERVIEW_STATUS_LABELS[summary.status]}
+              </span>
+              <h2 className="home-summary-headline">{summary.headline}</h2>
             </div>
-          }
-        />
-      ) : (
-        <div className="page-section" aria-label="主动建议">
-          <p className="page-section-title">需要你决定</p>
-          {primaryCards.map(renderCard)}
-          {restCards.length > 0 ? (
-            <button
-              type="button"
-              className="home-toggle-all"
-              aria-expanded={expandedAll}
-              onClick={() => setExpandedAll((v) => !v)}
+            <time className="home-summary-time">{summary.date}</time>
+          </div>
+          <p className="home-summary-detail">{summary.detail}</p>
+          <div className="home-metrics-strip">
+            <div className="home-metric-pill">
+              <span className="metric-label">登记项目</span>
+              <span className="metric-value">
+                {summary.counts.enabledProjects}
+                <span className="metric-total"> / {summary.counts.totalProjects}</span>
+              </span>
+            </div>
+            <div className="home-metric-pill">
+              <span className="metric-label">待关注发现</span>
+              <span className="metric-value">
+                {summary.counts.openInsights}
+                {summary.counts.importantInsights > 0 ? (
+                  <span className="metric-highlight"> ({summary.counts.importantInsights} 重要)</span>
+                ) : null}
+              </span>
+            </div>
+            <div className="home-metric-pill">
+              <span className="metric-label">今日观察事件</span>
+              <span className="metric-value">{summary.counts.todayObservationsCount}</span>
+            </div>
+          </div>
+        </article>
+      ) : null}
+
+      {/* 第 2 区：值得关注（最多 3 条，优先排序） */}
+      <section className="home-section" aria-labelledby="section-prioritized-title">
+        <div className="home-section-header">
+          <div className="home-section-title-wrap">
+            <h2 id="section-prioritized-title" className="home-section-title">
+              值得关注
+            </h2>
+            {prioritized && prioritized.totalOpenCount > 0 ? (
+              <span className="home-count-tag">{prioritized.totalOpenCount}</span>
+            ) : null}
+          </div>
+          {prioritized && (prioritized.hasMore || prioritized.totalOpenCount > 3) ? (
+            <Link
+              to={projectId ? `/insights?projectId=${encodeURIComponent(projectId)}` : '/insights'}
+              className="home-section-link"
             >
-              {expandedAll ? '收起' : `查看全部（${restCards.length}）`}
-            </button>
-          ) : null}
-          {expandedAll && restCards.length > 0 ? (
-            <>
-              <p className="page-section-title home-rest-title">
-                其它建议与历史（{restCards.length}）
-              </p>
-              {restCards.map(renderCard)}
-            </>
+              查看全部发现 (共 {prioritized.totalOpenCount} 条) →
+            </Link>
           ) : null}
         </div>
-      )}
 
-      <ConfirmDialog
-        open={confirmCard !== null}
-        title="忽略这条建议？"
-        description={
-          confirmCard
-            ? `将忽略「${confirmCard.title}」，并记录反馈「对我没用」。已忽略的建议不会再打扰你。`
-            : undefined
-        }
-        confirmText="忽略"
-        onCancel={() => setConfirmId(null)}
-        onConfirm={() => void handleConfirmDismiss()}
-      />
+        {prioritized && prioritized.items.length > 0 ? (
+          <div className="home-insights-list">
+            {prioritized.items.map((item) => (
+              <article key={item.id} className="home-insight-card">
+                <div className="home-insight-meta-top">
+                  <span className={`home-tag tone-${SEVERITY_TONE[item.severity]}`}>
+                    {SEVERITY_LABEL[item.severity]}
+                  </span>
+                  <span className="home-project-badge">{item.projectName}</span>
+                  <span className="home-rule-tag">{item.primaryRuleId}</span>
+                  <time className="home-meta-time">{formatDateTime(item.observedAt)}</time>
+                </div>
+                <h3 className="home-insight-title">
+                  <Link to={`/insights/${item.id}`}>{item.title}</Link>
+                </h3>
+                <p className="home-insight-summary">{item.summary}</p>
+                <div className="home-insight-footer">
+                  <span className="home-evidence-count">
+                    {item.evidenceCount} 条事实证据
+                  </span>
+                  <Link to={`/insights/${item.id}`} className="home-card-action-btn">
+                    查看详情与建议 →
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="home-empty-box">
+            {summary?.status === 'NO_PROJECTS' ? (
+              <EmptyState
+                title="暂无登记项目"
+                hint="目前尚未登记任何本地项目。请先在“项目”中添加项目根目录。"
+                action={
+                  <Link to="/projects" className="home-btn-primary">
+                    登记本地项目
+                  </Link>
+                }
+              />
+            ) : summary?.status === 'NO_SIGNALS' ? (
+              <EmptyState
+                title="尚无可评估信号"
+                hint="项目已登记，但尚未观测到测试报告更新或 Git 提交信号。"
+              />
+            ) : summary?.status === 'ALL_CLEAR' ? (
+              <EmptyState
+                title="目前全部正常"
+                hint="当前未发现需要重点关注的异常或待办事项。"
+              />
+            ) : (
+              <EmptyState
+                title="暂无未处理发现"
+                hint="所有历史发现均已处理或忽略。"
+              />
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* 第 3 区：项目概况 */}
+      <section className="home-section" aria-labelledby="section-projects-title">
+        <div className="home-section-header">
+          <div className="home-section-title-wrap">
+            <h2 id="section-projects-title" className="home-section-title">
+              项目概况
+            </h2>
+            <span className="home-count-tag">{projects.length}</span>
+          </div>
+          <Link to="/projects" className="home-section-link">
+            管理项目 →
+          </Link>
+        </div>
+
+        {projects.length > 0 ? (
+          <div className="home-projects-grid">
+            {projects.map((proj) => {
+              const isFiltered = projectId === proj.id;
+              return (
+                <div
+                  key={proj.id}
+                  className={`home-project-card ${isFiltered ? 'is-selected' : ''}`}
+                >
+                  <div className="home-project-top">
+                    <div className="home-project-title-group">
+                      <h3 className="home-project-name">{proj.name}</h3>
+                      <span className={`home-status-dot ${proj.enabled ? 'is-active' : 'is-paused'}`} />
+                      <span className="home-project-state-text">
+                        {proj.enabled ? '运行中' : '已暂停'}
+                      </span>
+                    </div>
+                    <span className={`home-tag tone-${TEST_STATUS_TONE[proj.testStatus]}`}>
+                      {TEST_STATUS_LABELS[proj.testStatus]}
+                    </span>
+                  </div>
+
+                  <div className="home-project-meta">
+                    <span className="home-project-branch">
+                      分支: {proj.branch ?? 'HEAD'}
+                      {proj.headOid ? ` (${proj.headOid.slice(0, 7)})` : ''}
+                    </span>
+                    <span className="home-project-obs-time">
+                      最近观察: {formatDateTime(proj.lastObservedAt ?? undefined)}
+                    </span>
+                  </div>
+
+                  <div className="home-project-bottom">
+                    <span className="home-project-open-count">
+                      {proj.openInsightCount > 0 ? (
+                        <strong className="text-warning">{proj.openInsightCount} 条待关注</strong>
+                      ) : (
+                        <span className="text-muted">0 条待关注</span>
+                      )}
+                    </span>
+                    <div className="home-project-actions">
+                      <button
+                        type="button"
+                        className="home-btn-ghost-sm"
+                        onClick={() => handleProjectFilterChange(isFiltered ? '' : proj.id)}
+                      >
+                        {isFiltered ? '取消筛选' : '仅看此项目'}
+                      </button>
+                      <Link to={`/observe/${proj.id}`} className="home-btn-ghost-sm">
+                        详情
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="home-empty-box">
+            <EmptyState
+              title="尚未登记本地项目"
+              hint="添加本地 Git 仓库路径即可开始自动化观察与代码洞察。"
+              action={
+                <Link to="/projects" className="home-btn-primary">
+                  添加第一个项目
+                </Link>
+              }
+            />
+          </div>
+        )}
+      </section>
+
+      {/* 第 4 区：最近观察 */}
+      <section className="home-section" aria-labelledby="section-observations-title">
+        <div className="home-section-header">
+          <div className="home-section-title-wrap">
+            <h2 id="section-observations-title" className="home-section-title">
+              最近观察
+            </h2>
+            {recentObservations && recentObservations.events.length > 0 ? (
+              <span className="home-count-tag">{recentObservations.events.length}</span>
+            ) : null}
+          </div>
+          <Link
+            to={projectId ? `/observations?projectId=${encodeURIComponent(projectId)}` : '/observations'}
+            className="home-section-link"
+          >
+            查看完整时间线 →
+          </Link>
+        </div>
+
+        {recentObservations && recentObservations.events.length > 0 ? (
+          <ul className="home-observations-list">
+            {recentObservations.events.map((evt) => {
+              const label =
+                EVENT_TYPE_LABELS[evt.type as ObserverEventType] ?? evt.type;
+              return (
+                <li key={evt.id} className="home-observation-item">
+                  <div className="obs-header">
+                    <time className="obs-time">{formatDateTime(evt.timestamp)}</time>
+                    <span className="obs-project">{evt.projectName}</span>
+                    <span className="obs-type-tag">{label}</span>
+                    <span className="obs-source-tag">{evt.source}</span>
+                  </div>
+                  <p className="obs-summary">{evt.payloadSummary}</p>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="home-empty-box">
+            <EmptyState
+              title="暂无观察记录"
+              hint="当本地仓库发生提交、分支切换或测试运行后，客观事件将记录于此。"
+            />
+          </div>
+        )}
+      </section>
     </section>
   );
 }

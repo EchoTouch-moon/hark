@@ -153,6 +153,19 @@ export async function fetchObserverEvents(
   return apiFetch(`/api/v1/observer/projects/${encodeURIComponent(id)}/events${suffix}`, { signal });
 }
 
+export async function fetchAllObserverEvents(
+  query: { projectId?: string; types?: string; cursor?: string; limit?: number } = {},
+  signal?: AbortSignal,
+): Promise<{ events: ObserverEvent[]; nextCursor: string | null }> {
+  const params = new URLSearchParams();
+  if (query.projectId) params.set('projectId', query.projectId);
+  if (query.types) params.set('types', query.types);
+  if (query.cursor) params.set('cursor', query.cursor);
+  if (query.limit !== undefined) params.set('limit', String(query.limit));
+  const suffix = params.size > 0 ? `?${params.toString()}` : '';
+  return apiFetch(`/api/v1/observer/events${suffix}`, { signal });
+}
+
 export async function scanObserverProject(id: string): Promise<{ snapshot: ObserverSnapshot | null; health: ObserverHealth }> {
   return apiFetch(`/api/v1/observer/projects/${encodeURIComponent(id)}/scan`, { method: 'POST', json: {} });
 }

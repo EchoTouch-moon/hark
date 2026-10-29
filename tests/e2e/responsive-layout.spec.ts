@@ -17,7 +17,7 @@ test.describe('UI-01.3: Responsive layout, navigation and detail drawer', () => 
     await expect(page.locator('.nav-brand-name')).toBeHidden();
 
     // All nav items retain accessible names
-    for (const name of ['今日概览', '项目', '发现与建议', '设置']) {
+    for (const name of ['今日概览', '项目', '发现与建议', '观察记录', '设置']) {
       const link = nav.getByRole('link', { name });
       await expect(link).toBeVisible();
       await expect(link).toHaveAttribute('aria-label', name);

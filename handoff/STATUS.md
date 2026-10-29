@@ -86,3 +86,13 @@ UI-01.2模式/导航基础完成：服务端模式共用上下文+Zod、未知/�
 ## UI-REFRESH-01 · 第三块（UI-01 阶段门禁 PASS）
 
 UI-01.3完成：响应式导航（1024px紧凑72px图标导航并保留可访问名称、>=1280px 200px）、主内容最大1200px宽屏居中；按需详情面板（空时不渲染、>=1600px 360px内联列、1024/1440px覆盖式抽屉附遮罩、600px底部模态面板）；顶栏说明随时呼出；Esc/关闭按钮/点击遮罩退出并自动归还焦点。全仓typecheck、web build、lint零错误、Playwright全量22/22通过。证据：handoff/EVIDENCE/ui-01-layout-*。下一块：UI-02.1（只读overview聚合接口）。
+
+## UI-REFRESH-01 · 第四块（UI-02 阶段门禁 PASS）
+
+UI-02 全部完成并通关门禁：
+1. UI-02.1 新增只读 `GET /api/v1/overview?projectId=…` 聚合接口，返回今日概览事实（优先最多 3 条未处理 Insight、项目摘要、状态计数与最近 10 条真实观察事件）；
+2. UI-02.2 真实项目工作台首页：实现四大固定区域（今日概览叙事与关键指标、值得关注列表、项目概况网格、最近客观观察记录），项目筛选同步至 URL `?projectId=...` 并在刷新后保持；旧 Demo 首页移至受门禁保护的 `/demo`；
+3. UI-02.3 真实观察事件时间线 `/observations` 及主导航正式入口；活跃页面 3 秒非重叠只读静默轮询，后台标签页自动暂停轮询，切回前台立即单次刷新；发现与建议提供“发现列表”与“分析历史”双视图；
+4. 修复了 SPA 静态文件服务在处理带 Query 参数的根路径（如 `/?projectId=...`）时误将根目录当文件读取导致 500 的问题，以及 JUnit 报告含失败用例时 `MIXED` 状态正确映射为测试失败（`FAILED`）；
+5. UI-02 门禁验收通过：合成 JUnit 失败测试报告自动生成真实 Insight，首页 3 秒轮询自动感知并呈现，重复扫描不重复，全过程零模型调用。
+6. 验证：全仓 43 文件 / 348 个单测 PASS；全仓 `typecheck` PASS；改动文件与全仓 `eslint` 0 错误；Playwright 全量 **25/25 PASS**。证据：`handoff/EVIDENCE/ui-02-workbench-home.png`、`ui-02-workbench-filter.png`、`ui-02-observations-timeline.png`、`ui-02-gate-insight.png`。下一块：UI-03.1（统一决策详情页面）。

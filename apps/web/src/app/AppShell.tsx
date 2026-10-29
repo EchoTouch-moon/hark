@@ -60,6 +60,7 @@ const NAV_ITEMS: readonly NavItemDefinition[] = [
   { to: '/', label: '今日概览', icon: 'home', end: true },
   { to: '/projects', label: '项目', icon: 'projects' },
   { to: '/insights', label: '发现与建议', icon: 'insights' },
+  { to: '/observations', label: '观察记录', icon: 'activity' },
   { to: '/settings', label: '设置', icon: 'settings' },
 ];
 

@@ -333,13 +333,17 @@ export class ObserverStore {
   }
 
   listEvents(
-    projectId: string,
+    projectId?: string,
     options: { cursor?: string; limit?: number; types?: EventType[] } = {},
   ): { events: ObserverEvent[]; nextCursor: string | null } {
     const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
     const types = options.types ?? [];
-    const params: Array<string | number> = [projectId];
-    let sql = 'SELECT * FROM observer_events WHERE project_id = ?';
+    const params: Array<string | number> = [];
+    let sql = 'SELECT * FROM observer_events WHERE 1=1';
+    if (projectId !== undefined && projectId.trim() !== '') {
+      sql += ' AND project_id = ?';
+      params.push(projectId.trim());
+    }
     if (types.length > 0) {
       sql += ` AND type IN (${types.map(() => '?').join(',')})`;
       params.push(...types);
@@ -359,6 +363,20 @@ export class ObserverStore {
       events: page,
       nextCursor: extra !== undefined && last !== undefined ? `${last.observedAt}|${last.eventId}` : null,
     };
+  }
+
+  listRecentEvents(limit: number = 10, projectId?: string): ObserverEvent[] {
+    const bounded = Math.min(Math.max(limit, 1), 50);
+    let sql = 'SELECT * FROM observer_events';
+    const params: Array<string | number> = [];
+    if (projectId !== undefined) {
+      sql += ' WHERE project_id = ?';
+      params.push(projectId);
+    }
+    sql += ' ORDER BY occurred_at DESC, id DESC LIMIT ?';
+    params.push(bounded);
+    const rows = this.db.prepare(sql).all(...params) as Row[];
+    return rows.map((row) => this.rowToEvent(row));
   }
 
   allocatedAppendSeq(): number {
