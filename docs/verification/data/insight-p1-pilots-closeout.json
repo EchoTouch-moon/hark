@@ -1,0 +1,46 @@
+{
+  "runtimeDbs": {
+    "hearthDefaultObserver": "data/observer.sqlite",
+    "usedObserver": "data/observer.sqlite",
+    "usedInsight": "data/insights.sqlite",
+    "usedApp": "data/dev.sqlite",
+    "priorUiObserver": "/tmp/hearth-obs-ui/observer.sqlite",
+    "mismatchNote": "S3.5 queried the Hearth default data/observer.sqlite (0 projects). A previous UI process used /tmp/hearth-obs-ui/observer.sqlite, which already contained pindou and prototype-skill-lab. This close-out registered the same two repos into the default DB via /projects."
+  },
+  "pilots": [
+    { "name": "pindou", "env": "HEARTH_PILOT_PINDOU", "result": "PASS", "pathSet": true },
+    { "name": "prototype-skill-lab", "env": "HEARTH_PILOT_SKILL_LAB", "result": "PASS", "pathSet": true },
+    { "name": "agent-internet-lab", "env": "HEARTH_PILOT_AGENT_INTERNET", "result": "NOT_RUN_ENV_UNSET", "pathSet": false }
+  ],
+  "consume": [
+    {
+      "name": "pindou",
+      "id": "prj_89b187f07a3076c8",
+      "consume": "NO_SIGNAL",
+      "eventsProcessed": 1,
+      "episodesOpened": 0,
+      "ruleOutcome": "EMPTY",
+      "note": "Only PROJECT_REGISTERED plus idempotent rescans. Git noise stays NO_INSIGHT. Test evidence UNKNOWN."
+    },
+    {
+      "name": "prototype-skill-lab",
+      "id": "prj_c1f9ba859ad25ea3",
+      "consume": "NO_SIGNAL",
+      "eventsProcessed": 1,
+      "episodesOpened": 0,
+      "ruleOutcome": "EMPTY",
+      "note": "Same quiet path. feat/m3-host-native, test UNKNOWN."
+    }
+  ],
+  "repoUnchanged": [
+    { "name": "pindou", "repoUnchanged": true, "head": "f57fc770361e" },
+    { "name": "prototype-skill-lab", "repoUnchanged": true, "head": "3352b3615e49" }
+  ],
+  "insightSummary": { "engineHealth": "NOT_EVALUATED", "openCount": 0, "projects": [] },
+  "feedCount": 0,
+  "screenshots": [
+    "p1-projects-registered.png",
+    "p1-projects-after-insight.png",
+    "p1-insights-after-pilots.png"
+  ]
+}

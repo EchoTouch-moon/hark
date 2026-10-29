@@ -1,115 +1,55 @@
-# S3 Gate Review · S3.5 close-out
+# S3 Gate Review · P1 close-out
 
 - Date: 2026-10-29
-- Baseline HEAD: `9890ba2`
+- Feature HEAD: `6979dda` / docs `6a51c1d`
+- Snooze fix: `b6785c7`
 - Spec: `docs/16-HEARTH_PROJECT_INSIGHT_P1.md` §S3
-- S3.0 entry: `docs/verification/insight-p1-s30-entry-audit.md`
 - ADR: `docs/adr/ADR-INSIGHT-006.md`
-- Clean worktree: `/Users/v/new-idea/hark-s35-verify` at `9890ba2` (0 dirty files)
-- Original workspace uncommitted files were left in place and were not used for this close-out
 
 ## Overall
 
 **CONDITIONAL_PASS**
 
-Positive Insight UI, isolated API/lifecycle tests, and clean-tree typecheck passed. Real-pilot G6 is blocked: Observer Registry has zero projects and `HEARTH_PILOT_*` is unset. Clean-tree `pnpm test` still has one pre-existing snooze-window failure in `9890ba2` itself.
+P1-C is product-complete. Clean-tree tests are green after the snooze clock fix. Two known pilots are registered in the Hearth default observer DB and survived read-only scan + insight consume. `agent-internet-lab` is `NOT_RUN_ENV_UNSET`.
 
-## S3.5-G0 clean baseline
-
-| Check | Result | Evidence |
-|---|---|---|
-| Independent worktree at `9890ba2` | PASS | `git worktree add … 9890ba2`; `git status` empty |
-| `pnpm install --frozen-lockfile` | PASS | lockfile reused, 309 packages |
-| `pnpm typecheck` | **PASS** | root tsc + `@hearth/web` |
-| `pnpm lint` | **PASS** (warnings) | eslint exit 0, 0 errors / 6 warnings, no `--max-warnings=0` |
-| `pnpm test` | **CONDITIONAL** | 289 passed / 1 failed |
-
-Failed test on **clean HEAD**: `apps/server/src/http/app.test.ts` `snooze validates window and persists`.
-
-- Request body `until=2026-10-28T18:00:00Z`
-- Today UTC `2026-10-29`; `cards.ts` in `9890ba2` already requires `until` in the future
-- HTTP 400 `INVALID_SNOOZE_WINDOW`
-- This is **not** caused by the original workspace’s uncommitted `cards.ts`
-- Test expectation was not changed; user files were not deleted
-
-Raw: `docs/verification/data/insight-s35-clean-baseline.json`
-
-## S3.5-G1 API / lifecycle (fixture)
-
-Unchanged from S3 isolated tests; re-run on clean worktree as part of `pnpm test`.
+## T1 · snooze clock
 
 | Check | Result |
 |---|---|
-| Session / CSRF | PASS |
-| Empty feed has no fake cards | PASS |
-| Stable pagination | PASS |
-| acknowledge ≠ resolved | PASS |
-| feedback whitelist + idempotent upsert | PASS |
-| GET does not write | PASS |
-| missing / unavailable evidence | PASS |
-| dismiss keeps evidence; survives reopen | PASS |
-| new episode after resolve does not inherit feedback | PASS |
+| Root cause | Hardcoded `2026-10-28T18:00:00Z` became past on 2026-10-29 |
+| Business validator | Unchanged (`until` must be future and ≤ 7 days, second-precision ISO) |
+| Fix | `apps/server/src/http/app.test.ts` uses relative past/future second-precision timestamps |
+| Commit | `b6785c7` |
+| Clean worktree `pnpm test` | **290 passed / 0 failed** (33 files) |
+| Other dirty workspace files | Untouched |
 
-## S3.5-G2 positive UI (isolated fixture)
+## T2 · runtime DB and real pilots
 
-Harness: `scripts/insight-s35-ui-verify.ts`  
-DBs: `/tmp/hark-s35-ui/*` only  
-Server: clean worktree `9890ba2` on `127.0.0.1:4325`  
-JSON: `docs/verification/data/insight-s35-ui-verify.json`
+S3.5 queried `data/observer.sqlite` (0 rows) while a previous UI process used `/tmp/hearth-obs-ui/observer.sqlite` (pindou + prototype-skill-lab already present). Those two Git paths exist. This close-out registered them through Hearth `/projects` into the **default** `data/observer.sqlite`.
 
-| Step | Result | Screenshot |
+| Pilot | Result | Evidence |
 |---|---|---|
-| Seed TEST_REPORT_FAILURE_OBSERVED + `processProjectRules` | PASS | live `ins_6ec653ca835bb761` OPEN |
-| Feed shows two real cards, no empty-success wall | PASS | `insight-s35-feed-open.png` |
-| Detail: rule, reason code, evidence pointer, undetermined HEAD | PASS | `insight-s35-detail.png` |
-| acknowledge → 已查看 | PASS | `insight-s35-acknowledged.png` |
-| useful → not_useful, status unchanged | PASS | `insight-s35-feedback.png` |
-| dismiss hidden after refresh | PASS | `insight-s35-dismissed-hidden.png` |
-| 含已处理: OPEN new episode vs RESOLVED vs DISMISSED | PASS | `insight-s35-resolved-and-new.png` |
-| Service restart keeps dismiss + 没用 | PASS | `insight-s35-after-restart.png` |
+| pindou | **PASS** | `/projects` card, `main` `f57fc770361e`, collection OK, two extra scans added no change events, fingerprint unchanged, test UNKNOWN |
+| prototype-skill-lab | **PASS** | `/projects` card, `feat/m3-host-native` `3352b3615e49`, same quiet scan path |
+| agent-internet-lab | **NOT_RUN_ENV_UNSET** | env unset; not present at bounded siblings `new-idea/agent-internet-lab` or `new-idea/design/agent-internet-lab`; no HOME scan |
 
-Resolved episode `ins_07ba87bd1a939805` and new OPEN episode `ins_7bc642ce78ac830d` are different IDs.
+Insight consume on both pilots: `NO_SIGNAL` / 0 episodes. Only `PROJECT_REGISTERED` plus idempotent rescans. Empty Feed is **尚未评估洞察**, not a fake healthy-pass. Git noise stayed quiet (RU-01).
 
-## S3.5-G3 real pilots
+Screenshots: `handoff/EVIDENCE/p1-projects-registered.png`, `p1-insights-after-pilots.png`  
+JSON: `docs/verification/data/insight-p1-pilots-closeout.json`  
+Harness: `scripts/p1-pilot-register-verify.ts` (paths from `HEARTH_PILOT_*` only)
 
-Read-only. No HOME scan. No Git / report / worktree writes.
+## S3.5 positive UI (fixture)
 
-| Source | Result |
-|---|---|
-| `data/observer.sqlite` `observer_projects` | **0 rows** |
-| `HEARTH_PILOT_PINDOU` | unset |
-| `HEARTH_PILOT_SKILL_LAB` | unset |
-| `HEARTH_PILOT_AGENT_INTERNET` | unset |
-| `scripts/insight-s2-pilot.ts` | all three **BLOCKED_PATH_UNAVAILABLE** |
+Unchanged **PASS**. Isolated `/tmp/hark-s35-ui` still covers acknowledge / dismiss / useful / restart. That path is fixture data, not these two real repos.
 
-| Pilot | Result |
-|---|---|
-| pindou | **BLOCKED_PATH_UNAVAILABLE** |
-| prototype-skill-lab | **BLOCKED_PATH_UNAVAILABLE** |
-| agent-internet-lab | **BLOCKED_PATH_UNAVAILABLE** |
+## Limits
 
-Paths were not guessed. Raw: `docs/verification/data/insight-s35-pilots.json`
-
-## Fixture vs real
-
-| | Fixture | Real pilots |
-|---|---|---|
-| Data | Synthetic signals in `/tmp/hark-s35-ui` | Would be registered local Git repos |
-| Insight cards | Created and driven in UI | Not available this session |
-| Repo mutation | None | N/A (blocked before register) |
-
-## Limits and risks
-
-1. Real G6 cannot run until Observer Registry has projects or `HEARTH_PILOT_*` is set to existing absolute Git paths.
-2. Clean `pnpm test` fails one time-dependent snooze case already present in `9890ba2`.
-3. `pnpm lint` reports 6 existing unused-var warnings; S3 files were not the source.
-4. Observe-detail click-through from an Insight was not driven against a registered observer project (registry empty). Detail still exposes `/observe/{projectId}`.
-5. Original workspace remains dirty with P0.5 / comment files; those files were not part of the clean-tree run.
-
-## Non-goals kept
-
-No Hermes/Pi, notifications, auto planning/code, `R-TEST-EVIDENCE-GAP`, new progress rules, or P2.
+1. Third pilot remains env-unset. Do not treat that as a confirmed missing disk path beyond the two bounded sibling checks.
+2. Real pilots currently have no failing JUnit, so they correctly produce zero Insight cards.
+3. Starting Hearth with `HEARTH_OBSERVER_DB=/tmp/hearth-obs-ui/observer.sqlite` still points at a different file than the default `data/observer.sqlite`. Default path is now populated.
+4. Original workspace still has unrelated uncommitted comment/P0.5 files.
 
 ## Final result
 
-**CONDITIONAL_PASS**
+**CONDITIONAL_PASS** — product loop complete; G6 waiver is the unset third pilot, same shape as P0.5.
