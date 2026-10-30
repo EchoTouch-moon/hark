@@ -26,7 +26,7 @@ import type { FlameLevel } from '@hearth/hearth-contract';
 import { EMBER_EASE, EMBER_EASE_CSS, flameTransitionSeconds, shellFlame, type FlameVisual } from '../features/flameVisual';
 import { useViewModelSource } from '../features/hearthViewModel';
 import { EmberAtmosphere } from '../components/EmberAtmosphere';
-import { getHearthPeriod, type HearthPeriod } from '../features/hearthPeriod';
+import type { HearthPeriod } from '../features/hearthPeriod';
 import { readFlameSize, saveFlameSize } from '../features/flameSize';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import { useHearthTimeline, HEARTH_EASE } from '../motion';
@@ -281,7 +281,9 @@ export function AppShell() {
     };
   }, []);
 
-  const hearthPeriod = getHearthPeriod(new Date(nowMs));
+  // v7 has a single paper ground per flame level (§1 tone); no night variant. The
+  // night period darkened the paper to grey and turned the hero title white.
+  const hearthPeriod: HearthPeriod = 'day';
   const vmSource = useViewModelSource();
   const vm = vmSource.kind === 'ready' ? vmSource.vm : null;
   // v7 §1/§6: flame reads ONLY narrative.flame; error / invalid freezes it.
