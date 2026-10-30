@@ -4,7 +4,7 @@ import { z } from 'zod';
 const Id = z.string().min(1);
 const IsoDate = z.string().datetime({ offset: true });
 
-export const EvidenceRef = z.object({ id: Id, kind: z.string().min(1), label: z.string().min(1) }).strict();
+export const EvidenceLabel = z.object({ id: Id, kind: z.enum(['observer', 'research', 'decision']), label: z.string().min(1) }).strict();
 
 export const Scope = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('global') }).strict(),
@@ -19,7 +19,7 @@ export const StoryBeat = z
     kind: z.enum(['诞生', '探索', '推进', '沉淀']),
     at: IsoDate,
     summary: z.string().min(1),
-    evidence: z.array(EvidenceRef),
+    evidence: z.array(EvidenceLabel),
   })
   .strict();
 
@@ -65,7 +65,7 @@ export const HearthViewModel = z.discriminatedUnion('status', [
   z.object({ ...base, status: z.literal('error'), error: ErrorInfo }).strict(),
 ]);
 
-export type EvidenceRef = z.infer<typeof EvidenceRef>;
+export type EvidenceLabel = z.infer<typeof EvidenceLabel>;
 export type Scope = z.infer<typeof Scope>;
 export type Freshness = z.infer<typeof Freshness>;
 export type FlameLevel = z.infer<typeof FlameLevel>;

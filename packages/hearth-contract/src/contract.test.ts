@@ -18,3 +18,7 @@ describe('illegal states rejected', () => {
   it('unknown flame level', () => { const v = load('ok.json'); v.narrative.flame.level = 'hot'; expect(HearthViewModel.safeParse(v).success).toBe(false); });
   it('extra heat field', () => { const v = load('ok.json'); v.narrative.flame.heat = 3; expect(HearthViewModel.safeParse(v).success).toBe(false); });
 });
+
+describe('EvidenceLabel', () => {
+  it('rejects unknown kind', () => { const v = load('ok.json'); v.narrative.story[0].evidence[0].kind = 'commit'; expect(HearthViewModel.safeParse(v).success).toBe(false); });
+});
