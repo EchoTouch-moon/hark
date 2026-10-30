@@ -1,3 +1,4 @@
+/* eslint-disable no-redeclare -- Zod schema 与同名 type 有意合并，TS 允许 */
 import { z } from 'zod';
 
 // G0 contract: docs/mvp/g0/05-dual-track-and-viewmodel.md §3. Mind → Experience only entry.

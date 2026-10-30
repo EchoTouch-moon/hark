@@ -1,10 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { HearthViewModel } from './index';
 
-const dir = join(__dirname, '../fixtures');
-const load = (f: string) => JSON.parse(readFileSync(join(dir, f), 'utf8'));
+const dir = fileURLToPath(new URL('../fixtures/', import.meta.url));
+const load = (f: string) => JSON.parse(readFileSync(dir + f, 'utf8'));
 
 describe('fixtures', () => {
   for (const f of readdirSync(dir)) it(`${f} parses`, () => expect(HearthViewModel.safeParse(load(f)).success).toBe(true));
