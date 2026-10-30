@@ -1,6 +1,5 @@
 import type { EvidenceLabel, HearthViewModel, Permissions, StoryBeat } from '@hearth/hearth-contract';
 import type { ViewModelSource } from '../features/hearthViewModel';
-import { useLayoutEffect, useRef } from 'react';
 import './ExperienceState.css';
 
 /** Style Bible v7 §6 state matrix, screen A (conversation / Seed). */
@@ -55,23 +54,9 @@ export function EvidenceList({ items }: { items: readonly EvidenceLabel[] }) {
 
 export function OpinionCard({ vm }: { vm: HearthViewModel }) {
   const op = vm.featuredOpinion;
-  const ref = useRef<HTMLElement>(null);
-  // The flame ends at this card's bottom edge: publish it as --flame-floor (viewport px) for the fixed atmosphere mask.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const root = document.documentElement;
-    const sync = () => root.style.setProperty('--flame-floor', `${Math.round(el.getBoundingClientRect().bottom)}px`);
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    window.addEventListener('resize', sync);
-    window.addEventListener('scroll', sync, true);
-    return () => { ro.disconnect(); window.removeEventListener('resize', sync); window.removeEventListener('scroll', sync, true); root.style.removeProperty('--flame-floor'); };
-  }, [op]);
   if (!op) return null;
   return (
-    <article ref={ref} className="xp-opinion" data-revision={op.revisionId} aria-label="观点">
+    <article className="xp-opinion" data-revision={op.revisionId} aria-label="观点">
       <p className="xp-opinion__judgement">{op.opinion}</p>
       <p className="xp-opinion__why">{op.whyNow}</p>
       <EvidenceList items={op.evidence} />
@@ -100,7 +85,7 @@ export function StoryBeats({ story }: { story: readonly StoryBeat[] }) {
     <ol className="xp-story" aria-label="项目故事">
       {story.map((b) => (
         <li key={`${b.kind}-${b.at}`} className="xp-story__beat">
-          <span className="xp-story__mark" aria-hidden="true">{BEAT_MARK[b.kind]}</span>
+          <span className="xp-story__mark" aria-hidden="true" data-mark={BEAT_MARK[b.kind] === '●' ? 'filled' : 'hollow'} />
           <div>
             <p className="xp-story__head"><span>{b.kind}</span> <time dateTime={b.at}>{TIME.format(new Date(b.at))}（UTC+8）</time></p>
             <p className="xp-story__summary">{b.summary}</p>

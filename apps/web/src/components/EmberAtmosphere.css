@@ -37,8 +37,11 @@
   .ember-atmosphere__canvas, .ember-atmosphere__fallback { filter: blur(38px); }
 }
 
-/* The flame ends at the opinion card's bottom edge (--flame-floor set by OpinionCard); below it is clean paper. */
+/* Mask: quiet band (≤0.15, 24px feather) behind hero title→reason+12px; flame ends at --flame-floor with a 56px fade. Set by ChatPage useFlameFloor. */
 .ember-atmosphere {
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(var(--flame-floor, 200vh) - 56px), transparent var(--flame-floor, 200vh));
-  mask-image: linear-gradient(to bottom, #000 calc(var(--flame-floor, 200vh) - 56px), transparent var(--flame-floor, 200vh));
+  --fb-top: var(--flame-band-top, -200px);
+  --fb-bot: var(--flame-band-bottom, -200px);
+  --ff: var(--flame-floor, 200vh);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(var(--fb-top) - 24px), rgba(0,0,0,.15) var(--fb-top), rgba(0,0,0,.15) var(--fb-bot), #000 calc(var(--fb-bot) + 24px), #000 calc(var(--ff) - 56px), transparent var(--ff));
+  mask-image: linear-gradient(to bottom, #000 calc(var(--fb-top) - 24px), rgba(0,0,0,.15) var(--fb-top), rgba(0,0,0,.15) var(--fb-bot), #000 calc(var(--fb-bot) + 24px), #000 calc(var(--ff) - 56px), transparent var(--ff));
 }

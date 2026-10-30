@@ -17,7 +17,9 @@
 .xp-opinion__action.is-quiet { color: var(--text-secondary, #8b8079); }
 .xp-story { list-style: none; max-width: 640px; margin: 20px auto 0; padding: 0; text-align: left; }
 .xp-story__beat { display: grid; grid-template-columns: 16px 1fr; gap: 10px; padding-bottom: 20px; }
-.xp-story__mark { font-size: 12px; color: #D9773A; line-height: 20px; }
+.xp-story__mark { display: flex; align-items: center; justify-content: center; height: 20px; }
+.xp-story__mark::before { content: ''; box-sizing: border-box; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid #A8501C; }
+.xp-story__mark[data-mark='filled']::before { background: #A8501C; }
 .xp-story__head { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .08em; }
 .xp-story__head time { font-weight: 400; letter-spacing: 0; color: #5A514B; margin-left: 6px; }
 .xp-story__summary { margin: 4px 0; font-size: 14px; }

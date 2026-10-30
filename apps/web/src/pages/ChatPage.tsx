@@ -2,7 +2,7 @@
  * 沉浸对话画布 · Style Bible v6 / v6.1 Ember Seed
  * 空态炉心 Seed → 首条后 Composer 落底；本地炉温；G1–G4 真 API 优先。
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { gsap } from 'gsap';
 import { HearthWelcome } from '../components/HearthWelcome';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
@@ -395,6 +395,7 @@ export function ChatPage() {
     }
     return false;
   }, [loading, hasUserMessage, messages]);
+  useFlameFloor([showSeed, vmSource]);
   const seedOverlays = useMemo(() => {
     if (!showSeed) return [] as CanvasMessage[];
     return messages.filter((m) => m.role === 'assistant').slice(0, 1);
@@ -784,6 +785,46 @@ export function ChatPage() {
  * ok/stale → 重新扫描 (visual no-op); permission_denied → disabled + 去授权;
  * error → 重新读取 (re-runs the ViewModel load only); empty → 添加项目.
  */
+/**
+ * The flame ends above the timeline in every state: at the opinion card's bottom edge when there
+ * is a card, otherwise 24px below the seed actions (「重新扫描」 etc.). Published as --flame-floor
+ * (viewport px) for the fixed atmosphere's 56px fade mask.
+ */
+function useFlameFloor(deps: unknown[]) {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const target = (): { el: NonNullable<ReturnType<typeof document.querySelector>>; offset: number } | null => {
+      const card = document.querySelector('.ember-seed .xp-opinion');
+      if (card) return { el: card, offset: 0 };
+      const actions = document.querySelector('.ember-seed .xp-seed-actions');
+      return actions ? { el: actions, offset: 24 } : null;
+    };
+    const t = target();
+    const props = ['--flame-floor', '--flame-band-top', '--flame-band-bottom'];
+    if (!t) { props.forEach((p) => root.style.removeProperty(p)); return; }
+    const title = document.querySelector('.ember-seed .ember-seed__greeting');
+    // Never let the flame reach the timeline, even if the 24px gap would overlap it.
+    const sync = () => {
+      const story = document.querySelector('.ember-seed .xp-story');
+      const floor = t.el.getBoundingClientRect().bottom + t.offset;
+      const cap = story ? story.getBoundingClientRect().top : Infinity;
+      root.style.setProperty('--flame-floor', `${Math.round(Math.min(floor, cap))}px`);
+      // Quiet band behind the hero title + reason so the 13px reason keeps ≥4.5:1 over the flame.
+      const reason = document.querySelector('.ember-seed .ember-seed__reason') ?? title;
+      if (title && reason) {
+        root.style.setProperty('--flame-band-top', `${Math.round(title.getBoundingClientRect().top)}px`);
+        root.style.setProperty('--flame-band-bottom', `${Math.round(reason.getBoundingClientRect().bottom + 12)}px`);
+      } else { root.style.removeProperty('--flame-band-top'); root.style.removeProperty('--flame-band-bottom'); }
+    };
+    sync();
+    const ro = new window.ResizeObserver(sync);
+    ro.observe(t.el);
+    window.addEventListener('resize', sync);
+    window.addEventListener('scroll', sync, true);
+    return () => { ro.disconnect(); window.removeEventListener('resize', sync); window.removeEventListener('scroll', sync, true); props.forEach((p) => root.style.removeProperty(p)); };
+  }, deps);
+}
+
 function SeedActions({ vmError, status }: { vmError: boolean; status: string | null }) {
   if (vmError) {
     // Fixture mode: the ViewModel load is synchronous and local, so this is a no-op re-read.
