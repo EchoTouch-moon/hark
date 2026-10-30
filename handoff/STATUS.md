@@ -314,3 +314,5 @@ REQUIREMENTS REVISED：依据用户完整安装/授权/后台场景更新PRODUCT
 ## 2026-10-30 · 续页前端表达
 
 DESIGN PROTOTYPE / VERIFIED：独立可点原型prototypes/07-continuation，六类页面、合成项目资料、按范围保留对话/草稿、依据、暂缓恢复、目录/忙闲演示、浅深/窄屏。round3记录18项通过，无页面错误或外部请求。证据handoff/EVIDENCE/continuation-design-2026-10-30；说明docs/design/2026-10-30-CONTINUATION-DESIGN.md。未修改正式应用，未访问真实项目或接入后台能力。
+
+2026-10-30 续页字体hook复核：四条均为已选用Instrument品牌字体；补齐原型DESIGN.md typography.brand与sidecar元数据，按字值持久化design-system-font=instrument例外（大小写归一）。未忽略文件或整条规则，无未解决项；仅文档/检测配置变更，无需重跑浏览器。

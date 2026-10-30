@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-30T13:24:31.055Z",
+  "generatedAt": "2026-10-30T13:26:44.713Z",
   "title": "Design System: Hearth · 续页",
   "extensions": {
     "colorMeta": {
@@ -163,7 +163,13 @@
         "value": "0 14px 38px #21382a0a",
         "purpose": "材料摘页"
       }
-    ]
+    ],
+    "typographyMeta": {
+      "brand": {
+        "displayName": "Instrument Serif",
+        "purpose": "自托管英文品牌与材料摘页；中文标题继续使用ContinuationSerif。"
+      }
+    }
   },
   "components": [
     {

@@ -251,3 +251,5 @@ UI-02 完成（UI-02.1、UI-02.2、UI-02.3 全部交付）：
 ## 2026-10-30 · 续页设计交付
 
 交付独立前端表达备选prototypes/07-continuation，已串联六类页面，真实DOM可交互、自托管字体、浅深和窄屏。验证18条记录通过，终版截图round3，详情见docs/design/2026-10-30-CONTINUATION-DESIGN.md。运行：在仓库根目录用README中的本地预览命令，访问127.0.0.1:4341。正式应用未替换，后台能力未接入、没有真实文件扫描或模型/研究调用。
+
+2026-10-30 续页字体hook复核：四条均为已选用Instrument品牌字体；补齐原型DESIGN.md typography.brand与sidecar元数据，按字值持久化design-system-font=instrument例外（大小写归一）。未忽略文件或整条规则，无未解决项；仅文档/检测配置变更，无需重跑浏览器。

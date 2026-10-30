@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "instrument",
+        "createdAt": "2026-10-30T13:26:33.905Z",
+        "reason": "Designer selected self-hosted Instrument Serif for the independent continuation prototype; documented in prototypes/07-continuation/DESIGN.md typography.brand and assets/SOURCES.md. Production typography is unchanged."
+      }
+    ]
+  }
+}

@@ -12,6 +12,11 @@ colors:
   note: "#e9eaf3"
   note-ink: "#464d65"
 typography:
+  brand:
+    fontFamily: "Instrument, serif"
+    fontSize: "40px"
+    fontWeight: 400
+    lineHeight: 1
   display:
     fontFamily: "ContinuationSerif, Songti SC, serif"
     fontSize: "clamp(30px,3vw,44px)"
