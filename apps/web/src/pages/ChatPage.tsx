@@ -276,6 +276,7 @@ export function ChatPage() {
   const {
     activeThreadId,
     refreshThreads,
+    threadsError,
     recomputeEmber,
     emberBand,
     flameLife,
@@ -712,6 +713,18 @@ export function ChatPage() {
                 </div>
               );
             })}
+            {threadsError ? (
+              <div className="chat-thread-error" role="alert">
+                <p className="chat-thread-error__msg">{threadsError}</p>
+                <button
+                  type="button"
+                  className="chat-thread-error__retry-btn"
+                  onClick={() => void refreshThreads()}
+                >
+                  重试
+                </button>
+              </div>
+            ) : null}
             {loadError ? (
               <p className="chat-inline-error ember-seed__error" role="alert">
                 {loadError}
@@ -745,6 +758,19 @@ export function ChatPage() {
           </div>
         )}
 
+        {threadsError && !showSeed ? (
+          <div className="chat-thread-error" role="alert">
+            <p className="chat-thread-error__msg">{threadsError}</p>
+            <button
+              type="button"
+              className="chat-thread-error__retry-btn"
+              onClick={() => void refreshThreads()}
+            >
+              重试
+            </button>
+          </div>
+        ) : null}
+
         {loadError && hasUserMessage ? (
           <p className="chat-inline-error" role="alert">
             {loadError}
@@ -762,7 +788,7 @@ export function ChatPage() {
               disabled={!activeThreadId}
               onSubmit={() => void sendText(draft)}
               inputRef={inputRef}
-              placeholder={showSeed ? "说说你正在想的事…" : "继续说说你的想法…"}
+              placeholder={threadsError ? `服务暂时不可用（${threadsError}）` : showSeed ? "说说你正在想的事…" : "继续说说你的想法…"}
             />
           </div>
         ) : null}

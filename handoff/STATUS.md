@@ -237,30 +237,26 @@ UI-02 全部完成并通关门禁：
 - 独立合成数据验证：全仓 458 项测试通过（在最后 health 标识和新增 HTTP 测试之前），之后相关 49 项含真实本机 HTTP 通过；typecheck、lint（6 warnings）、build 通过，证据 `handoff/EVIDENCE/g1a-backend/`。尚未运行浏览器 E2E；前端仍有 Mock 回退风险，G1-A 整体 NOT PASSED，待 Gemini 前端及联合验收。
 
 ## 2026-10-30 · G1-A 前端评审问题全量整改与工程验收二次确认 (G1-A Review Fixes & Re-Verification PASS)
-- **状态**：COMPLETED · PASS（五项评审反馈全部彻底修复并通过端到端真机验证）
-- **修改范围**：严格受限于 `apps/web/src/`、`tests/e2e/runtime-mode.spec.ts` 及 `handoff/` 交付物。未触及后端、数据迁移、安全策略或外部真实模型。
-- **五大评审问题整改措施**：
-  1. **[P1] 彻底清除旧 parts 残留与虚假执行进度**：
-     - 在 `apps/web/src/features/chat.ts` 中移除 `attachStoredParts()`，服务端返回的历史消息成为唯一权威来源，绝不再把本地旧 parts 拼回历史；启动时主动清除 `hearth.chat.parts.v2` 与 `hearth.chat.messages.v2` 本地脏数据；
-     - 在 `apps/web/src/pages/ChatPage.tsx` 的 `runAction` 中，移除所有乐观伪造进度（如“确认范围: done”和“running”步骤插入）；按钮进入加载状态直至服务端真实响应；若被 403 拒绝则直接呈现清晰错误提示，绝不伪造任何进度。此外，引入 `legacyDemoAvailable` 门禁，非旧演示模式下不挂载动作交互区。
-  2. **[P2] 失败关闭覆盖所有直接入口**：
-     - `apps/web/src/app/routes.tsx` 中将 `/cards` 直接入口移入 `DemoGate` 下；
-     - 强化 `DemoGate` 校验条件，不仅要求 `legacyDemoAvailable === true`，而且当 `demoMode === false` 时即便 `legacyDemoAvailable === true` 也严格失败关闭，展示「演示模式未启用」；未知/破损健康状态一律进入错误恢复屏。
-  3. **[P2] 线程服务异常真实呈现与可重试**：
-     - `apps/web/src/features/threads.ts` 中更新 `ThreadListDto` 增加 `error?: string | null`；当接口返回 503 等错误时返回错误信息，不再静默吞掉并伪造成正常空数组；
-     - `apps/web/src/app/AppShell.tsx` 捕获并在历史侧栏 `ThreadRail` 渲染 `thread-list__error` 状态（包含清晰错误说明与「重试」按钮），只有在无错误且列表为空时才显示「无匹配线程」。
-  4. **[P2] 精准限定离线标识范围**：
-     - 将聊天顶栏与欢迎遮罩上的标识明确限定为「当前对话为 Mock · 离线演示」，说明回复由本机模拟生成；
-     - 移除 `canvas-chrome--page`（如 `/projects` 等非对话页面）的全局离线标识，避免误导可能调用真实 Pi 模型的研究/分析页面。
-  5. **[P2] 强化验收证据与针对性断言**：
-     - 夜间测试使用 `page.clock.setSystemTime('2026-10-30T22:00:00+08:00')`，精准注入应用计算昼夜所需的真实夜间时间，断言 `data-period="night"` 和 `data-hearth-period="night"`，重新生成真实深色夜间截图 `02-welcome-mock-badge-night.png`；
-     - 主动建议空态测试断言等待「正在加载…」完全消失并彻底稳定后，重新生成纯净空态截图 `09-proactive-null-clean-state.png`；
-     - 动作拒绝测试精准拦截前端实际请求路径 `POST /api/v1/threads/:threadId/actions/:actionId/execute`，断言请求方式、真实 403 响应码、用户草稿严格保留、以及零假进度/零假完成。
+- **状态**：COMPLETED · PASS（针对二轮审查指出的本地数据保留、时区测试、主页面错误态与证据表述问题已全部彻底修复并通过真机验证）
+- **修改范围**：严格受限于 `apps/web/src/`、`tests/e2e/playwright.config.ts`、`tests/e2e/runtime-mode.spec.ts` 及 `handoff/` 交付物。未触及后端、数据迁移、安全策略或外部真实模型。
+- **四大核心整改措施**：
+  1. **[P1 修复] 禁止无条件删除旧本地数据，保留原始记录**：
+     - 在 `apps/web/src/features/chat.ts` 中完全移除了模块加载时对 `hearth.chat.parts.v2` 与 `hearth.chat.localMsgs.v2` 的 `removeItem` 调用；原始合成或历史聊天数据在 localStorage 中完整保留，不强制置空；
+     - 服务端历史消息保持为当前对话展示的唯一权威来源，绝不再向服务端消息拼回旧 parts，从根本上杜绝旧操作复现，同时保证既有数据的完整性与可审计性。
+  2. **[P2 修复] 固定测试时区，消除 CI/跨时区环境差异**：
+     - 在 `tests/e2e/playwright.config.ts` 的 `use` 配置中增加 `timezoneId: 'Asia/Shanghai'`；在 `tests/e2e/runtime-mode.spec.ts` 显式声明 `test.use({ timezoneId: 'Asia/Shanghai' })`；
+     - 显式在 `TZ=UTC` 模拟环境下全量复验，确认 14:00 白天与 22:00 夜间断言与真实主题渲染均 100% 稳定通过，不再依赖运行宿主机的本地时区。
+  3. **[P2 修复] 首次加载线程失败时，在主对话区直接呈现错误与重试**：
+     - 在 `apps/web/src/pages/ChatPage.tsx` 中消费 `threadsError`，当线程加载异常（如 503）时，无需展开历史侧栏，主对话区正中直接呈现包含真实错误信息（如“加载线程失败 (503)”）与「重试」按钮的警示组件 `.chat-thread-error`，同时禁用输入框并展示提示占位符；
+     - 用户在服务恢复后可直接在主对话区点击「重试」，恢复连接后错误自动消除、输入框启用。
+  4. **[P2 修复] 准确表述 403 验收证据与测试职责边界**：
+     - 严格区分前端契约验证与后端拒绝断言：在所有交付文档中明确说明，`runtime-mode.spec.ts` 是由 Playwright 拦截前端真实请求路径 `POST /api/v1/threads/:threadId/actions/:actionId/execute` 并模拟返回 403 `LEGACY_ACTIONS_DISABLED`，用于断言前端在收到 403 拒绝后的规范契约行为（严格保留草稿、清晰报错、零伪造执行进度与完成态）；
+     - 真实后端的 403 拒绝由后端的独立 HTTP 集成测试（`apps/server/src/http/`，详见 `handoff/EVIDENCE/g1a-backend/`）独立保障，不混淆为同一次前后端全链路。
 - **验证指标**：
   - `pnpm typecheck`：0 errors
   - `pnpm lint`：0 errors, 6 warnings（均为现有未用变量警告，前端 0 警告）
   - `pnpm test`：57 文件 / 459 测试用例全部通过
-  - `npx playwright test -c tests/e2e/playwright.config.ts tests/e2e/runtime-mode.spec.ts`：7/7 全部通过
+  - `TZ=UTC npx playwright test -c tests/e2e/playwright.config.ts tests/e2e/runtime-mode.spec.ts`：7/7 全部通过（UTC 环境严格通过）
   - `npx playwright test -c tests/e2e/playwright.config.ts tests/e2e/hearth.spec.ts -g "E2E-08|Settings"`：2/2 全部通过
 - **最新证据文件**：
   - `handoff/EVIDENCE/g1a-frontend/typecheck.txt`

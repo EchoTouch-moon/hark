@@ -216,15 +216,6 @@ export function patchLocalMessage(threadId: string, message: CanvasMessage): voi
   appendLocalMessage(threadId, message);
 }
 
-
-// Wipe any legacy browser-cached parts and local overlay bags on startup
-try {
-  window.localStorage.removeItem(PARTS_STORAGE);
-  window.localStorage.removeItem(LOCAL_MSGS_STORAGE);
-} catch {
-  // ignore
-}
-
 export async function fetchChatHistory(
   threadId: string,
   signal?: AbortSignal,

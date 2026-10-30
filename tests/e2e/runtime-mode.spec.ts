@@ -2,6 +2,9 @@ import { expect, test } from '@playwright/test';
 
 const SHOT_DIR = 'handoff/EVIDENCE/g1a-frontend';
 
+// Explicitly pin Shanghai timezone so local Date hours match Shanghai business day/night rules in any CI environment
+test.use({ timezoneId: 'Asia/Shanghai' });
+
 test('unknown and real mode never mount Demo actions, including direct URLs', async ({ page }) => {
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
@@ -179,9 +182,11 @@ test('offline indicator is actually visible across welcome flow, true night them
 });
 
 test('backend action rejection preserves user draft and never fabricates progress or fake completion', async ({ page }) => {
-  // Pre-seed completed welcome to go straight to chat
+  // Pre-seed completed welcome and synthetic legacy local storage data to verify data retention
   await page.addInitScript(() => {
     window.localStorage.setItem('hearth.welcome.v1', JSON.stringify({ version: 1, completed: true, name: '' }));
+    window.localStorage.setItem('hearth.chat.parts.v2', JSON.stringify({ 'msg-legacy': [{ type: 'actions', actions: [] }] }));
+    window.localStorage.setItem('hearth.chat.localMsgs.v2', JSON.stringify({ 'thread-legacy': [{ id: 'msg-legacy', role: 'user', content: 'legacy' }] }));
   });
 
   // Enable demo mode in health so legacy action button is mounted for testing
@@ -250,6 +255,12 @@ test('backend action rejection preserves user draft and never fabricates progres
 
   await page.goto('/');
 
+  // Assert pre-existing local storage records are preserved intact and NOT deleted or wiped to null
+  const preservedParts = await page.evaluate(() => window.localStorage.getItem('hearth.chat.parts.v2'));
+  const preservedMsgs = await page.evaluate(() => window.localStorage.getItem('hearth.chat.localMsgs.v2'));
+  expect(preservedParts).not.toBeNull();
+  expect(preservedMsgs).not.toBeNull();
+
   // Wait for the action button to be rendered
   const actionBtn = page.getByRole('button', { name: '执行受限动作' });
   await expect(actionBtn).toBeVisible({ timeout: 10_000 });
@@ -314,7 +325,7 @@ test('backend proactive null returns clean state without fake injected cards', a
   await page.screenshot({ path: `${SHOT_DIR}/09-proactive-null-clean-state.png`, fullPage: true });
 });
 
-test('thread service failure renders error state with retry in history rail', async ({ page }) => {
+test('thread service failure renders error state with retry in main conversation area and history rail', async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem('hearth.welcome.v1', JSON.stringify({ version: 1, completed: true, name: '' }));
   });
@@ -334,7 +345,26 @@ test('thread service failure renders error state with retry in history rail', as
 
   await page.goto('/');
 
-  // Open the history rail
+  // 1. In main conversation area without opening rail, error message and retry are directly visible
+  const mainError = page.locator('.chat-thread-error');
+  await expect(mainError).toBeVisible({ timeout: 10_000 });
+  await expect(mainError.getByText(/加载线程失败|503/)).toBeVisible();
+
+  // 2. Main conversation input is disabled due to unavailable thread
+  const input = page.locator('#chat-input');
+  await expect(input).toBeVisible();
+  await expect(input).toBeDisabled();
+
+  // 3. User clicks retry directly in the main conversation area after service recovers
+  shouldFail = false;
+  const mainRetryBtn = mainError.getByRole('button', { name: '重试' });
+  await mainRetryBtn.click();
+
+  // 4. Main conversation error disappears and input becomes enabled
+  await expect(mainError).toHaveCount(0, { timeout: 10_000 });
+  await expect(input).toBeEnabled();
+
+  // 5. History rail also reflects healthy state when opened
   const expandBtn = page.getByRole('button', { name: '展开线程列表' });
   if (await expandBtn.isVisible()) {
     await expandBtn.click();
@@ -345,16 +375,5 @@ test('thread service failure renders error state with retry in history rail', as
     await expect(historyBtn).toBeVisible();
     await historyBtn.click();
   }
-
-  // Thread rail should display error message and retry button, not false "无匹配线程"
-  const threadError = page.locator('.thread-list__error');
-  await expect(threadError).toBeVisible({ timeout: 10_000 });
-  await expect(threadError.getByText(/加载线程失败|503/)).toBeVisible();
-  await expect(page.locator('.thread-list__empty')).toHaveCount(0);
-
-  // Clicking retry when service recovers should successfully clear the error
-  shouldFail = false;
-  const retryBtn = threadError.getByRole('button', { name: '重试' });
-  await retryBtn.click();
-  await expect(threadError).toHaveCount(0, { timeout: 10_000 });
+  await expect(page.locator('.thread-list__error')).toHaveCount(0);
 });

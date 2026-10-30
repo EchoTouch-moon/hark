@@ -19,6 +19,7 @@ export default defineConfig({
     baseURL: BASE,
     viewport: { width: 1440, height: 900 },
     locale: 'zh-CN',
+    timezoneId: 'Asia/Shanghai',
     screenshot: 'only-on-failure',
     trace: 'off',
   },
