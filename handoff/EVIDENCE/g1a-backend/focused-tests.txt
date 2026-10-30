@@ -1,0 +1,23 @@
+
+ RUN  v3.2.7 <repo>
+
+(node:85752) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:85753) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/orchestration/orchestrator.test.ts (8 tests) 377ms
+(node:85751) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:85754) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ apps/server/src/http/g1a-live.test.ts (1 test) 159ms
+ ✓ apps/server/src/http/g1a-security.test.ts (20 tests) 691ms
+ ✓ apps/server/src/http/app.test.ts (20 tests) 5274ms
+   ✓ M1-T02: seed, discovery, suppression > repeat discover is idempotent (no duplicate cards)  1626ms
+   ✓ M1-T02: seed, discovery, suppression > dismiss persists and is respected by later discovery (E2E-06)  2246ms
+   ✓ M1-T03: execute / runs / approvals / SSE-readiness > cancel of queued run yields cancelled terminal state  639ms
+
+ Test Files  4 passed (4)
+      Tests  49 passed (49)
+   Start at  14:46:27
+   Duration  7.06s (transform 1.01s, setup 0ms, collect 4.28s, tests 6.50s, environment 1ms, prepare 564ms)

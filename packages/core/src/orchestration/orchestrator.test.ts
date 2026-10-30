@@ -31,7 +31,7 @@ beforeEach(async () => {
   dir = await mkdtemp(path.join(tmpdir(), 'hearth-orch-'));
   artifactRoot = path.join(dir, 'artifacts');
   store = new Storage(path.join(dir, 'test.sqlite'));
-  orchestrator = new Orchestrator({ storage: store, artifactRoot, clock: NOW, stepDelayMs: 0 });
+  orchestrator = new Orchestrator({ storage: store, artifactRoot, clock: NOW, stepDelayMs: 0, allowLegacyExecution: true });
   await seedAndDiscover();
 });
 

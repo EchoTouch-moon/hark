@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
+import { isUnsafeLegacyMessage } from './legacy-chat.js';
 
 const ChatBodySchema = z
   .object({
@@ -32,7 +33,7 @@ export function registerChatRoutes(app: FastifyInstance, deps: AppDeps): void {
     deps.storage.touchThread(threadId, body.message);
     const history = deps.storage
       .listChat(threadId)
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .filter((m) => (m.role === 'user' || m.role === 'assistant') && !isUnsafeLegacyMessage(m))
       .map((m) => ({
         sessionId: m.sessionId,
         role: m.role as 'user' | 'assistant',
@@ -73,8 +74,8 @@ export function registerChatRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/v1/chat/history', async (req, reply) => {
     const q = req.query as { sessionId?: string; threadId?: string };
     const threadId = q.threadId ?? q.sessionId ?? 'thread-default';
-    deps.storage.ensureThread(threadId);
-    const messages = deps.storage.listChat(threadId).map((m) => ({
+    const stored = deps.storage.listChat(threadId);
+    const messages = stored.filter((m) => !isUnsafeLegacyMessage(m)).map((m) => ({
       id: m.id,
       role: m.role,
       content: m.content,
@@ -84,6 +85,6 @@ export function registerChatRoutes(app: FastifyInstance, deps: AppDeps): void {
       runId: m.runId,
       ...(m.parts !== undefined ? { parts: m.parts } : {}),
     }));
-    return reply.send({ messages, adapter: 'mock', live: false });
+    return reply.send({ messages, adapter: 'mock', live: false, legacyHistoryWithheld: messages.length !== stored.length });
   });
 }
