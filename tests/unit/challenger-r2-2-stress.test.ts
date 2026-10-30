@@ -7,7 +7,7 @@ import {
   createFlameRenderer,
   type FlameFrame,
 } from '../../apps/web/src/features/flameRenderer';
-import type { ProjectFlameStage } from '../../apps/web/src/features/projectEmber';
+import type { ProjectFlameStage } from '../../apps/web/src/features/flameVisual';
 
 function createMockGL() {
   const shaders: unknown[] = [];

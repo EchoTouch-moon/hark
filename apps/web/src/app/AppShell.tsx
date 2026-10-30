@@ -436,13 +436,14 @@ export function AppShell() {
           <div className="canvas-body">
             {canvas ? (
               <header className="canvas-chrome">
-                <button type="button" className="hearth-wordmark" onClick={() => { setShellMode('chat'); setRailCollapsed(true); }} aria-label="返回对话">Hearth<span aria-hidden="true">.</span></button>
+                <button type="button" className="hearth-wordmark" onClick={() => { setShellMode('chat'); setRailCollapsed(true); }} aria-label="Hearth 返回对话">Hearth<span aria-hidden="true">.</span></button>
                 <div className="hearth-header-actions">
                   <span className="hearth-flame-pill" data-flame-level={flameLife.level} data-desaturated={flameLife.desaturated || undefined} tabIndex={0} title={flameLife.reason} aria-label={`炉火：${flameLife.label}。${flameLife.reason}`}>
                     <span className="hearth-flame-pill__mark" aria-hidden="true" />
                     <span className="hearth-flame-pill__label">{flameLife.label}</span>
+                    <span className="hearth-flame-reason" aria-hidden="true">{flameLife.reason}</span>
                     {vm && vm.observationFreshness !== 'fresh' && vm.status !== 'error' ? (
-                      <span className="hearth-stale-dot" data-freshness={vm.observationFreshness} title={vm.observationFreshness === 'stale' ? '观察已过期，火势按最近一次观察显示' : `观察状态：${vm.observationFreshness}`} aria-label="观察已过期" />
+                      <span className="hearth-stale-dot" data-freshness={vm.observationFreshness} role="img" title={vm.observationFreshness === 'stale' ? '观察已过期，火势按最近一次观察显示' : `观察状态：${vm.observationFreshness}`} aria-label={vm.observationFreshness === 'stale' ? '观察已过期' : `观察状态：${vm.observationFreshness}`} />
                     ) : null}
                   </span>
                   {vm?.mode === 'demo' ? <span className="hearth-demo-badge">演示数据</span> : null}

@@ -11,7 +11,6 @@ export function ErrorBar({ message, code }: { message: string; code?: string }) 
     <div className="xp-error" role="alert">
       <p className="xp-error__message">{message}</p>
       <div className="xp-error__row">
-        <button type="button" className="xp-error__retry" onClick={() => window.location.reload()}>重试</button>
         {code ? <span className="xp-error__code mono">{code}</span> : null}
       </div>
     </div>

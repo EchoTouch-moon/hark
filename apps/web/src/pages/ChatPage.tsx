@@ -253,7 +253,9 @@ function ComposerForm({
       <button
         type="submit"
         className="composer__send"
-        disabled={sending || draft.trim().length === 0 || disabled}
+        disabled={sending || disabled}
+        aria-disabled={sending || draft.trim().length === 0 || disabled || undefined}
+        onClick={(e) => { if (draft.trim().length === 0) e.preventDefault(); }}
       >
         {sending ? '…' : '发送'}
       </button>

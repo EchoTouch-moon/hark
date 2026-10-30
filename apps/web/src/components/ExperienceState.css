@@ -7,13 +7,13 @@
 .xp-notice { max-width: 640px; margin: 0 auto 12px; font-size: 13px; color: #5A514B; text-align: center; }
 .xp-notice--permission { color: #8a5a1c; }
 .xp-notice a { color: inherit; margin-left: 6px; }
-.xp-opinion { max-width: 640px; margin: 20px auto 0; padding: 16px 20px; text-align: left; position: relative; z-index: 2; isolation: isolate; background: #FFFDF9; opacity: 1; border: 1px solid var(--line, rgba(58, 51, 48, 0.12)); border-left: 3px solid color-mix(in srgb, #D9773A calc(var(--ember-heat, 0.5) * 100%), #b9aea4); border-radius: 14px; }
+.xp-opinion { max-width: 640px; margin: 20px auto 0; padding: 16px 20px; text-align: left; position: relative; z-index: 2; isolation: isolate; background: #FFFDF9; opacity: 1; border: 1px solid var(--line, rgba(58, 51, 48, 0.12)); border-left: 3px solid var(--line-strong, #CFC6BC); border-radius: 14px; }
 .xp-opinion__judgement { margin: 0; font-size: 17px; font-weight: 700; color: var(--color-ink, #2a1f18); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .xp-opinion__why { margin: 6px 0 0; font-size: 14px; color: #5A514B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .xp-opinion__meta { margin: 8px 0 0; font-size: 13px; color: #5A514B; }
 .xp-opinion__actions { display: flex; gap: 16px; margin-top: 12px; }
 .xp-opinion__action { border: 0; background: none; padding: 0; font: inherit; font-size: 14px; color: var(--text, #3A3330); cursor: not-allowed; }
-.xp-opinion__action.is-primary { color: #D9773A; font-weight: 600; }
+.xp-opinion__action.is-primary { color: #A8501C; font-weight: 700; }
 .xp-opinion__action.is-quiet { color: var(--text-secondary, #8b8079); }
 .xp-story { list-style: none; max-width: 640px; margin: 20px auto 0; padding: 0; text-align: left; }
 .xp-story__beat { display: grid; grid-template-columns: 16px 1fr; gap: 10px; padding-bottom: 20px; }

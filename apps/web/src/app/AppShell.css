@@ -787,3 +787,7 @@
 /* 设计 notes PR #8: error / permission_denied flame is desaturated and static. */
 .canvas-shell[data-flame-desaturated] .ember-atmosphere,
 .canvas-shell[data-flame-desaturated] .hearth-flame-pill__mark { filter: grayscale(1); transition: none; }
+
+/* E-B2: flame.reason visible as a one-line caption under the label. */
+.hearth-flame-pill { position: relative; }
+.hearth-flame-reason { position: absolute; top: calc(100% + 6px); right: 0; max-width: 360px; font-size: 13px; line-height: 1.4; color: #5A514B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }

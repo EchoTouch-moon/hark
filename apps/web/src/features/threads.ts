@@ -1,3 +1,4 @@
+import { FIXTURE_MODE } from './hearthViewModel';
 /**
  * G1 Thread 适配层：优先打真实 API；404/失败时退到 localStorage Mock。
  * 真 API：GET/POST /api/v1/threads（list 非空即视为 live；AppShell 会 preferLiveApi）。
@@ -69,6 +70,8 @@ function ensureSeed(): ThreadSummary[] {
 
 /** 探测并列出线程；无后端时用本地 Mock。 */
 export async function listThreads(signal?: AbortSignal): Promise<ThreadListDto> {
+  // Fixture mode: never request GET /api/v1/threads.
+  if (FIXTURE_MODE) return { threads: ensureSeed(), mock: true };
   try {
     const data = await apiFetch<{ threads: ThreadSummary[] }>('/api/v1/threads', { signal });
     if (Array.isArray(data.threads) && data.threads.length > 0) {
