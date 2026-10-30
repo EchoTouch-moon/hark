@@ -105,13 +105,13 @@ export function HearthWelcome({ initialName, paused, period, onExitStart, onComp
       <div className="welcome-story" key={visibleStep}>
         <p className="welcome-chapter"><span /> {visibleStep === 'arrival' ? '01 — 初见' : '02 — 相识'}</p>
         <h1 id="welcome-title">{visibleStep === 'arrival' ? <>为重要的事，<br />留一点空间。</> : <>先认识一下，<br />再慢慢聊。</>}</h1>
-        <p className="welcome-description">{visibleStep === 'arrival' ? <>想法、项目，还有没想清楚的下一步。<br />你可以从任意一件事说起。</> : <>不必介绍完整的人生。<br />一个称呼，就够我们开始。</>}</p>
-        {visibleStep === 'arrival' ? <div className="welcome-actions"><button ref={firstRef} type="button" className="welcome-primary" disabled={step === 'leaving'} onClick={() => setStep('introduce')}>开始认识 Hearth <span aria-hidden="true">→</span></button><p>你的节奏，就是这里的节奏。</p></div> : <form className="welcome-form" onSubmit={event => { event.preventDefault(); enter(); }}>
+        <p className="welcome-description">{visibleStep === 'arrival' ? <>先带入一个正在做的项目。<br />让真实的变化，成为谈话的起点。</> : <>不必介绍完整的人生。<br />一个称呼，就够我们开始。</>}</p>
+        {visibleStep === 'arrival' ? <div className="welcome-actions"><button ref={firstRef} type="button" className="welcome-primary" disabled={step === 'leaving'} onClick={() => enter()}>带入我的项目 <span aria-hidden="true">→</span></button><p>只读观察，由你决定范围。</p><button type="button" className="welcome-back" disabled={step === 'leaving'} onClick={() => setStep('introduce')}>留下称呼（可选）</button></div> : <form className="welcome-form" onSubmit={event => { event.preventDefault(); enter(); }}>
           <label htmlFor="welcome-name">希望我怎么称呼你 <span>可选</span></label>
           <div className="welcome-name-field"><input ref={nameRef} id="welcome-name" name="nickname" autoComplete="nickname" maxLength={40} disabled={step === 'leaving'} value={name} onChange={event => setName(event.target.value)} placeholder="留下一个称呼" /><span aria-hidden="true">↳</span></div>
           <p className="welcome-local-note">只保存在这个浏览器，不创建账号。</p>
           {storageError && <p role="alert" className="welcome-storage-error">浏览器暂时无法保存设置。你仍可临时进入，下次打开可能再次看到欢迎。</p>}
-          <div className="welcome-form-actions"><button type="button" className="welcome-back" disabled={step === 'leaving'} onClick={() => { setStep('arrival'); setStorageError(false); }}>返回</button><button disabled={step === 'leaving'} type={storageError ? 'button' : 'submit'} onClick={storageError ? () => enter(true) : undefined} className="welcome-primary">{storageError ? '临时进入' : '进入炉边'} <span aria-hidden="true">→</span></button></div>
+          <div className="welcome-form-actions"><button type="button" className="welcome-back" disabled={step === 'leaving'} onClick={() => { setStep('arrival'); setStorageError(false); }}>返回</button><button disabled={step === 'leaving'} type={storageError ? 'button' : 'submit'} onClick={storageError ? () => enter(true) : undefined} className="welcome-primary">{storageError ? '临时进入' : '带入我的项目'} <span aria-hidden="true">→</span></button></div>
         </form>}
       </div>
     </div>

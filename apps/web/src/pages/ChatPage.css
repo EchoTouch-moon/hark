@@ -751,3 +751,7 @@ html[data-page-hidden="true"] *, html[data-motion-paused="true"] *, [data-motion
 [data-hearth-period='night'] .ember-seed__subline,
 [data-hearth-period='night'] .seed-eyebrow,
 [data-hearth-period='night'] .chat-msg--assistant { text-shadow: 0 1px 8px rgba(0,0,0,.95), 0 0 22px rgba(0,0,0,.9); }
+
+/* Text remains readable independently of the room's firelight. */
+.composer textarea::placeholder { color: var(--color-ink-2); opacity: 1; }
+.chat-msg__meta { color: var(--color-ink-2); }

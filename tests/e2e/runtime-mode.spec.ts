@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './project-fixture';
 
 const SHOT_DIR = process.env['HEARTH_TEST_EVIDENCE_DIR'] ?? 'handoff/EVIDENCE/g1a-frontend';
 
@@ -47,7 +47,7 @@ test('unknown and real mode never mount Demo actions, including direct URLs', as
 
   // 5. Projects page: Observer projects displayed, legacy Demo projects never mounted in real mode
   await page.goto('/projects');
-  await expect(page.getByRole('heading', { name: '项目', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /先带入一个项目|从一个项目，继续谈/  })).toBeVisible();
   await expect(page.getByLabel('任务项目', { exact: true })).toHaveCount(0);
 
   // 6. Non-conversation pages do NOT display misleading global offline badge
@@ -122,12 +122,12 @@ test('real mode or missing legacyDemoAvailable fails closed across /demo and /ca
   await expect(page.getByRole('heading', { name: '演示模式未启用' })).toBeVisible();
 });
 
-test('offline indicator is actually visible across welcome flow, true night theme, and desktop viewports', async ({ page }) => {
+test('offline indicator is actually visible across welcome flow, true night theme, and desktop viewports', async ({ page, projectFixture }) => {
   // 1. Day mode, 1440x900 viewport (set clock to 14:00)
   await page.clock.setSystemTime('2026-10-30T14:00:00+08:00');
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.goto('/');
+  await page.goto(`/t/${projectFixture.threadId}`);
 
   const welcome = page.getByTestId('hearth-welcome');
   await expect(welcome).toBeVisible({ timeout: 10_000 });
@@ -143,7 +143,7 @@ test('offline indicator is actually visible across welcome flow, true night them
   await page.clock.setSystemTime('2026-10-30T22:00:00+08:00');
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.goto('/');
+  await page.goto(`/t/${projectFixture.threadId}`);
 
   const welcomeNight = page.getByTestId('hearth-welcome');
   await expect(welcomeNight).toBeVisible({ timeout: 10_000 });
@@ -181,7 +181,7 @@ test('offline indicator is actually visible across welcome flow, true night them
   await page.screenshot({ path: `${SHOT_DIR}/03-chat-mock-conversation.png`, fullPage: true });
 });
 
-test('backend action rejection preserves user draft and never fabricates progress or fake completion', async ({ page }) => {
+test('backend action rejection preserves user draft and never fabricates progress or fake completion', async ({ page, projectFixture }) => {
   const syntheticLocalMsgs = {
     'thread-legacy': [
       { id: 'msg-normal-1', role: 'user', content: '普通用户历史记录', createdAt: '2026-10-30T06:00:00.000Z' },
@@ -208,7 +208,7 @@ test('backend action rejection preserves user draft and never fabricates progres
 
   // Use the same thread as the stored messages, so an accidental merge is observable.
   await page.route('**/api/v1/threads', (route) => route.fulfill({
-    json: { threads: [{ id: 'thread-legacy', title: '测试线程', updatedAt: '2026-10-30T07:00:00.000Z' }] },
+    json: { threads: [{ id: 'thread-legacy', title: '测试线程', projectId: projectFixture.id, updatedAt: '2026-10-30T07:00:00.000Z' }] },
   }));
 
   // Enable demo mode in health so legacy action button is mounted for testing
@@ -342,7 +342,7 @@ test('backend action rejection preserves user draft and never fabricates progres
   await page.screenshot({ path: `${SHOT_DIR}/08-action-rejection-draft-preserved.png`, fullPage: true });
 });
 
-test('backend proactive null returns clean state without fake injected cards', async ({ page }) => {
+test('backend proactive null returns clean state without fake injected cards', async ({ page, projectFixture }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem('hearth.welcome.v1', JSON.stringify({ version: 1, completed: true, name: '' }));
   });
@@ -357,7 +357,7 @@ test('backend proactive null returns clean state without fake injected cards', a
     await route.fulfill({ json: { suggestion: null } });
   });
 
-  await page.goto('/');
+  await page.goto(`/t/${projectFixture.threadId}`);
 
   // Ensure loading is finished and surface is fully settled
   await expect(page.getByText('正在加载…')).toHaveCount(0, { timeout: 10_000 });
@@ -366,7 +366,7 @@ test('backend proactive null returns clean state without fake injected cards', a
   await expect(input).toBeEnabled();
 
   // Wait for greeting to settle
-  await expect(page.getByRole('heading', { name: /想聊些什么|想从哪里开始/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /想先看清什么/ })).toBeVisible();
 
   // Verify no fake proactive cards or badges injected
   await expect(page.locator('.proactive-card, [data-proactive]')).toHaveCount(0);
@@ -375,7 +375,7 @@ test('backend proactive null returns clean state without fake injected cards', a
   await page.screenshot({ path: `${SHOT_DIR}/09-proactive-null-clean-state.png`, fullPage: true });
 });
 
-test('thread service failure renders error state with retry in main conversation area and history rail', async ({ page }) => {
+test('thread service failure renders error state with retry in main conversation area and history rail', async ({ page, projectFixture }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem('hearth.welcome.v1', JSON.stringify({ version: 1, completed: true, name: '' }));
   });
@@ -393,21 +393,20 @@ test('thread service failure renders error state with retry in main conversation
     await route.continue();
   });
 
-  await page.goto('/');
+  await page.goto(`/t/${projectFixture.threadId}`);
 
   // 1. In main conversation area without opening rail, error message and retry are directly visible
-  const mainError = page.locator('.chat-thread-error');
+  const mainError = page.locator('.project-start__error');
   await expect(mainError).toBeVisible({ timeout: 10_000 });
   await expect(mainError.getByText(/加载线程失败|503/)).toBeVisible();
 
   // 2. Main conversation input is disabled due to unavailable thread
   const input = page.locator('#chat-input');
-  await expect(input).toBeVisible();
-  await expect(input).toBeDisabled();
+  await expect(input).toHaveCount(0);
 
   // 3. User clicks retry directly in the main conversation area after service recovers
   shouldFail = false;
-  const mainRetryBtn = mainError.getByRole('button', { name: '重试' });
+  const mainRetryBtn = mainError.getByRole('button', { name: '重新读取' });
   await mainRetryBtn.click();
 
   // 4. Main conversation error disappears and input becomes enabled

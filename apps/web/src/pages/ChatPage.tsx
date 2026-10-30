@@ -1,9 +1,8 @@
-/**
- * 沉浸对话画布 · Style Bible v6 / v6.1 Ember Seed
- * 空态炉心 Seed → 首条后 Composer 落底；本地炉温；G1–G4 真 API 优先。
- */
+/** Project-bound conversation: real observation/explicit analysis above labelled Mock chat. */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { gsap } from 'gsap';
+import { useSearchParams } from 'react-router-dom';
+import { ProjectStart, ProjectFocus } from '../components/ProjectConversation';
 import { HearthWelcome } from '../components/HearthWelcome';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import { readWelcomePreference } from '../features/welcome';
@@ -21,10 +20,6 @@ import {
   type MessageAction,
   type ProgressStep,
 } from '../features/chat';
-import {
-  computeEmberHeat,
-  latestConfirmedInteraction,
-} from '../features/emberHeat';
 import {
   useHearthTimeline,
   HEARTH_EASE,
@@ -204,8 +199,8 @@ function MessageTurn({
 }
 
 const SEED_CHIPS = [
-  { id: 'project', label: '介绍我的项目' },
-  { id: 'idea', label: '聊聊一个想法' },
+  { id: 'goal', label: '聊聊当前目标' },
+  { id: 'question', label: '记录待确认的问题' },
 ];
 
 function ComposerForm({
@@ -266,26 +261,30 @@ function ComposerForm({
 }
 
 export function ChatPage() {
+  const [params] = useSearchParams();
+  const [projectReady, setProjectReady] = useState<string | null>(null);
   const [welcomePreference] = useState(readWelcomePreference);
   const [welcomeVisible, setWelcomeVisible] = useState(!welcomePreference.completed);
   const [welcomeBlocking, setWelcomeBlocking] = useState(!welcomePreference.completed);
   const [displayName, setDisplayName] = useState(welcomePreference.name);
   const [arrival, setArrival] = useState(false);
   const columnRef = useRef<HTMLDivElement>(null);
-  const { contextSafe } = useHearthTimeline({ scope: columnRef });
   const {
     activeThreadId,
+    threads,
     refreshThreads,
     threadsError,
-    recomputeEmber,
     emberBand,
-    flameLife,
     hearthPeriod,
     motionPaused,
     setWelcomeActive,
     welcomeReplay,
     setWelcomeReplay,
   } = useThreads();
+  const projectId = threads.find(thread => thread.id === activeThreadId)?.projectId ?? null;
+  const requestedProject = params.get('project');
+  const needsProject = !projectId || Boolean(requestedProject);
+  const canDiscuss = !needsProject && projectReady === projectId;
   const { state: runtimeMode } = useRuntimeMode();
   const legacyDemoAvailable =
     runtimeMode.status === 'ready' &&
@@ -311,17 +310,10 @@ export function ChatPage() {
   const previousRect = useRef<ReturnType<NonNullable<typeof composerRef.current>['getBoundingClientRect']> | null>(null);
   const [pendingAction, setPendingAction] = useState<MessageAction | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const followLatest = useRef(true);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
 
-
-  const seedCopy = useMemo(
-    () =>
-      computeEmberHeat({
-        lastConfirmedAt: latestConfirmedInteraction(messages),
-      }),
-    [messages, emberBand],
-  );
 
   const reload = useCallback(async (threadId: string) => {
     setLoading(true);
@@ -380,8 +372,18 @@ export function ChatPage() {
   }, [activeThreadId, reload]);
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-  }, [messages]);
+    const list = listRef.current;
+    if (!list) return;
+    followLatest.current = true;
+    list.scrollTo({ top: list.scrollHeight });
+    // The independently loaded project judgment can resize the transcript.
+    // Keep the latest reply visible unless the user has chosen to read earlier turns.
+    const observer = new window.ResizeObserver(() => {
+      if (followLatest.current) list.scrollTo({ top: list.scrollHeight });
+    });
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [messages, needsProject]);
 
   /** 合同：无用户正文 = Seed；单张 G3 主动卡旁挂不切 grown；首条用户/进度结果 → grown */
   const hasUserMessage = useMemo(
@@ -410,7 +412,7 @@ export function ChatPage() {
   const sendText = useCallback(
     async (raw: string) => {
       const text = raw.trim();
-      if (!activeThreadId || text.length === 0 || sending) return;
+      if (!activeThreadId || !canDiscuss || text.length === 0 || sending) return;
       setSending(true);
       setLoadError(null);
       interruptedThreads.delete(activeThreadId);
@@ -443,9 +445,8 @@ export function ChatPage() {
         if (currentThread.current !== activeThreadId || pendingRequest.current !== request) return;
         setMessages(confirmed.messages);
         emitEmberCue('acknowledged');
-        setMotionScene(seedCopy.band === 'hot' ? 'settle' : seedCopy.reason === 'no-interaction' ? 'ignite' : 'rekindle');
+        setMotionScene('settle');
         void refreshThreads();
-        recomputeEmber();
       } catch (err) {
         if (currentThread.current !== activeThreadId || pendingRequest.current !== request) return;
         setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
@@ -461,7 +462,7 @@ export function ChatPage() {
         }
       }
     },
-    [activeThreadId, sending, refreshThreads, recomputeEmber, seedCopy.band, seedCopy.reason, messages, updateDraft],
+    [activeThreadId, canDiscuss, sending, refreshThreads, messages, updateDraft],
   );
 
   const runAction = useCallback(
@@ -472,7 +473,6 @@ export function ChatPage() {
       try {
         const result = await executeMessageAction(activeThreadId, action);
         setMessages((prev) => [...prev, result.message]);
-        recomputeEmber();
         void refreshThreads();
       } catch (err) {
         emitEmberCue('failed');
@@ -487,7 +487,7 @@ export function ChatPage() {
         setActionBusy(false);
       }
     },
-    [activeThreadId, actionBusy, refreshThreads, recomputeEmber],
+    [activeThreadId, actionBusy, refreshThreads],
   );
 
   const onAction = useCallback(
@@ -502,30 +502,9 @@ export function ChatPage() {
   );
 
   const onChip = useCallback((label: string) => {
-    updateDraft(label === '介绍我的项目' ? '我想介绍一下我的项目：' : '我有一个想法：');
+    updateDraft(label === '聊聊当前目标' ? '这个项目当前的目标是：' : '关于这个项目，我还想确认：');
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [updateDraft]);
-
-  const handleStoke = useCallback(
-    contextSafe((btn: HTMLElement) => {
-      emitEmberCue('stoke');
-      if (!motionPaused && !isEmberMotionPaused()) {
-        gsap.timeline()
-          .to(btn, { scale: 0.90, duration: 0.08, ease: 'power2.in' })
-          .to(btn, { scale: 1.08, duration: 0.16, ease: 'back.out(2)' })
-          .to(btn, { scale: 1, duration: 0.12 });
-        const card = btn.closest<HTMLElement>('.flame-life-card');
-        if (card) {
-          gsap.fromTo(
-            card,
-            { boxShadow: '0 0 28px rgba(244, 162, 97, 0.5)', borderColor: 'rgba(244, 162, 97, 0.85)' },
-            { boxShadow: '0 4px 18px rgba(0, 0, 0, 0.04)', borderColor: '', duration: 0.8, ease: 'power2.out', clearProps: 'boxShadow,borderColor' }
-          );
-        }
-      }
-    }),
-    [contextSafe, motionPaused]
-  );
 
   // GSAP animation for new message entrance
   useHearthTimeline(() => {
@@ -650,37 +629,17 @@ export function ChatPage() {
 
   return (
     <section data-motion-engine="gsap" data-motion-paused={motionPaused} data-motion-scene={motionScene} data-arrival={arrival} className={`canvas-page${showSeed ? ' canvas-page--seed' : ' canvas-page--grown'}`}>
-      <div ref={columnRef} aria-hidden={welcomeBlocking || undefined} className={`canvas-column${showSeed ? ' canvas-column--seed' : ' canvas-column--grown'}`}>
-        {loading ? (
+      <div ref={columnRef} aria-hidden={welcomeBlocking || undefined} className={`canvas-column${!needsProject ? ' canvas-column--project' : ''}${showSeed ? ' canvas-column--seed' : ' canvas-column--grown'}`}>
+        {!needsProject && projectId ? <ProjectFocus key={projectId} projectId={projectId} onReady={setProjectReady} /> : null}
+        {needsProject ? <ProjectStart enabled={!welcomeBlocking} /> : loading ? (
           <div className="chat-loading" role="status">
             正在加载…
           </div>
         ) : showSeed ? (
-          <div className="ember-seed" data-ember-band={seedCopy.band} data-flame-stage={flameLife.stage}>
+          <div className="ember-seed" data-ember-band={emberBand} >
             <div className="ember-seed__glow" aria-hidden="true" />
-            <div className="flame-life-card" data-flame-stage={flameLife.stage}>
-              <div className="flame-life-card__head">
-                <span className="flame-life-card__icon" aria-hidden="true">
-                  {flameLife.stage === 'spark' ? '✨' : flameLife.stage === 'sprout' ? '🌱' : flameLife.stage === 'blaze' ? '🔥' : flameLife.stage === 'golden' ? '🌟' : '🪵'}
-                </span>
-                <span className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
-                <button
-                  type="button"
-                  className="flame-life-card__stoke"
-                  onClick={(e) => handleStoke(e.currentTarget)}
-                  title="添一把柴，激荡火舌并飞升火星"
-                >
-                  添柴 +
-                </button>
-              </div>
-              <p className="flame-life-card__poetry">{flameLife.stagePoetry}</p>
-              <p className="flame-life-card__hint">{flameLife.fuelHint}</p>
-            </div>
-            <p className="seed-eyebrow">在这里，慢慢向前</p>
-            <h1 className="ember-seed__greeting">{displayName && seedCopy.reason === 'no-interaction' ? `${displayName}，想从哪里开始？` : seedCopy.reason === 'no-interaction' ? (hearthPeriod === 'night' ? '今晚，想聊些什么？' : '今天，想聊些什么？') : seedCopy.greeting}</h1>
-            {seedCopy.subline ? (
-              <p className="ember-seed__subline">{seedCopy.subline}</p>
-            ) : null}
+            <h1 className="ember-seed__greeting">{displayName ? `${displayName}，想先看清什么？` : '想先看清什么？'}</h1>
+            <p className="ember-seed__subline">从当前项目的目标，或一个待确认的问题开始。</p>
             <div ref={slotRef} className="ember-seed__composer-slot" aria-hidden="true" />
             <div className="ember-seed__chips" aria-label="开始讨论">
               {chips.map((c) => (
@@ -688,7 +647,7 @@ export function ChatPage() {
                   key={c.id}
                   type="button"
                   className="seed-chip"
-                  disabled={sending || !activeThreadId}
+                  disabled={sending || !canDiscuss}
                   onClick={() => onChip(c.label)}
                 >
                   {c.label}
@@ -744,7 +703,12 @@ export function ChatPage() {
             ) : null}
           </div>
         ) : (
-          <div className="chat-list" ref={listRef} aria-live="polite">
+          <div className="chat-list" ref={listRef} aria-live="polite"
+            onWheel={event => { if (event.deltaY < 0) followLatest.current = false; }}
+            onPointerDown={() => { followLatest.current = false; }}
+            onKeyDown={event => { if (['PageUp', 'Home', 'ArrowUp'].includes(event.key)) followLatest.current = false; }}
+            onScroll={event => { const node = event.currentTarget; if (node.scrollHeight - node.scrollTop - node.clientHeight < 24) followLatest.current = true; }}>
+
             {messages.map((m, i) => (
               <MessageTurn
                 key={m.id}
@@ -758,7 +722,8 @@ export function ChatPage() {
           </div>
         )}
 
-        {threadsError && !showSeed ? (
+        {needsProject && messages.length > 0 ? <details className="project-readonly-history"><summary>查看未关联项目的旧谈话（只读）</summary>{messages.map(message => <p key={message.id}><strong>{message.role === 'user' ? '你' : 'Hearth · Mock'}：</strong>{message.content}</p>)}</details> : null}
+        {threadsError && !showSeed && !needsProject ? (
           <div className="chat-thread-error" role="alert">
             <p className="chat-thread-error__msg">{threadsError}</p>
             <button
@@ -777,7 +742,7 @@ export function ChatPage() {
           </p>
         ) : null}
 
-        {!loading ? (
+        {!loading && canDiscuss ? (
           <div ref={composerRef} className={showSeed ? "narrative-composer narrative-composer--seed" : "narrative-composer composer-dock"}>
             {interruptedNotice && <p className="composer-status composer-status--warning" role="alert">切换时中断了发送，消息可能已经送达。请先检查会话，再决定是否重试。</p>}
             {sending && <p className="composer-status" role="status">正在等待本机演示回复…</p>}
@@ -785,7 +750,7 @@ export function ChatPage() {
               draft={draft}
               setDraft={updateDraft}
               sending={sending}
-              disabled={!activeThreadId}
+              disabled={!canDiscuss}
               onSubmit={() => void sendText(draft)}
               inputRef={inputRef}
               placeholder={threadsError ? `服务暂时不可用（${threadsError}）` : showSeed ? "说说你正在想的事…" : "继续说说你的想法…"}

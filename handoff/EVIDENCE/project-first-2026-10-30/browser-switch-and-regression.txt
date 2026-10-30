@@ -1,0 +1,47 @@
+[WebServer] (node:77335) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node:77411) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 4 tests using 1 worker
+
+(node:77451) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓  1 tests/e2e/hearth.spec.ts:131:1 › E2E-08: Chat mock 回复、持久化、明确 Demo 标识 (2.7s)
+  ✓  2 tests/e2e/hearth.spec.ts:150:1 › Settings 保存可持久化 (1.9s)
+  ✓  3 tests/e2e/hearth.spec.ts:162:1 › 视口 1280×800 无水平滚动 (703ms)
+
+  ✘  4 tests/e2e/project-first.spec.ts:90:1 › 界面添加第二个项目后隔离谈话，并恢复原项目草稿 (45.2s)
+
+
+  1) tests/e2e/project-first.spec.ts:90:1 › 界面添加第二个项目后隔离谈话，并恢复原项目草稿 ────────────────────────────────
+
+    Test timeout of 45000ms exceeded.
+
+    Error: apiRequestContext.delete: Test timeout of 45000ms exceeded.
+
+      134 |     expect((await (await page.request.get(`/api/v1/threads?projectId=${secondId}`)).json()).threads).toHaveLength(1);
+      135 |   } finally {
+    > 136 |     if (secondId) await page.request.delete(`/api/v1/observer/projects/${secondId}`, { headers });
+          |                                            ^
+      137 |     rmSync(repo, { recursive: true, force: true });
+      138 |   }
+      139 | });
+        at /Users/v/new-idea/hark/tests/e2e/project-first.spec.ts:136:44
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/project-first-界面添加第二个项目后隔离谈话，并恢复原项目草稿/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/project-first-界面添加第二个项目后隔离谈话，并恢复原项目草稿/error-context.md
+
+  1 failed
+    tests/e2e/project-first.spec.ts:90:1 › 界面添加第二个项目后隔离谈话，并恢复原项目草稿 ─────────────────────────────────
+  3 passed (56.0s)

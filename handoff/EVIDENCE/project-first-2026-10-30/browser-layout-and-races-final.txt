@@ -1,0 +1,21 @@
+[WebServer] (node:91714) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node:91799) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 2 tests using 1 worker
+
+(node:91886) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓  1 tests/e2e/project-first.spec.ts:24:1 › 已登记项目进入谈话，结论按需展开，失败保留草稿且回访恢复 (5.6s)
+
+  ✓  2 tests/e2e/project-first.spec.ts:110:1 › 界面添加第二个项目后隔离谈话，并恢复原项目草稿 (5.5s)
+
+  2 passed (17.7s)

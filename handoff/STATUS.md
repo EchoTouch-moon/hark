@@ -295,3 +295,8 @@ UI-02 全部完成并通关门禁：
 ## 2026-10-30 · 叙事与设计对应审查
 
 完成 Impeccable 双独立审查与当前构建浏览器走查，仅文档/证据交付；未改 UI。源码基线 69035c2。前端构建通过，检测器0命中不代表叙事或可访问性通过；有限桌面走查已完成，完整MVP和真实研究闭环未验收。报告：docs/design/2026-10-30-NARRATIVE-DESIGN-REVIEW.md；证据：handoff/EVIDENCE/design-review-2026-10-30/。
+
+
+## 2026-10-30 · 项目优先与一句判断实现
+
+IMPLEMENTED / VERIFIED：项目优先入口、Observer线程绑定、一句观察/分析结论按需展开、移除添柴评分与虚假进度。单元/集成467项、相关15个浏览器场景分别通过（非一次全量E2E），类型/构建通过，lint 0错误6既有警告。报告：docs/design/2026-10-30-PROJECT-FIRST-IMPLEMENTATION.md；证据：handoff/EVIDENCE/project-first-2026-10-30/。不代表真实研究MVP或完整G1-B通过。

@@ -27,7 +27,6 @@ import { useRuntimeMode } from '../features/runtime-mode';
 import { formatDateTime } from '../features/runs';
 import { fetchInsightSummary } from '../features/insights';
 import { emitEmberCue } from '../features/ember-cues';
-import { deriveProjectFlame } from '../features/projectEmber';
 import './ProjectsPage.css';
 
 export function ProjectsPage() {
@@ -45,7 +44,8 @@ export function ProjectsPage() {
   const [reportPath, setReportPath] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [registering, setRegistering] = useState(false);
-  const [projectAdded, setProjectAdded] = useState(false);
+  const [addedProjectId, setAddedProjectId] = useState<string | null>(null);
+  const [busyProjectId, setBusyProjectId] = useState<string | null>(null);
   const [registerMessage, setRegisterMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -104,15 +104,16 @@ export function ProjectsPage() {
 
   async function onRegister(event: FormEvent): Promise<void> {
     event.preventDefault();
+    if (registering) return;
     if (!confirmed) {
       setRegisterMessage('请先确认将把该路径加入只读观察。');
       return;
     }
     setRegistering(true);
-    setProjectAdded(false);
+    setAddedProjectId(null);
     setRegisterMessage(null);
     try {
-      await registerObserverProject({
+      const added = await registerObserverProject({
         localPath: path.trim(),
         name: name.trim() === '' ? undefined : name.trim(),
         reports:
@@ -121,7 +122,7 @@ export function ProjectsPage() {
             : [{ format: 'junit-xml', relativePath: reportPath.trim() }],
       });
       emitEmberCue('project-added');
-      setProjectAdded(true);
+      setAddedProjectId(added.project.id);
       setPath('');
       setName('');
       setReportPath('');
@@ -136,39 +137,91 @@ export function ProjectsPage() {
   }
 
   async function onToggle(project: ObserverProjectSummary, enabled: boolean): Promise<void> {
+    setBusyProjectId(project.id);
     try {
       await setObserverEnabled(project.id, enabled);
       setReloadKey((key) => key + 1);
     } catch (cause) {
       setObserverError(cause instanceof Error ? cause.message : '更新观察开关失败');
+    } finally {
+      setBusyProjectId(null);
     }
   }
 
   async function onScanProject(project: ObserverProjectSummary): Promise<void> {
+    setBusyProjectId(project.id);
     try {
-      emitEmberCue('stoke');
       await scanObserverProject(project.id);
       setReloadKey((key) => key + 1);
     } catch (cause) {
-      setObserverError(cause instanceof Error ? cause.message : '扫描失败');
+      setObserverError(cause instanceof Error ? cause.message : '检查失败');
+    } finally {
+      setBusyProjectId(null);
     }
   }
 
   const showLoading = projects === null && error === null;
 
   return (
-    <section className="page">
-      <PageHeader title="项目" subtitle={demoMode ? "本地仓库观察事实 + Demo 合成任务项目" : "只读观察已登记项目，查看有来源的变化与洞察"} />
+    <section className="page project-entry-page">
+      <PageHeader title={observed && observed.length > 0 ? "从一个项目，继续谈。" : "先带入一个项目。"} subtitle="让谈话从有来源的事实开始。选择已有项目，或添加一个本地 Git 仓库。" />
 
       <div className="page-section" aria-label="本地仓库观察">
-        <p className="page-section-title">本地仓库观察</p>
+        {observerError !== null ? <ErrorState message={observerError} onRetry={retry} /> : null}
+        {observed === null ? (
+          <div className="project-grid" role="status" aria-label="正在加载项目"><div className="skeleton skeleton-tile" /></div>
+        ) : observed.length === 0 ? (
+          <p className="project-entry-empty">添加项目后，先查看实际观察，再围绕它展开谈话。</p>
+        ) : (
+          <div className="project-entry-existing">
+            <h2 className="project-entry-section-title">选择一个已有项目</h2>
+            <ul className="project-grid project-entry-list">
+              {observed.map((project) => {
+                const test = testLabel(project.test);
+                const busy = busyProjectId === project.id;
+                return (
+                  <li key={project.id}>
+                    <article className="project-tile obs-tile">
+                      <div className="obs-tile-heading">
+                        <h3 className="project-tile-name">{project.name}</h3>
+                        <span className={`status-badge is-${project.enabled ? collectionTone(project.collectionStatus) : 'neutral'}`}>
+                          {project.enabled ? COLLECTION_LABELS[project.collectionStatus] : '观察已暂停'}
+                        </span>
+                      </div>
+                      <p className="obs-tile-time">{project.lastSuccessAt ? `最近成功观察 ${formatDateTime(project.lastSuccessAt)}` : '尚无成功观察记录'}</p>
+                      <Link className="btn btn-primary obs-start-conversation" to={`/?project=${encodeURIComponent(project.id)}`}>围绕这个项目开始谈</Link>
+                      <details className="obs-project-details">
+                        <summary>查看观察范围与状态</summary>
+                        <p className="mono">{project.canonicalPath}</p>
+                        <p className="obs-tile-meta mono">{project.detached ? 'detached' : project.branch ?? '—'} · {project.shortSha ?? (project.unborn ? 'UNBORN' : '—')}</p>
+                        <div className="obs-tile-badges">
+                          <span className={`status-badge is-${project.collectionStatus === 'UNAVAILABLE' ? 'danger' : project.worktree?.conflicted ? 'danger' : project.worktree?.clean ? 'info' : 'warning'}`}>{project.collectionStatus === 'UNAVAILABLE' ? '来源不可用' : worktreeLabel(project.worktree, project.unborn)}</span>
+                          <span className={`status-badge is-${test.tone}`}>{test.text}</span>
+                        </div>
+                        <p className="obs-tile-time">待关注洞察 {insightCounts[project.id] ?? 0}</p>
+                        <div className="obs-tile-actions">
+                          <button type="button" className="btn btn-ghost" disabled={busyProjectId !== null} onClick={() => void onScanProject(project)}>{busy ? '正在处理…' : '立即检查'}</button>
+                          <button type="button" className="btn btn-ghost" disabled={busyProjectId !== null} onClick={() => void onToggle(project, !project.enabled)}>{project.enabled ? '暂停观察' : '恢复观察'}</button>
+                          <Link className="btn btn-ghost" to={`/observe/${encodeURIComponent(project.id)}`}>查看观察证据</Link>
+                          <Link className="btn btn-ghost" to={`/insights?projectId=${encodeURIComponent(project.id)}`}>查看洞察</Link>
+                        </div>
+                      </details>
+                    </article>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        <h2 className="project-entry-section-title">添加本地项目</h2>
         <form className="card obs-register" onSubmit={onRegister}>
           <p className="obs-register-lead">
-            只读采集 Git 状态与已声明的 JUnit 报告。不会运行测试、不会改仓库、不会访问网络。
+            Hearth 只在本机读取这个仓库的 Git 状态。不会改动代码、运行测试或自动调用模型。
           </p>
           <div className="obs-register-grid">
             <label htmlFor={`${formId}-path`}>
-              本地 Git 路径
+              本地 Git 仓库路径
               <input
                 id={`${formId}-path`}
                 type="text"
@@ -176,6 +229,7 @@ export function ProjectsPage() {
                 onChange={(event) => setPath(event.target.value)}
                 placeholder="/Users/you/src/my-repo"
                 required
+                disabled={registering}
                 autoComplete="off"
               />
             </label>
@@ -185,113 +239,44 @@ export function ProjectsPage() {
                 id={`${formId}-name`}
                 type="text"
                 value={name}
+                disabled={registering}
                 onChange={(event) => setName(event.target.value)}
                 autoComplete="off"
               />
             </label>
+          </div>
+          <details className="obs-register-options">
+            <summary>已有测试报告？可选添加</summary>
+            <p>仅读取你声明的 JUnit 报告；没有报告时测试状态保持未知。</p>
             <label htmlFor={`${formId}-report`}>
               JUnit 报告相对路径（可选）
-              <input
-                id={`${formId}-report`}
-                type="text"
-                value={reportPath}
+              <input id={`${formId}-report`} type="text" value={reportPath} disabled={registering}
                 onChange={(event) => setReportPath(event.target.value)}
-                placeholder="reports/junit.xml"
-                autoComplete="off"
-              />
+                placeholder="reports/junit.xml" autoComplete="off" />
             </label>
-          </div>
+          </details>
           <label className="obs-confirm" htmlFor={`${formId}-confirm`}>
             <input
               id={`${formId}-confirm`}
               type="checkbox"
               checked={confirmed}
+              disabled={registering}
               onChange={(event) => setConfirmed(event.target.checked)}
             />
             我确认将该本地路径加入只读观察
           </label>
           <div className="obs-register-actions">
-            <button className="btn btn-primary" type="submit" disabled={registering || path.trim() === ''}>
-              {registering ? '正在注册…' : '注册观察'}
+            <button className="btn btn-primary" type="submit" disabled={registering || !confirmed || path.trim() === ''}>
+              {registering ? '正在添加…' : '添加项目'}
             </button>
-            {registerMessage ? <p className="obs-register-msg">{registerMessage}</p> : null}
+            {registerMessage ? <p className="obs-register-msg" role="alert">{registerMessage}</p> : null}
           </div>
-          {projectAdded && <p className="project-story-feedback" role="status">项目已加入关照范围。接下来可以查看观察结果；尚未进行分析或运行测试。</p>}
+          {addedProjectId && <div className="project-story-feedback" role="status">
+            <p>项目已添加。观察结果与分析状态会如实显示；尚未调用模型。</p>
+            <Link className="btn btn-primary" to={`/?project=${encodeURIComponent(addedProjectId)}`}>进入这个项目的谈话</Link>
+          </div>}
         </form>
 
-        {observerError !== null ? <ErrorState message={observerError} onRetry={retry} /> : null}
-        {observed === null ? (
-          <div className="project-grid" aria-hidden="true">
-            <div className="skeleton skeleton-tile" />
-          </div>
-        ) : observed.length === 0 ? (
-          <EmptyState title="还没有观察中的仓库" hint="登记一个本地 Git 仓库后，这里会显示分支、HEAD、工作区与测试证据。" />
-        ) : (
-          <ul className="project-grid">
-            {observed.map((project) => {
-              const test = testLabel(project.test);
-              const flame = deriveProjectFlame({
-                project: {
-                  enabled: project.enabled,
-                  lastObservedAt: project.lastSuccessAt,
-                  testStatus: project.test?.result,
-                  openInsightCount: insightCounts[project.id] ?? 0,
-                  unborn: project.unborn,
-                },
-              });
-              return (
-                <li key={project.id}>
-                  <article className="project-tile card obs-tile" data-flame-stage={flame.stage}>
-                    <Link to={`/observe/${encodeURIComponent(project.id)}`} className="obs-tile-link">
-                      <span className="project-tile-name">{project.name}</span>
-                      <span className="obs-tile-meta mono">
-                        {project.detached ? 'detached' : project.branch ?? '—'} · {project.shortSha ?? (project.unborn ? 'UNBORN' : '—')}
-                      </span>
-                      <span className="obs-tile-badges">
-                        <span className={`status-badge is-${flame.stageBadgeTone}`} title={flame.stagePoetry}>
-                          {flame.stageLabel}
-                        </span>
-                        <span className={`status-badge is-${collectionTone(project.collectionStatus)}`}>
-                          {COLLECTION_LABELS[project.collectionStatus]}
-                        </span>
-                        <span className={`status-badge is-${project.collectionStatus === 'UNAVAILABLE' ? 'danger' : project.worktree?.conflicted ? 'danger' : project.worktree?.clean ? 'info' : 'warning'}`}>
-                          {project.collectionStatus === 'UNAVAILABLE'
-                            ? '不可用'
-                            : worktreeLabel(project.worktree, project.unborn)}
-                        </span>
-                        <span className={`status-badge is-${test.tone}`}>{test.text}</span>
-                      </span>
-                      <span className="obs-tile-time">最近成功扫描 {formatDateTime(project.lastSuccessAt ?? undefined)}</span>
-                      <span className="obs-tile-time">
-                        待关注洞察 {insightCounts[project.id] ?? 0} · 详情见洞察页
-                      </span>
-                    </Link>
-                    <div className="obs-tile-actions">
-                      <button
-                        type="button"
-                        className="btn btn-ghost obs-tile-stoke"
-                        onClick={() => void onScanProject(project)}
-                        title="扫描仓库并添一把柴，激荡火舌与飞升火星"
-                      >
-                        🔥 添柴扫描
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-ghost obs-tile-toggle"
-                        onClick={() => void onToggle(project, !project.enabled)}
-                      >
-                        {project.enabled ? '暂停观察' : '恢复观察'}
-                      </button>
-                      <Link className="btn btn-ghost" to={`/insights?projectId=${encodeURIComponent(project.id)}`}>
-                        查看洞察
-                      </Link>
-                    </div>
-                  </article>
-                </li>
-              );
-            })}
-          </ul>
-        )}
       </div>
 
       {demoMode ? <div className="page-section" aria-busy={showLoading} aria-label="任务项目">

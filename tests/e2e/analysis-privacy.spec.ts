@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
+const SHOT_DIR = process.env['HEARTH_TEST_EVIDENCE_DIR'] ?? 'handoff/EVIDENCE';
 
 /** UI-only Pi disclosure simulation; actual server/provider remain Mock throughout. */
 test('R2: explicit privacy confirmation, exclusions and persisted feedback', async ({ page, baseURL }) => {
@@ -81,7 +82,7 @@ test('R2: explicit privacy confirmation, exclusions and persisted feedback', asy
     await expect(dialog.locator('.analysis-preview-files')).not.toContainText('docs/context-notes.md');
     await dialog.getByText('查看完整发送上下文', { exact: true }).click();
     await expect(dialog.locator('pre')).toContainText(latestFingerprint);
-    await page.locator('dialog').screenshot({ path: 'handoff/EVIDENCE/r2-privacy.png' });
+    await page.locator('dialog').screenshot({ path: `${SHOT_DIR}/r2-privacy.png` });
     const consentFingerprint = latestFingerprint;
     const result = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().endsWith('/api/v1/analysis/runs'));
     await confirm.click();
@@ -91,11 +92,14 @@ test('R2: explicit privacy confirmation, exclusions and persisted feedback', asy
     const card = page.locator('.analysis-card');
     await expect(card).toContainText('Mock 演示 · 未调用真实 AI');
     await expect(card).toContainText('已完成');
+    await card.getByText('展开依据与下一步', { exact: true }).click();
     await expect(card).toContainText('来源引用已匹配，结论仍需判断');
+    await card.getByText('查看观察证据与评价', { exact: true }).click();
     await card.getByRole('button', { name: '有用', exact: true }).click();
     await expect(card).toContainText('已记录：有用');
     await expect(card.getByRole('button', { name: '有用', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.reload();
+    await card.getByText('查看观察证据与评价', { exact: true }).click();
     await expect(card).toContainText('已记录：有用');
     await expect(card.getByRole('button', { name: '有用', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.route('**/api/v1/analysis/runs/*/feedback', (route) => route.fulfill({

@@ -1,7 +1,4 @@
-/**
- * CanvasShell · Style Bible v6 Ember Seed
- * 顶栏：聊天|项目 + 搜索/头像；极简可收 thread rail；设置从头像进。
- */
+/** Project-first conversation room. History and visual preferences open on demand. */
 import {
   createContext,
   useCallback,
@@ -13,7 +10,7 @@ import {
   type ReactNode,
   type ElementRef,
 } from 'react';
-import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   createThread,
   getActiveThreadId,
@@ -21,23 +18,19 @@ import {
   setActiveThreadId,
   type ThreadSummary,
 } from '../features/threads';
-import { fetchChatHistory, preferLiveApi, type ConfirmedUserMessage } from '../features/chat';
+import { preferLiveApi } from '../features/chat';
 import {
   applyEmberHeatCss,
-  computeEmberHeat,
-  latestConfirmedInteraction,
-  confirmedInteractionTimes,
   type EmberBand,
 } from '../features/emberHeat';
 import { deriveProjectFlame, type ProjectFlameInfo } from '../features/projectEmber';
-import { fetchProjectSnapshot } from '../features/projects';
+import { fetchObserverDetail } from '../features/observer';
 import { EmberAtmosphere } from '../components/EmberAtmosphere';
 import { getHearthPeriod, type HearthPeriod } from '../features/hearthPeriod';
 import { readFlameSize, saveFlameSize } from '../features/flameSize';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import { readWelcomePreference } from '../features/welcome';
-import { useHearthTimeline, HEARTH_EASE } from '../motion';
-import { gsap } from 'gsap';
+
 import './AppShell.css';
 
 /* ------------------------------------------------------------------ */
@@ -81,8 +74,9 @@ export interface ThreadContextValue {
   refreshThreads: () => Promise<void>;
   selectThread: (id: string) => void;
   addThread: () => Promise<void>;
+  openProject: (projectId: string) => Promise<void>;
+  threadsReady: boolean;
   /** ChatPage 发送后刷新炉温 */
-  recomputeEmber: () => void;
   motionPaused: boolean;
   setMotionPaused: (paused: boolean) => void;
   welcomeActive: boolean;
@@ -224,9 +218,10 @@ function ThreadRail({
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [drawerContent, setDrawerContent] = useState<ReactNode | null>(null);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
+  const [threadsReady, setThreadsReady] = useState(false);
+  const openingProjects = useRef(new Map<string, Promise<ThreadSummary>>());
   const [threadsMock, setThreadsMock] = useState(true);
   const [threadsError, setThreadsError] = useState<string | null>(null);
   const [activeThreadId, setActiveId] = useState<string | null>(null);
@@ -263,13 +258,17 @@ export function AppShell() {
     };
   }, [motionPaused, reducedMotion]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [emberTick, setEmberTick] = useState(0);
   // History is always an on-demand surface; re-entering opens the conversation.
   const [railCollapsed, setRailCollapsed] = useState(true);
 
+  const currentRoute = useRef({ pathname: location.pathname, search: location.search });
+  currentRoute.current = { pathname: location.pathname, search: location.search };
+  const refreshGeneration = useRef(0);
   const refreshThreads = useCallback(async () => {
+    const generation = ++refreshGeneration.current;
     try {
       const listed = await listThreads();
+      if (generation !== refreshGeneration.current) return;
       if (listed.error) {
         setThreadsError(listed.error);
         setThreads([]);
@@ -279,122 +278,40 @@ export function AppShell() {
       setThreads(listed.threads);
       setThreadsMock(listed.mock);
       if (!listed.mock) preferLiveApi();
-      const fromQuery = searchParams.get('thread');
-      const fromPath = location.pathname.startsWith('/t/')
-        ? location.pathname.slice(3).split('/')[0]
+      const route = currentRoute.current;
+      const fromQuery = new URLSearchParams(route.search).get('thread');
+      const fromPath = route.pathname.startsWith('/t/')
+        ? route.pathname.slice(3).split('/')[0]
         : null;
-      const preferred =
-        fromQuery ||
-        fromPath ||
-        getActiveThreadId() ||
-        listed.threads[0]?.id ||
-        'thread-default';
-      if (preferred) {
-        setActiveId(preferred);
-        setActiveThreadId(preferred);
-      }
+      const preferred = [fromQuery, fromPath, getActiveThreadId(), listed.threads[0]?.id]
+        .find(id => id && listed.threads.some(thread => thread.id === id)) ?? null;
+      setActiveId(preferred);
+      if (preferred) setActiveThreadId(preferred);
     } catch (err) {
+      if (generation !== refreshGeneration.current) return;
       setThreadsError(err instanceof Error ? err.message : '加载线程列表失败');
       setThreads([]);
+    } finally {
+      if (generation === refreshGeneration.current) setThreadsReady(true);
     }
-  }, [location.pathname, searchParams]);
+  }, []);
 
   useEffect(() => {
     void refreshThreads();
-  }, [refreshThreads]);
+    return () => { refreshGeneration.current++; };
+  }, [refreshThreads, location.pathname, location.search]);
 
   useEffect(() => {
     setDrawerContent(null);
   }, [location.pathname]);
 
 
-  const [confirmedState, setConfirmedState] = useState<{
-    threadId: string;
-    at: string | null;
-    times: string[];
-    confirmedUserMessages: ConfirmedUserMessage[];
-  } | null>(null);
-  const [projectFlameContext, setProjectFlameContext] = useState<{
-    project: {
-      enabled?: boolean;
-      createdAt?: string;
-      lastObservedAt?: string | null;
-      testStatus?: string;
-      openInsightCount?: number;
-      unborn?: boolean;
-    } | null;
-    cardsSummary: {
-      total: number;
-      completed: number;
-      active: number;
-      failed: number;
-    } | null;
-  }>({ project: null, cardsSummary: null });
   const [nowMs, setNowMs] = useState(Date.now);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    if (activeThreadId) {
-      void fetchChatHistory(activeThreadId, controller.signal)
-        .then((history) => {
-          if (!controller.signal.aborted) {
-            setConfirmedState({
-              threadId: activeThreadId,
-              at: latestConfirmedInteraction(history.confirmedUserMessages),
-              times: confirmedInteractionTimes(history.confirmedUserMessages),
-              confirmedUserMessages: history.confirmedUserMessages,
-            });
-            setNowMs(Date.now());
-          }
-        })
-        .catch(() => {
-          if (!controller.signal.aborted) setConfirmedState(null);
-        });
-    }
-    return () => controller.abort();
-  }, [activeThreadId, emberTick]);
 
   const activeThread = useMemo(
     () => threads.find((t) => t.id === activeThreadId),
     [threads, activeThreadId],
   );
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const projectId = activeThread?.projectId;
-    if (projectId) {
-      void fetchProjectSnapshot(projectId, controller.signal)
-        .then((snap) => {
-          if (!controller.signal.aborted) {
-            setProjectFlameContext({
-              project: {
-                enabled: true,
-                lastObservedAt: snap.events[0]?.occurredAt ?? snap.events[0]?.source.observedAt ?? null,
-                testStatus: snap.runs[0]?.state,
-                openInsightCount: snap.events.length,
-                unborn: false,
-              },
-              cardsSummary: {
-                total: snap.cards.length,
-                completed: snap.cards.filter((c) => c.status === 'completed').length,
-                active: snap.cards.filter((c) =>
-                  ['executing', 'ready', 'awaiting_approval', 'verifying'].includes(c.status),
-                ).length,
-                failed: snap.cards.filter((c) => c.status === 'failed').length,
-              },
-            });
-          }
-        })
-        .catch(() => {
-          if (!controller.signal.aborted) {
-            setProjectFlameContext({ project: null, cardsSummary: null });
-          }
-        });
-    } else {
-      setProjectFlameContext({ project: null, cardsSummary: null });
-    }
-    return () => controller.abort();
-  }, [activeThread?.projectId, emberTick]);
 
   useEffect(() => {
     const update = () => {
@@ -411,128 +328,17 @@ export function AppShell() {
   }, []);
 
   const hearthPeriod = getHearthPeriod(new Date(nowMs));
-  const ember = computeEmberHeat({
-    lastConfirmedAt: confirmedState?.threadId === activeThreadId ? confirmedState.at : null,
-    interactionTimes: confirmedState?.threadId === activeThreadId ? confirmedState.times : [],
-    nowMs,
-  });
+  const ember = { band: 'warm' as const, heat: 0.3 };
 
-  const flameLife = useMemo(() => {
-    return deriveProjectFlame({
-      project: projectFlameContext.project,
-      confirmedUserMessages:
-        confirmedState?.threadId === activeThreadId ? confirmedState.confirmedUserMessages : [],
-      cardsSummary: projectFlameContext.cardsSummary,
-      nowMs,
-    });
-  }, [projectFlameContext, confirmedState, activeThreadId, nowMs]);
-
-  useEffect(() => {
-    applyEmberHeatCss(flameLife.heat);
-  }, [flameLife.heat]);
-
+  // Neutral ambient light until a verified project-life projection exists.
+  // Conversation count, old cards and observation switches are not progress.
+  const flameLife = useMemo(() => deriveProjectFlame({}), []);
+  useEffect(() => { applyEmberHeatCss(flameLife.heat); }, [flameLife.heat]);
   const shellRef = useRef<HTMLDivElement>(null);
-  const { contextSafe } = useHearthTimeline({ scope: shellRef });
-
-  const topVitalityBarRef = useRef<globalThis.HTMLDivElement>(null);
-  const menuVitalityBarRef = useRef<globalThis.HTMLDivElement>(null);
-  const topStageBadgeRef = useRef<globalThis.HTMLSpanElement>(null);
-  const menuStageBadgeRef = useRef<globalThis.HTMLSpanElement>(null);
-  const menuHeatLabelRef = useRef<globalThis.HTMLSpanElement>(null);
-  const prevStageRef = useRef(flameLife.stage);
-
-  // Smooth GSAP animation for vitality bars, numeric % counter, and stage badge flares
-  useHearthTimeline(() => {
-    const isPaused = motionPaused || reducedMotion || isEmberMotionPaused();
-    const targetPct = Math.round(flameLife.heat * 100);
-    const duration = isPaused ? 0 : 0.85;
-
-    if (topVitalityBarRef.current) {
-      gsap.to(topVitalityBarRef.current, {
-        width: `${targetPct}%`,
-        duration,
-        ease: HEARTH_EASE.gentle,
-      });
-    }
-
-    if (menuVitalityBarRef.current) {
-      gsap.to(menuVitalityBarRef.current, {
-        width: `${targetPct}%`,
-        duration,
-        ease: HEARTH_EASE.gentle,
-      });
-    }
-
-    if (menuHeatLabelRef.current) {
-      if (isPaused) {
-        menuHeatLabelRef.current.textContent = `${targetPct}% 活力`;
-      } else {
-        const currentText = menuHeatLabelRef.current.textContent ?? '';
-        const match = /(\d+)/.exec(currentText);
-        const startVal = match ? parseInt(match[1]!, 10) : targetPct;
-        const counter = { val: startVal };
-        gsap.to(counter, {
-          val: targetPct,
-          duration,
-          ease: HEARTH_EASE.gentle,
-          onUpdate: () => {
-            if (menuHeatLabelRef.current) {
-              menuHeatLabelRef.current.textContent = `${Math.round(counter.val)}% 活力`;
-            }
-          },
-        });
-      }
-    }
-
-    if (prevStageRef.current !== flameLife.stage) {
-      prevStageRef.current = flameLife.stage;
-      if (!isPaused) {
-        if (topStageBadgeRef.current) {
-          gsap.fromTo(
-            topStageBadgeRef.current,
-            { scale: 1.18, opacity: 0.8 },
-            { scale: 1, opacity: 1, duration: 0.45, ease: 'back.out(1.6)' }
-          );
-        }
-        if (menuStageBadgeRef.current) {
-          gsap.fromTo(
-            menuStageBadgeRef.current,
-            { scale: 1.18, opacity: 0.8 },
-            { scale: 1, opacity: 1, duration: 0.45, ease: 'back.out(1.6)' }
-          );
-        }
-      }
-    }
-  }, { dependencies: [flameLife.heat, flameLife.stage, motionPaused, reducedMotion] });
-
-  const handleTopBarStoke = useCallback(
-    contextSafe((btn?: HTMLElement) => {
-      emitEmberCue('stoke');
-      const isPaused = motionPaused || reducedMotion || isEmberMotionPaused();
-      if (btn && !isPaused) {
-        gsap.timeline()
-          .to(btn, { scale: 0.94, duration: 0.08, ease: 'power2.in' })
-          .to(btn, { scale: 1.06, duration: 0.16, ease: 'back.out(2)' })
-          .to(btn, {
-            scale: 1,
-            duration: 0.12,
-            onComplete: () => {
-              menuRef.current?.removeAttribute('open');
-            },
-          });
-      } else {
-        menuRef.current?.removeAttribute('open');
-      }
-    }),
-    [contextSafe, motionPaused, reducedMotion]
-  );
-
-  const recomputeEmber = useCallback(() => {
-    setEmberTick((n) => n + 1);
-  }, []);
 
   const selectThread = useCallback(
     (id: string) => {
+      refreshGeneration.current++;
       setActiveId(id);
       setActiveThreadId(id);
       setShellMode('chat');
@@ -543,11 +349,33 @@ export function AppShell() {
     [location.pathname, navigate],
   );
 
-  const addThread = useCallback(async () => {
-    const { thread } = await createThread({ title: '新线程' });
+  const openProject = useCallback(async (projectId: string) => {
+    const detail = await fetchObserverDetail(projectId);
+    let thread = threads.find(item => item.projectId === projectId);
+    if (!thread) {
+      let pending = openingProjects.current.get(projectId);
+      if (!pending) {
+        pending = createThread({ title: `${detail.project.name} · 讨论`, projectId }).then(result => result.thread);
+        openingProjects.current.set(projectId, pending);
+      }
+      try { thread = await pending; }
+      catch (cause) { openingProjects.current.delete(projectId); throw cause; }
+    }
     await refreshThreads();
     selectThread(thread.id);
-  }, [refreshThreads, selectThread]);
+  }, [threads, refreshThreads, selectThread]);
+
+  const addThread = useCallback(async () => {
+    if (!activeThread?.projectId) { navigate('/projects'); return; }
+    try {
+      const detail = await fetchObserverDetail(activeThread.projectId);
+      const { thread } = await createThread({ title: `${detail.project.name} · 新话题`, projectId: detail.project.id });
+      await refreshThreads();
+      selectThread(thread.id);
+    } catch (cause) {
+      setThreadsError(cause instanceof Error ? cause.message : '创建话题失败，请重试');
+    }
+  }, [activeThread?.projectId, navigate, refreshThreads, selectThread]);
 
   const drawerValue = useMemo<DetailDrawerValue>(
     () => ({ content: drawerContent, setContent: setDrawerContent }),
@@ -573,7 +401,8 @@ export function AppShell() {
       refreshThreads,
       selectThread,
       addThread,
-      recomputeEmber,
+      openProject,
+      threadsReady,
       motionPaused: isPaused,
       setMotionPaused,
       welcomeActive,
@@ -596,7 +425,8 @@ export function AppShell() {
       refreshThreads,
       selectThread,
       addThread,
-      recomputeEmber,
+      openProject,
+      threadsReady,
       isPaused,
       setMotionPaused,
       welcomeActive,
@@ -665,40 +495,15 @@ export function AppShell() {
                 <header className="canvas-chrome">
                   <button type="button" className="hearth-wordmark" onClick={() => { setShellMode('chat'); setRailCollapsed(true); }} aria-label="返回对话">Hearth<span aria-hidden="true">.</span></button>
                   <div className="hearth-header-actions">
-                    <div className="hearth-flame-pill" data-flame-stage={flameLife.stage} title={`炉火生命态：${flameLife.stageLabel} (${Math.round(flameLife.heat * 100)}% 活力)`}>
-                      <span className="hearth-flame-pill__icon" aria-hidden="true">
-                        {flameLife.stage === 'spark' ? '✨' : flameLife.stage === 'sprout' ? '🌱' : flameLife.stage === 'blaze' ? '🔥' : flameLife.stage === 'golden' ? '🌟' : '🪵'}
-                      </span>
-                      <span ref={topStageBadgeRef} className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
-                      <div className="hearth-vitality-track" aria-hidden="true" title={`${Math.round(flameLife.heat * 100)}% 活力`}>
-                        <div ref={topVitalityBarRef} className="hearth-vitality-fill" style={{ width: `${Math.round(flameLife.heat * 100)}%` }} />
-                      </div>
-                    </div>
+                    <Link className="hearth-project-link" to="/projects">选择项目</Link>
                     <span className="hearth-mode-label" role="status" aria-label="当前对话为 Mock · 离线演示 · 不连接真实模型" title="对话回复由本机模拟生成，不连接真实模型">当前对话为 Mock · 离线演示</span>
                     <details className="hearth-menu" ref={menuRef} onKeyDown={(event) => {
                       if (event.key === 'Escape') { menuRef.current?.removeAttribute('open'); menuRef.current?.querySelector('summary')?.focus(); }
                     }}>
                       <summary role="button" aria-label="打开菜单" title="菜单"><span aria-hidden="true">···</span></summary>
                       <div className="hearth-menu__panel">
-                        <div className="hearth-menu__flame-status" data-flame-stage={flameLife.stage}>
-                          <div className="hearth-menu__flame-row">
-                            <span ref={menuStageBadgeRef} className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
-                            <span ref={menuHeatLabelRef} className="hearth-menu__heat-label">{Math.round(flameLife.heat * 100)}% 活力</span>
-                          </div>
-                          <div className="hearth-vitality-track hearth-vitality-track--menu" aria-hidden="true">
-                            <div ref={menuVitalityBarRef} className="hearth-vitality-fill" style={{ width: `${Math.round(flameLife.heat * 100)}%` }} />
-                          </div>
-                          <p className="hearth-menu__flame-poetry">{flameLife.stagePoetry}</p>
-                          <button
-                            type="button"
-                            className="hearth-menu__stoke-action"
-                            onClick={(e) => handleTopBarStoke(e.currentTarget)}
-                          >
-                            🔥 添一把柴（散发火星）
-                          </button>
-                        </div>
                         <button type="button" onClick={() => { setRailCollapsed(false); menuRef.current?.removeAttribute('open'); }}>历史对话</button>
-                        <button type="button" onClick={() => { setShellMode('projects'); menuRef.current?.removeAttribute('open'); }}>项目与话题</button>
+                        <Link to="/projects" onClick={() => menuRef.current?.removeAttribute('open')}>本地项目</Link>
                         <button type="button" onClick={() => { setMotionPaused(!motionPaused); menuRef.current?.removeAttribute('open'); }}>{motionPaused ? '开启动效' : '暂停动效'}</button>
                         <button type="button" onClick={() => { setShellMode('chat'); setWelcomeReplay(true); menuRef.current?.removeAttribute('open'); }}>重看欢迎</button>
                         <Link to="/settings" onClick={() => menuRef.current?.removeAttribute('open')}>设置</Link>
@@ -707,7 +512,7 @@ export function AppShell() {
                           <input id="hearth-flame-size" type="range" min="0.65" max="1.4" step="0.05" value={flameSize}
                             onChange={(event) => { const value = Number(event.currentTarget.value); setFlameSize(value); saveFlameSize(value); }} />
                         </div>
-                        <p className="hearth-menu__hint">火光伴随项目的创立、推进与成果，赋予生命活力。</p>
+                        <p className="hearth-menu__hint">火影是空间氛围，不表示进度或后台工作。</p>
                       </div>
                     </details>
                   </div>
@@ -723,19 +528,7 @@ export function AppShell() {
               </header>
             )}
             <main className="canvas-main" id="main-content">
-              {canvas && shellMode === 'projects' ? (
-                <ProjectsPane
-                  threads={threads}
-                  activeThreadId={activeThreadId}
-                  flameLife={flameLife}
-                  filter={searchQuery}
-                  onSelect={selectThread}
-                  onCreate={() => void addThread()}
-                  onStoke={handleTopBarStoke}
-                />
-              ) : (
-                <Outlet />
-              )}
+              <Outlet />
             </main>
           </div>
           {drawerContent !== null ? (
@@ -749,99 +542,11 @@ export function AppShell() {
   );
 }
 
-function ProjectsPane({
-  threads,
-  activeThreadId,
-  flameLife,
-  filter,
-  onSelect,
-  onCreate,
-  onStoke,
-}: {
-  threads: ThreadSummary[];
-  activeThreadId: string | null;
-  flameLife: ProjectFlameInfo;
-  filter: string;
-  onSelect: (id: string) => void;
-  onCreate: () => void;
-  onStoke?: (btn: HTMLElement) => void;
-}) {
-  const q = filter.trim().toLowerCase();
-  const visible = q
-    ? threads.filter((t) => t.title.toLowerCase().includes(q))
-    : threads;
-
-  return (
-    <section className="projects-pane" aria-label="项目（线程）">
-      <header className="projects-pane__head">
-        <h1 className="projects-pane__title">项目与话题</h1>
-        <p className="projects-pane__hint">选择一段谈话继续，或把新的本地项目带到炉边。</p>
-        <button type="button" className="btn btn-primary" onClick={onCreate}>
-          新线程
-        </button>
-      </header>
-
-      <div className="projects-pane__flame-banner" data-flame-stage={flameLife.stage}>
-        <div className="projects-pane__flame-head">
-          <div className="projects-pane__flame-meta">
-            <span className="projects-pane__flame-icon" aria-hidden="true">
-              {flameLife.stage === 'spark' ? '✨' : flameLife.stage === 'sprout' ? '🌱' : flameLife.stage === 'blaze' ? '🔥' : flameLife.stage === 'golden' ? '🌟' : '🪵'}
-            </span>
-            <div>
-              <span className="projects-pane__flame-title">炉火生命态：{flameLife.stageLabel}</span>
-              <span className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stage}</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn btn-sm btn-ghost projects-pane__stoke-btn"
-            onClick={(e) => {
-              if (onStoke) {
-                onStoke(e.currentTarget);
-              } else {
-                emitEmberCue('stoke');
-              }
-            }}
-            title="添一把柴，激荡火舌并飞升散发火星粒子"
-          >
-            🔥 添柴激荡
-          </button>
-        </div>
-        <p className="projects-pane__flame-poetry">{flameLife.stagePoetry}</p>
-        <p className="projects-pane__flame-hint">{flameLife.fuelHint}</p>
-      </div>
-
-      <Link to="/projects" className="projects-pane__manage">管理本地项目与观察范围 ↗</Link>
-      <ul className="projects-pane__list">
-        {visible.map((t) => (
-          <li key={t.id}>
-            <button
-              type="button"
-              className={`projects-pane__item${t.id === activeThreadId ? ' is-active' : ''}`}
-              onClick={() => onSelect(t.id)}
-            >
-              <div className="projects-pane__item-header">
-                <span className="projects-pane__item-title">{t.title}</span>
-                {t.id === activeThreadId ? (
-                  <span className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
-                ) : null}
-              </div>
-              {t.preview ? (
-                <span className="projects-pane__item-preview">{t.preview}</span>
-              ) : null}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 function sectionLabel(pathname: string): string {
   if (pathname.startsWith('/cards')) return '建议（调试）';
-  if (pathname.startsWith('/observe')) return '项目观察（调试）';
-  if (pathname.startsWith('/projects')) return '项目（调试）';
-  if (pathname.startsWith('/insights')) return '洞察（调试）';
+  if (pathname.startsWith('/observe')) return '项目观察';
+  if (pathname.startsWith('/projects')) return '本地项目';
+  if (pathname.startsWith('/insights')) return '洞察';
   if (pathname.startsWith('/activity')) return '活动（调试）';
   if (pathname.startsWith('/settings')) return '设置';
   return '页面';

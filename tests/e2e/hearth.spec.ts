@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './project-fixture';
 
 /**
  * Hearth E2E（docs/06 用例主表）
@@ -9,7 +10,7 @@ import { expect, test, type Page } from '@playwright/test';
  * 路径 + API 断连重试逻辑覆盖，见 tests 说明。
  */
 
-const SHOT_DIR = 'handoff/EVIDENCE';
+const SHOT_DIR = process.env['HEARTH_TEST_EVIDENCE_DIR'] ?? 'handoff/EVIDENCE';
 
 /** 稳定的卡片定位：按标题 heading 定位（不随按钮文案/状态变化） */
 function cardByTitle(page: Page, title: string) {
@@ -127,8 +128,8 @@ test('E2E-07: 项目隔离由服务端保证', async ({ page }) => {
   await expect(page.getByText('Project Beacon').first()).toBeVisible();
 });
 
-test('E2E-08: Chat mock 回复、持久化、明确 Demo 标识', async ({ page }) => {
-  await page.goto('/');
+test('E2E-08: Chat mock 回复、持久化、明确 Demo 标识', async ({ page, projectFixture }) => {
+  await page.goto(`/t/${projectFixture.threadId}`);
   await expect(page.getByText(/离线演示|不连接模型/).first()).toBeVisible();
   const skip = page.getByRole('button', { name: /跳过欢迎/ });
   if (await skip.isVisible()) {

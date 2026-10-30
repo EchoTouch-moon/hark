@@ -233,25 +233,45 @@
   margin-top: var(--space-2);
 }
 
-.obs-tile-stoke {
-  border: 1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  color: var(--color-ink);
-  font-weight: 500;
-  transition: background var(--duration-fast), transform var(--duration-fast);
+/* 项目优先：从可信范围进入对话，而非展示项目生命评分。 */
+.project-entry-page {
+  max-width: 960px;
+  margin-inline: auto;
+  padding: clamp(28px, 5vh, 64px) 32px 64px;
 }
-
-.obs-tile-stoke:hover {
-  background: color-mix(in srgb, var(--color-accent) 24%, transparent);
-  transform: translateY(-1px);
+.project-entry-page .page-header { margin-bottom: 32px; padding-bottom: 0; border: 0; }
+.project-entry-page .page-header-title { font-size: clamp(30px, 3vw, 42px); font-weight: 500; line-height: 1.35; }
+.project-entry-page .page-header-subtitle { max-width: 48ch; margin-top: 14px; font-size: 15px; line-height: 1.8; color: var(--color-ink-2); }
+.project-entry-section-title { margin: 0 0 16px; font-size: 17px; font-weight: 500; color: var(--color-ink); }
+.project-entry-page .obs-register { padding: 24px; border: 1px solid var(--color-border-strong); border-radius: 16px; background: var(--color-surface); box-shadow: none; }
+.project-entry-page .obs-register-lead { max-width: 64ch; font-size: 14px; line-height: 1.8; }
+.project-entry-page .obs-register-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; }
+.project-entry-page .obs-register input:not([type='checkbox']) { width: 100%; min-width: 0; height: 44px; color: var(--color-ink); background: var(--color-surface); }
+.project-entry-page .obs-register input::placeholder { color: var(--color-ink-2); opacity: 1; }
+.project-entry-page .obs-register .obs-confirm { display: flex; flex-direction: row; width: fit-content; gap: 10px; align-items: center; color: var(--color-ink-2); }
+.project-entry-page .obs-confirm input { width: 17px; height: 17px; flex: 0 0 auto; }
+.project-entry-page .btn-primary { background: var(--color-accent-strong); color: var(--color-on-accent); box-shadow: none; }
+.project-entry-page .btn { min-height: 42px; }
+.project-entry-page .btn-primary:disabled { opacity: .55; }
+.obs-register-options summary, .obs-project-details summary { width: fit-content; padding: 5px 0; cursor: pointer; color: var(--color-ink-2); font-size: 13px; text-underline-offset: 4px; }
+.obs-register-options[open] summary, .obs-project-details[open] summary { margin-bottom: 12px; }
+.obs-register-options p { max-width: 64ch; margin-bottom: 12px; color: var(--color-ink-2); font-size: 13px; line-height: 1.8; }
+.obs-register-options label { max-width: 440px; }
+.project-entry-existing { margin-bottom: 40px; }
+.project-entry-list { display: block; }
+.project-entry-list > li + li { margin-top: 8px; }
+.project-entry-list .obs-tile { padding: 22px 0; border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; background: transparent; box-shadow: none; transition: none; }
+.project-entry-list .obs-tile:hover { transform: none; box-shadow: none; }
+.obs-tile-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.project-entry-list .project-tile-name { font-size: 23px; font-weight: 500; overflow-wrap: anywhere; }
+.project-entry-list .obs-tile-time { color: var(--color-ink-2); font-size: 13px; }
+.obs-start-conversation { align-self: flex-start; margin-top: 4px; }
+.obs-project-details { margin-top: 5px; }
+.obs-project-details p + p, .obs-project-details .obs-tile-badges { margin-top: 10px; }
+.project-entry-empty { margin: 0 0 24px; font-size: 14px; line-height: 1.8; color: var(--color-ink-2); }
+.project-entry-page .project-story-feedback { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 0; padding: 18px 0 0; border: 0; border-top: 1px solid var(--color-border); background: transparent; color: var(--color-ink-2); }
+.project-entry-page input:focus-visible, .project-entry-page summary:focus-visible, .project-entry-page a:focus-visible, .project-entry-page button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 4px; }
+@media (max-width: 700px) {
+  .project-entry-page { padding: 28px 20px 48px; }
+  .project-entry-page .obs-register-grid { grid-template-columns: minmax(0, 1fr); }
 }
-
-.project-tile[data-flame-stage='golden'] {
-  border-color: rgba(220, 168, 62, 0.4);
-}
-
-.project-tile[data-flame-stage='dormant'] {
-  opacity: 0.88;
-}
-
-.project-story-feedback { margin-top: 16px; padding: 12px 16px; border-left: 2px solid var(--color-accent); color: var(--color-ink-2); background: var(--color-accent-soft); font-size: 13px; line-height: 1.8; }

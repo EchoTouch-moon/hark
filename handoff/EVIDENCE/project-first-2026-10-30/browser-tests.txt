@@ -1,0 +1,101 @@
+[WebServer] (node:62765) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node:62817) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 11 tests using 1 worker
+
+(node:62858) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+R2_BROWSER_PASS: Pi UI identity simulated only; cancel+ESC zero runs; exclusions persisted and re-previewed; exact consent fingerprint sent once; actual Mock result; feedback persists and failure is visible. No real model was called.
+  ✓   1 tests/e2e/analysis-privacy.spec.ts:8:1 › R2: explicit privacy confirmation, exclusions and persisted feedback (4.6s)
+  ✓   2 tests/e2e/project-first.spec.ts:4:1 › 没有项目时先登记，保留旧记录只读且没有假进展 (995ms)
+
+  ✘   3 tests/e2e/project-first.spec.ts:20:1 › 已登记项目进入谈话，结论按需展开，失败保留草稿且回访恢复 (10.4s)
+(node:63128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✓   4 tests/e2e/project-first.spec.ts:72:1 › 无效项目不能开始谈，切换项目不带入旧草稿 (2.3s)
+  ✘   5 tests/e2e/runtime-mode.spec.ts:8:1 › unknown and real mode never mount Demo actions, including direct URLs (12.0s)
+(node:63303) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 tests/e2e/runtime-mode.spec.ts:72:1 › invalid mode fails closed across /demo and /cards, and a deliberate retry can recover (2.0s)
+  ✓   7 tests/e2e/runtime-mode.spec.ts:96:1 › real mode or missing legacyDemoAvailable fails closed across /demo and /cards (3.5s)
+
+  ✓   8 tests/e2e/runtime-mode.spec.ts:125:1 › offline indicator is actually visible across welcome flow, true night theme, and desktop viewports (3.6s)
+
+  ✓   9 tests/e2e/runtime-mode.spec.ts:184:1 › backend action rejection preserves user draft and never fabricates progress or fake completion (2.7s)
+
+  ✓  10 tests/e2e/runtime-mode.spec.ts:345:1 › backend proactive null returns clean state without fake injected cards (1.2s)
+
+  ✓  11 tests/e2e/runtime-mode.spec.ts:378:1 › thread service failure renders error state with retry in main conversation area and history rail (1.7s)
+
+
+  1) tests/e2e/project-first.spec.ts:20:1 › 已登记项目进入谈话，结论按需展开，失败保留草稿且回访恢复 ───────────────────────────
+
+    Error: expect(page).toHaveURL(expected) failed
+
+    Expected pattern: /\/t\/thread-mvux0fic-xxtvg3$/
+    Received string:  "http://127.0.0.1:4321/?project=prj_bf4bcae3814782cd"
+    Timeout: 10000ms
+
+    Call log:
+      - Expect "toHaveURL" with timeout 10000ms
+        23 × locator resolved to <html lang="zh-CN" data-theme="light" data-page-hidden="false" data-motion-paused="false">…</html>
+           - unexpected value "http://127.0.0.1:4321/?project=prj_bf4bcae3814782cd"
+
+
+      22 |   await page.clock.setSystemTime('2026-10-30T14:00:00+08:00');
+      23 |   await page.goto(`/\u003fproject=${encodeURIComponent(projectFixture.id)}`);
+    > 24 |   await expect(page).toHaveURL(new RegExp(`/t/${projectFixture.threadId}$`));
+         |                      ^
+      25 |   await expect(page.getByRole('region', { name: '当前项目与观察结论' })).toContainText('合成项目 · 炉边');
+      26 |   await expect(page.getByText('已取得 Git 观察，但还没有能确认当前版本的测试证据。')).toBeVisible();
+      27 |   const input = page.locator('#chat-input');
+        at /Users/v/new-idea/hark/tests/e2e/project-first.spec.ts:24:22
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/project-first-已登记项目进入谈话，结论按需展开，失败保留草稿且回访恢复/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/project-first-已登记项目进入谈话，结论按需展开，失败保留草稿且回访恢复/error-context.md
+
+  2) tests/e2e/runtime-mode.spec.ts:8:1 › unknown and real mode never mount Demo actions, including direct URLs 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('heading', { name: '先带入一个项目', exact: true })
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('heading', { name: '先带入一个项目', exact: true }) with timeout 10000ms
+      - waiting for getByRole('heading', { name: '先带入一个项目', exact: true })
+
+
+      48 |   // 5. Projects page: Observer projects displayed, legacy Demo projects never mounted in real mode
+      49 |   await page.goto('/projects');
+    > 50 |   await expect(page.getByRole('heading', { name: '先带入一个项目', exact: true })).toBeVisible();
+         |                                                                             ^
+      51 |   await expect(page.getByLabel('任务项目', { exact: true })).toHaveCount(0);
+      52 |
+      53 |   // 6. Non-conversation pages do NOT display misleading global offline badge
+        at /Users/v/new-idea/hark/tests/e2e/runtime-mode.spec.ts:50:77
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/runtime-mode-unknown-and-r-6d971-tions-including-direct-URLs/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/runtime-mode-unknown-and-r-6d971-tions-including-direct-URLs/error-context.md
+
+  2 failed
+    tests/e2e/project-first.spec.ts:20:1 › 已登记项目进入谈话，结论按需展开，失败保留草稿且回访恢复 ────────────────────────────
+    tests/e2e/runtime-mode.spec.ts:8:1 › unknown and real mode never mount Demo actions, including direct URLs 
+  9 passed (51.6s)

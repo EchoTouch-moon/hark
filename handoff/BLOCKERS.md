@@ -131,3 +131,8 @@
 ## 2026-10-30 · 叙事与设计对应审查
 
 本次审查无执行阻塞。当前对话仍Mock、真实项目观点闭环未接通是产品缺口，不是本轮审查失败。双桌面尺寸/夜间/屏幕阅读器/性能及真实研究未测；后续按G4/G5方案复验。临时4339服务已停止；独立合成数据库保留在ignored .hearth-demo-artifacts/design-review-2026-10-30/，未接触原数据库。
+
+
+## 2026-10-30 · 项目优先与一句判断实现
+
+本次请求无未解决实现阻塞。完整旧Demo E2E、远端CI与真实研究/MVP门禁不在本次通过范围，既有阻塞不被覆盖。初轮入口竞态、登记DTO校验、迟到刷新/历史覆盖及最新回复阅读位置问题已修复；合成重复标题导致的测试定位问题已改唯一标题且复验通过。恢复验证：HEARTH_TEST_EVIDENCE_DIR=handoff/EVIDENCE/project-first-2026-10-30/runtime pnpm exec playwright test -c tests/e2e/playwright.config.ts tests/e2e/project-first.spec.ts tests/e2e/runtime-mode.spec.ts tests/e2e/analysis-privacy.spec.ts。

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { apiFetch } from './api/client';
 
 export type CollectionStatus = 'OK' | 'DEGRADED' | 'UNAVAILABLE';
@@ -121,8 +122,41 @@ export interface ObserverDetail {
   reports: Array<{ id: string; projectId: string; format: 'junit-xml'; relativePath: string; enabled: boolean }>;
 }
 
+const WorktreeSchema = z.object({
+  clean: z.boolean(), conflicted: z.boolean(), staged: z.number(), unstaged: z.number(),
+  untracked: z.number(), renamed: z.number(), unmerged: z.number(),
+});
+const TestSchema = z.object({
+  result: z.enum(['PASS', 'FAIL', 'MIXED', 'UNKNOWN']), evidenceQuality: z.enum(['OBSERVED', 'UNKNOWN', 'STALE']),
+  headBound: z.boolean(), stale: z.boolean(), tests: z.number().optional(), passed: z.number().optional(),
+  failed: z.number().optional(), skipped: z.number().optional(), errors: z.number().optional(),
+  generatedAt: z.string().optional(), observedAt: z.string().optional(), reportFingerprint: z.string().optional(),
+  relativePath: z.string().optional(), sourceTimeKind: z.enum(['report_timestamp', 'file_mtime', 'none']).optional(),
+});
+const CollectionSchema = z.enum(['OK', 'DEGRADED', 'UNAVAILABLE']);
+const WatchSchema = z.enum(['watching', 'polling', 'paused', 'unavailable']);
+const ProjectSummarySchema = z.object({
+  id: z.string().min(1), name: z.string(), canonicalPath: z.string(), enabled: z.boolean(), createdAt: z.string(),
+  branch: z.string().nullable(), headSha: z.string().nullable(), shortSha: z.string().nullable(),
+  detached: z.boolean(), unborn: z.boolean(), worktree: WorktreeSchema.nullable(), test: TestSchema.nullable(),
+  collectionStatus: CollectionSchema, watchStatus: WatchSchema, lastSuccessAt: z.string().nullable(),
+  lastObservedAt: z.string().nullable(), fingerprint: z.string().nullable(),
+});
+const ObserverDetailSchema = z.object({
+  project: z.object({ id: z.string().min(1), name: z.string(), canonicalPath: z.string(), gitIdentity: z.string().nullable(),
+    enabled: z.boolean(), createdAt: z.string(), scanIntervalMs: z.number(), debounceMs: z.number() }),
+  snapshot: z.object({ id: z.string(), projectId: z.string(), observedAt: z.string(), fingerprint: z.string(),
+    headSha: z.string().nullable(), branch: z.string().nullable(), detached: z.boolean(), unborn: z.boolean(),
+    worktree: WorktreeSchema, test: TestSchema, accessibility: z.enum(['OK', 'UNAVAILABLE']), gitIdentity: z.string().nullable() }).nullable(),
+  health: z.object({ projectId: z.string(), collectionStatus: CollectionSchema, watchStatus: WatchSchema,
+    lastSuccessAt: z.string().nullable(), lastErrorCode: z.string().nullable(), lastErrorMessage: z.string().nullable(),
+    lastReconcileAt: z.string().nullable(), lastObservedAt: z.string().nullable(), lastSnapshotId: z.string().nullable() }),
+  reports: z.array(z.object({ id: z.string(), projectId: z.string(), format: z.literal('junit-xml'), relativePath: z.string(), enabled: z.boolean() })),
+}).refine(value => value.health.projectId === value.project.id && (!value.snapshot || value.snapshot.projectId === value.project.id)
+  && value.reports.every(report => report.projectId === value.project.id), '项目观察来源不匹配');
+
 export async function fetchObserverProjects(signal?: AbortSignal): Promise<ObserverProjectSummary[]> {
-  const data = await apiFetch<{ projects: ObserverProjectSummary[] }>('/api/v1/observer/projects', { signal });
+  const data = z.object({ projects: z.array(ProjectSummarySchema) }).parse(await apiFetch<unknown>('/api/v1/observer/projects', { signal }));
   return data.projects;
 }
 
@@ -130,15 +164,17 @@ export async function registerObserverProject(body: {
   localPath: string;
   name?: string;
   reports?: Array<{ format: 'junit-xml'; relativePath: string }>;
-}): Promise<ObserverDetail> {
-  return apiFetch<ObserverDetail>('/api/v1/observer/projects', {
+}): Promise<Omit<ObserverDetail, 'reports'>> {
+  return ObserverDetailSchema.innerType().omit({ reports: true }).parse(await apiFetch<unknown>('/api/v1/observer/projects', {
     method: 'POST',
     json: { ...body, confirm: true },
-  });
+  }));
 }
 
 export async function fetchObserverDetail(id: string, signal?: AbortSignal): Promise<ObserverDetail> {
-  return apiFetch<ObserverDetail>(`/api/v1/observer/projects/${encodeURIComponent(id)}`, { signal });
+  const detail = ObserverDetailSchema.parse(await apiFetch<unknown>(`/api/v1/observer/projects/${encodeURIComponent(id)}`, { signal }));
+  if (detail.project.id !== id) throw new Error('返回的观察项目与当前选择不匹配');
+  return detail;
 }
 
 export async function fetchObserverEvents(

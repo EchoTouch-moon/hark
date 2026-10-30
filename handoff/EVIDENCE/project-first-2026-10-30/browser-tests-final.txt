@@ -1,0 +1,35 @@
+[WebServer] (node:76052) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node:76121) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 11 tests using 1 worker
+
+(node:76160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+R2_BROWSER_PASS: Pi UI identity simulated only; cancel+ESC zero runs; exclusions persisted and re-previewed; exact consent fingerprint sent once; actual Mock result; feedback persists and failure is visible. No real model was called.
+  ✓   1 tests/e2e/analysis-privacy.spec.ts:8:1 › R2: explicit privacy confirmation, exclusions and persisted feedback (4.7s)
+  ✓   2 tests/e2e/project-first.spec.ts:4:1 › 没有项目时先登记，保留旧记录只读且没有假进展 (1.1s)
+
+  ✓   3 tests/e2e/project-first.spec.ts:20:1 › 已登记项目进入谈话，结论按需展开，失败保留草稿且回访恢复 (4.1s)
+
+  ✓   4 tests/e2e/project-first.spec.ts:72:1 › 无效项目不能开始谈，切换项目不带入旧草稿 (2.4s)
+  ✓   5 tests/e2e/runtime-mode.spec.ts:8:1 › unknown and real mode never mount Demo actions, including direct URLs (2.6s)
+  ✓   6 tests/e2e/runtime-mode.spec.ts:72:1 › invalid mode fails closed across /demo and /cards, and a deliberate retry can recover (1.7s)
+  ✓   7 tests/e2e/runtime-mode.spec.ts:96:1 › real mode or missing legacyDemoAvailable fails closed across /demo and /cards (3.5s)
+
+  ✓   8 tests/e2e/runtime-mode.spec.ts:125:1 › offline indicator is actually visible across welcome flow, true night theme, and desktop viewports (3.6s)
+
+  ✓   9 tests/e2e/runtime-mode.spec.ts:184:1 › backend action rejection preserves user draft and never fabricates progress or fake completion (2.7s)
+
+  ✓  10 tests/e2e/runtime-mode.spec.ts:345:1 › backend proactive null returns clean state without fake injected cards (1.2s)
+
+  ✓  11 tests/e2e/runtime-mode.spec.ts:378:1 › thread service failure renders error state with retry in main conversation area and history rail (1.7s)
+
+  11 passed (35.0s)

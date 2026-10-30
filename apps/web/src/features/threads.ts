@@ -1,9 +1,7 @@
-/**
- * G1 Thread 适配层：优先打真实 API；404/失败时退到 localStorage Mock。
- * 真 API：GET/POST /api/v1/threads（list 非空即视为 live；AppShell 会 preferLiveApi）。
- *   GET  /api/v1/threads/:id
+/** Persistent conversation threads. Project bindings refer to registered Observer projects.
+ * API failures fail closed; legacy local records remain untouched.
  */
-
+import { z } from 'zod';
 import { apiFetch, ApiError } from './api/client';
 
 export interface ThreadSummary {
@@ -20,6 +18,9 @@ export interface ThreadListDto {
   mock: boolean;
   error?: string | null;
 }
+
+const ThreadSchema = z.object({ id: z.string().min(1), title: z.string(), preview: z.string().optional(), projectId: z.string().nullable().optional(), updatedAt: z.string() });
+const ThreadListSchema = z.object({ threads: z.array(ThreadSchema) });
 
 const STORAGE_KEY = 'hearth.threads.v2';
 const ACTIVE_KEY = 'hearth.activeThread.v2';
@@ -57,7 +58,7 @@ function writeLocal(threads: ThreadSummary[]): void {
 /** 列出线程。服务端返回空列表或异常时失败关闭，不回退虚假 Mock 线程。 */
 export async function listThreads(signal?: AbortSignal): Promise<ThreadListDto> {
   try {
-    const data = await apiFetch<{ threads: ThreadSummary[] }>('/api/v1/threads', { signal });
+    const data = ThreadListSchema.parse(await apiFetch<unknown>('/api/v1/threads', { signal }));
     if (Array.isArray(data.threads)) {
       return { threads: data.threads, mock: false, error: null };
     }
@@ -78,11 +79,11 @@ export async function createThread(
   signal?: AbortSignal,
 ): Promise<{ thread: ThreadSummary; mock: boolean }> {
   try {
-    const data = await apiFetch<{ thread: ThreadSummary }>('/api/v1/threads', {
+    const data = z.object({ thread: ThreadSchema }).parse(await apiFetch<unknown>('/api/v1/threads', {
       method: 'POST',
       json: { title: input.title ?? '新线程', projectId: input.projectId ?? null },
       signal,
-    });
+    }));
     if (data.thread?.id) return { thread: data.thread, mock: false };
     throw new ApiError(500, 'THREAD_CREATE_FAILED', '服务端未返回新建线程');
   } catch (err) {
