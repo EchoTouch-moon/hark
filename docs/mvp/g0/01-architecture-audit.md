@@ -1,6 +1,6 @@
 # G0 · 现状、差距与复用审查
 
-> 审查基线：PR #6 `4d08d465239f4157bf920eb82903bc2a7726d553`，其父基线 PR #5 `fe5464e4e2cb4cfb0b6cb8dffbc4db16bf664b23`。本文件是 G0 的工程方案，未实现项不是现有能力；合同尚待用户审阅。
+> 审查基线：PR #6 `4d08d465239f4157bf920eb82903bc2a7726d553`，其父基线 PR #5 `fe5464e4e2cb4cfb0b6cb8dffbc4db16bf664b23`。用户对原三份文档给出 CONDITIONAL_PASS；本修订版需再次审阅，未实现项不是现有能力。本次不启动 G1–G5。
 
 ## 一、结论与优先级
 
@@ -8,10 +8,11 @@
 
 先处理以下阻断，再接入任何自动研究或真实观点：
 
-1. **跨项目候选暴露风险**：`apps/server/src/http/routes/threads.ts` 的 `GET /api/v1/threads/:id/proactive` 调用 `listCards({ status: 'proposed', limit: 3 })`，未传项目过滤；随后将卡标题及 `whyNow` 写入线程。该路径由 `apps/server/src/http/app.ts` 注册。代码审查足以确认无项目过滤，但跨项目实际利用及影响范围尚未动态验证；新真实模式必须 fail closed，并覆盖直接 API 和线程重放。
-2. **演示结果误认真实完成**：同一文件的 action execute 采用请求体 `action.demo` 决定文案；`demo: false` 分支仍是本地 Mock，却返回“已完成”和 `ok: true`，并非独立执行回执。真实模式需禁用/隔离该路径，保留清晰 Demo 标识；不得将伪完成迁入新观点流。
-3. **项目生命语义错误**：`apps/web/src/features/projectEmber.ts` 将 3 条消息视为繁盛、所有卡完成视为金火、观察关闭/陈旧视为休眠；`AppShell.tsx` 等仍呈现活力百分比与添柴。这违反新合同，需先写 N17–N19 负例再替换。项目缺失、未观察、停用、数据间隙不能推导休眠。
-4. **真实验收阻断**：PR #5 和 PR #6 的 GitHub Actions 均失败。PR #6 运行 [40998662240](https://github.com/EchoTouch-moon/hark/actions/runs/40998662240) 中单元/集成 438 项通过，但浏览器 E2E 为 11 通过、11 失败、3 未运行；例子包括旧首页标题、主导航、模式错误和主题控件未找到。部分可能是旧 UI 测试与新界面不匹配，但不能据此推定所有失败都是过时测试，必须逐项分类并保留安全断言。PR #5 的 [40994397259](https://github.com/EchoTouch-moon/hark/actions/runs/40994397259) 同样为 11/11/3。两次分别测试 GitHub 的合并结果，不能等同于本地当前 HEAD 的新一轮验证。
+1. **跨项目候选暴露风险**：`apps/server/src/http/routes/threads.ts` 的 `GET /api/v1/threads/:id/proactive` 调用 `listCards({ status: 'proposed', limit: 3 })`，未传项目过滤；随后将卡标题及 `whyNow` 写入线程。该 GET 还可能通过 `ensureThread`、`appendChat`、`updateThreadProactive`、`touchThread` 写入线程及状态，违反新合同 GET 只读约束；该路径由 `apps/server/src/http/app.ts` 注册。代码审查足以确认无项目过滤和这些写入路径，但跨项目实际利用及影响范围尚未动态验证；新真实模式必须 fail closed，并覆盖直接 API 和线程重放。
+2. **演示结果误认真实完成**：同一文件的 action execute 采用请求体 `action.demo` 决定文案；`demo: false` 分支仍是本地 Mock，却返回“已完成”和 `ok: true`，并非独立执行回执。真实模式需在服务端直接拒绝该旧路径、保留隔离 Demo 标识；不得将伪完成迁入新观点流。
+3. **旧 Orchestrator 入口待隔离**：`apps/server/src/http/routes/runs.ts` 的 `/cards/:id/execute` 和 `/approvals/:runId` 直接调用 Orchestrator；后者可创建或恢复执行流水线。不能以隐藏界面代替服务端保护；还需审计启动恢复、取消与其他可达调用。详细矩阵见 `04-ci-and-legacy-route-review.md`。
+4. **项目生命语义错误**：`apps/web/src/features/projectEmber.ts` 将 3 条消息视为繁盛、所有卡完成视为金火、观察关闭/陈旧视为休眠；`AppShell.tsx` 等仍呈现活力百分比与添柴。这违反新合同，需先写 N17–N19 负例再替换。项目缺失、未观察、停用、数据间隙不能推导休眠。
+5. **真实验收阻断**：PR #5 和 PR #6 的 GitHub Actions 均失败。PR #6 运行 [40998662240](https://github.com/EchoTouch-moon/hark/actions/runs/40998662240) 中单元/集成 438 项通过，但浏览器 E2E 为 11 通过、11 失败、3 未运行；例子包括旧首页标题、主导航、模式错误和主题控件未找到。部分可能是旧 UI 测试与新界面不匹配，但不能据此推定所有失败都是过时测试，必须逐项分类并保留安全断言。PR #5 的 [40994397259](https://github.com/EchoTouch-moon/hark/actions/runs/40994397259) 同样为 11/11/3。两次分别测试 GitHub 的合并结果，不能等同于本地当前 HEAD 的新一轮验证。
 
 旧 `docs/01-PRD.md` 的 Dashboard 信息架构与 MVP 对话优先冲突；按本次用户明确要求，新 MVP 产品行为采用 `docs/mvp/`，但不降低 `AGENTS.md`、`docs/05-SECURITY.md` 与 `docs/04-CONTRACTS.md` 的安全/证据约束。旧合同中可执行 L0/L1 不构成新 MVP 自动行动许可：真实模式需额外收紧到计划审阅及用户明确发起，MVP 执行仍禁用。
 
@@ -26,8 +27,8 @@
 | Pi Analysis | PARTIAL | `packages/project-analysis/src/engine/service.ts`、`context/assemble.ts`、`providers/pi.ts`；`docs/verification/hearth-p2a-live-verification.md` 是历史环境证据 | 复用受控子进程、上下文预览/指纹、取消、输出校验、禁止工具和无隐式 Mock 回退；现有非 Mock 每次确认的合同不能直接用作后台长期授权。自动调用需另设计更窄的独立策略、recipient、范围和预算，保持现有一次性分析不降级。 |
 | 对话/线程 | MOCK / PARTIAL | `apps/server/src/http/routes/{chat,threads}.ts`、`packages/storage/src/{migrations,storage}.ts`、`apps/web/src/pages/ChatPage.tsx` | 复用可恢复 UI/线程存储；真实模型连接和多项目显式绑定缺失，先隔离旧主动建议及执行假结果。当前线程只有一个 nullable `project_id`，不具备新合同的多对多。 |
 | 项目身份/目标/决定 | PARTIAL | Observer 的 `observer_projects` 与通用 Demo `projects` 是不同存储；线程 `project_id` 为单值 | 不通过字符串相等猜测它们同一；新增稳定身份及明确 source/thread 关联、目标版本与决定；不自动迁移旧数据。 |
-| 公开研究/观点/反馈修订 | MISSING | 现有 Insight 与 Analysis 分别是规则结果和单次推荐，未见所需 research job/source ledger/opinion revision | 新建受限端口及持久合同；独立证据链、预算、引用校验、版本、反馈、去重，初始关闭。 |
-| 主动提示 | MOCK / PARTIAL | `routes/threads.ts` 线程级固定状态、演示建议或最多 3 张卡 | 不作为新主动观点；重建基于可证明价值、权限、去重、冷却/搁置的一条主提示，未就绪返回空。 |
+| 公开研究/观点/反馈修订 | MISSING | 现有 Insight 与 Analysis 分别是规则结果和单次推荐，未见所需 research job/source ledger/opinion revision | 新建受限端口及持久合同；独立证据链、预算、引用校验、版本、反馈、去重，初始关闭。公开主题可持久授权并按周期发现，不依赖 Git 变化；模型与私有数据外发须独立授权。 |
+| 主动提示 | MOCK / PARTIAL | `routes/threads.ts` 线程级固定状态、演示建议或最多 3 张卡 | 不作为新主动观点；重建基于可证明价值、权限、去重、冷却/搁置的一条主提示；GET 只读、claim 与实际呈现确认独立幂等，未就绪返回空。 |
 | 叙事与火影 | PARTIAL | `apps/web/src/{features/projectEmber.ts,features/flameShape.ts,features/flameRenderer.ts,components/EmberAtmosphere.tsx,motion/emberMotion.ts}` | 复用视觉渲染、GSAP、磨砂、昼夜、静态降级、欢迎及对话布局；替换基于聊天/卡片的业务投影，不把强度当健康或完成。 |
 | 隐私/安全/基础 API | PARTIAL | `docs/05-SECURITY.md`、`docs/04-CONTRACTS.md`、`apps/server/src/http/` | 维持 loopback、CSRF、Zod、项目隔离、撤销、来源版本及 append-only 审计；新路径额外覆盖研究网络和执行隔离。 |
 | 真实 H1、价值评审 | BLOCKED / NOT_MEASURED | `docs/mvp/03-ACCEPTANCE-SCENARIOS.md` | 尚无当前真实研究授权、外部 Provider 配置及用户价值评审证据；离线 fixture 不能替代。 |

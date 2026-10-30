@@ -55,3 +55,5 @@ Hark 是启发来源：持续对话、主动提供有用见解和低打扰体验
 ## G0 架构审查（2026-10-30）
 
 基于本分支的审查与提案见 [现状和复用矩阵](./g0/01-architecture-audit.md)、[需求与技术合同](./g0/02-contract-and-decisions.md)、[实施计划和验收映射](./g0/03-plan-threats-traceability.md)。这是待用户审阅的方案，G1–G5 尚未实施，也不构成真实研究、模型外发或自动执行的授权。
+
+用户对原 G0 的审查结论为 **CONDITIONAL_PASS**；修订版待再次审阅。旧接口及 11 项 CI 失败逐项分类见 [旧接口与 CI 审查](./g0/04-ci-and-legacy-route-review.md)。本次审阅未独立验证本地提交或测试日志，不作为实现通过证据。
