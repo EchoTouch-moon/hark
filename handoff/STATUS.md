@@ -336,3 +336,8 @@ IMPLEMENTED / VERIFIED：同一原型撤下侧栏/面包屑/计数/建议卡，�
 ## 2026-10-30 · 轻布局的项目记忆签名
 
 IMPLEMENTED / VERIFIED：保留用户认可的轻布局，新增唯一“记忆折页”签名，显示当前项目旧念头/日期，原处展开材料与未知；字标前共用页形。25项检查通过，证据handoff/EVIDENCE/memory-fold-2026-10-30/。合成示例，未实现真实后台记忆。
+
+
+## 2026-10-30 · 采用确认与GitHub同步
+
+用户明确先采用轻量单列对话＋记忆折页，已在PRODUCT、NARRATIVE、根README和原型方向文件同步采用状态。准备将当前分支codex/project-first-conversation推送origin，包含相关产品文档、实现、原型与验证证据。

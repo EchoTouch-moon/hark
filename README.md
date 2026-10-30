@@ -92,3 +92,7 @@ pnpm test:e2e
 另一台设备先获取仓库、安装依赖并构建，随后单独登记本机项目路径和配置 Pi。已有副本先提交自己的修改，再 `git pull --ff-only`；不要强制推送覆盖其他设备的工作。
 
 详细说明见 [开发手册](README-dev.md)、[安全合同](docs/05-SECURITY.md)、[观察器说明](docs/14-PROJECT-OBSERVER.md)、[当前交接状态](handoff/STATUS.md)。最初的规划包首页保存在 [历史归档](docs/archive/README-planning-v1.md)，其中阶段计划不代表当前运行状态。
+
+## 当前采用的交互设计
+
+2026-10-30确认先采用“轻量单列对话＋记忆折页”。打开即可交流，旧念头与日期作为可展开的项目记忆入口，项目和设置按需访问。[原型与运行说明](prototypes/07-continuation/README.md) · [设计说明](docs/design/2026-10-30-MEMORY-FOLD.md)。原型已通过25项交互与布局检查，记录在 `handoff/EVIDENCE/memory-fold-2026-10-30/`；目前使用合成资料和预设回复，正式React应用尚未迁移到这一版。
