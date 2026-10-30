@@ -1,0 +1,24 @@
+{
+  "command": [
+    "pnpm",
+    "exec",
+    "tsc",
+    "--strict",
+    "--noEmit",
+    "--target",
+    "ES2022",
+    "--module",
+    "ESNext",
+    "--moduleResolution",
+    "Bundler",
+    "--lib",
+    "ES2022,DOM",
+    "--skipLibCheck",
+    "prototypes/08-living-hearth/flame.ts",
+    "prototypes/08-living-hearth/flame-renderer.ts",
+    "prototypes/08-living-hearth/flame-shape.ts"
+  ],
+  "exitCode": 0,
+  "stdout": "",
+  "stderr": ""
+}

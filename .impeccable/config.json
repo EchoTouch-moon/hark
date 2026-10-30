@@ -8,6 +8,15 @@
         "value": "instrument",
         "createdAt": "2026-10-30T13:26:33.905Z",
         "reason": "Designer selected self-hosted Instrument Serif for the independent continuation prototype; documented in prototypes/07-continuation/DESIGN.md typography.brand and assets/SOURCES.md. Production typography is unchanged."
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "prototypes/08-living-hearth/index.html"
+        ],
+        "createdAt": "2026-10-30T17:19:19.057Z",
+        "reason": "User requested restoring the earlier living-fire design. This prototype deliberately restores the warm-paper Ember Seed palette documented in docs/STYLE-BIBLE-v6-EMBER-SEED-2026-10-29.md and docs/design/2026-10-31-LIVING-FIRE-BRIEF.md; this exception is limited to this prototype HTML."
       }
     ]
   }

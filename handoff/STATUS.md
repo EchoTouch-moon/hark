@@ -343,3 +343,8 @@ IMPLEMENTED / VERIFIED：保留用户认可的轻布局，新增唯一“记忆�
 用户明确先采用轻量单列对话＋记忆折页，已在PRODUCT、NARRATIVE、根README和原型方向文件同步采用状态。准备将当前分支codex/project-first-conversation推送origin，包含相关产品文档、实现、原型与验证证据。
 
 GitHub同步完成：codex/project-first-conversation已成功推送并建立upstream；远程核验与本地bfe5ad475cc8df408e75ea0adf87b7ba9833f69a一致。验收handoff/EVIDENCE/github-sync-2026-10-30/result.md；该回执随下一提交同步。
+
+
+## 2026-10-31 · 毛玻璃后的炉火回归
+
+DESIGN PROTOTYPE / VERIFIED：独立08-living-hearth恢复有机炉火，按用户后续要求隐藏到无边框毛玻璃后，正文清晰优先；长谈收火、暂停/reduced/隐藏停止循环、WebGL静态降级。33项浏览器检查、局部strict类型、生成模块一致性通过，独立终审ship。证据handoff/EVIDENCE/living-hearth-2026-10-31/；说明docs/design/2026-10-31-LIVING-FIRE-RESULT.md。既定功能/正式前后端未改，无GitHub推送。

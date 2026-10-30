@@ -1,0 +1,576 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T17:28:30.626365+00:00",
+  "title": "Design System: Hearth · 炉火对话",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "暖纸",
+        "tonalRamp": [
+          "oklch(15% 0.0102 81.80)",
+          "oklch(26% 0.0102 81.80)",
+          "oklch(38% 0.0102 81.80)",
+          "oklch(49% 0.0102 81.80)",
+          "oklch(61% 0.0102 81.80)",
+          "oklch(72% 0.0102 81.80)",
+          "oklch(84% 0.0102 81.80)",
+          "oklch(95% 0.0102 81.80)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "表面纸",
+        "tonalRamp": [
+          "oklch(15% 0.0073 80.72)",
+          "oklch(26% 0.0073 80.72)",
+          "oklch(38% 0.0073 80.72)",
+          "oklch(49% 0.0073 80.72)",
+          "oklch(61% 0.0073 80.72)",
+          "oklch(72% 0.0073 80.72)",
+          "oklch(84% 0.0073 80.72)",
+          "oklch(95% 0.0073 80.72)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "深褐墨",
+        "tonalRamp": [
+          "oklch(15% 0.0185 66.96)",
+          "oklch(26% 0.0185 66.96)",
+          "oklch(38% 0.0185 66.96)",
+          "oklch(49% 0.0185 66.96)",
+          "oklch(61% 0.0185 66.96)",
+          "oklch(72% 0.0185 66.96)",
+          "oklch(84% 0.0185 66.96)",
+          "oklch(95% 0.0185 66.96)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "低权重墨",
+        "tonalRamp": [
+          "oklch(15% 0.0216 62.16)",
+          "oklch(26% 0.0216 62.16)",
+          "oklch(38% 0.0216 62.16)",
+          "oklch(49% 0.0216 62.16)",
+          "oklch(61% 0.0216 62.16)",
+          "oklch(72% 0.0216 62.16)",
+          "oklch(84% 0.0216 62.16)",
+          "oklch(95% 0.0216 62.16)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "分隔纸线",
+        "tonalRamp": [
+          "oklch(15% 0.0191 75.31)",
+          "oklch(26% 0.0191 75.31)",
+          "oklch(38% 0.0191 75.31)",
+          "oklch(49% 0.0191 75.31)",
+          "oklch(61% 0.0191 75.31)",
+          "oklch(72% 0.0191 75.31)",
+          "oklch(84% 0.0191 75.31)",
+          "oklch(95% 0.0191 75.31)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "铜褐行动色",
+        "tonalRamp": [
+          "oklch(15% 0.1037 39.12)",
+          "oklch(26% 0.1037 39.12)",
+          "oklch(38% 0.1037 39.12)",
+          "oklch(49% 0.1037 39.12)",
+          "oklch(61% 0.1037 39.12)",
+          "oklch(72% 0.1037 39.12)",
+          "oklch(84% 0.1037 39.12)",
+          "oklch(95% 0.1037 39.12)"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "行动文字",
+        "tonalRamp": [
+          "oklch(15% 0.0135 78.26)",
+          "oklch(26% 0.0135 78.26)",
+          "oklch(38% 0.0135 78.26)",
+          "oklch(49% 0.0135 78.26)",
+          "oklch(61% 0.0135 78.26)",
+          "oklch(72% 0.0135 78.26)",
+          "oklch(84% 0.0135 78.26)",
+          "oklch(95% 0.0135 78.26)"
+        ]
+      },
+      "wash": {
+        "role": "neutral",
+        "displayName": "浅洗色",
+        "tonalRamp": [
+          "oklch(15% 0.0234 75.85)",
+          "oklch(26% 0.0234 75.85)",
+          "oklch(38% 0.0234 75.85)",
+          "oklch(49% 0.0234 75.85)",
+          "oklch(61% 0.0234 75.85)",
+          "oklch(72% 0.0234 75.85)",
+          "oklch(84% 0.0234 75.85)",
+          "oklch(95% 0.0234 75.85)"
+        ]
+      },
+      "note": {
+        "role": "neutral",
+        "displayName": "边注纸",
+        "tonalRamp": [
+          "oklch(15% 0.0239 73.60)",
+          "oklch(26% 0.0239 73.60)",
+          "oklch(38% 0.0239 73.60)",
+          "oklch(49% 0.0239 73.60)",
+          "oklch(61% 0.0239 73.60)",
+          "oklch(72% 0.0239 73.60)",
+          "oklch(84% 0.0239 73.60)",
+          "oklch(95% 0.0239 73.60)"
+        ]
+      },
+      "note-ink": {
+        "role": "neutral",
+        "displayName": "边注墨",
+        "tonalRamp": [
+          "oklch(15% 0.0469 56.33)",
+          "oklch(26% 0.0469 56.33)",
+          "oklch(38% 0.0469 56.33)",
+          "oklch(49% 0.0469 56.33)",
+          "oklch(61% 0.0469 56.33)",
+          "oklch(72% 0.0469 56.33)",
+          "oklch(84% 0.0469 56.33)",
+          "oklch(95% 0.0469 56.33)"
+        ]
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "焦点铜",
+        "tonalRamp": [
+          "oklch(15% 0.1067 47.59)",
+          "oklch(26% 0.1067 47.59)",
+          "oklch(38% 0.1067 47.59)",
+          "oklch(49% 0.1067 47.59)",
+          "oklch(61% 0.1067 47.59)",
+          "oklch(72% 0.1067 47.59)",
+          "oklch(84% 0.1067 47.59)",
+          "oklch(95% 0.1067 47.59)"
+        ]
+      },
+      "danger": {
+        "role": "neutral",
+        "displayName": "警示褐",
+        "tonalRamp": [
+          "oklch(15% 0.1063 31.71)",
+          "oklch(26% 0.1063 31.71)",
+          "oklch(38% 0.1063 31.71)",
+          "oklch(49% 0.1063 31.71)",
+          "oklch(61% 0.1063 31.71)",
+          "oklch(72% 0.1063 31.71)",
+          "oklch(84% 0.1063 31.71)",
+          "oklch(95% 0.1063 31.71)"
+        ]
+      },
+      "glow": {
+        "role": "primary",
+        "displayName": "炉光",
+        "tonalRamp": [
+          "oklch(15% 0.1165 58.90)",
+          "oklch(26% 0.1165 58.90)",
+          "oklch(38% 0.1165 58.90)",
+          "oklch(49% 0.1165 58.90)",
+          "oklch(61% 0.1165 58.90)",
+          "oklch(72% 0.1165 58.90)",
+          "oklch(84% 0.1165 58.90)",
+          "oklch(95% 0.1165 58.90)"
+        ]
+      },
+      "dark-paper": {
+        "role": "neutral",
+        "displayName": "暗炉室 · 暖纸",
+        "tonalRamp": [
+          "oklch(15% 0.0097 67.32)",
+          "oklch(26% 0.0097 67.32)",
+          "oklch(38% 0.0097 67.32)",
+          "oklch(49% 0.0097 67.32)",
+          "oklch(61% 0.0097 67.32)",
+          "oklch(72% 0.0097 67.32)",
+          "oklch(84% 0.0097 67.32)",
+          "oklch(95% 0.0097 67.32)"
+        ]
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "暗炉室 · 表面纸",
+        "tonalRamp": [
+          "oklch(15% 0.0128 62.06)",
+          "oklch(26% 0.0128 62.06)",
+          "oklch(38% 0.0128 62.06)",
+          "oklch(49% 0.0128 62.06)",
+          "oklch(61% 0.0128 62.06)",
+          "oklch(72% 0.0128 62.06)",
+          "oklch(84% 0.0128 62.06)",
+          "oklch(95% 0.0128 62.06)"
+        ]
+      },
+      "dark-ink": {
+        "role": "neutral",
+        "displayName": "暗炉室 · 深褐墨",
+        "tonalRamp": [
+          "oklch(15% 0.0200 77.31)",
+          "oklch(26% 0.0200 77.31)",
+          "oklch(38% 0.0200 77.31)",
+          "oklch(49% 0.0200 77.31)",
+          "oklch(61% 0.0200 77.31)",
+          "oklch(72% 0.0200 77.31)",
+          "oklch(84% 0.0200 77.31)",
+          "oklch(95% 0.0200 77.31)"
+        ]
+      },
+      "dark-muted": {
+        "role": "neutral",
+        "displayName": "暗炉室 · 低权重墨",
+        "tonalRamp": [
+          "oklch(15% 0.0306 72.36)",
+          "oklch(26% 0.0306 72.36)",
+          "oklch(38% 0.0306 72.36)",
+          "oklch(49% 0.0306 72.36)",
+          "oklch(61% 0.0306 72.36)",
+          "oklch(72% 0.0306 72.36)",
+          "oklch(84% 0.0306 72.36)",
+          "oklch(95% 0.0306 72.36)"
+        ]
+      },
+      "dark-line": {
+        "role": "neutral",
+        "displayName": "暗炉室 · 分隔纸线",
+        "tonalRamp": [
+          "oklch(15% 0.0258 57.35)",
+          "oklch(26% 0.0258 57.35)",
+          "oklch(38% 0.0258 57.35)",
+          "oklch(49% 0.0258 57.35)",
+          "oklch(61% 0.0258 57.35)",
+          "oklch(72% 0.0258 57.35)",
+          "oklch(84% 0.0258 57.35)",
+          "oklch(95% 0.0258 57.35)"
+        ]
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "暗炉室 · 铜褐行动色",
+        "tonalRamp": [
+          "oklch(15% 0.0931 63.25)",
+          "oklch(26% 0.0931 63.25)",
+          "oklch(38% 0.0931 63.25)",
+          "oklch(49% 0.0931 63.25)",
+          "oklch(61% 0.0931 63.25)",
+          "oklch(72% 0.0931 63.25)",
+          "oklch(84% 0.0931 63.25)",
+          "oklch(95% 0.0931 63.25)"
+        ]
+      },
+      "dark-on-accent": {
+        "role": "primary",
+        "displayName": "暗炉室 · 行动文字",
+        "tonalRamp": [
+          "oklch(15% 0.0292 54.76)",
+          "oklch(26% 0.0292 54.76)",
+          "oklch(38% 0.0292 54.76)",
+          "oklch(49% 0.0292 54.76)",
+          "oklch(61% 0.0292 54.76)",
+          "oklch(72% 0.0292 54.76)",
+          "oklch(84% 0.0292 54.76)",
+          "oklch(95% 0.0292 54.76)"
+        ]
+      },
+      "dark-wash": {
+        "role": "neutral",
+        "displayName": "暗炉室 · 浅洗色",
+        "tonalRamp": [
+          "oklch(15% 0.0244 61.58)",
+          "oklch(26% 0.0244 61.58)",
+          "oklch(38% 0.0244 61.58)",
+          "oklch(49% 0.0244 61.58)",
+          "oklch(61% 0.0244 61.58)",
+          "oklch(72% 0.0244 61.58)",
+          "oklch(84% 0.0244 61.58)",
+          "oklch(95% 0.0244 61.58)"
+        ]
+      },
+      "dark-note": {
+        "role": "neutral",
+        "displayName": "暗炉室 · 边注纸",
+        "tonalRamp": [
+          "oklch(15% 0.0244 61.58)",
+          "oklch(26% 0.0244 61.58)",
+          "oklch(38% 0.0244 61.58)",
+          "oklch(49% 0.0244 61.58)",
+          "oklch(61% 0.0244 61.58)",
+          "oklch(72% 0.0244 61.58)",
+          "oklch(84% 0.0244 61.58)",
+          "oklch(95% 0.0244 61.58)"
+        ]
+      },
+      "dark-note-ink": {
+        "role": "neutral",
+        "displayName": "暗炉室 · 边注墨",
+        "tonalRamp": [
+          "oklch(15% 0.0454 68.23)",
+          "oklch(26% 0.0454 68.23)",
+          "oklch(38% 0.0454 68.23)",
+          "oklch(49% 0.0454 68.23)",
+          "oklch(61% 0.0454 68.23)",
+          "oklch(72% 0.0454 68.23)",
+          "oklch(84% 0.0454 68.23)",
+          "oklch(95% 0.0454 68.23)"
+        ]
+      },
+      "dark-focus": {
+        "role": "primary",
+        "displayName": "暗炉室 · 焦点铜",
+        "tonalRamp": [
+          "oklch(15% 0.1023 63.84)",
+          "oklch(26% 0.1023 63.84)",
+          "oklch(38% 0.1023 63.84)",
+          "oklch(49% 0.1023 63.84)",
+          "oklch(61% 0.1023 63.84)",
+          "oklch(72% 0.1023 63.84)",
+          "oklch(84% 0.1023 63.84)",
+          "oklch(95% 0.1023 63.84)"
+        ]
+      },
+      "dark-danger": {
+        "role": "neutral",
+        "displayName": "暗炉室 · 警示褐",
+        "tonalRamp": [
+          "oklch(15% 0.0734 42.07)",
+          "oklch(26% 0.0734 42.07)",
+          "oklch(38% 0.0734 42.07)",
+          "oklch(49% 0.0734 42.07)",
+          "oklch(61% 0.0734 42.07)",
+          "oklch(72% 0.0734 42.07)",
+          "oklch(84% 0.0734 42.07)",
+          "oklch(95% 0.0734 42.07)"
+        ]
+      },
+      "dark-glow": {
+        "role": "primary",
+        "displayName": "暗炉室 · 炉光",
+        "tonalRamp": [
+          "oklch(15% 0.1351 62.01)",
+          "oklch(26% 0.1351 62.01)",
+          "oklch(38% 0.1351 62.01)",
+          "oklch(49% 0.1351 62.01)",
+          "oklch(61% 0.1351 62.01)",
+          "oklch(72% 0.1351 62.01)",
+          "oklch(84% 0.1351 62.01)",
+          "oklch(95% 0.1351 62.01)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "brand": {
+        "displayName": "brand",
+        "purpose": "品牌字标与项目索引。"
+      },
+      "title": {
+        "displayName": "title",
+        "purpose": "辅助页标题；档案标题有局部字号。"
+      },
+      "body": {
+        "displayName": "body",
+        "purpose": "中文优先的日常阅读。"
+      },
+      "conversation": {
+        "displayName": "conversation",
+        "purpose": "长对话消息，最大65ch。"
+      },
+      "opening": {
+        "displayName": "opening",
+        "purpose": "首次具体判断，窄屏降为17px。"
+      },
+      "memory": {
+        "displayName": "memory",
+        "purpose": "少量项目旧念头引语。"
+      },
+      "label": {
+        "displayName": "label",
+        "purpose": "低权重来源、日期和说明。"
+      }
+    },
+    "shadows": [
+      {
+        "name": "composer-focus",
+        "value": "0 5px 25px var(--glow)",
+        "purpose": "仅输入聚焦；常态无阴影。"
+      },
+      {
+        "name": "evidence-dialog",
+        "value": "0 20px 90px #1b0c0638",
+        "purpose": "依据对话框的结构深度。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "button-colors",
+        "value": "160ms",
+        "purpose": "按钮背景与文字色过渡。"
+      },
+      {
+        "name": "hearth-placement",
+        "value": "620ms cubic-bezier(.16,1,.3,1)",
+        "purpose": "CSS位置缩放，与WebGL帧循环分开。"
+      },
+      {
+        "name": "hearth-reveal",
+        "value": "200ms",
+        "purpose": "CSS显现透明度。"
+      },
+      {
+        "name": "frame-cap",
+        "value": "30fps",
+        "purpose": "WebGL动画上限；不表示已实测持续帧率。"
+      },
+      {
+        "name": "typing-throttle",
+        "value": "400ms",
+        "purpose": "按动画时间限制输入cue频次。"
+      },
+      {
+        "name": "typing-pulse",
+        "value": "280ms",
+        "purpose": "WebGL输入脉冲。"
+      },
+      {
+        "name": "sent-project-pulse",
+        "value": "480ms",
+        "purpose": "WebGL发送与换项目脉冲。"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "single-column",
+        "value": "900px"
+      },
+      {
+        "name": "compact",
+        "value": "620px"
+      }
+    ],
+    "material": {
+      "scope": "只作用于火层，不覆盖文字。",
+      "diffuser": "blur(15px) saturate(.9)",
+      "compactDiffuser": "blur(17px) saturate(.85)",
+      "fallback": "blur(12px)",
+      "edgeMask": "radial-gradient(ellipse at center,#000 42%,transparent 76%)"
+    },
+    "previewNotes": "tonalRamp 为同色相/色度、15%至95%亮度的合成预览条，不是源码色阶。组件为实际HTML/CSS的无脚本摘录，保留var引用与浅色回退，不重造WebGL火体；暗色页面由主题变量继承。纹理来源见assets/SOURCE.md。"
+  },
+  "components": [
+    {
+      "name": "主要行动",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "铜褐实底行动，包含真实 hover / active / disabled / focus。",
+      "html": "<button type=\"button\" class=\"ds-primary\">接着聊</button>",
+      "css": ".ds-primary{font-family:var(--body,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif);color:var(--ink,#302820);font-size:14px;line-height:1.7}.ds-primary :where(button,input,textarea,select){font:inherit;color:inherit}:is(.ds-primary):is(button){border:0;background:none;cursor:pointer;transition:background-color 160ms,color 160ms}:is(.ds-primary):is(button):disabled{cursor:default;opacity:.5}:is(.ds-primary):is(button):hover:not(:disabled){color:var(--accent,#8a432b)}:is(.ds-primary):is(button,summary,input,select):focus-visible{outline:2px solid var(--focus,#a35c36);outline-offset:5px}.ds-primary{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--accent,#8a432b);color:var(--on-accent,#fff9f0);border-radius:8px;padding:11px 17px;min-height:42px;font-size:13px}.ds-primary:hover:not(:disabled){background:color-mix(in srgb,var(--accent,#8a432b) 88%,var(--ink,#302820));color:var(--on-accent,#fff9f0)}.ds-primary:active:not(:disabled){transform:scale(.98)}"
+    },
+    {
+      "name": "次要行动",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "细边框辅助行动，hover 使用纸张浅洗色。",
+      "html": "<button type=\"button\" class=\"ds-secondary\">体验目录授权</button>",
+      "css": ".ds-secondary{font-family:var(--body,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif);color:var(--ink,#302820);font-size:14px;line-height:1.7}.ds-secondary :where(button,input,textarea,select){font:inherit;color:inherit}:is(.ds-secondary):is(button){border:0;background:none;cursor:pointer;transition:background-color 160ms,color 160ms}:is(.ds-secondary):is(button):disabled{cursor:default;opacity:.5}:is(.ds-secondary):is(button):hover:not(:disabled){color:var(--accent,#8a432b)}:is(.ds-secondary):is(button,summary,input,select):focus-visible{outline:2px solid var(--focus,#a35c36);outline-offset:5px}.ds-secondary{border:1px solid var(--line,#ded5c9);padding:9px 14px;min-height:40px;border-radius:6px;font-size:12px}.ds-secondary:hover{background:var(--wash,#eee3d4)}"
+    },
+    {
+      "name": "自然对话输入",
+      "kind": "input",
+      "refersTo": "composer",
+      "description": "输入框、讨论范围、发送；片段只展示视觉，不发送消息。",
+      "html": "<div class=\"ds-conversation-composer\"><div class=\"ds-composer-input-row\"><textarea aria-label=\"自由讨论\" placeholder=\"问问你的项目，或说说现在的想法…\" rows=\"2\"></textarea></div><div class=\"ds-composer-toolbar\"><label class=\"ds-composer-label\"><select aria-label=\"讨论范围\"><option>全部项目</option><option>片段</option></select></label><button type=\"button\" class=\"ds-primary ds-composer-send\">发送<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 20V4m-6 6 6-6 6 6\"/></svg></button></div></div>",
+      "css": ".ds-conversation-composer{font-family:var(--body,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif);color:var(--ink,#302820);font-size:14px;line-height:1.7}.ds-conversation-composer :where(button,input,textarea,select){font:inherit;color:inherit}:is(.ds-conversation-composer,.ds-composer-input-row,.ds-composer-toolbar,.ds-composer-label,.ds-primary,.ds-composer-send):is(button){border:0;background:none;cursor:pointer;transition:background-color 160ms,color 160ms}:is(.ds-conversation-composer,.ds-composer-input-row,.ds-composer-toolbar,.ds-composer-label,.ds-primary,.ds-composer-send):is(button):disabled{cursor:default;opacity:.5}:is(.ds-conversation-composer,.ds-composer-input-row,.ds-composer-toolbar,.ds-composer-label,.ds-primary,.ds-composer-send):is(button):hover:not(:disabled){color:var(--accent,#8a432b)}:is(.ds-conversation-composer,.ds-composer-input-row,.ds-composer-toolbar,.ds-composer-label,.ds-primary,.ds-composer-send):is(button,summary,input,select):focus-visible{outline:2px solid var(--focus,#a35c36);outline-offset:5px}.ds-conversation-composer{padding:17px 20px 12px;border:1px solid var(--line,#ded5c9);border-radius:16px;background:color-mix(in srgb,var(--surface,#fffcf7) 90%,transparent);box-shadow:0 10px 32px #50261105}.ds-conversation-composer:focus-within{border-color:var(--focus,#a35c36);box-shadow:0 5px 25px var(--glow,#d1894d24)}.ds-composer-input-row{display:flex;gap:14px}.ds-conversation-composer textarea{display:block;flex:1;width:100%;min-width:0;min-height:45px;max-height:130px;resize:none;border:0;background:transparent;font-size:15px;line-height:1.8;padding:0}.ds-conversation-composer textarea:focus{outline:none}.ds-composer-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:7px}.ds-composer-label{font-size:11px;color:var(--muted,#75695f)}.ds-composer-label select{border:0;background:transparent;color:var(--muted,#75695f);font-size:12px;padding:6px 22px 6px 0;max-width:160px;min-height:34px;cursor:pointer}.ds-primary{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--accent,#8a432b);color:var(--on-accent,#fff9f0);border-radius:8px;padding:11px 17px;min-height:42px;font-size:13px}.ds-primary:hover:not(:disabled){background:color-mix(in srgb,var(--accent,#8a432b) 88%,var(--ink,#302820));color:var(--on-accent,#fff9f0)}.ds-primary:active:not(:disabled){transform:scale(.98)}.ds-composer-send{font-size:12px;min-height:36px;padding:8px 13px}.ds-conversation-composer{box-shadow:none}.ds-conversation-composer textarea{font-family:var(--body,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif);color:var(--ink,#302820)}.ds-composer-send svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}.ds-conversation-composer textarea::placeholder{color:var(--muted,#75695f)}.ds-composer-label select:focus-visible{outline:2px solid var(--focus,#a35c36);outline-offset:5px}@media(max-width:620px){.ds-conversation-composer{padding:15px 16px 11px}.ds-conversation-composer textarea{font-size:16px;min-height:44px}}"
+    },
+    {
+      "name": "按需辅助导航",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "项目文字入口与设置、暂停、明暗小图标。",
+      "html": "<nav class=\"ds-topbar-actions\" aria-label=\"辅助入口\"><button class=\"ds-topbar-projects\" type=\"button\">项目</button><button class=\"ds-icon-button\" type=\"button\" aria-label=\"设置\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 7h16M4 17h16M8 4v6M16 14v6\"/></svg></button><button class=\"ds-icon-button\" type=\"button\" aria-label=\"暂停炉火动效\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5v14M15 5v14\"/></svg></button><button class=\"ds-icon-button\" type=\"button\" aria-label=\"切换明暗主题\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M19 15.5A8 8 0 0 1 8.5 5 8 8 0 1 0 19 15.5Z\"/></svg></button></nav>",
+      "css": ".ds-topbar-actions{font-family:var(--body,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif);color:var(--ink,#302820);font-size:14px;line-height:1.7}.ds-topbar-actions :where(button,input,textarea,select){font:inherit;color:inherit}:is(.ds-topbar-actions,.ds-topbar-projects,.ds-icon-button):is(button){border:0;background:none;cursor:pointer;transition:background-color 160ms,color 160ms}:is(.ds-topbar-actions,.ds-topbar-projects,.ds-icon-button):is(button):disabled{cursor:default;opacity:.5}:is(.ds-topbar-actions,.ds-topbar-projects,.ds-icon-button):is(button):hover:not(:disabled){color:var(--accent,#8a432b)}:is(.ds-topbar-actions,.ds-topbar-projects,.ds-icon-button):is(button,summary,input,select):focus-visible{outline:2px solid var(--focus,#a35c36);outline-offset:5px}.ds-topbar-actions{display:flex;align-items:center;gap:10px}.ds-topbar-projects{padding:8px 12px;font-size:13px;color:var(--muted,#75695f);border-radius:5px;min-height:36px}.ds-topbar-projects:hover,.ds-icon-button:hover{background:var(--wash,#eee3d4)}.ds-topbar-projects[aria-current=page]{color:var(--ink,#302820)}.ds-icon-button{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;color:var(--muted,#75695f)}.ds-icon-button svg{width:17px;height:17px}.ds-icon-button[aria-pressed=true]{background:var(--wash,#eee3d4);color:var(--accent,#8a432b)}.ds-icon-button svg{fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}"
+    },
+    {
+      "name": "轻量建议",
+      "kind": "chip",
+      "refersTo": "suggestion",
+      "description": "实际建议是文字按钮，不是药丸标签。",
+      "html": "<button type=\"button\" class=\"ds-suggestion-chip\">有哪些项目值得继续？</button>",
+      "css": ".ds-suggestion-chip{font-family:var(--body,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif);color:var(--ink,#302820);font-size:14px;line-height:1.7}.ds-suggestion-chip :where(button,input,textarea,select){font:inherit;color:inherit}:is(.ds-suggestion-chip):is(button){border:0;background:none;cursor:pointer;transition:background-color 160ms,color 160ms}:is(.ds-suggestion-chip):is(button):disabled{cursor:default;opacity:.5}:is(.ds-suggestion-chip):is(button):hover:not(:disabled){color:var(--accent,#8a432b)}:is(.ds-suggestion-chip):is(button,summary,input,select):focus-visible{outline:2px solid var(--focus,#a35c36);outline-offset:5px}.ds-suggestion-chip{padding:7px 0;font-size:12px;color:var(--muted,#75695f)}.ds-suggestion-chip:hover{text-decoration:underline;text-underline-offset:4px}"
+    },
+    {
+      "name": "项目记忆折页",
+      "kind": "custom",
+      "refersTo": "memory-fold",
+      "description": "原生 details 可展开；合成旧记录、材料和未知部分同时保留。",
+      "html": "<details class=\"ds-memory-fold\"><summary aria-label=\"展开片段的项目旧记录\"><span class=\"ds-memory-fragment\"><span class=\"ds-memory-origin\">片段<time>2025.02</time></span><q>读到好内容时，先留下来。</q></span><svg class=\"ds-memory-toggle\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8 5l7 7-7 7\"/></svg></summary><div class=\"ds-memory-unfolded\"><p>读到好内容时，先留下来。过一阵子，再让它回到眼前。</p><dl><div><dt>留下的材料</dt><dd>摘录组件、交互草图、README</dd></div><div><dt>仍需你补充</dt><dd>原型资料没有记录你当时为何停下。</dd></div></dl><small>合成档案 · 日期为示例记录，不代表已读取真实项目</small></div></details>",
+      "css": ".ds-memory-fold{font-family:var(--body,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif);color:var(--ink,#302820);font-size:14px;line-height:1.7}.ds-memory-fold :where(button,input,textarea,select){font:inherit;color:inherit}:is(.ds-memory-fold,.ds-memory-fragment,.ds-memory-origin,.ds-memory-toggle,.ds-memory-unfolded):is(button){border:0;background:none;cursor:pointer;transition:background-color 160ms,color 160ms}:is(.ds-memory-fold,.ds-memory-fragment,.ds-memory-origin,.ds-memory-toggle,.ds-memory-unfolded):is(button):disabled{cursor:default;opacity:.5}:is(.ds-memory-fold,.ds-memory-fragment,.ds-memory-origin,.ds-memory-toggle,.ds-memory-unfolded):is(button):hover:not(:disabled){color:var(--accent,#8a432b)}:is(.ds-memory-fold,.ds-memory-fragment,.ds-memory-origin,.ds-memory-toggle,.ds-memory-unfolded):is(button,summary,input,select):focus-visible{outline:2px solid var(--focus,#a35c36);outline-offset:5px}.ds-memory-fold{width:fit-content;max-width:100%;margin:0 auto 15px;color:var(--muted,#75695f)}.ds-memory-fold summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;padding:2px 0}.ds-memory-fold summary::-webkit-details-marker{display:none}.ds-memory-fragment{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 12px}.ds-memory-origin{display:flex;gap:9px;font-size:11px}.ds-memory-origin time{font-variant-numeric:tabular-nums}.ds-memory-origin>span{display:none}.ds-memory-fragment q{font:500 13px/1.8 var(--title,ContinuationSerif,'Songti SC',serif);quotes:'“' '”'}.ds-memory-toggle{width:10px;height:10px}.ds-memory-fold[open] .ds-memory-toggle{transform:rotate(90deg)}.ds-memory-unfolded{max-width:520px;color:var(--ink,#302820);padding:15px 0}.ds-memory-unfolded>p{font-size:13px;line-height:1.9}.ds-memory-unfolded dl{margin:12px 0}.ds-memory-unfolded dl>div{display:grid;grid-template-columns:80px minmax(0,1fr);gap:12px;margin:9px 0;font-size:12px;line-height:1.8}.ds-memory-unfolded dt{color:var(--muted,#75695f)}.ds-memory-unfolded dd{margin:0}.ds-memory-unfolded small{display:block;color:var(--muted,#75695f);font-size:11px;line-height:1.8}.ds-memory-toggle{fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}.ds-memory-unfolded p{margin:0}.ds-memory-unfolded dd{margin:0}@media(max-width:620px){.ds-memory-fragment q{font-size:12px}.ds-memory-unfolded dl>div{grid-template-columns:72px minmax(0,1fr);gap:8px}}"
+    },
+    {
+      "name": "档案页边线索",
+      "kind": "card",
+      "refersTo": "note-sheet",
+      "description": "纸页色块表达辅助判断，不使用玻璃或装饰投影。",
+      "html": "<aside class=\"ds-note-sheet\"><h2>留在页边的线索</h2><p>给「片段」一个更小的起点。</p><span class=\"ds-note-source\">示例判断 · 有待你的回应</span><button type=\"button\" class=\"ds-primary\">接着聊</button><button type=\"button\" class=\"ds-text-button\">先放一放</button></aside>",
+      "css": ".ds-note-sheet{font-family:var(--body,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif);color:var(--ink,#302820);font-size:14px;line-height:1.7}.ds-note-sheet :where(button,input,textarea,select){font:inherit;color:inherit}:is(.ds-note-sheet,.ds-note-source,.ds-primary,.ds-text-button):is(button){border:0;background:none;cursor:pointer;transition:background-color 160ms,color 160ms}:is(.ds-note-sheet,.ds-note-source,.ds-primary,.ds-text-button):is(button):disabled{cursor:default;opacity:.5}:is(.ds-note-sheet,.ds-note-source,.ds-primary,.ds-text-button):is(button):hover:not(:disabled){color:var(--accent,#8a432b)}:is(.ds-note-sheet,.ds-note-source,.ds-primary,.ds-text-button):is(button,summary,input,select):focus-visible{outline:2px solid var(--focus,#a35c36);outline-offset:5px}.ds-text-button{font-size:12px;color:var(--muted,#75695f);padding:8px 0;min-height:36px}.ds-text-button:hover{text-decoration:underline;text-underline-offset:5px}.ds-primary{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--accent,#8a432b);color:var(--on-accent,#fff9f0);border-radius:8px;padding:11px 17px;min-height:42px;font-size:13px}.ds-primary:hover:not(:disabled){background:color-mix(in srgb,var(--accent,#8a432b) 88%,var(--ink,#302820));color:var(--on-accent,#fff9f0)}.ds-primary:active:not(:disabled){transform:scale(.98)}.ds-note-sheet{align-self:start;padding:24px;background:var(--note,#f2e6d7);color:var(--note-ink,#694e3b);margin-top:22px;border-radius:6px}.ds-note-sheet h2{font-size:12px;margin-bottom:18px}.ds-note-sheet p{font:500 19px/1.8 var(--title,ContinuationSerif,'Songti SC',serif);margin-bottom:20px}.ds-note-source{display:block;font-size:11px;margin-bottom:22px}.ds-note-sheet .ds-text-button{display:block;margin-top:9px}.ds-note-sheet h2{font-weight:500;margin-top:0}.ds-note-sheet p{margin-top:0}.ds-note-sheet{max-width:340px}"
+    },
+    {
+      "name": "目录演示输入",
+      "kind": "input",
+      "refersTo": "directory-input",
+      "description": "paper 底色、细边界、可见焦点；不授予文件访问。",
+      "html": "<input class=\"ds-directory-input\" type=\"text\" aria-label=\"示例目录路径\" placeholder=\"例如 /Projects/ideas\" maxlength=\"200\" autocomplete=\"off\">",
+      "css": ".ds-directory-input{font-family:var(--body,-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif);color:var(--ink,#302820);font-size:14px;line-height:1.7}.ds-directory-input :where(button,input,textarea,select){font:inherit;color:inherit}:is(.ds-directory-input):is(button){border:0;background:none;cursor:pointer;transition:background-color 160ms,color 160ms}:is(.ds-directory-input):is(button):disabled{cursor:default;opacity:.5}:is(.ds-directory-input):is(button):hover:not(:disabled){color:var(--accent,#8a432b)}:is(.ds-directory-input):is(button,summary,input,select):focus-visible{outline:2px solid var(--focus,#a35c36);outline-offset:5px}.ds-directory-input{width:100%;border:1px solid var(--line,#ded5c9);border-radius:5px;background:var(--paper,#f6f2eb);color:var(--ink,#302820);height:44px;padding:10px 12px;caret-color:var(--accent,#8a432b)}.ds-directory-input::placeholder{color:var(--muted,#75695f);opacity:1}"
+    }
+  ],
+  "narrative": {
+    "northStar": "毛玻璃后的炉心",
+    "overview": "一处持续有生命力的炉火，接住被搁置项目的下一次对话。暖纸、深褐墨与铜橙构成日间，深色延续为暗炉室；火藏在无边框毛玻璃扩散层后，文字始终最清楚。\n\n这是 prototypes/08-living-hearth 的已实现视觉记录，依据 PRODUCT.md 与炉火方向合同提取；它是独立合成资料原型，不代表正式前后端已迁移。自然简短的对话保持低密度，项目、资料、设置按需进入，长谈时火收至顶部。",
+    "keyCharacteristics": [
+      "暖纸与暗炉室沿用同一信息层级。",
+      "无边框毛玻璃只扩散火层，不模糊文字。",
+      "系统字体负责阅读，品牌与少量旧记录保留衬线辨识。",
+      "动效可暂停、可降级，不承担产品状态证明。"
+    ],
+    "rules": [
+      {
+        "name": "The Foreground Rule",
+        "body": "文字与对话是清楚的前景；火只能经过无边框扩散层显现，不增加玻璃卡框。",
+        "section": "elevation"
+      },
+      {
+        "name": "The Honest Fire Rule",
+        "body": "火势不代表项目评分、进度、研究成果或真实后台运行；重要含义必须有明确文字。",
+        "section": "colors"
+      },
+      {
+        "name": "The Reading Rule",
+        "body": "正文与对话使用系统字体，ContinuationSerif 只承担旧念头、档案标题等有限层级。",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do 保留单列对话、低权重旧记录及按需展开的资料入口。",
+      "Do 使用语义色变量切换暖纸与暗炉室，保持可见焦点和中文状态文案。",
+      "Do 在长谈时将火收至顶部，让消息独立滚动、输入框落底。",
+      "Do 保留暂停、减少动态效果、页面隐藏静帧与无 WebGL 图像降级。",
+      "Do 引用现有纹理时保留 assets/SOURCE.md 的可核查来源。"
+    ],
+    "donts": [
+      "Don't 让毛玻璃覆盖文本，或为火层加可见边框、玻璃卡片。",
+      "Don't 将火改成进度、评分、后台活动证明或养成奖励。",
+      "Don't 添加常驻侧栏、仪表盘、未经请求的新功能或另一套皮肤。",
+      "Don't 把合成示例回复、CSS 静态状态或 snapshot 字段当作真实研究、性能或用户实验结果。"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Hearth · 炉火对话</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="app.js"></script>
+  <script type="module" src="hearth.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#app-main">跳到主要内容</a>
+  <div class="app-shell">
+    <div class="workspace-shell">
+      <header class="topbar"><div id="hearth-dock" aria-hidden="true"></div><a class="wordmark" href="#discover" aria-label="Hearth 首页"><span>hearth<span class="wordmark-dot">.</span></span></a><nav class="topbar-actions" aria-label="辅助入口"><button type="button" class="topbar-projects" data-route="projects" aria-label="项目库">项目</button><button type="button" class="icon-button" data-route="settings" aria-label="设置"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg></button><button type="button" id="motion-toggle" class="icon-button" aria-label="暂停炉火动效" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></button><button type="button" id="theme-toggle" class="icon-button" aria-label="切换明暗主题"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 15.5A8 8 0 0 1 8.5 5 8 8 0 1 0 19 15.5Z"/></svg></button></nav></header>
+      <div id="hearth-flame" class="hearth-flame" aria-hidden="true"><div class="hearth-warmth"></div><canvas id="flame-canvas"></canvas><div class="hearth-diffuser"></div></div>
+      <main id="app-main" tabindex="-1"></main>
+    </div>
+  </div>
+  <dialog id="evidence-dialog" aria-labelledby="evidence-title"><div class="dialog-top"><span>回到判断的来处</span><button type="button" id="close-evidence" class="icon-button" aria-label="关闭依据"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><div id="evidence-content"></div></dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

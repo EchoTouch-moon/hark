@@ -93,6 +93,8 @@ pnpm test:e2e
 
 详细说明见 [开发手册](README-dev.md)、[安全合同](docs/05-SECURITY.md)、[观察器说明](docs/14-PROJECT-OBSERVER.md)、[当前交接状态](handoff/STATUS.md)。最初的规划包首页保存在 [历史归档](docs/archive/README-planning-v1.md)，其中阶段计划不代表当前运行状态。
 
-## 当前采用的交互设计
+## 交互设计与原型
 
-2026-10-30确认先采用“轻量单列对话＋记忆折页”。打开即可交流，旧念头与日期作为可展开的项目记忆入口，项目和设置按需访问。[原型与运行说明](prototypes/07-continuation/README.md) · [设计说明](docs/design/2026-10-30-MEMORY-FOLD.md)。原型已通过25项交互与布局检查，记录在 `handoff/EVIDENCE/memory-fold-2026-10-30/`；目前使用合成资料和预设回复，正式React应用尚未迁移到这一版。
+2026-10-31按新方向恢复有生命力的炉火，并藏在无边框毛玻璃后，让自然对话成为清晰前景。[炉火版原型与运行说明](prototypes/08-living-hearth/README.md) · [本轮设计与验证](docs/design/2026-10-31-LIVING-FIRE-RESULT.md)。33项原型交互与动效检查通过，包含暂停、减少动态、真实WebGL丢失和静态降级。既定产品功能保持不变，正式React前端尚未迁移。
+
+2026-10-30确认过的“轻量单列对话＋记忆折页”保留为上一版：[原型与运行说明](prototypes/07-continuation/README.md) · [设计说明](docs/design/2026-10-30-MEMORY-FOLD.md)。历史25项检查记录在 `handoff/EVIDENCE/memory-fold-2026-10-30/`。所有设计原型均使用合成资料和预设回复。

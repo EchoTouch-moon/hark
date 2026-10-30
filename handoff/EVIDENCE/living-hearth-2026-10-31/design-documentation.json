@@ -1,0 +1,29 @@
+{
+  "files": [
+    "prototypes/08-living-hearth/DESIGN.md",
+    "prototypes/08-living-hearth/.impeccable/design.json"
+  ],
+  "schemaVersion": 2,
+  "sections": [
+    "Overview",
+    "Colors",
+    "Typography",
+    "Layout",
+    "Elevation & Depth",
+    "Shapes",
+    "Components",
+    "Do's and Don'ts"
+  ],
+  "components": [
+    "主要行动",
+    "次要行动",
+    "自然对话输入",
+    "按需辅助导航",
+    "轻量建议",
+    "项目记忆折页",
+    "档案页边线索",
+    "目录演示输入"
+  ],
+  "roleSubstitution": "generic documenter; only two owned files changed",
+  "status": "PASS"
+}

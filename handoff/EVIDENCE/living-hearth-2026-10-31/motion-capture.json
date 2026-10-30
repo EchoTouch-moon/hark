@@ -1,0 +1,22 @@
+{
+  "kind": "actual browser recording",
+  "fixtureOnly": true,
+  "softwareWebGL": true,
+  "finalState": {
+    "mode": "running",
+    "frames": 202,
+    "time": 9.66620000000001,
+    "focus": true,
+    "pulse": 0,
+    "textureReady": true
+  },
+  "scenes": [
+    "idle fire",
+    "focus and typing",
+    "local example send",
+    "fire docks",
+    "switch project",
+    "continue project conversation"
+  ],
+  "noRealModel": true
+}
