@@ -9,6 +9,7 @@ import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import { readWelcomePreference } from '../features/welcome';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useThreads } from '../app/AppShell';
+import { useRuntimeMode } from '../features/runtime-mode';
 import { ApiError } from '../features/api/client';
 import {
   executeMessageAction,
@@ -155,11 +156,13 @@ function MessageTurn({
   _index,
   onAction,
   actionBusy,
+  legacyDemoAvailable = false,
 }: {
   msg: CanvasMessage;
   _index?: number;
   onAction: (action: MessageAction) => void;
   actionBusy: boolean;
+  legacyDemoAvailable?: boolean;
 }) {
   const isUser = msg.role === 'user';
   const textPart = msg.parts?.find((p) => p.type === 'text');
@@ -181,7 +184,7 @@ function MessageTurn({
           <p key={i}>{line.length === 0 ? '\u00A0' : renderInline(line)}</p>
         ))}
       </div>
-      {actionsPart && actionsPart.type === 'actions' ? (
+      {actionsPart && actionsPart.type === 'actions' && legacyDemoAvailable ? (
         <div className="mini-card">
           <AgentActions
             actions={actionsPart.actions}
@@ -282,6 +285,11 @@ export function ChatPage() {
     welcomeReplay,
     setWelcomeReplay,
   } = useThreads();
+  const { state: runtimeMode } = useRuntimeMode();
+  const legacyDemoAvailable =
+    runtimeMode.status === 'ready' &&
+    runtimeMode.demoMode &&
+    runtimeMode.legacyDemoAvailable === true;
   const [messages, setMessages] = useState<CanvasMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -460,40 +468,20 @@ export function ChatPage() {
       if (!activeThreadId || actionBusy) return;
       setActionBusy(true);
       setPendingAction(null);
-      const placeholderId = `progress-pending-${Date.now()}`;
       try {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: placeholderId,
-            role: 'assistant',
-            content: `正在处理「${action.label}」…`,
-            createdAt: new Date().toISOString(),
-            adapter: 'mock',
-            threadId: activeThreadId,
-            parts: [
-              {
-                type: 'progress',
-                steps: [
-                  { name: '确认范围', status: 'done' },
-                  { name: action.label, status: 'running' },
-                  { name: '汇总结果', status: 'pending' },
-                ],
-                runRef: 'pending',
-              },
-            ],
-          },
-        ]);
         const result = await executeMessageAction(activeThreadId, action);
-        setMessages((prev) => prev.map((m) => (m.id === placeholderId ? result.message : m)));
-
+        setMessages((prev) => [...prev, result.message]);
         recomputeEmber();
         void refreshThreads();
       } catch (err) {
         emitEmberCue('failed');
-        // Clean up pending progress placeholder on failure or rejection
-        setMessages((prev) => prev.filter((m) => m.id !== placeholderId));
-        setLoadError(err instanceof ApiError ? err.message : '行动执行失败');
+        setLoadError(
+          err instanceof ApiError && err.status === 403
+            ? (err.message || '旧模拟操作当前不可用。')
+            : err instanceof ApiError
+              ? err.message
+              : '行动执行失败',
+        );
       } finally {
         setActionBusy(false);
       }
@@ -714,7 +702,7 @@ export function ChatPage() {
               return (
                 <div key={m.id} className="ember-seed__tap mini-card">
                   {body ? <p className="ember-seed__tap-body">{body}</p> : null}
-                  {actionsPart && actionsPart.type === 'actions' ? (
+                  {actionsPart && actionsPart.type === 'actions' && legacyDemoAvailable ? (
                     <AgentActions
                       actions={actionsPart.actions}
                       disabled={actionBusy}
@@ -751,6 +739,7 @@ export function ChatPage() {
                 _index={i}
                 onAction={onAction}
                 actionBusy={actionBusy}
+                legacyDemoAvailable={legacyDemoAvailable}
               />
             ))}
           </div>

@@ -18,6 +18,7 @@ export interface ThreadListDto {
   threads: ThreadSummary[];
   /** true = 前端 Mock，未接 G1 */
   mock: boolean;
+  error?: string | null;
 }
 
 const STORAGE_KEY = 'hearth.threads.v2';
@@ -58,12 +59,18 @@ export async function listThreads(signal?: AbortSignal): Promise<ThreadListDto> 
   try {
     const data = await apiFetch<{ threads: ThreadSummary[] }>('/api/v1/threads', { signal });
     if (Array.isArray(data.threads)) {
-      return { threads: data.threads, mock: false };
+      return { threads: data.threads, mock: false, error: null };
     }
-  } catch {
-    // Fail closed on error: do not fabricate fake mock threads
+    return { threads: [], mock: false, error: '线程数据格式错误' };
+  } catch (err) {
+    const message =
+      err instanceof ApiError
+        ? `加载线程失败 (${err.status})：${err.message}`
+        : err instanceof Error
+          ? err.message
+          : '线程服务暂时不可用，请重试';
+    return { threads: [], mock: false, error: message };
   }
-  return { threads: [], mock: false };
 }
 
 export async function createThread(

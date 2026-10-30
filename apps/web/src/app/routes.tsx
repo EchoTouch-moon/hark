@@ -37,7 +37,8 @@ function DemoGate() {
       </section>
     );
   }
-  if (!state.legacyDemoAvailable) {
+  // Both demoMode AND legacyDemoAvailable must be true to mount legacy demo routes
+  if (state.status !== 'ready' || !state.demoMode || !state.legacyDemoAvailable) {
     return (
       <section className="page">
         <h1>演示模式未启用</h1>
@@ -78,13 +79,13 @@ export const router = createBrowserRouter([
       { index: true, element: <ChatPage /> },
       { path: 't/:threadId', element: <ChatPage /> },
       { path: 'chat', element: <Navigate to="/" replace /> },
-      { path: 'cards', element: <HomePage /> },
       { path: 'projects', element: <ProjectsPage /> },
       { path: 'observe/:id', element: <ObserverDetailPage /> },
       { path: 'insights', element: <InsightsPage /> },
       { path: 'insights/:id', element: <InsightDetailPage /> },
       { path: 'observations', element: <ObservationsPage /> },
       { element: <DemoGate/>, children: [
+        { path: 'cards', element: <HomePage /> },
         { path: 'demo', element: <DemoHomePage/> },
         { path: 'projects/:id', element: <ProjectDetailPage/> },
         { path: 'activity', element: <ActivityPage/> },

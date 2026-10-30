@@ -69,6 +69,7 @@ export interface ThreadContextValue {
   threads: ThreadSummary[];
   activeThreadId: string | null;
   threadsMock: boolean;
+  threadsError: string | null;
   railCollapsed: boolean;
   setRailCollapsed: (v: boolean) => void;
   shellMode: ShellMode;
@@ -109,19 +110,23 @@ function ThreadRail({
   activeThreadId,
   collapsed,
   filter,
+  error,
   onFilter,
   onToggle,
   onSelect,
   onCreate,
+  onRetry,
 }: {
   threads: ThreadSummary[];
   activeThreadId: string | null;
   collapsed: boolean;
   filter: string;
+  error?: string | null;
   onFilter: (value: string) => void;
   onToggle: () => void;
   onSelect: (id: string) => void;
   onCreate: () => void;
+  onRetry?: () => void;
 }) {
   const q = filter.trim().toLowerCase();
   const visible = q
@@ -181,23 +186,34 @@ function ThreadRail({
         <input type="search" aria-label="搜索对话" placeholder="搜索对话…" value={filter} onChange={(event) => onFilter(event.target.value)} />
       </label>
       <ul className="thread-list">
-        {visible.map((t) => {
-          const active = t.id === activeThreadId;
-          return (
-            <li key={t.id}>
-              <button
-                type="button"
-                className={`thread-item${active ? ' is-active' : ''}`}
-                onClick={() => onSelect(t.id)}
-                aria-current={active ? 'true' : undefined}
-              >
-                <span className="thread-item__title">{t.title}</span>
-                {t.preview ? <span className="thread-item__preview">{t.preview}</span> : null}
+        {error ? (
+          <li className="thread-list__error" role="alert">
+            <p className="thread-list__error-msg">{error}</p>
+            {onRetry ? (
+              <button type="button" className="thread-list__retry-btn" onClick={onRetry}>
+                重试
               </button>
-            </li>
-          );
-        })}
-        {visible.length === 0 ? (
+            ) : null}
+          </li>
+        ) : (
+          visible.map((t) => {
+            const active = t.id === activeThreadId;
+            return (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  className={`thread-item${active ? ' is-active' : ''}`}
+                  onClick={() => onSelect(t.id)}
+                  aria-current={active ? 'true' : undefined}
+                >
+                  <span className="thread-item__title">{t.title}</span>
+                  {t.preview ? <span className="thread-item__preview">{t.preview}</span> : null}
+                </button>
+              </li>
+            );
+          })
+        )}
+        {!error && visible.length === 0 ? (
           <li className="thread-list__empty">无匹配线程</li>
         ) : null}
       </ul>
@@ -212,6 +228,7 @@ export function AppShell() {
   const [drawerContent, setDrawerContent] = useState<ReactNode | null>(null);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [threadsMock, setThreadsMock] = useState(true);
+  const [threadsError, setThreadsError] = useState<string | null>(null);
   const [activeThreadId, setActiveId] = useState<string | null>(null);
   const [shellMode, setShellMode] = useState<ShellMode>('chat');
   const [motionPaused, setMotionPaused] = useState(isEmberMotionPaused);
@@ -251,23 +268,34 @@ export function AppShell() {
   const [railCollapsed, setRailCollapsed] = useState(true);
 
   const refreshThreads = useCallback(async () => {
-    const listed = await listThreads();
-    setThreads(listed.threads);
-    setThreadsMock(listed.mock);
-    if (!listed.mock) preferLiveApi();
-    const fromQuery = searchParams.get('thread');
-    const fromPath = location.pathname.startsWith('/t/')
-      ? location.pathname.slice(3).split('/')[0]
-      : null;
-    const preferred =
-      fromQuery ||
-      fromPath ||
-      getActiveThreadId() ||
-      listed.threads[0]?.id ||
-      'thread-default';
-    if (preferred) {
-      setActiveId(preferred);
-      setActiveThreadId(preferred);
+    try {
+      const listed = await listThreads();
+      if (listed.error) {
+        setThreadsError(listed.error);
+        setThreads([]);
+        return;
+      }
+      setThreadsError(null);
+      setThreads(listed.threads);
+      setThreadsMock(listed.mock);
+      if (!listed.mock) preferLiveApi();
+      const fromQuery = searchParams.get('thread');
+      const fromPath = location.pathname.startsWith('/t/')
+        ? location.pathname.slice(3).split('/')[0]
+        : null;
+      const preferred =
+        fromQuery ||
+        fromPath ||
+        getActiveThreadId() ||
+        listed.threads[0]?.id ||
+        'thread-default';
+      if (preferred) {
+        setActiveId(preferred);
+        setActiveThreadId(preferred);
+      }
+    } catch (err) {
+      setThreadsError(err instanceof Error ? err.message : '加载线程列表失败');
+      setThreads([]);
     }
   }, [location.pathname, searchParams]);
 
@@ -533,6 +561,7 @@ export function AppShell() {
       threads,
       activeThreadId,
       threadsMock,
+      threadsError,
       railCollapsed,
       setRailCollapsed,
       shellMode,
@@ -556,6 +585,7 @@ export function AppShell() {
       threads,
       activeThreadId,
       threadsMock,
+      threadsError,
       railCollapsed,
       setRailCollapsed,
       shellMode,
@@ -622,10 +652,12 @@ export function AppShell() {
             activeThreadId={activeThreadId}
             collapsed={railCollapsed}
             filter={searchQuery}
+            error={threadsError}
             onFilter={setSearchQuery}
             onToggle={() => setRailCollapsed(!railCollapsed)}
             onSelect={selectThread}
             onCreate={() => void addThread()}
+            onRetry={() => void refreshThreads()}
           />
           <div className="canvas-body">
             {canvas ? (
@@ -642,11 +674,11 @@ export function AppShell() {
                         <div ref={topVitalityBarRef} className="hearth-vitality-fill" style={{ width: `${Math.round(flameLife.heat * 100)}%` }} />
                       </div>
                     </div>
-                    <span className="hearth-mode-label" role="status" aria-label="离线演示 · 不连接真实模型" title="回复由本机模拟生成，不连接真实模型">离线演示 · 不连接真实模型</span>
+                    <span className="hearth-mode-label" role="status" aria-label="当前对话为 Mock · 离线演示 · 不连接真实模型" title="对话回复由本机模拟生成，不连接真实模型">当前对话为 Mock · 离线演示</span>
                     <details className="hearth-menu" ref={menuRef} onKeyDown={(event) => {
                       if (event.key === 'Escape') { menuRef.current?.removeAttribute('open'); menuRef.current?.querySelector('summary')?.focus(); }
                     }}>
-                      <summary aria-label="打开菜单" title="菜单"><span aria-hidden="true">···</span></summary>
+                      <summary role="button" aria-label="打开菜单" title="菜单"><span aria-hidden="true">···</span></summary>
                       <div className="hearth-menu__panel">
                         <div className="hearth-menu__flame-status" data-flame-stage={flameLife.stage}>
                           <div className="hearth-menu__flame-row">
@@ -687,9 +719,7 @@ export function AppShell() {
                   ← 对话
                 </Link>
                 <p className="canvas-chrome__title">{sectionLabel(location.pathname)}</p>
-                <div className="canvas-chrome__right">
-                  <span className="hearth-mode-label" role="status" aria-label="离线演示 · 不连接真实模型" title="回复由本机模拟生成，不连接真实模型">离线演示 · 不连接真实模型</span>
-                </div>
+                <div className="canvas-chrome__right" />
               </header>
             )}
             <main className="canvas-main" id="main-content">

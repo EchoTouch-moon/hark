@@ -152,6 +152,35 @@
   color: var(--color-ink-3);
 }
 
+.thread-list__error {
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-danger, #d9534f);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.thread-list__error-msg {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.thread-list__retry-btn {
+  align-self: flex-start;
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.thread-list__retry-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .thread-item {
   width: 100%;
   display: flex;

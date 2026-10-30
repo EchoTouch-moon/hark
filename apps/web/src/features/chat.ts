@@ -217,13 +217,12 @@ export function patchLocalMessage(threadId: string, message: CanvasMessage): voi
 }
 
 
-/** 仅补齐服务端缺失的 parts；已有 parts 一律用服务端，不叠本地假行动。 */
-function attachStoredParts(messages: CanvasMessage[]): CanvasMessage[] {
-  const bag = readPartsBag();
-  return messages.map((m) => {
-    if (m.parts && m.parts.length > 0) return m;
-    return bag[m.id] ? { ...m, parts: bag[m.id] } : m;
-  });
+// Wipe any legacy browser-cached parts and local overlay bags on startup
+try {
+  window.localStorage.removeItem(PARTS_STORAGE);
+  window.localStorage.removeItem(LOCAL_MSGS_STORAGE);
+} catch {
+  // ignore
 }
 
 export async function fetchChatHistory(
@@ -251,9 +250,10 @@ export async function fetchChatHistory(
     const { id, role, content, createdAt } = result.data;
     return [{ id, role, content, createdAt }];
   });
-  const withParts = attachStoredParts(server);
+  // Do NOT re-attach browser-stored parts to server history.
+  // Server history is the sole authoritative source of truth.
+  const messages = server;
   const serverHasParts = server.some((m) => Array.isArray(m.parts) && m.parts.length > 0);
-  const messages = withParts;
   if (serverHasParts && !liveApi) preferLiveApi();
   return {
     ...data,

@@ -236,7 +236,40 @@ UI-02 全部完成并通关门禁：
 - 后端已使旧主动 GET 只读返回空、未知线程不创建；旧线程 action 及默认旧执行/审批失败关闭，保留既有任务取消；可识别的旧不安全建议/伪完成不再回灌历史/预览，但原始记录保留。真实和未知模式及未证明隔离的运行时 Demo 不开启旧演示数据/执行接口；health 暴露 `legacyDemoAvailable`。
 - 独立合成数据验证：全仓 458 项测试通过（在最后 health 标识和新增 HTTP 测试之前），之后相关 49 项含真实本机 HTTP 通过；typecheck、lint（6 warnings）、build 通过，证据 `handoff/EVIDENCE/g1a-backend/`。尚未运行浏览器 E2E；前端仍有 Mock 回退风险，G1-A 整体 NOT PASSED，待 Gemini 前端及联合验收。
 
-## 2026-10-30 · G1-A 前端工程验收完成 (Frontend Engineering Verification PASS)
+## 2026-10-30 · G1-A 前端评审问题全量整改与工程验收二次确认 (G1-A Review Fixes & Re-Verification PASS)
+- **状态**：COMPLETED · PASS（五项评审反馈全部彻底修复并通过端到端真机验证）
+- **修改范围**：严格受限于 `apps/web/src/`、`tests/e2e/runtime-mode.spec.ts` 及 `handoff/` 交付物。未触及后端、数据迁移、安全策略或外部真实模型。
+- **五大评审问题整改措施**：
+  1. **[P1] 彻底清除旧 parts 残留与虚假执行进度**：
+     - 在 `apps/web/src/features/chat.ts` 中移除 `attachStoredParts()`，服务端返回的历史消息成为唯一权威来源，绝不再把本地旧 parts 拼回历史；启动时主动清除 `hearth.chat.parts.v2` 与 `hearth.chat.messages.v2` 本地脏数据；
+     - 在 `apps/web/src/pages/ChatPage.tsx` 的 `runAction` 中，移除所有乐观伪造进度（如“确认范围: done”和“running”步骤插入）；按钮进入加载状态直至服务端真实响应；若被 403 拒绝则直接呈现清晰错误提示，绝不伪造任何进度。此外，引入 `legacyDemoAvailable` 门禁，非旧演示模式下不挂载动作交互区。
+  2. **[P2] 失败关闭覆盖所有直接入口**：
+     - `apps/web/src/app/routes.tsx` 中将 `/cards` 直接入口移入 `DemoGate` 下；
+     - 强化 `DemoGate` 校验条件，不仅要求 `legacyDemoAvailable === true`，而且当 `demoMode === false` 时即便 `legacyDemoAvailable === true` 也严格失败关闭，展示「演示模式未启用」；未知/破损健康状态一律进入错误恢复屏。
+  3. **[P2] 线程服务异常真实呈现与可重试**：
+     - `apps/web/src/features/threads.ts` 中更新 `ThreadListDto` 增加 `error?: string | null`；当接口返回 503 等错误时返回错误信息，不再静默吞掉并伪造成正常空数组；
+     - `apps/web/src/app/AppShell.tsx` 捕获并在历史侧栏 `ThreadRail` 渲染 `thread-list__error` 状态（包含清晰错误说明与「重试」按钮），只有在无错误且列表为空时才显示「无匹配线程」。
+  4. **[P2] 精准限定离线标识范围**：
+     - 将聊天顶栏与欢迎遮罩上的标识明确限定为「当前对话为 Mock · 离线演示」，说明回复由本机模拟生成；
+     - 移除 `canvas-chrome--page`（如 `/projects` 等非对话页面）的全局离线标识，避免误导可能调用真实 Pi 模型的研究/分析页面。
+  5. **[P2] 强化验收证据与针对性断言**：
+     - 夜间测试使用 `page.clock.setSystemTime('2026-10-30T22:00:00+08:00')`，精准注入应用计算昼夜所需的真实夜间时间，断言 `data-period="night"` 和 `data-hearth-period="night"`，重新生成真实深色夜间截图 `02-welcome-mock-badge-night.png`；
+     - 主动建议空态测试断言等待「正在加载…」完全消失并彻底稳定后，重新生成纯净空态截图 `09-proactive-null-clean-state.png`；
+     - 动作拒绝测试精准拦截前端实际请求路径 `POST /api/v1/threads/:threadId/actions/:actionId/execute`，断言请求方式、真实 403 响应码、用户草稿严格保留、以及零假进度/零假完成。
+- **验证指标**：
+  - `pnpm typecheck`：0 errors
+  - `pnpm lint`：0 errors, 6 warnings（均为现有未用变量警告，前端 0 警告）
+  - `pnpm test`：57 文件 / 459 测试用例全部通过
+  - `npx playwright test -c tests/e2e/playwright.config.ts tests/e2e/runtime-mode.spec.ts`：7/7 全部通过
+  - `npx playwright test -c tests/e2e/playwright.config.ts tests/e2e/hearth.spec.ts -g "E2E-08|Settings"`：2/2 全部通过
+- **最新证据文件**：
+  - `handoff/EVIDENCE/g1a-frontend/typecheck.txt`
+  - `handoff/EVIDENCE/g1a-frontend/lint.txt`
+  - `handoff/EVIDENCE/g1a-frontend/tests.txt`
+  - `handoff/EVIDENCE/g1a-frontend/e2e-runtime-mode.txt`
+  - `handoff/EVIDENCE/g1a-frontend/e2e-hearth-chat.txt`
+  - 截图 `01-welcome-mock-badge-day.png` 至 `09-proactive-null-clean-state.png` 全部更新完毕。
+
 - **状态**：COMPLETED · PASS（前端责任范围已全部交付并通过验证）
 - **范围限制**：严格遵循 `tasks/G1A-GEMINI-FRONTEND.md`，仅修改 `apps/web/src/` 及指定前端 E2E 测试；不接触后端、不改动数据库迁移与安全策略；零外部模型调用、零私人数据访问、零推送与合并。
 - **关键交付成果**：

@@ -191,7 +191,39 @@ UI-02 完成（UI-02.1、UI-02.2、UI-02.3 全部交付）：
 - 前后端拆分：后端已收口旧主动/执行路径并验证真实本地 HTTP；前端任务与 Gemini Prompt 在 `tasks/G1A-GEMINI-FRONTEND.md`，尚未实际派发。
 - 全仓 458 项在最后小改前通过，最终相关 49 项通过；类型、构建、lint（6 warning）通过；证据 `handoff/EVIDENCE/g1a-backend/`。真实运行时旧 Demo 执行与数据接口暂关闭，前端 fallback 和浏览器安全验收仍待解决，G1-A 总体未通过。未推送、未调用外部模型或公开研究。
 
-## 2026-10-30 · G1-A 前端工程验收完成
+## 2026-10-30 · G1-A 前端评审问题全面整改与工程验收二次确认
+- **执行角色**：由前端执行工程师针对独立复现的 5 项评审问题进行全量整改与重新验收。
+- **状态总结**：
+  - **PASS**：
+    1. **[P1 修复] 根除旧 parts 回灌与虚假执行进度**：
+       - `apps/web/src/features/chat.ts` 中彻底移除 `attachStoredParts()`，历史消息仅以服务端为准，绝不将本地 localStorage 中的 parts 拼回服务端消息；页面启动时主动擦除本地脏数据 `hearth.chat.parts.v2` 与 `hearth.chat.messages.v2`；
+       - `apps/web/src/pages/ChatPage.tsx` 中移除 `runAction` 的任何乐观虚假进度插入（如“确认范围: done”或“running”），等待后端响应；若被 403 拒绝则直接呈现清晰错误提示；引入 `legacyDemoAvailable` 判断，非旧演示模式下不挂载动作交互区。
+    2. **[P2 修复] 失败关闭全面覆盖所有直接入口**：
+       - `apps/web/src/app/routes.tsx` 将 `/cards` 直接入口纳管至 `DemoGate` 下；
+       - `DemoGate` 实施严格双重门禁：要求 `state.status === 'ready' && state.demoMode && state.legacyDemoAvailable === true`；`demoMode: false && legacyDemoAvailable: true` 或未知/无效模式一律严格失败关闭。
+    3. **[P2 修复] 线程服务异常真实呈现与可重试**：
+       - `apps/web/src/features/threads.ts` 中返回包含 `error` 的结构，不再将 503 等接口失败静默转换为正常空列表；
+       - `apps/web/src/app/AppShell.tsx` 联动 `ThreadRail` 渲染 `thread-list__error` 状态（呈现真实错误提示与「重试」按钮），避免误导用户为“无匹配线程”。
+    4. **[P2 修复] 精准限定离线标识范围**：
+       - 对话顶栏与欢迎遮罩上文案明确限定为「当前对话为 Mock · 离线演示」，说明回复由本机模拟生成；
+       - 从 `canvas-chrome--page`（如 `/projects`）移除离线标识，避免误导非对话页面。
+    5. **[P2 修复] 强化针对性验收断言与真实截图**：
+       - 夜间测试使用 `page.clock.setSystemTime('2026-10-30T22:00:00+08:00')` 精准设置真实夜间时间，断言 `data-period="night"` 与 `data-hearth-period="night"`，生成真实深色夜间截图 `02-welcome-mock-badge-night.png`；
+       - 主动建议空态断言等待「正在加载…」完全消除并稳定后，生成纯净空态截图 `09-proactive-null-clean-state.png`；
+       - 动作拒绝测试精准拦截前端实际请求路径 `POST /api/v1/threads/:threadId/actions/:actionId/execute` 并断言 403 状态码与草稿严格保留。
+    6. **全套自动化测试指标**：
+       - `pnpm typecheck`：0 errors
+       - `pnpm lint`：0 errors, 6 warnings（均为现有未用变量警告，前端 0 警告）
+       - `pnpm test`：57 文件 / 459 测试用例全部通过（100% GREEN）
+       - `npx playwright test -c tests/e2e/playwright.config.ts tests/e2e/runtime-mode.spec.ts`：7/7 全部通过（覆盖未知/真实模式直接 URL 失败关闭、非法模式恢复、legacyDemoAvailable 校验、真实昼夜切换与桌面视口、403 动作拒绝保留草稿且无伪造进度、主动建议 null 纯净空态、线程 503 错误侧栏展示与重试）
+       - `npx playwright test -c tests/e2e/playwright.config.ts tests/e2e/hearth.spec.ts -g "E2E-08|Settings"`：2/2 全部通过
+  - **BLOCKED**：
+    - `tests/e2e/hearth.spec.ts` 中旧卡片工作台用例（`E2E-01..07`, `E2E-11`，涉及 `/cards`、`/runs/:id/execute` 等旧接口）受后端安全红线限制返回 403 `LEGACY_ACTIONS_DISABLED`。按要求单独记录为阻断，待 G1-B 运行时隔离 Demo 或 G4 正式界面再行衔接；未通过跳过或删断言作弊。
+  - **FAIL**：0 项。
+- **证据与截图归档**：
+  - 测试日志：`handoff/EVIDENCE/g1a-frontend/{typecheck,lint,tests,e2e-runtime-mode,e2e-hearth-chat}.txt`
+  - 界面截图：`handoff/EVIDENCE/g1a-frontend/01-welcome-mock-badge-day.png` 至 `09-proactive-null-clean-state.png`
+- **红线遵守**：严格限定于 `apps/web/src/` 与指定前端测试；未调用任何外部或真实模型、未访问真实私人目录、未修改后端或数据库迁移、未向远程推送或合并。
 - **执行角色**：由前端执行工程师接手并完成 `tasks/G1A-GEMINI-FRONTEND.md` 规定的全部工程要求。
 - **状态总结**：
   - **PASS**：

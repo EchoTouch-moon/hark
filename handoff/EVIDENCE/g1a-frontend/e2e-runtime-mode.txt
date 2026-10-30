@@ -7,13 +7,14 @@ npm notice run 'playwright' test -c tests/e2e/playwright.config.ts tests/e2e/run
 [WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 [WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
 
-Running 6 tests using 1 worker
+Running 7 tests using 1 worker
 
-  ✓  1 tests/e2e/runtime-mode.spec.ts:5:1 › unknown and real mode never mount Demo actions, including direct URLs (3.3s)
-  ✓  2 tests/e2e/runtime-mode.spec.ts:60:1 › invalid mode fails closed and a deliberate retry can recover (2.0s)
-  ✓  3 tests/e2e/runtime-mode.spec.ts:77:1 › missing or false legacyDemoAvailable fails closed even if demoMode is true (1.8s)
-  ✓  4 tests/e2e/runtime-mode.spec.ts:95:1 › offline indicator is actually visible across welcome flow, day/night themes, and desktop viewports (4.1s)
-  ✓  5 tests/e2e/runtime-mode.spec.ts:141:1 › backend action rejection preserves user draft and never fabricates progress or fake completion (2.4s)
-  ✓  6 tests/e2e/runtime-mode.spec.ts:226:1 › backend proactive null returns clean state without fake injected cards (1.3s)
+  ✓  1 tests/e2e/runtime-mode.spec.ts:5:1 › unknown and real mode never mount Demo actions, including direct URLs (3.7s)
+  ✓  2 tests/e2e/runtime-mode.spec.ts:69:1 › invalid mode fails closed across /demo and /cards, and a deliberate retry can recover (2.4s)
+  ✓  3 tests/e2e/runtime-mode.spec.ts:93:1 › real mode or missing legacyDemoAvailable fails closed across /demo and /cards (4.0s)
+  ✓  4 tests/e2e/runtime-mode.spec.ts:122:1 › offline indicator is actually visible across welcome flow, true night theme, and desktop viewports (4.7s)
+  ✓  5 tests/e2e/runtime-mode.spec.ts:181:1 › backend action rejection preserves user draft and never fabricates progress or fake completion (2.4s)
+  ✓  6 tests/e2e/runtime-mode.spec.ts:284:1 › backend proactive null returns clean state without fake injected cards (1.5s)
+  ✓  7 tests/e2e/runtime-mode.spec.ts:317:1 › thread service failure renders error state with retry in history rail (1.9s)
 
-  6 passed (21.7s)
+  7 passed (27.1s)
