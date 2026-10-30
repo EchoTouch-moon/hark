@@ -21,10 +21,8 @@ import {
   type MessageAction,
   type ProgressStep,
 } from '../features/chat';
-import {
-  computeEmberHeat,
-  latestConfirmedInteraction,
-} from '../features/emberHeat';
+import { useViewModelSource } from '../features/hearthViewModel';
+import { blockingError, ErrorBar, OpinionCard, StateNotices, StoryBeats } from '../components/ExperienceState';
 import {
   useHearthTimeline,
   HEARTH_EASE,
@@ -305,13 +303,10 @@ export function ChatPage() {
 
 
 
-  const seedCopy = useMemo(
-    () =>
-      computeEmberHeat({
-        lastConfirmedAt: latestConfirmedInteraction(messages),
-      }),
-    [messages, emberBand],
-  );
+  const vmSource = useViewModelSource();
+  const vm = vmSource.kind === 'ready' ? vmSource.vm : null;
+  const vmError = blockingError(vmSource);
+  const seedCopy = { band: emberBand, reason: messages.some((m) => m.role === 'user') ? 'returning' : 'no-interaction' };
 
   const reload = useCallback(async (threadId: string) => {
     setLoading(true);
@@ -526,26 +521,6 @@ export function ChatPage() {
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [updateDraft]);
 
-  const handleStoke = useCallback(
-    contextSafe((btn: HTMLElement) => {
-      emitEmberCue('stoke');
-      if (!motionPaused && !isEmberMotionPaused()) {
-        gsap.timeline()
-          .to(btn, { scale: 0.90, duration: 0.08, ease: 'power2.in' })
-          .to(btn, { scale: 1.08, duration: 0.16, ease: 'back.out(2)' })
-          .to(btn, { scale: 1, duration: 0.12 });
-        const card = btn.closest<HTMLElement>('.flame-life-card');
-        if (card) {
-          gsap.fromTo(
-            card,
-            { boxShadow: '0 0 28px rgba(244, 162, 97, 0.5)', borderColor: 'rgba(244, 162, 97, 0.85)' },
-            { boxShadow: '0 4px 18px rgba(0, 0, 0, 0.04)', borderColor: '', duration: 0.8, ease: 'power2.out', clearProps: 'boxShadow,borderColor' }
-          );
-        }
-      }
-    }),
-    [contextSafe, motionPaused]
-  );
 
   // GSAP animation for new message entrance
   useHearthTimeline(() => {
@@ -676,31 +651,13 @@ export function ChatPage() {
         ) : showSeed ? (
           <div className="ember-seed" data-ember-band={seedCopy.band} data-flame-stage={flameLife.stage}>
             <div className="ember-seed__glow" aria-hidden="true" />
-            <div className="flame-life-card" data-flame-stage={flameLife.stage}>
-              <div className="flame-life-card__head">
-                <span className="flame-life-card__icon" aria-hidden="true">
-                  {flameLife.stage === 'spark' ? '✨' : flameLife.stage === 'sprout' ? '🌱' : flameLife.stage === 'blaze' ? '🔥' : flameLife.stage === 'golden' ? '🌟' : '🪵'}
-                </span>
-                <span className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
-                <button
-                  type="button"
-                  className="flame-life-card__stoke"
-                  onClick={(e) => handleStoke(e.currentTarget)}
-                  title="添一把柴，激荡火舌并飞升火星"
-                >
-                  添柴 +
-                </button>
-              </div>
-              <p className="flame-life-card__poetry">{flameLife.stagePoetry}</p>
-              <p className="flame-life-card__hint">{flameLife.fuelHint}</p>
-            </div>
-            <p className="seed-eyebrow">在这里，慢慢向前</p>
-            <h1 className="ember-seed__greeting">{displayName && seedCopy.reason === 'no-interaction' ? `${displayName}，想从哪里开始？` : seedCopy.reason === 'no-interaction' ? (hearthPeriod === 'night' ? '今晚，想聊些什么？' : '今天，想聊些什么？') : seedCopy.greeting}</h1>
-            {seedCopy.subline ? (
-              <p className="ember-seed__subline">{seedCopy.subline}</p>
-            ) : null}
+            {vmError ? <ErrorBar message={vmError.message} code={vmError.code} /> : null}
+            {vm && !vmError ? <StateNotices vm={vm} /> : null}
+            {vmError ? null : (
+              <h1 className="ember-seed__greeting" data-flame-level={flameLife.level}>{displayName && vm?.status === 'empty' ? `${displayName}，从哪儿开始？` : flameLife.greeting}</h1>
+            )}
             <div ref={slotRef} className="ember-seed__composer-slot" aria-hidden="true" />
-            <div className="ember-seed__chips" aria-label="开始讨论">
+            {vmError ? null : <div className="ember-seed__chips" aria-label="开始讨论">
               {chips.map((c) => (
                 <button
                   key={c.id}
@@ -712,7 +669,13 @@ export function ChatPage() {
                   {c.label}
                 </button>
               ))}
-            </div>
+            </div>}
+            {vm && !vmError && vm.status === 'ok' ? (
+              <>
+                <OpinionCard vm={vm} />
+                <StoryBeats story={vm.narrative.story} />
+              </>
+            ) : null}
             {seedOverlays.map((m) => {
               const textPart = m.parts?.find((p) => p.type === 'text');
               const body =

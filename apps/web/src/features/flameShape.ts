@@ -1,4 +1,4 @@
-import type { ProjectFlameStage } from './projectEmber';
+import type { ProjectFlameStage } from './flameVisual';
 
 /** Visual proportions only; they never determine message or project state. */
 export interface FlameShape {

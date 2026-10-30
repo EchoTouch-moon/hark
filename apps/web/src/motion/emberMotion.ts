@@ -8,7 +8,7 @@ import {
   PULSE_DECAY_DURATION,
   WAITING_HALF_CYCLE,
 } from './easing';
-import type { ProjectFlameStage } from '../features/projectEmber';
+import type { ProjectFlameStage } from '../features/flameVisual';
 
 export interface FlameFrame {
   time: number;
