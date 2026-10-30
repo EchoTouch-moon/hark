@@ -482,8 +482,6 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
       if (sparksBuffer) gl.deleteBuffer(sparksBuffer);
       if (sVs) gl.deleteShader(sVs);
       if (sFs) gl.deleteShader(sFs);
-      const loseContext = gl.getExtension('WEBGL_lose_context');
-      if (loseContext) loseContext.loseContext();
     },
   };
 }

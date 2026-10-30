@@ -198,3 +198,7 @@ UI-02 全部完成并通关门禁：
 - 完成：菜单内火焰大小控制（0.65–1.40 键盘无障碍支持，localStorage 持久化），独立于交流温度；WebGL 丢失/降级时平滑切换至无脚本优雅静态兜底。
 - 精进：修复着色器边界剪裁（添加纹理边缘平滑平坠 fade）、打字高频输入 GSAP timeline 重启跳变闪烁（改为动态平滑过渡）、昼夜切换磨砂背景突变（补充平滑过度与暂停同步）、全局暂停在 documentElement 上的穿透联动，清理欢迎组件废弃 CSS。
 - 检查：`npm test`（49 测试套件 / 375 测试全通过）、`npm run typecheck`（退出码 0）、`npm run lint`（退出码 0，零错误）、`npm run build`（退出码 0）；Playwright `glass-fire.mjs` 7 项全绿，以及 `day-night-hearth.mjs`、`conversation-hearth.mjs` 历史全量回归无破坏。证据沉淀于 `handoff/EVIDENCE/living-fire/`。
+
+## 2026-10-30 启动预览与火焰上下文修复
+- 用户更新后的本地版本已重新构建并通过现有 4402 服务提供预览。浏览器以 4404 隔离合成数据检查，截图和日志见 `handoff/EVIDENCE/preview-2026-10-30/`。
+- 修复渲染器清理时主动丢失 WebGL 上下文，导致 React 初始化后持续退回简化效果的问题；实测纹理加载、火焰逐帧更新、暂停和恢复均通过。构建与修改文件 lint 通过；完整套件本次未运行。
