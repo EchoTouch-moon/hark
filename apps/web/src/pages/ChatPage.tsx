@@ -9,7 +9,7 @@ import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import { readWelcomePreference } from '../features/welcome';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useThreads } from '../app/AppShell';
-import { ApiError } from '../features/api/client';
+import { ApiError, apiFetch } from '../features/api/client';
 import {
   appendLocalMessage,
   executeMessageAction,
@@ -306,6 +306,20 @@ export function ChatPage() {
   const vmSource = useViewModelSource();
   const vm = vmSource.kind === 'ready' ? vmSource.vm : null;
   const vmError = blockingError(vmSource);
+  const [scanBusy, setScanBusy] = useState(false);
+  const [scanNote, setScanNote] = useState<string | null>(null);
+  const onScan = useCallback(async () => {
+    setScanBusy(true);
+    setScanNote(null);
+    try {
+      await apiFetch('/api/v1/discover', { method: 'POST', json: {} });
+      setScanNote('扫描完成');
+    } catch (cause) {
+      setScanNote(cause instanceof ApiError && cause.status === 429 ? '扫描太频繁，请稍后再试' : '扫描失败');
+    } finally {
+      setScanBusy(false);
+    }
+  }, []);
   const seedCopy = { band: emberBand, reason: messages.some((m) => m.role === 'user') ? 'returning' : 'no-interaction' };
 
   const reload = useCallback(async (threadId: string) => {
@@ -670,6 +684,14 @@ export function ChatPage() {
                 </button>
               ))}
             </div>}
+            {vmError || vm?.status === 'permission_denied' ? null : (
+              <>
+                <button type="button" className="xp-scan" disabled={scanBusy} onClick={() => void onScan()}>
+                  {scanBusy ? '扫描中…' : '重新扫描'}
+                </button>
+                {scanNote ? <p className="xp-scan__note" role="status">{scanNote}</p> : null}
+              </>
+            )}
             {vm && !vmError && vm.status === 'ok' ? (
               <>
                 <OpinionCard vm={vm} />

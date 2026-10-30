@@ -783,3 +783,7 @@
 @keyframes hearth-gold-sweep { 0% { opacity: 1; background-position: 100% 0; } 100% { opacity: 0; background-position: 0 0; } }
 .canvas-shell[data-flame-frozen='true'] .ember-atmosphere { filter: saturate(0.3); }
 @media (prefers-reduced-motion: reduce) { .hearth-gold-sweep { display: none; } .canvas-shell { transition: background-color 200ms linear; } }
+
+/* 设计 notes PR #8: error / permission_denied flame is desaturated and static. */
+.canvas-shell[data-flame-desaturated] .ember-atmosphere,
+.canvas-shell[data-flame-desaturated] .hearth-flame-pill__mark { filter: grayscale(1); transition: none; }

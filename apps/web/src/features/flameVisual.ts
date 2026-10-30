@@ -21,6 +21,10 @@ export interface FlameVisual {
   greeting: string;
   band: 'cool' | 'warm' | 'hot';
   reason: string;
+  /** Render greyscale (error / permission_denied). */
+  desaturated?: boolean;
+  /** Jump with no transition. */
+  instant?: boolean;
 }
 
 type LevelRow = Omit<FlameVisual, 'level' | 'golden' | 'reason'>;
@@ -51,9 +55,17 @@ export function flameVisual(flame: NarrativeState['flame']): FlameVisual {
   return { ...FLAME_LEVELS[flame.level], level: flame.level, golden: flame.milestoneGold ? 1 : 0, reason: flame.reason };
 }
 
-/** v7 §6 error: freeze to coal 0.2, flicker 0, desaturated. */
-export function frozenFlame(flame: NarrativeState['flame']): FlameVisual {
-  return { ...flameVisual(flame), stage: 'dormant', heat: 0.1, outer: 0, inner: 0, coal: 0.2, aura: 0, flicker: 0, golden: 0, dormant: 1 };
+/** 设计 notes on PR #8: error / permission_denied → neutral 0.10, desaturated, no transition, own label. */
+export function frozenFlame(label: string, reason: string): FlameVisual {
+  return { ...FLAME_LEVELS.neutral, level: 'neutral', golden: 0, reason, label, aura: 0, flicker: 0, tone: '#E6E3DF', desaturated: true, instant: true };
+}
+
+/** Shell flame from the ViewModel. Reads only narrative.flame; never counts. */
+export function shellFlame(vm: { status: string; observationFreshness: string; narrative: NarrativeState } | null): FlameVisual {
+  if (!vm || vm.status === 'error') return frozenFlame('火候未知', '读不到数据，暂不判断火候。');
+  if (vm.status === 'permission_denied') return frozenFlame('未授权读取', '没有读取权限，暂不判断火候。');
+  const v = flameVisual(vm.narrative.flame);
+  return vm.observationFreshness === 'stale' ? { ...v, label: `${v.label} · 旧观测` } : v;
 }
 
 function cubicBezier(x1: number, y1: number, x2: number, y2: number): (t: number) => number {

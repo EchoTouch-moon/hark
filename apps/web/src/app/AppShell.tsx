@@ -23,7 +23,7 @@ import {
 } from '../features/threads';
 import { preferLiveApi } from '../features/chat';
 import type { FlameLevel } from '@hearth/hearth-contract';
-import { EMBER_EASE, EMBER_EASE_CSS, flameTransitionSeconds, flameVisual, frozenFlame, type FlameVisual } from '../features/flameVisual';
+import { EMBER_EASE, EMBER_EASE_CSS, flameTransitionSeconds, shellFlame, type FlameVisual } from '../features/flameVisual';
 import { useViewModelSource } from '../features/hearthViewModel';
 import { EmberAtmosphere } from '../components/EmberAtmosphere';
 import { getHearthPeriod, type HearthPeriod } from '../features/hearthPeriod';
@@ -285,12 +285,9 @@ export function AppShell() {
   const vmSource = useViewModelSource();
   const vm = vmSource.kind === 'ready' ? vmSource.vm : null;
   // v7 §1/§6: flame reads ONLY narrative.flame; error / invalid freezes it.
-  const flameLife = useMemo<FlameVisual>(() => {
-    if (!vm) return frozenFlame({ level: 'neutral', reason: '数据不可用，暂不判断火势。', milestoneGold: false });
-    return vm.status === 'error' ? frozenFlame(vm.narrative.flame) : flameVisual(vm.narrative.flame);
-  }, [vm]);
+  const flameLife = useMemo<FlameVisual>(() => shellFlame(vm), [vm]);
   const prevLevel = useRef<FlameLevel>(flameLife.level);
-  const flameTransition = flameTransitionSeconds(prevLevel.current, flameLife.level);
+  const flameTransition = flameLife.instant ? 0 : flameTransitionSeconds(prevLevel.current, flameLife.level);
   useEffect(() => { prevLevel.current = flameLife.level; }, [flameLife.level]);
   const ember = { band: flameLife.band, heat: flameLife.heat };
 
@@ -401,6 +398,7 @@ export function AppShell() {
             .filter(Boolean)
             .join(' ')}
           data-hearth-period={hearthPeriod}
+          data-flame-desaturated={flameLife.desaturated || undefined}
           data-motion-paused={isPaused}
           data-ember-band={ember.band}
           data-flame-stage={flameLife.stage}
@@ -438,7 +436,7 @@ export function AppShell() {
               <header className="canvas-chrome">
                 <button type="button" className="hearth-wordmark" onClick={() => { setShellMode('chat'); setRailCollapsed(true); }} aria-label="返回对话">Hearth<span aria-hidden="true">.</span></button>
                 <div className="hearth-header-actions">
-                  <span className="hearth-flame-pill" data-flame-level={flameLife.level} tabIndex={0} title={flameLife.reason} aria-label={`炉火：${flameLife.label}。${flameLife.reason}`}>
+                  <span className="hearth-flame-pill" data-flame-level={flameLife.level} data-desaturated={flameLife.desaturated || undefined} tabIndex={0} title={flameLife.reason} aria-label={`炉火：${flameLife.label}。${flameLife.reason}`}>
                     <span className="hearth-flame-pill__mark" aria-hidden="true" />
                     <span className="hearth-flame-pill__label">{flameLife.label}</span>
                     {vm && vm.observationFreshness !== 'fresh' && vm.status !== 'error' ? (
