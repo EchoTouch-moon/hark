@@ -110,7 +110,7 @@ export async function startServer(overrides: Partial<Parameters<typeof loadConfi
   // empty shell (E2E disables this via HEARTH_AUTOSEED=0 to test the empty state).
   // First boot counts as a user action: quiet hours govern background scans,
   // not the explicit moment the user set the system up (docs/02 first-run matrix).
-  if (config.demoMode && storage.listProjects().length === 0 && process.env['HEARTH_AUTOSEED'] !== '0') {
+  if (config.demoMode === true && orchestrator.legacyExecutionEnabled && storage.listProjects().length === 0 && process.env['HEARTH_AUTOSEED'] !== '0') {
     await deps.services.seedDemo();
     await discovery.discover({ userInitiated: true });
   }

@@ -48,7 +48,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     observerDbPath:
       process.env['HEARTH_OBSERVER_DB'] ?? path.join(repoRoot, 'data', 'observer.sqlite'),
     artifactRoot: process.env['HEARTH_ARTIFACTS'] ?? path.join(repoRoot, '.hearth-demo-artifacts'),
-    demoMode: (process.env['HEARTH_DEMO'] ?? '0') !== '0',
+    demoMode: process.env['HEARTH_DEMO'] === '1',
     allowedOrigins: [
       `http://127.0.0.1:${port}`,
       `http://localhost:${port}`,
@@ -66,5 +66,6 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     ...overrides,
   };
   if (!['127.0.0.1', '::1', 'localhost'].includes(config.host)) throw new Error('仅允许 loopback 监听；当前没有远程身份认证');
+  if (typeof config.demoMode !== 'boolean') throw new Error('无效运行模式');
   return config;
 }

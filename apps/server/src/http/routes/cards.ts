@@ -6,6 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
+import { legacyDemoAllowed, rejectLegacyDemo } from '../legacy-demo.js';
 
 const SnoozeBodySchema = z
   .object({ until: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/) })
@@ -22,12 +23,14 @@ const lastDiscoverAtByStorage = new WeakMap<object, number>();
  */
 export function registerCardRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/v1/cards', async (req, reply) => {
+    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
     const q = req.query as { status?: string; projectId?: string };
     const cards = deps.storage.listCards({ status: q.status, projectId: q.projectId, limit: 100 });
     return reply.send({ cards });
   });
 
   app.get('/api/v1/cards/:id', async (req, reply) => {
+    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
     const { id } = req.params as { id: string };
     const card = deps.storage.getCard(id);
     if (!card) return reply.status(404).send({ error: { code: 'CARD_NOT_FOUND', message: `card ${id} not found` } });
@@ -40,6 +43,7 @@ export function registerCardRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   app.post('/api/v1/cards/:id/dismiss', async (req, reply) => {
+    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
     const { id } = req.params as { id: string };
     const body = DismissBodySchema.parse(req.body ?? {});
     const card = deps.storage.getCard(id);
@@ -57,6 +61,7 @@ export function registerCardRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   app.post('/api/v1/cards/:id/snooze', async (req, reply) => {
+    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
     const { id } = req.params as { id: string };
     const body = SnoozeBodySchema.parse(req.body);
     const card = deps.storage.getCard(id);
@@ -75,6 +80,7 @@ export function registerCardRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   app.post('/api/v1/discover', async (_req, reply) => {
+    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
     const now = Date.now();
     const last = lastDiscoverAtByStorage.get(deps.storage) ?? 0;
     if (now - last < 1500) {

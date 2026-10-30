@@ -8,6 +8,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import { CardExpiredError, ConflictError, NotFoundError } from '@hearth/core';
+import { legacyDemoAllowed, rejectLegacyDemo } from '../legacy-demo.js';
 
 const ApprovalBodySchema = z
   .object({ decision: z.enum(['approve', 'deny']) })
@@ -18,6 +19,7 @@ const ApprovalBodySchema = z
  */
 export function registerRunRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.post('/api/v1/cards/:id/execute', async (req, reply) => {
+    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
     const { id } = req.params as { id: string };
     const q = req.query as { sync?: string };
     try {
@@ -47,6 +49,7 @@ export function registerRunRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   app.post('/api/v1/approvals/:runId', async (req, reply) => {
+    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
     const { runId } = req.params as { runId: string };
     const body = ApprovalBodySchema.parse(req.body);
     try {
