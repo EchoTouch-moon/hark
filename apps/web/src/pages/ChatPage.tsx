@@ -660,10 +660,12 @@ export function ChatPage() {
           <div className="ember-seed" data-ember-band={seedCopy.band} data-flame-stage={flameLife.stage}>
             <div className="ember-seed__glow" aria-hidden="true" />
             {vmError ? <ErrorBar message={vmError.message} code={vmError.code} /> : null}
-            {vm && !vmError ? <StateNotices vm={vm} /> : null}
+            {vm && !vmError ? <StateNotices vm={vm} only="permission" /> : null}
             {vmError ? null : (
               <h1 className="ember-seed__greeting" data-flame-level={flameLife.level}>{displayName && vm?.status === 'empty' ? `${displayName}，从哪儿开始？` : flameLife.greeting}</h1>
             )}
+            {vmError ? null : <p className="ember-seed__reason" aria-hidden="true">{flameLife.reason}</p>}
+            {vm && !vmError ? <StateNotices vm={vm} only="stale" /> : null}
             <div ref={slotRef} className="ember-seed__composer-slot" aria-hidden="true" />
             {vmError ? null : <div className="ember-seed__chips" aria-label="开始讨论">
               {chips.map((c) => (

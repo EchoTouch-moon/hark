@@ -718,3 +718,7 @@ html[data-page-hidden="true"] *, html[data-motion-paused="true"] *, [data-motion
 /* QA 39fb67b: send = ink on paper; empty draft → 40% + aria-disabled. */
 .composer__send { background: var(--color-ink, #2a1f18); border-color: var(--color-ink, #2a1f18); color: #F7F0E6; box-shadow: none; opacity: 1; }
 .composer__send[aria-disabled='true'], .composer__send:disabled { background: var(--color-ink, #2a1f18); border-color: var(--color-ink, #2a1f18); color: #F7F0E6; opacity: .4; cursor: not-allowed; }
+
+/* E-B2 (设计 notes on 6eb403a): flame.reason sits directly under the hero title. */
+.ember-seed__reason { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: #5A514B; text-align: center; max-width: 560px; }
+.ember-seed__reason + .xp-notice { margin-top: 10px; }

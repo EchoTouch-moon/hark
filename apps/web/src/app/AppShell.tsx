@@ -441,7 +441,6 @@ export function AppShell() {
                   <span className="hearth-flame-pill" data-flame-level={flameLife.level} data-desaturated={flameLife.desaturated || undefined} tabIndex={0} title={flameLife.reason} aria-label={`炉火：${flameLife.label}。${flameLife.reason}`}>
                     <span className="hearth-flame-pill__mark" aria-hidden="true" />
                     <span className="hearth-flame-pill__label">{flameLife.label}</span>
-                    <span className="hearth-flame-reason" aria-hidden="true">{flameLife.reason}</span>
                     {vm && vm.observationFreshness !== 'fresh' && vm.status !== 'error' ? (
                       <span className="hearth-stale-dot" data-freshness={vm.observationFreshness} role="img" title={vm.observationFreshness === 'stale' ? '观察已过期，火势按最近一次观察显示' : `观察状态：${vm.observationFreshness}`} aria-label={vm.observationFreshness === 'stale' ? '观察已过期' : `观察状态：${vm.observationFreshness}`} />
                     ) : null}

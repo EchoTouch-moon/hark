@@ -1,5 +1,6 @@
 import type { EvidenceLabel, HearthViewModel, Permissions, StoryBeat } from '@hearth/hearth-contract';
 import type { ViewModelSource } from '../features/hearthViewModel';
+import { useLayoutEffect, useRef } from 'react';
 import './ExperienceState.css';
 
 /** Style Bible v7 §6 state matrix, screen A (conversation / Seed). */
@@ -21,16 +22,16 @@ export function deniedPermissions(p: Permissions): string[] {
   return (Object.keys(PERMISSION_LABELS) as (keyof typeof PERMISSION_LABELS)[]).filter((k) => !p[k]).map((k) => PERMISSION_LABELS[k]);
 }
 
-export function StateNotices({ vm }: { vm: HearthViewModel }) {
+export function StateNotices({ vm, only }: { vm: HearthViewModel; only?: 'permission' | 'stale' }) {
   const denied = deniedPermissions(vm.permissions);
   return (
     <>
-      {vm.status === 'permission_denied' ? (
+      {only !== 'stale' && vm.status === 'permission_denied' ? (
         <p className="xp-notice xp-notice--permission" role="status">
           未授权{denied.join('/') || '观察'}，部分内容不可用。<a href="/settings">去设置</a>
         </p>
       ) : null}
-      {vm.observationFreshness === 'stale' ? (
+      {only !== 'permission' && vm.observationFreshness === 'stale' ? (
         <p className="xp-notice xp-notice--stale" role="status">观察已过期，火势和依据按最近一次观察显示。</p>
       ) : null}
     </>
@@ -54,9 +55,23 @@ export function EvidenceList({ items }: { items: readonly EvidenceLabel[] }) {
 
 export function OpinionCard({ vm }: { vm: HearthViewModel }) {
   const op = vm.featuredOpinion;
+  const ref = useRef<HTMLElement>(null);
+  // The flame ends at this card's bottom edge: publish it as --flame-floor (viewport px) for the fixed atmosphere mask.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const sync = () => root.style.setProperty('--flame-floor', `${Math.round(el.getBoundingClientRect().bottom)}px`);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    window.addEventListener('resize', sync);
+    window.addEventListener('scroll', sync, true);
+    return () => { ro.disconnect(); window.removeEventListener('resize', sync); window.removeEventListener('scroll', sync, true); root.style.removeProperty('--flame-floor'); };
+  }, [op]);
   if (!op) return null;
   return (
-    <article className="xp-opinion" data-revision={op.revisionId} aria-label="观点">
+    <article ref={ref} className="xp-opinion" data-revision={op.revisionId} aria-label="观点">
       <p className="xp-opinion__judgement">{op.opinion}</p>
       <p className="xp-opinion__why">{op.whyNow}</p>
       <EvidenceList items={op.evidence} />

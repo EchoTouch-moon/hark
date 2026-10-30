@@ -36,3 +36,9 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .ember-atmosphere__canvas, .ember-atmosphere__fallback { filter: blur(38px); }
 }
+
+/* The flame ends at the opinion card's bottom edge (--flame-floor set by OpinionCard); below it is clean paper. */
+.ember-atmosphere {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(var(--flame-floor, 200vh) - 56px), transparent var(--flame-floor, 200vh));
+  mask-image: linear-gradient(to bottom, #000 calc(var(--flame-floor, 200vh) - 56px), transparent var(--flame-floor, 200vh));
+}
