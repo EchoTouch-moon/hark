@@ -73,7 +73,6 @@ export interface ProactiveDto {
 
 const PARTS_STORAGE = 'hearth.chat.parts.v2';
 const LOCAL_MSGS_STORAGE = 'hearth.chat.localMsgs.v2';
-const PROACTIVE_INJECT_PREFIX = 'hearth.proactive.injected.';
 
 /** 本会话已探测到 G1–G4 真 API；此后不再用旧 Mock 叠层盖住服务端数据。 */
 let liveApi = false;
@@ -82,11 +81,9 @@ export function isLiveApi(): boolean {
   return liveApi;
 }
 
-/** AppShell / 探测成功时调用：切 live，并清掉会盖住真 proactive 的旧 Mock。 */
+/** AppShell / 探测成功时调用：记录 liveApi 状态。原始本地历史数据完整保留，不执行删除。 */
 export function preferLiveApi(): void {
-  const first = !liveApi;
   liveApi = true;
-  if (first) clearStaleMockOverlay();
 }
 
 function isMockOverlayMessageId(id: string): boolean {
@@ -98,50 +95,13 @@ function isMockOverlayMessageId(id: string): boolean {
   );
 }
 
-/** 清 proactive 注入标记 + 本地假消息/假 parts；保留 CSRF 等其它 key。 */
+/**
+ * 历史数据完整保留，不删除 localStorage 中的消息或 parts。
+ * 阻止旧模拟内容由读取和展示层过滤保证，保留原始数据以供审计。
+ */
 export function clearStaleMockOverlay(): void {
-  try {
-    const keys: string[] = [];
-    for (let i = 0; i < window.localStorage.length; i += 1) {
-      const k = window.localStorage.key(i);
-      if (k && k.startsWith(PROACTIVE_INJECT_PREFIX)) keys.push(k);
-    }
-    for (const k of keys) window.localStorage.removeItem(k);
-  } catch {
-    // ignore
-  }
-  try {
-    const bag = readLocalMsgs();
-    let changed = false;
-    for (const threadId of Object.keys(bag)) {
-      const list = bag[threadId] ?? [];
-      const next = list.filter((m) => !isMockOverlayMessageId(m.id));
-      if (next.length !== list.length) {
-        bag[threadId] = next;
-        changed = true;
-      }
-      if ((bag[threadId] ?? []).length === 0) {
-        delete bag[threadId];
-        changed = true;
-      }
-    }
-    if (changed) writeLocalMsgs(bag);
-  } catch {
-    // ignore
-  }
-  try {
-    const parts = readPartsBag();
-    let changed = false;
-    for (const id of Object.keys(parts)) {
-      if (isMockOverlayMessageId(id)) {
-        delete parts[id];
-        changed = true;
-      }
-    }
-    if (changed) writePartsBag(parts);
-  } catch {
-    // ignore
-  }
+  // Deliberately no-op: raw local history and parts must remain intact for auditability.
+  // Old mock overlays and actions are filtered out at the read/presentation layer.
 }
 
 
@@ -194,9 +154,9 @@ function writeLocalMsgs(bag: LocalMsgBag): void {
   }
 }
 
-/** 合并服务端历史 + 前端 Mock 叠加消息（同 id 去重，本地覆盖）。 */
+/** 合并服务端历史 + 前端 Mock 叠加消息（同 id 去重，本地覆盖）。读取与展示层过滤掉旧 mock 模拟消息，不污染展示，且不删除存储。 */
 export function mergeLocalMessages(threadId: string, server: CanvasMessage[]): CanvasMessage[] {
-  const local = readLocalMsgs()[threadId] ?? [];
+  const local = (readLocalMsgs()[threadId] ?? []).filter((m) => !isMockOverlayMessageId(m.id));
   if (local.length === 0) return server;
   const byId = new Map<string, CanvasMessage>();
   for (const m of server) byId.set(m.id, m);
@@ -282,11 +242,6 @@ export async function fetchProactive(
       { signal },
     );
     preferLiveApi();
-    try {
-      window.localStorage.removeItem(`${PROACTIVE_INJECT_PREFIX}${threadId}`);
-    } catch {
-      // ignore
-    }
     return { suggestion: data.suggestion ?? null, mock: false };
   } catch {
     // 404, 403, network failure, or unknown thread: fail closed, return null suggestion.

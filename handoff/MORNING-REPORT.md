@@ -195,9 +195,11 @@ UI-02 完成（UI-02.1、UI-02.2、UI-02.3 全部交付）：
 - **执行角色**：由前端执行工程师针对二轮审查指出的本地数据保留、时区测试、主页面错误态与 403 证据表述问题进行全量整改与重新验收。
 - **状态总结**：
   - **PASS**：
-    1. **[P1 修复] 保留本地原始历史数据，禁止无条件删除**：
-       - `apps/web/src/features/chat.ts` 彻底移除了对 `hearth.chat.parts.v2` 与 `hearth.chat.localMsgs.v2` 的 `removeItem` 删除逻辑；原始合成与历史数据完整保留，不影响历史审计；
-       - 当前对话严格以服务端消息为唯一权威来源，绝不再向服务端消息拼回旧 parts，杜绝旧动作按钮复现。
+    1. **[P1 修复] 保留本地全部原始历史数据（含旧模拟记录），禁止删除**：
+       - `apps/web/src/features/chat.ts` 彻底移除了模块加载时的删除逻辑，以及连接成功时 `preferLiveApi` 触发的 `clearStaleMockOverlay` 针对 `hearth.chat.localMsgs.v2` 与 `hearth.chat.parts.v2` 的过滤删除，并移除了 `fetchProactive` 中的 `removeItem`；
+       - 本地存储中的所有记录（普通用户记录与 `mock-result-*`、`mock-progress-*`、`mock-action-*` 等旧模拟记录及其附加内容）100% 完整保留，不执行任何写回删除或内容裁剪；
+       - 阻止旧模拟内容由读取与展示层过滤严格保证（服务端历史消息为唯一权威，`mergeLocalMessages` 过滤旧模拟 ID 且不写回存储，旧 parts 绝不回填），底层存储原始数据完整保全以供历史审计；
+       - E2E 测试包含普通记录与 `mock-result-42` 等旧模拟记录，在服务端连接成功后以及页面刷新后逐项比对（`toEqual`），断言内容 100% 完整保留，且旧模拟完成结果与旧动作按钮绝不重新回灌至对话界面。
     2. **[P2 修复] 固定测试时区，消除 CI 跨时区昼夜判定差异**：
        - `tests/e2e/playwright.config.ts` 与 `tests/e2e/runtime-mode.spec.ts` 均显式配置固定时区 `timezoneId: 'Asia/Shanghai'`；
        - 在 `TZ=UTC` 模拟环境下全绿复验通过，确保在任何 CI 容器或不同时区的宿主机上昼夜断言恒定一致。

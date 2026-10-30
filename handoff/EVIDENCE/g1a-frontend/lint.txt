@@ -16,5 +16,9 @@ $ eslint .
 /Users/v/new-idea/hark/scripts/register-observer-pilots.ts
   39:61  warning  'canonicalPath' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
 
-✖ 6 problems (0 errors, 6 warnings)
+/Users/v/new-idea/hark/tests/e2e/runtime-mode.spec.ts
+  249:7  warning  'executeCallMethod' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  250:7  warning  'executeCallUrl' is assigned a value but never used     @typescript-eslint/no-unused-vars
+
+✖ 8 problems (0 errors, 8 warnings)
 

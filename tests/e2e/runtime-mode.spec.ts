@@ -182,12 +182,25 @@ test('offline indicator is actually visible across welcome flow, true night them
 });
 
 test('backend action rejection preserves user draft and never fabricates progress or fake completion', async ({ page }) => {
-  // Pre-seed completed welcome and synthetic legacy local storage data to verify data retention
-  await page.addInitScript(() => {
+  const syntheticLocalMsgs = {
+    'thread-legacy': [
+      { id: 'msg-normal-1', role: 'user', content: '普通用户历史记录', createdAt: '2026-10-30T06:00:00.000Z' },
+      { id: 'mock-result-42', role: 'assistant', content: '旧模拟执行结果：已完成', createdAt: '2026-10-30T06:01:00.000Z' },
+      { id: 'mock-progress-1', role: 'assistant', content: '旧模拟执行中', createdAt: '2026-10-30T06:02:00.000Z' },
+    ],
+  };
+  const syntheticParts = {
+    'msg-normal-1': [{ type: 'text', text: '普通用户文本附加内容' }],
+    'mock-result-42': [{ type: 'result', ok: true, text: '旧模拟完成态产物' }],
+    'mock-action-legacy': [{ type: 'actions', actions: [{ id: 'legacy-act', label: '旧动作' }] }],
+  };
+
+  // Pre-seed completed welcome and synthetic legacy local storage data (both normal and mock overlay records)
+  await page.addInitScript(({ msgs, parts }) => {
     window.localStorage.setItem('hearth.welcome.v1', JSON.stringify({ version: 1, completed: true, name: '' }));
-    window.localStorage.setItem('hearth.chat.parts.v2', JSON.stringify({ 'msg-legacy': [{ type: 'actions', actions: [] }] }));
-    window.localStorage.setItem('hearth.chat.localMsgs.v2', JSON.stringify({ 'thread-legacy': [{ id: 'msg-legacy', role: 'user', content: 'legacy' }] }));
-  });
+    window.localStorage.setItem('hearth.chat.localMsgs.v2', JSON.stringify(msgs));
+    window.localStorage.setItem('hearth.chat.parts.v2', JSON.stringify(parts));
+  }, { msgs: syntheticLocalMsgs, parts: syntheticParts });
 
   // Enable demo mode in health so legacy action button is mounted for testing
   await page.route('**/api/v1/health', async (route) => {
@@ -255,11 +268,33 @@ test('backend action rejection preserves user draft and never fabricates progres
 
   await page.goto('/');
 
-  // Assert pre-existing local storage records are preserved intact and NOT deleted or wiped to null
-  const preservedParts = await page.evaluate(() => window.localStorage.getItem('hearth.chat.parts.v2'));
-  const preservedMsgs = await page.evaluate(() => window.localStorage.getItem('hearth.chat.localMsgs.v2'));
-  expect(preservedParts).not.toBeNull();
-  expect(preservedMsgs).not.toBeNull();
+  // 1. Verify item-by-item retention in localStorage: both normal records and mock records remain intact
+  const assertLocalStorageIntact = async () => {
+    const rawParts = await page.evaluate(() => window.localStorage.getItem('hearth.chat.parts.v2'));
+    const rawMsgs = await page.evaluate(() => window.localStorage.getItem('hearth.chat.localMsgs.v2'));
+    expect(rawParts).not.toBeNull();
+    expect(rawMsgs).not.toBeNull();
+    const parsedParts = JSON.parse(rawParts!);
+    const parsedMsgs = JSON.parse(rawMsgs!);
+
+    // Item-by-item comparison: both normal records and mock-result-42 / mock-progress-1 remain unchanged
+    expect(parsedMsgs['thread-legacy']).toEqual(syntheticLocalMsgs['thread-legacy']);
+    expect(parsedParts['mock-result-42']).toEqual(syntheticParts['mock-result-42']);
+    expect(parsedParts['msg-normal-1']).toEqual(syntheticParts['msg-normal-1']);
+    expect(parsedParts['mock-action-legacy']).toEqual(syntheticParts['mock-action-legacy']);
+  };
+
+  await assertLocalStorageIntact();
+
+  // 2. Refresh page and verify item-by-item retention persists
+  await page.reload();
+  await assertLocalStorageIntact();
+
+  // 3. Verify reading and presentation layers strictly prevent old mock records and legacy actions from resurfacing
+  expect(await page.getByText('旧模拟执行结果：已完成').count()).toBe(0);
+  expect(await page.getByText('旧模拟完成态产物').count()).toBe(0);
+  expect(await page.getByText('旧模拟执行中').count()).toBe(0);
+  expect(await page.getByRole('button', { name: '旧动作' }).count()).toBe(0);
 
   // Wait for the action button to be rendered
   const actionBtn = page.getByRole('button', { name: '执行受限动作' });
@@ -270,18 +305,21 @@ test('backend action rejection preserves user draft and never fabricates progres
   await expect(input).toBeVisible();
   await input.fill('草稿内容必须保留');
 
-  // Trigger the action
-  await actionBtn.click();
-
-  // Assert execute endpoint was called with POST to the exact actions endpoint and responded 403
-  expect(executeCallMethod).toBe('POST');
-  expect(executeCallUrl).toMatch(/\/api\/v1\/threads\/.*\/actions\/act-legacy-1\/execute/);
-  expect(executeCallStatus).toBe(403);
+  // Trigger the action and await the intercepted network request
+  const [request] = await Promise.all([
+    page.waitForRequest((req) => req.url().includes('/actions/act-legacy-1/execute') && req.method() === 'POST'),
+    actionBtn.click(),
+  ]);
 
   // Expect error alert shown
   const alert = page.getByRole('alert');
   await expect(alert).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/旧演示执行接口已在此版本中禁用|旧模拟操作当前不可用|出了点问题/).first()).toBeVisible();
+
+  // Assert execute endpoint was called with POST to the exact actions endpoint and responded 403
+  expect(request.method()).toBe('POST');
+  expect(request.url()).toMatch(/\/api\/v1\/threads\/.*\/actions\/act-legacy-1\/execute/);
+  expect(executeCallStatus).toBe(403);
 
   // Assert NO fake progress ("确认范围", "running") or fake completion was fabricated
   expect(await page.getByText(/确认范围|已完成|completed/i).count()).toBe(0);

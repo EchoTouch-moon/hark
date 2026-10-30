@@ -12,7 +12,10 @@
   2. 无效运行模式门禁阻断，重试恢复；
   3. `legacyDemoAvailable` 缺失或无效、或 `demoMode: false && legacyDemoAvailable: true` 时一律失败关闭；
   4. 昼夜真实时间切换（14:00 白天与 22:00 夜间真实时间注入）、1280×800/1440×900 视口无横向溢出；明确限定标识为「当前对话为 Mock · 离线演示」；
-  5. 动作执行拒绝合同（由 Playwright 拦截前端真实请求路径 `POST /api/v1/threads/:threadId/actions/:actionId/execute` 并模拟返回 403 `LEGACY_ACTIONS_DISABLED`）：断言前端发起 POST 请求到该确切路径、收到 403 拒绝后明确报错、绝不乐观插入虚假进度或伪造完成态、严格保留用户草稿；验证历史 localStorage 记录（`hearth.chat.parts.v2`、`hearth.chat.localMsgs.v2`）完整保留且不删除，同时服务端消息绝不回填旧 parts；（注：真实服务端的 403 拒绝由后端的独立 HTTP 测试验证，详见 `handoff/EVIDENCE/g1a-backend/`）；
+  5. 动作执行拒绝合同与本地数据保全：
+     - 本地数据完整保全验证：预置包含普通用户记录（`msg-normal-1`）与旧模拟记录（`mock-result-42`、`mock-progress-1`、`mock-action-legacy`）的合成存储，在服务端正常响应连接成功后及页面刷新后逐项比对（`toEqual`），断言全部记录 100% 完整保留无任何丢失或内容裁剪，彻底根除此前连接成功后 `preferLiveApi` 触发 `clearStaleMockOverlay` 删除旧记录的问题；
+     - 读取与展示层过滤验证：断言旧模拟结果（“已完成”）、旧模拟进度与旧动作按钮绝不在对话界面重新出现；
+     - 403 动作拒绝契约验证：由 Playwright 拦截前端请求路径 `POST /api/v1/threads/:threadId/actions/:actionId/execute` 并模拟返回 403 `LEGACY_ACTIONS_DISABLED`，断言前端发起 POST 请求到确切路径、收到拒绝后明确报错、绝不乐观插入虚假进度或伪造完成态、严格保留用户草稿；（注：真实服务端的 403 拒绝由后端的独立 HTTP 测试验证，详见 `handoff/EVIDENCE/g1a-backend/`）；
   6. 后端主动建议返回 null 时，等待加载完成并断言清爽主态，绝不注入虚假建议或卡片；
   7. 线程服务异常（如 503）：在主对话区直接展示错误提示与重试按钮，输入框禁用；重试恢复后主对话区错误自动消除并启用输入框；历史侧栏同步展示健康列表。
 - `e2e-hearth-chat.txt`: `tests/e2e/hearth.spec.ts` 中针对对话 Mock、持久化与视口的端到端测试输出，全部通过。

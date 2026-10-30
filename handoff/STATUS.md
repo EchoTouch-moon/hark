@@ -240,9 +240,11 @@ UI-02 全部完成并通关门禁：
 - **状态**：COMPLETED · PASS（针对二轮审查指出的本地数据保留、时区测试、主页面错误态与证据表述问题已全部彻底修复并通过真机验证）
 - **修改范围**：严格受限于 `apps/web/src/`、`tests/e2e/playwright.config.ts`、`tests/e2e/runtime-mode.spec.ts` 及 `handoff/` 交付物。未触及后端、数据迁移、安全策略或外部真实模型。
 - **四大核心整改措施**：
-  1. **[P1 修复] 禁止无条件删除旧本地数据，保留原始记录**：
-     - 在 `apps/web/src/features/chat.ts` 中完全移除了模块加载时对 `hearth.chat.parts.v2` 与 `hearth.chat.localMsgs.v2` 的 `removeItem` 调用；原始合成或历史聊天数据在 localStorage 中完整保留，不强制置空；
-     - 服务端历史消息保持为当前对话展示的唯一权威来源，绝不再向服务端消息拼回旧 parts，从根本上杜绝旧操作复现，同时保证既有数据的完整性与可审计性。
+  1. **[P1 修复] 禁止删除旧本地数据，保留全部原始记录（含旧模拟记录）**：
+     - 在 `apps/web/src/features/chat.ts` 中彻底移除了模块加载时的 `removeItem`，以及连接成功时 `preferLiveApi` 触发的 `clearStaleMockOverlay` 对 `hearth.chat.localMsgs.v2` 与 `hearth.chat.parts.v2` 的过滤删除，并移除了 `fetchProactive` 中的 `removeItem`；
+     - 原始本地存储中的所有记录（包含普通用户记录与 `mock-result-*`、`mock-progress-*`、`mock-action-*` 等旧模拟记录及其附加内容）100% 完好保留，不执行任何写回删除或裁剪；
+     - 阻止旧模拟内容由读取与展示层过滤保证（服务端历史消息为唯一权威，`mergeLocalMessages` 过滤旧模拟 ID 且不写回存储，旧 parts 绝不回填），底层存储原始数据完整保全以供历史审计；
+     - 在 E2E 测试中注入包含普通用户记录与 `mock-result-42` 等旧模拟记录的完整数据，在服务端连接成功后以及页面刷新后逐项严格比对内容（`toEqual`），断言记录完整无缺，且旧模拟完成结果与旧动作按钮绝不重新回灌至对话界面。
   2. **[P2 修复] 固定测试时区，消除 CI/跨时区环境差异**：
      - 在 `tests/e2e/playwright.config.ts` 的 `use` 配置中增加 `timezoneId: 'Asia/Shanghai'`；在 `tests/e2e/runtime-mode.spec.ts` 显式声明 `test.use({ timezoneId: 'Asia/Shanghai' })`；
      - 显式在 `TZ=UTC` 模拟环境下全量复验，确认 14:00 白天与 22:00 夜间断言与真实主题渲染均 100% 稳定通过，不再依赖运行宿主机的本地时区。

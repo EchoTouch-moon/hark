@@ -9,12 +9,12 @@ npm notice run 'playwright' test -c tests/e2e/playwright.config.ts tests/e2e/run
 
 Running 7 tests using 1 worker
 
-  ✓  1 tests/e2e/runtime-mode.spec.ts:8:1 › unknown and real mode never mount Demo actions, including direct URLs (4.6s)
-  ✓  2 tests/e2e/runtime-mode.spec.ts:72:1 › invalid mode fails closed across /demo and /cards, and a deliberate retry can recover (2.7s)
-  ✓  3 tests/e2e/runtime-mode.spec.ts:96:1 › real mode or missing legacyDemoAvailable fails closed across /demo and /cards (4.7s)
-  ✓  4 tests/e2e/runtime-mode.spec.ts:125:1 › offline indicator is actually visible across welcome flow, true night theme, and desktop viewports (5.1s)
-  ✓  5 tests/e2e/runtime-mode.spec.ts:184:1 › backend action rejection preserves user draft and never fabricates progress or fake completion (3.7s)
-  ✓  6 tests/e2e/runtime-mode.spec.ts:295:1 › backend proactive null returns clean state without fake injected cards (1.7s)
-  ✓  7 tests/e2e/runtime-mode.spec.ts:328:1 › thread service failure renders error state with retry in main conversation area and history rail (3.8s)
+  ✓  1 tests/e2e/runtime-mode.spec.ts:8:1 › unknown and real mode never mount Demo actions, including direct URLs (3.3s)
+  ✓  2 tests/e2e/runtime-mode.spec.ts:72:1 › invalid mode fails closed across /demo and /cards, and a deliberate retry can recover (2.0s)
+  ✓  3 tests/e2e/runtime-mode.spec.ts:96:1 › real mode or missing legacyDemoAvailable fails closed across /demo and /cards (3.5s)
+  ✓  4 tests/e2e/runtime-mode.spec.ts:125:1 › offline indicator is actually visible across welcome flow, true night theme, and desktop viewports (4.4s)
+  ✓  5 tests/e2e/runtime-mode.spec.ts:184:1 › backend action rejection preserves user draft and never fabricates progress or fake completion (2.5s)
+  ✓  6 tests/e2e/runtime-mode.spec.ts:333:1 › backend proactive null returns clean state without fake injected cards (1.4s)
+  ✓  7 tests/e2e/runtime-mode.spec.ts:366:1 › thread service failure renders error state with retry in main conversation area and history rail (2.1s)
 
-  7 passed (34.0s)
+  7 passed (24.6s)
