@@ -139,8 +139,10 @@ void main() {
   vec4 photo = vec4(0.0);
   if (tex.x > 0.0 && tex.x < 1.0 && tex.y > 0.0 && tex.y < 1.0) {
     photo = texture2D(u_flame, tex);
+    // Sample premultiplied texture colors, then recover straight color for compositing.
+    photo.rgb = photo.a > 0.0001 ? photo.rgb / photo.a : vec3(0.0);
     float edgeFade = smoothstep(0.0, 0.05, tex.x) * (1.0 - smoothstep(0.95, 1.0, tex.x)) * smoothstep(0.0, 0.03, tex.y) * (1.0 - smoothstep(0.95, 1.0, tex.y));
-    photo *= edgeFade;
+    photo.a *= edgeFade;
   }
   float crossFlow = fbm(vec2(tx * 3.1 - 4.0, ty * 3.2 - t * 1.32));
   vec2 secondTex = vec2(0.5 + (tx - 0.5) * 1.12, ty * 1.08 + 0.035)
@@ -148,16 +150,17 @@ void main() {
   vec4 second = vec4(0.0);
   if (secondTex.x > 0.0 && secondTex.x < 1.0 && secondTex.y > 0.0 && secondTex.y < 1.0) {
     second = texture2D(u_flame, secondTex);
+    second.rgb = second.a > 0.0001 ? second.rgb / second.a : vec3(0.0);
     float secondEdgeFade = smoothstep(0.0, 0.05, secondTex.x) * (1.0 - smoothstep(0.95, 1.0, secondTex.x)) * smoothstep(0.0, 0.03, secondTex.y) * (1.0 - smoothstep(0.95, 1.0, secondTex.y));
-    second *= secondEdgeFade;
+    second.a *= secondEdgeFade;
   }
   float flicker = 0.88 + 0.12 * noise(vec2(tx * 4.0 + t, ty * 4.0 - t * 2.0));
   flicker = mix(flicker, 0.96 + 0.04 * sin(t * 1.2), u_golden * 0.7);
-  vec3 nightGrade = vec3(1.0, 0.83, 0.66);
-  vec3 dayGrade = vec3(0.90, 0.77, 0.69);
+  vec3 nightGrade = vec3(1.0, 0.88, 0.73);
+  vec3 dayGrade = vec3(0.95, 0.84, 0.76);
   vec3 grade = mix(nightGrade, dayGrade, u_day);
   grade = mix(grade, vec3(1.10, 0.94, 0.70), u_golden * 0.85);
-  grade = mix(grade, vec3(0.72, 0.36, 0.24), u_dormant * 0.90);
+  grade = mix(grade, vec3(0.82, 0.46, 0.30), u_dormant * 0.90);
   vec3 photoColor = photo.rgb * grade * flicker;
   vec3 secondColor = second.rgb * grade * flicker;
   float photoAlpha = min(1.0, photo.a * (1.0 + (u_response + u_surge * 0.5) * 0.25)) * mix(0.94, 0.90, u_day) * (1.0 - u_dormant * 0.45) * u_textureReady;
@@ -292,6 +295,7 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
     textureReady = true;
     onTextureReady();

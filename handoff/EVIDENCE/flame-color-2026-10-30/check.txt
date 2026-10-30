@@ -1,0 +1,3 @@
+PASS flame renders and keeps animating
+PASS pause stops flame
+PASS resume and no page errors
