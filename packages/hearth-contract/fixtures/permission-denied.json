@@ -1,0 +1,1 @@
+{"mode":"real","status":"permission_denied","scope":{"kind":"project","projectId":"proj_hearth","title":"Hearth"},"narrative":{"flame":{"level":"neutral","reason":"未授权观察，无法判断火势。","milestoneGold":false},"story":[]},"featuredOpinion":null,"observationFreshness":"disabled","permissions":{"observe":false,"research":false,"model":true,"execute":false}}
