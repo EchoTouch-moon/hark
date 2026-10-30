@@ -48,7 +48,7 @@ it('serves fail-closed G1-A behavior over real loopback HTTP with isolated synth
   expect(cookie).toBeTruthy();
   const { csrfToken } = await session.json() as { csrfToken: string };
   const headers = { cookie: cookie!, origin, 'x-csrf-token': csrfToken, 'content-type': 'application/json' };
-  const created = await fetch(`${origin}/api/v1/threads`, { method: 'POST', headers, body: JSON.stringify({ title: '合成线程', projectId: 'project-a' }) });
+  const created = await fetch(`${origin}/api/v1/threads`, { method: 'POST', headers, body: JSON.stringify({ title: '合成线程', projectId: null }) });
   expect(created.status).toBe(201);
   const { thread } = await created.json() as { thread: { id: string } };
   const before = server.storage.getThread(thread.id);

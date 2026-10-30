@@ -11,6 +11,14 @@ const CreateThreadSchema = z
   })
   .strict();
 
+const ListThreadsSchema = z.object({ projectId: z.string().min(1).max(128).optional() }).strict();
+
+// Thread links refer to the read-only Observer registry. Legacy Demo project
+// identities must never silently establish a real project scope.
+function hasObservedProject(deps: AppDeps, projectId: string): boolean {
+  return deps.observer?.listProjects().some(project => project.id === projectId) ?? false;
+}
+
 function threadDto(t: { id: string; title: string; preview: string; projectId: string | null; updatedAt: string }, deps: AppDeps) {
   const matching = t.preview ? deps.storage.listChat(t.id).filter(message => message.content.slice(0, 80) === t.preview) : [];
   const safePreview = matching.length > 0 && matching.every(message => !isUnsafeLegacyMessage(message));
@@ -24,12 +32,20 @@ function threadDto(t: { id: string; title: string; preview: string; projectId: s
 }
 
 export function registerThreadRoutes(app: FastifyInstance, deps: AppDeps): void {
-  app.get('/api/v1/threads', async (_req, reply) => {
-    return reply.send({ threads: deps.storage.listThreads().map(thread => threadDto(thread, deps)) });
+  app.get('/api/v1/threads', async (req, reply) => {
+    const query = ListThreadsSchema.parse(req.query);
+    if (query.projectId && !hasObservedProject(deps, query.projectId)) {
+      return reply.status(404).send({ error: { code: 'PROJECT_NOT_FOUND', message: '该项目尚未登记只读观察，或已被移除。' } });
+    }
+    const threads = deps.storage.listThreads().filter(thread => !query.projectId || thread.projectId === query.projectId);
+    return reply.send({ threads: threads.map(thread => threadDto(thread, deps)) });
   });
 
   app.post('/api/v1/threads', async (req, reply) => {
     const body = CreateThreadSchema.parse(req.body ?? {});
+    if (body.projectId && !hasObservedProject(deps, body.projectId)) {
+      return reply.status(404).send({ error: { code: 'PROJECT_NOT_FOUND', message: '请先登记一个本地项目，再开始谈话。' } });
+    }
     const now = new Date().toISOString();
     const id = `thread-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const thread = {
