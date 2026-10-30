@@ -40,9 +40,30 @@ try {
     await composerFits();
   });
   await shot('home-1440');
+  await check('memory fold recalls one dated project fragment and stays collapsed',async()=>{
+    assert.equal(await page.locator('.memory-fold').count(),1);
+    assert.equal(await page.locator('.memory-fold').getAttribute('open'),null);
+    assert.match(await page.locator('.memory-fold summary').innerText(),/片段.*2025.02.*读到好内容/s);
+  });
+  await page.getByRole('button',{name:'发送示例消息'}).isVisible();
+  await page.locator('.memory-fold summary').focus();
+  await page.keyboard.press('Enter');
+  await check('keyboard unfolds sourced memory inline without changing the conversation',async()=>{
+    assert.equal(await page.locator('.memory-fold').evaluate(el=>el.open),true);
+    assert.match(await page.locator('.memory-unfolded').innerText(),/合成档案.*不代表已读取真实项目/s);
+    assert.equal(new URL(page.url()).hash,'#discover');
+    await composerFits();
+  });
+  await shot('memory-open-1440');
+  await page.keyboard.press('Enter');
+  await page.locator('.memory-fold summary').blur();
   await page.setViewportSize({width:390,height:844});
   await check('390 home composer is ready inside the first viewport', composerFits);
   await shot('home-390');
+  await page.locator('.memory-fold summary').click();
+  await check('narrow unfolded memory preserves an accessible input and send',composerFits);
+  await shot('memory-open-390');
+  await page.locator('.memory-fold summary').click();
   await page.setViewportSize({width:1280,height:800});
   await check('1280 desktop composer and send are inside first viewport', composerFits);
   await shot('home-1280');
@@ -70,6 +91,7 @@ try {
     assert.equal(await page.locator('#conversation-scope').inputValue(),'fragments');
     assert.equal(await page.locator('#conversation-input').inputValue(),'');
     assert.equal(await page.locator('#app-main h1').innerText(),'片段');
+    assert.match(await page.locator('.memory-origin').innerText(),/片段/);
   });
   await send('这个项目当时的思路是什么？');
   await page.locator('#conversation-input').fill('片段的独立草稿');
@@ -118,7 +140,7 @@ try {
   await check('390 narrow long conversation keeps send inside viewport and no sideways scroll',composerFits);
   await shot('active-conversation-390');
   await scope('tide');
-  await check('narrow scope switch uses a separate empty conversation',async()=>assert.equal(await page.locator('.chat-message.is-user').count(),0));
+  await check('narrow scope switch uses a separate empty conversation and project memory',async()=>{assert.equal(await page.locator('.chat-message.is-user').count(),0);assert.match(await page.locator('.memory-origin').innerText(),/潮汐.*2026.06/s);});
   await scope('all');
   await page.getByRole('button',{name:'项目库',exact:true}).click(); await settled();
   await check('project library remains accessible from navigation',async()=>assert.equal(await page.locator('.project-row').count(),3));

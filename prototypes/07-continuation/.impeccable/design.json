@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-30T14:28:09.252Z",
+  "generatedAt": "2026-10-30T14:37:16.058Z",
   "title": "Design System: Hearth · 续页",
   "extensions": {
     "colorMeta": {
@@ -202,6 +202,13 @@
       "description": "主页的主操作；选择范围后输入并发送。",
       "html": "<form class=\"ds-composer\"><label class=\"ds-label\">消息<textarea placeholder=\"问问你的项目，或说说现在的想法…\"></textarea></label><div class=\"ds-toolbar\"><label><select aria-label=\"讨论范围\"><option>全部项目</option><option>片段</option></select></label><button type=\"button\">发送</button></div></form>",
       "css": ".ds-composer{background:var(--surface,#fffefa);border:1px solid var(--line,#d3dacf);border-radius:16px;padding:16px 18px 12px;color:var(--ink,#25332d)}.ds-label{font-size:11px}.ds-composer textarea{display:block;width:100%;min-height:56px;background:transparent;border:0;resize:none;color:inherit;font:14px/1.8 sans-serif}.ds-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:8px;font-size:11px}.ds-toolbar select{background:var(--surface,#fffefa);color:inherit;border:1px solid var(--line,#d3dacf);border-radius:5px;padding:6px 9px}.ds-toolbar button{background:var(--accent,#354e41);color:var(--on-accent,#fffefa);padding:8px 12px;border:0;border-radius:5px;min-height:36px;cursor:pointer}.ds-composer:focus-within{border-color:var(--focus,#607d68)}.ds-toolbar button:hover{opacity:.9}.ds-composer :focus-visible{outline:2px solid var(--focus,#607d68);outline-offset:4px}"
+    },
+    {
+      "name": "Memory Fold",
+      "kind": "custom",
+      "description": "项目旧念头的日期引用，原处展开成材料与未知。",
+      "html": "<details class=\"ds-memory\"><summary><span>片段 · 2025.02 · 示例记忆</span><q>读到好内容时，先留下来。</q></summary><p>合成档案中的旧念头与材料；不代表已读取真实项目。</p></details>",
+      "css": ".ds-memory{color:var(--note-ink,#464d65);max-width:100%;width:fit-content}.ds-memory summary{cursor:pointer;display:flex;flex-direction:column;gap:5px;list-style:none;background:var(--note,#e9eaf3);padding:12px 15px;border-radius:4px}.ds-memory span{font-size:11px}.ds-memory q{font:500 16px/1.8 var(--title,serif)}.ds-memory p{color:var(--ink,#25332d);font-size:12px;line-height:1.8}.ds-memory summary:hover{background:var(--note,#e9eaf3)}.ds-memory summary:focus-visible{outline:2px solid var(--focus,#607d68);outline-offset:5px}"
     }
   ],
   "narrative": {

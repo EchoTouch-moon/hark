@@ -331,3 +331,8 @@ IMPLEMENTED / VERIFIED：依据Hark官方公开界面，把发现合成单条带
 ## 2026-10-30 · 主画面退回Agent对话
 
 IMPLEMENTED / VERIFIED：同一原型撤下侧栏/面包屑/计数/建议卡，首屏为一句具体开场与输入框，项目/设置退到顶部角落。22项检查通过，证据handoff/EVIDENCE/quiet-agent-2026-10-30/。正式应用与后台未变。
+
+
+## 2026-10-30 · 轻布局的项目记忆签名
+
+IMPLEMENTED / VERIFIED：保留用户认可的轻布局，新增唯一“记忆折页”签名，显示当前项目旧念头/日期，原处展开材料与未知；字标前共用页形。25项检查通过，证据handoff/EVIDENCE/memory-fold-2026-10-30/。合成示例，未实现真实后台记忆。

@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "checks": [
+    "home opens directly into a usable conversation with one project finding",
+    "memory fold recalls one dated project fragment and stays collapsed",
+    "keyboard unfolds sourced memory inline without changing the conversation",
+    "390 home composer is ready inside the first viewport",
+    "narrow unfolded memory preserves an accessible input and send",
+    "1280 desktop composer and send are inside first viewport",
+    "evidence remains available and distinguishes unconnected sources",
+    "Escape closes evidence and restores the trigger focus",
+    "suggestion prepares a message without sending it",
+    "home accepts and answers directly without entering another page",
+    "finding continues in its own project conversation",
+    "global draft and history remain separate from the project",
+    "project history and draft survive reload",
+    "project materials are available on demand rather than filling home",
+    "deferral keeps the current draft and presents another finding",
+    "no-findings state still supports direct conversation",
+    "all deferred findings can be restored",
+    "typed markup remains text and cannot load or execute",
+    "long conversations scroll independently while composer stays available",
+    "390 narrow long conversation keeps send inside viewport and no sideways scroll",
+    "narrow scope switch uses a separate empty conversation and project memory",
+    "project library remains accessible from navigation",
+    "directory setup still creates only a demo record",
+    "busy state is clearly a simulation",
+    "prototype has no page errors or external requests"
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "prototypeOnly": true
+}

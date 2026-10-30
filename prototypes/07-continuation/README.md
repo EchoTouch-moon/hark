@@ -32,3 +32,5 @@ node prototypes/07-continuation/verify.mjs
 后续Hark参考修订：发现整合为带继续讨论操作的建议条，消息左右区分。当前22项检查及截图见handoff/EVIDENCE/hark-reference-2026-10-30/；参考依据见docs/design/2026-10-30-HARK-REFERENCE.md。
 
 最新形态：根据“仍像工作台”的反馈撤下管理框架与操作卡片，首屏围绕一段对话展开。证据handoff/EVIDENCE/quiet-agent-2026-10-30/，说明docs/design/2026-10-30-QUIET-AGENT.md。
+
+当前增加“记忆折页”签名：保留轻布局，旧念头与时间可展开成材料和未知部分。25项检查及截图见handoff/EVIDENCE/memory-fold-2026-10-30/；说明docs/design/2026-10-30-MEMORY-FOLD.md。
