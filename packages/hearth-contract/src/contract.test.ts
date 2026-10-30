@@ -8,7 +8,7 @@ const load = (f: string) => JSON.parse(readFileSync(join(dir, f), 'utf8'));
 
 describe('fixtures', () => {
   for (const f of readdirSync(dir)) it(`${f} parses`, () => expect(HearthViewModel.safeParse(load(f)).success).toBe(true));
-  it('covers five states', () => expect(readdirSync(dir).sort()).toEqual(['empty.json', 'error.json', 'ok.json', 'permission-denied.json', 'stale.json']));
+  it('covers fixture set', () => expect(readdirSync(dir).sort()).toEqual(['bright.json', 'empty.json', 'error.json', 'ok.json', 'permission-denied.json', 'stale.json']));
 });
 
 describe('illegal states rejected', () => {
