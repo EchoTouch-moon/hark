@@ -218,3 +218,7 @@ UI-02 全部完成并通关门禁：
 ## 2026-10-30 前端整理
 - 新增 `handoff/FRONTEND.md` 作为源码、叙事、预览和验证材料的入口；保留唯一的当前前端构建及历史设计资料。
 - 停止旧验收服务 4399、4401、4403、4404 并清理可再生成的 Vitest 缓存；4402 预览仍可访问。
+
+## 2026-10-30 Hearth MVP 重定向 · G0
+- 基于 PR #6 `4d08d465`（PR #5 基线 `fe5464e`）完成现状审计与待审合同：`docs/mvp/g0/01-architecture-audit.md`、`02-contract-and-decisions.md`、`03-plan-threats-traceability.md`。本次未改业务/UI，G0 Gate 待用户审阅，G1–G5 未启动。
+- 实际局部回归 6 文件 46 项通过，命令有一个不存在的测试路径被忽略，详见 `handoff/EVIDENCE/mvp-g0/`；PR #5/#6 远端 CI 均失败，真实 H1 未运行。旧主动接口的跨项目候选暴露风险和 Mock 完成文案是待修复阻断。
