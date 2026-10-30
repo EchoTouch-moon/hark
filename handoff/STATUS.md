@@ -300,3 +300,8 @@ UI-02 全部完成并通关门禁：
 ## 2026-10-30 · 项目优先与一句判断实现
 
 IMPLEMENTED / VERIFIED：项目优先入口、Observer线程绑定、一句观察/分析结论按需展开、移除添柴评分与虚假进度。单元/集成467项、相关15个浏览器场景分别通过（非一次全量E2E），类型/构建通过，lint 0错误6既有警告。报告：docs/design/2026-10-30-PROJECT-FIRST-IMPLEMENTATION.md；证据：handoff/EVIDENCE/project-first-2026-10-30/。不代表真实研究MVP或完整G1-B通过。
+
+
+## 2026-10-30 · 全站产品与体验重构蓝图
+
+DESIGN DELIVERED：完成全站产品与体验重构蓝图、根PRODUCT.md事实摘要及入口索引。用户确认当前最值得决定的一件事优先、火影低存在感；新页面结构和迁移方案为提案，未改前端/后端、未制作新交互原型、未运行应用测试。文件：docs/design/PRODUCT-EXPERIENCE-BLUEPRINT.md；审阅：handoff/EVIDENCE/experience-blueprint-2026-10-30/review.md。

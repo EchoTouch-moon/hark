@@ -136,3 +136,8 @@
 ## 2026-10-30 · 项目优先与一句判断实现
 
 本次请求无未解决实现阻塞。完整旧Demo E2E、远端CI与真实研究/MVP门禁不在本次通过范围，既有阻塞不被覆盖。初轮入口竞态、登记DTO校验、迟到刷新/历史覆盖及最新回复阅读位置问题已修复；合成重复标题导致的测试定位问题已改唯一标题且复验通过。恢复验证：HEARTH_TEST_EVIDENCE_DIR=handoff/EVIDENCE/project-first-2026-10-30/runtime pnpm exec playwright test -c tests/e2e/playwright.config.ts tests/e2e/project-first.spec.ts tests/e2e/runtime-mode.spec.ts tests/e2e/analysis-privacy.spec.ts。
+
+
+## 2026-10-30 · 全站产品与体验重构蓝图
+
+本轮文档与交互梳理无阻塞。新结构尚未制作原型或进行可用性实验，未改代码，不作为实现阶段失败；多个未决问题的排序、目标改变后的重审、长判断与限制的排版待后续原型验证。既有工程/真实模型门禁仍保留。
