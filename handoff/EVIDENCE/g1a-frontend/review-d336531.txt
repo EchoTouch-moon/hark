@@ -1,0 +1,21 @@
+G1-A 前端复审：d336531 及其后的本地测试补强，2026-10-30
+
+以下为本次终端工具输出的摘录；不是 Gemini 先前生成的日志。
+环境：临时独立服务、临时 SQLite 数据库与产物目录，禁止真实模型，未访问真实项目。
+Playwright 临时配置复用仓库配置但连接隔离服务；截图写入临时目录，不覆盖仓库既有证据。
+命令：TZ=UTC HEARTH_TEST_EVIDENCE_DIR=<temp>/screenshots pnpm exec playwright test -c <temp>/playwright.config.mjs runtime-mode.spec.ts
+
+  ✓ unknown and real mode never mount Demo actions, including direct URLs
+  ✓ invalid mode fails closed across /demo and /cards, and a deliberate retry can recover
+  ✓ real mode or missing legacyDemoAvailable fails closed across /demo and /cards
+  ✓ offline indicator is actually visible across welcome flow, true night theme, and desktop viewports
+  ✓ backend action rejection preserves user draft and never fabricates progress or fake completion
+  ✓ backend proactive null returns clean state without fake injected cards
+  ✓ thread service failure renders error state with retry in main conversation area and history rail
+
+  7 passed (19.9s)
+
+pnpm typecheck：退出码 0；pnpm exec eslint tests/e2e/runtime-mode.spec.ts：退出码 0。
+两项检查均在最终测试补充后运行并通过。
+测试中的线程、历史、健康状态和动作拒绝响应包含 Playwright 模拟，不代表真实后端联调。
+完整 E2E 和 G1-A 全阶段门禁本次未重跑，不能推断通过。

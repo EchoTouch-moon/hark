@@ -274,15 +274,19 @@ UI-02 全部完成并通关门禁：
   1. **运行模式安全失败关闭**：`HealthRuntimeSchema` 使用 Zod 对 `/api/v1/health` 做严格校验。真实模式、未知模式、网络异常或破损返回时前端一律失败关闭；直接访问 `/demo` 同样触发 `DemoGate` 拒绝挂载旧演示操作；旧 Demo 行动展示严格取决于 `legacyDemoAvailable === true`，缺失或无效一律关闭。
   2. **修复离线演示与 Mock 标识“定位到但隐藏”问题**：根除 `AppShell.css` 中 `.canvas-shell:has(.hearth-welcome:not([data-step='leaving'])) .canvas-chrome { visibility: hidden; }` 导致的隐藏缺陷；在首访欢迎遮罩顶部（昼/夜双主题）和对话头部常驻高对比度「离线演示 · 不连接真实模型」胶囊标签；回复明确标注「Hearth · Mock」角色，杜绝误导。
   3. **拒绝虚假建议与虚假执行**：彻底清理 `apps/web/src/features/chat.ts` 与 `threads.ts` 中失败时的本地 Mock 回退机制。移除 `mock-proactive-*` 假建议生成、移除 `mock-progress-*` 假执行进度与 `mock-result-*` 伪造完成；移除不安全的本地种子线程生成。当后端返回 403 `LEGACY_ACTIONS_DISABLED`、404 或 null 时，诚实显示错误状态，且严格保留用户正在输入的草稿内容。
-  4. **全套浏览器端到端测试 PASS**：
+  4. **定向浏览器测试 PASS（非完整浏览器套件）**：
      - `tests/e2e/runtime-mode.spec.ts`：以对话优先架构重构 6 项测试，覆盖未知/真实模式直接 URL 失败关闭、非法模式错误恢复、`legacyDemoAvailable` 失败关闭、昼夜与桌面视口离线标识真正可见、后端拒绝动作时保留草稿且无伪造完成、主动建议 null 保持干净空态。**6/6 PASS**！
      - `tests/e2e/hearth.spec.ts`：`E2E-08`（Chat mock 回复、持久化、明确 Demo 标识）、`Settings 保存可持久化`、`视口 1280×800 无水平滚动` 全部 **PASS**！旧 `/cards` 用例单独归入待 G1-B/G4 状态，未靠 skip 或删断言造假。
   5. **工程指标**：
      - `pnpm typecheck`：0 errors
      - `pnpm lint`：0 errors, 6 warnings（前端代码 0 警告）
      - `pnpm test`：57 文件 / 459 用例 100% 全部通过
-     - `pnpm test:e2e` (runtime-mode + hearth-chat)：9 项端到端测试全部通过
+     - 两组定向运行的 runtime-mode 和 hearth-chat 用例：9 项通过；不代表 `pnpm test:e2e` 全量通过。
   6. **证据归档**：
      - 测试输出：`handoff/EVIDENCE/g1a-frontend/{typecheck,lint,tests,e2e-runtime-mode,e2e-hearth-chat}.txt`
      - 桌面与交互截图：`handoff/EVIDENCE/g1a-frontend/01-welcome-mock-badge-day.png` 至 `09-proactive-null-clean-state.png`
 
+## 2026-10-30 · G1-A 前端复审补充
+- 复审 `d336531`：删除旧本地记录的路径已移除，但原验收在刷新时重新写入测试数据，且未保证异步历史加载后断言。已补强测试为一次性写入、等待历史渲染、刷新前后完整比较，并让旧本地动作与当前线程中的服务端消息同 ID。
+- 独立临时数据库、模拟线程/历史/拒绝响应下，UTC 环境定向浏览器测试 7/7 通过；typecheck 与该测试文件 lint 通过。证据见 `handoff/EVIDENCE/g1a-frontend/review-d336531.txt`。
+- 此结果只覆盖前端相关行为；G1-A 全阶段联合验收、剩余旧界面用例及完整浏览器 CI 未在本次复审中完成，不标为通过。

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const SHOT_DIR = 'handoff/EVIDENCE/g1a-frontend';
+const SHOT_DIR = process.env['HEARTH_TEST_EVIDENCE_DIR'] ?? 'handoff/EVIDENCE/g1a-frontend';
 
 // Explicitly pin Shanghai timezone so local Date hours match Shanghai business day/night rules in any CI environment
 test.use({ timezoneId: 'Asia/Shanghai' });
@@ -192,15 +192,24 @@ test('backend action rejection preserves user draft and never fabricates progres
   const syntheticParts = {
     'msg-normal-1': [{ type: 'text', text: '普通用户文本附加内容' }],
     'mock-result-42': [{ type: 'result', ok: true, text: '旧模拟完成态产物' }],
-    'mock-action-legacy': [{ type: 'actions', actions: [{ id: 'legacy-act', label: '旧动作' }] }],
+    // Same ID as a server message: this catches accidental reattachment of local parts.
+    'msg-local-parts-target': [{ type: 'actions', actions: [{ id: 'legacy-act', label: '旧动作' }] }],
   };
 
   // Pre-seed completed welcome and synthetic legacy local storage data (both normal and mock overlay records)
   await page.addInitScript(({ msgs, parts }) => {
     window.localStorage.setItem('hearth.welcome.v1', JSON.stringify({ version: 1, completed: true, name: '' }));
-    window.localStorage.setItem('hearth.chat.localMsgs.v2', JSON.stringify(msgs));
-    window.localStorage.setItem('hearth.chat.parts.v2', JSON.stringify(parts));
+    if (!window.sessionStorage.getItem('test.legacy-seeded')) {
+      window.localStorage.setItem('hearth.chat.localMsgs.v2', JSON.stringify(msgs));
+      window.localStorage.setItem('hearth.chat.parts.v2', JSON.stringify(parts));
+      window.sessionStorage.setItem('test.legacy-seeded', '1');
+    }
   }, { msgs: syntheticLocalMsgs, parts: syntheticParts });
+
+  // Use the same thread as the stored messages, so an accidental merge is observable.
+  await page.route('**/api/v1/threads', (route) => route.fulfill({
+    json: { threads: [{ id: 'thread-legacy', title: '测试线程', updatedAt: '2026-10-30T07:00:00.000Z' }] },
+  }));
 
   // Enable demo mode in health so legacy action button is mounted for testing
   await page.route('**/api/v1/health', async (route) => {
@@ -217,6 +226,12 @@ test('backend action rejection preserves user draft and never fabricates progres
             role: 'user',
             content: '测试动作',
             createdAt: '2026-10-30T07:00:00.000Z',
+          },
+          {
+            id: 'msg-local-parts-target',
+            role: 'assistant',
+            content: '服务端消息没有附加动作',
+            createdAt: '2026-10-30T07:00:00.500Z',
           },
           {
             id: 'msg-assistant-action',
@@ -246,13 +261,9 @@ test('backend action rejection preserves user draft and never fabricates progres
   });
 
   // Track the actual POST execute request made by the frontend
-  let executeCallMethod = '';
-  let executeCallUrl = '';
   let executeCallStatus = 0;
 
   await page.route(/\/api\/v1\/threads\/.*\/actions\/.*\/execute/, async (route) => {
-    executeCallMethod = route.request().method();
-    executeCallUrl = route.request().url();
     executeCallStatus = 403;
     await route.fulfill({
       status: 403,
@@ -277,17 +288,19 @@ test('backend action rejection preserves user draft and never fabricates progres
     const parsedParts = JSON.parse(rawParts!);
     const parsedMsgs = JSON.parse(rawMsgs!);
 
-    // Item-by-item comparison: both normal records and mock-result-42 / mock-progress-1 remain unchanged
-    expect(parsedMsgs['thread-legacy']).toEqual(syntheticLocalMsgs['thread-legacy']);
-    expect(parsedParts['mock-result-42']).toEqual(syntheticParts['mock-result-42']);
-    expect(parsedParts['msg-normal-1']).toEqual(syntheticParts['msg-normal-1']);
-    expect(parsedParts['mock-action-legacy']).toEqual(syntheticParts['mock-action-legacy']);
+    expect(parsedMsgs).toEqual(syntheticLocalMsgs);
+    expect(parsedParts).toEqual(syntheticParts);
   };
 
+  // Wait for thread selection and history rendering; a load event alone does not
+  // guarantee the asynchronous live-API cleanup path has run.
+  const actionBtn = page.getByRole('button', { name: '执行受限动作' });
+  await expect(actionBtn).toBeVisible({ timeout: 10_000 });
   await assertLocalStorageIntact();
 
   // 2. Refresh page and verify item-by-item retention persists
   await page.reload();
+  await expect(actionBtn).toBeVisible({ timeout: 10_000 });
   await assertLocalStorageIntact();
 
   // 3. Verify reading and presentation layers strictly prevent old mock records and legacy actions from resurfacing
@@ -297,7 +310,6 @@ test('backend action rejection preserves user draft and never fabricates progres
   expect(await page.getByRole('button', { name: '旧动作' }).count()).toBe(0);
 
   // Wait for the action button to be rendered
-  const actionBtn = page.getByRole('button', { name: '执行受限动作' });
   await expect(actionBtn).toBeVisible({ timeout: 10_000 });
 
   // User types a draft while looking at the action

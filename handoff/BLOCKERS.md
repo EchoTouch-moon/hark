@@ -122,3 +122,7 @@
   - `tests/e2e/hearth.spec.ts` 中针对旧卡片工作台的用例（`E2E-01..07`, `E2E-11`，涉及 `/cards`、`/runs/:id/execute` 等旧接口）受后端安全红线限制返回 403 `LEGACY_ACTIONS_DISABLED`。
   - 按任务指令与 G0 安全合同：**不得通过删除断言或 skip 测试伪造变绿**，这些旧 UI 用例在此阶段保持不变，单独记录为 **BLOCKED**，等待 G1-B 运行时隔离 Demo 或 G4 正式界面就绪后再行衔接。
   - 恢复命令：当后端开启隔离 Demo 能力或 G1-B/G4 接口就绪后，执行 `npx playwright test -c tests/e2e/playwright.config.ts tests/e2e/hearth.spec.ts`。
+
+## 2026-10-30 · G1-A 复审验证边界
+
+本轮只复验前端定向浏览器场景；旧界面相关浏览器用例、完整浏览器 CI 和 G1-A 前后端联合验收仍需按阶段计划处理。不能以 7 项定向测试通过推断全部通过。详情见 `handoff/EVIDENCE/g1a-frontend/review-d336531.txt`。
