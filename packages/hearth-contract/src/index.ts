@@ -35,7 +35,7 @@ export const FeaturedOpinion = z
     revisionId: Id,
     opinion: z.string().min(1),
     whyNow: z.string().min(1),
-    evidenceCount: z.number().int().nonnegative(),
+    evidence: z.array(EvidenceLabel),
     uncertainties: z.array(z.string()),
     actions: z.tuple([z.literal('查看依据'), z.literal('讨论计划'), z.literal('稍后再说')]),
   })
