@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T13:24:31.055Z",
+  "title": "Design System: Hearth · 续页",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "primary",
+        "canonical": "#354e41",
+        "tonalRamp": [
+          "oklch(15% 0.025 145)",
+          "oklch(26.42857142857143% 0.025 145)",
+          "oklch(37.85714285714286% 0.025 145)",
+          "oklch(49.285714285714285% 0.025 145)",
+          "oklch(60.714285714285715% 0.025 145)",
+          "oklch(72.14285714285714% 0.025 145)",
+          "oklch(83.57142857142857% 0.025 145)",
+          "oklch(95% 0.025 145)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "paper",
+        "canonical": "#f5f5f0",
+        "tonalRamp": [
+          "oklch(15% 0.025 145)",
+          "oklch(26.42857142857143% 0.025 145)",
+          "oklch(37.85714285714286% 0.025 145)",
+          "oklch(49.285714285714285% 0.025 145)",
+          "oklch(60.714285714285715% 0.025 145)",
+          "oklch(72.14285714285714% 0.025 145)",
+          "oklch(83.57142857142857% 0.025 145)",
+          "oklch(95% 0.025 145)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "surface",
+        "canonical": "#fffefa",
+        "tonalRamp": [
+          "oklch(15% 0.025 145)",
+          "oklch(26.42857142857143% 0.025 145)",
+          "oklch(37.85714285714286% 0.025 145)",
+          "oklch(49.285714285714285% 0.025 145)",
+          "oklch(60.714285714285715% 0.025 145)",
+          "oklch(72.14285714285714% 0.025 145)",
+          "oklch(83.57142857142857% 0.025 145)",
+          "oklch(95% 0.025 145)"
+        ]
+      },
+      "index": {
+        "role": "neutral",
+        "displayName": "index",
+        "canonical": "#e9ede6",
+        "tonalRamp": [
+          "oklch(15% 0.025 145)",
+          "oklch(26.42857142857143% 0.025 145)",
+          "oklch(37.85714285714286% 0.025 145)",
+          "oklch(49.285714285714285% 0.025 145)",
+          "oklch(60.714285714285715% 0.025 145)",
+          "oklch(72.14285714285714% 0.025 145)",
+          "oklch(83.57142857142857% 0.025 145)",
+          "oklch(95% 0.025 145)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "ink",
+        "canonical": "#25332d",
+        "tonalRamp": [
+          "oklch(15% 0.025 145)",
+          "oklch(26.42857142857143% 0.025 145)",
+          "oklch(37.85714285714286% 0.025 145)",
+          "oklch(49.285714285714285% 0.025 145)",
+          "oklch(60.714285714285715% 0.025 145)",
+          "oklch(72.14285714285714% 0.025 145)",
+          "oklch(83.57142857142857% 0.025 145)",
+          "oklch(95% 0.025 145)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "muted",
+        "canonical": "#626e65",
+        "tonalRamp": [
+          "oklch(15% 0.025 145)",
+          "oklch(26.42857142857143% 0.025 145)",
+          "oklch(37.85714285714286% 0.025 145)",
+          "oklch(49.285714285714285% 0.025 145)",
+          "oklch(60.714285714285715% 0.025 145)",
+          "oklch(72.14285714285714% 0.025 145)",
+          "oklch(83.57142857142857% 0.025 145)",
+          "oklch(95% 0.025 145)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "line",
+        "canonical": "#d3dacf",
+        "tonalRamp": [
+          "oklch(15% 0.025 145)",
+          "oklch(26.42857142857143% 0.025 145)",
+          "oklch(37.85714285714286% 0.025 145)",
+          "oklch(49.285714285714285% 0.025 145)",
+          "oklch(60.714285714285715% 0.025 145)",
+          "oklch(72.14285714285714% 0.025 145)",
+          "oklch(83.57142857142857% 0.025 145)",
+          "oklch(95% 0.025 145)"
+        ]
+      },
+      "note": {
+        "role": "secondary",
+        "displayName": "note",
+        "canonical": "#e9eaf3",
+        "tonalRamp": [
+          "oklch(15% 0.025 280)",
+          "oklch(26.42857142857143% 0.025 280)",
+          "oklch(37.85714285714286% 0.025 280)",
+          "oklch(49.285714285714285% 0.025 280)",
+          "oklch(60.714285714285715% 0.025 280)",
+          "oklch(72.14285714285714% 0.025 280)",
+          "oklch(83.57142857142857% 0.025 280)",
+          "oklch(95% 0.025 280)"
+        ]
+      },
+      "note-ink": {
+        "role": "secondary",
+        "displayName": "note-ink",
+        "canonical": "#464d65",
+        "tonalRamp": [
+          "oklch(15% 0.025 280)",
+          "oklch(26.42857142857143% 0.025 280)",
+          "oklch(37.85714285714286% 0.025 280)",
+          "oklch(49.285714285714285% 0.025 280)",
+          "oklch(60.714285714285715% 0.025 280)",
+          "oklch(72.14285714285714% 0.025 280)",
+          "oklch(83.57142857142857% 0.025 280)",
+          "oklch(95% 0.025 280)"
+        ]
+      }
+    },
+    "motion": [
+      {
+        "name": "view-entry",
+        "value": "240ms",
+        "purpose": "单次轻微切页；减少动态时关闭"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "single-column",
+        "value": "900px"
+      },
+      {
+        "name": "top-navigation",
+        "value": "620px"
+      }
+    ],
+    "shadows": [
+      {
+        "name": "paper",
+        "value": "0 14px 38px #21382a0a",
+        "purpose": "材料摘页"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "description": "Primary Button",
+      "html": "<button class=\"ds-primary\">接着聊这个项目</button>",
+      "css": ".ds-primary{background:var(--accent,#354e41);color:var(--on-accent,#fffefa);border:0;border-radius:5px;padding:12px 20px;min-height:44px;cursor:pointer}.ds-primary:hover{opacity:.9}.ds-primary:focus-visible{outline:2px solid #607d68;outline-offset:5px}"
+    },
+    {
+      "name": "Evidence Link",
+      "kind": "button",
+      "description": "Evidence Link",
+      "html": "<button class=\"ds-evidence\">看看这条判断的依据</button>",
+      "css": ".ds-evidence{background:transparent;color:var(--muted,#626e65);font-size:11px;border:0;border-bottom:1px solid #d3dacf;padding:4px 0;cursor:pointer}.ds-evidence:hover{color:#354e41}.ds-evidence:focus-visible{outline:2px solid #607d68;outline-offset:5px}"
+    },
+    {
+      "name": "Directory Field",
+      "kind": "input",
+      "description": "Directory Field",
+      "html": "<label class=\"ds-label\">示例目录路径<input class=\"ds-field\" placeholder=\"/Projects/ideas\"></label>",
+      "css": ".ds-label{display:block;font-size:12px;color:#25332d}.ds-field{display:block;margin-top:9px;width:100%;height:43px;padding:10px 12px;border:1px solid #d3dacf;border-radius:4px;background:#f5f5f0;color:#25332d;caret-color:#354e41}.ds-field:focus-visible{outline:2px solid #607d68;outline-offset:5px}"
+    },
+    {
+      "name": "Navigation",
+      "kind": "nav",
+      "description": "Navigation",
+      "html": "<nav class=\"ds-nav\"><button aria-current=\"page\">发现</button><button>项目库</button><button>对话</button></nav>",
+      "css": ".ds-nav{display:flex;gap:8px}.ds-nav button{padding:12px 14px;background:transparent;border:0;border-radius:5px;color:#25332d;cursor:pointer}.ds-nav button[aria-current]{background:#e0e6dc;font-weight:600}.ds-nav button:hover{background:#e0e6dc}.ds-nav button:focus-visible{outline:2px solid #607d68;outline-offset:5px}"
+    },
+    {
+      "name": "Project Sheet",
+      "kind": "card",
+      "description": "Project Sheet",
+      "html": "<article class=\"ds-sheet\"><h3>片段</h3><p>把读过的文章，变成以后还能找回的片段。</p><small>合成材料摘录</small></article>",
+      "css": ".ds-sheet{background:#fffefa;color:#25332d;padding:30px;border:1px solid #d3dacf;box-shadow:0 14px 38px #21382a0a}.ds-sheet h3{font-family:serif;font-size:26px;font-weight:500;margin:0 0 20px}.ds-sheet p{font-size:13px;line-height:1.8}.ds-sheet small{color:#626e65;font-size:11px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "每个被搁置的念头，都可以有下一页。",
+    "overview": "个人研究助理的阅览工作台。窄索引承载导航，工作区围绕一个具体项目给出判断；可读档案与页边便笺承载材料与推断。故事通过阅读、翻开、继续讨论发生。",
+    "keyCharacteristics": [
+      "单一当前判断，依据按需展开。",
+      "中文阅读优先，材料与推断分层。",
+      "安静背景、清晰动作、低存在感品牌。"
+    ],
+    "rules": [
+      {
+        "name": "The Evidence Rule",
+        "body": "色彩不能代替“示例、推测、未知”的文字说明。",
+        "section": "colors"
+      },
+      {
+        "name": "The Reading Rule",
+        "body": "标题先说清楚判断，再用字号表达层次。",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do 把具体项目与一句判断放在主要位置。",
+      "Do 让用户随时看见讨论范围、材料来源与未知部分。",
+      "Do 将新发现接回原项目对话。"
+    ],
+    "donts": [
+      "Don't 把合成材料或预设回复包装为真实研究。",
+      "Don't 用热度、生命值或装饰性仪表盘决定项目价值。",
+      "Don't 让背景故事盖过用户的项目。"
+    ]
+  }
+}

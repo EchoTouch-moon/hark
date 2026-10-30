@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "checks": [
+    "all prototype claims visibly disclosed",
+    "desktop has no horizontal overflow",
+    "primary action bottom at 1280x800: 618px",
+    "evidence distinguishes fixture and missing external research",
+    "Escape closes evidence and restores focus",
+    "discovery opens scoped conversation",
+    "local conversation has labelled example response",
+    "global conversation does not inherit project draft",
+    "global conversation covers fixture projects",
+    "project draft and messages survive reload",
+    "project index has three synthetic records",
+    "research tab does not invent real citations",
+    "chosen direction persists as prototype-only record",
+    "deferred finding leaves focus and can be restored",
+    "directory input creates only disclosed local demo state",
+    "busy mode explicitly says simulated",
+    "narrow reduced-motion version keeps content without horizontal overflow",
+    "no page errors and no external requests"
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "prototypeOnly": true
+}

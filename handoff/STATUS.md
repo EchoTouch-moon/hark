@@ -310,3 +310,7 @@ DESIGN DELIVERED：完成全站产品与体验重构蓝图、根PRODUCT.md事实
 ## 2026-10-30 · 后台项目重新发现场景
 
 REQUIREMENTS REVISED：依据用户完整安装/授权/后台场景更新PRODUCT、MVP v0.2合同与体验蓝图，新增docs/mvp/04-PROJECT-REDISCOVERY.md及H2验收场景。目录自动发现、多项目独立记忆、全局对话、资源让路、后台研究与本机通知提升为核心。仅文档交付；无真实目录扫描、服务安装、研究/模型调用、通知或应用代码变更。
+
+## 2026-10-30 · 续页前端表达
+
+DESIGN PROTOTYPE / VERIFIED：独立可点原型prototypes/07-continuation，六类页面、合成项目资料、按范围保留对话/草稿、依据、暂缓恢复、目录/忙闲演示、浅深/窄屏。round3记录18项通过，无页面错误或外部请求。证据handoff/EVIDENCE/continuation-design-2026-10-30；说明docs/design/2026-10-30-CONTINUATION-DESIGN.md。未修改正式应用，未访问真实项目或接入后台能力。

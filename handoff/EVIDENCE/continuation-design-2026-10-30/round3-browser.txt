@@ -1,0 +1,1 @@
+PASS: 18 checks; 6 views; local-only fixtures; screenshot matrix saved.

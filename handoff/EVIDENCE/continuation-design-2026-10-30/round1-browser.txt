@@ -1,0 +1,48 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /尚未连接外部来源/. Input:
+
+'当时想做的事\n' +
+  '\n' +
+  '读到好内容时，先留下来。过一阵子，再让它回到眼前。\n' +
+  '\n' +
+  '根据合成材料整理的项目概况。真实的初衷与搁置原因，仍需要你补充确认。\n' +
+  '\n' +
+  '已经留下的材料\n' +
+  '文章摘录的小组件\n' +
+  '保存与回访的交互草图\n' +
+  '一份写到一半的 README\n' +
+  '一个还没回答的问题\n' +
+  '\n' +
+  '第一次回来时，你希望看到随机片段，还是上次留下的那一段？\n' +
+  '\n' +
+  '查看这份概况的来源 →'
+
+    at file:///Users/v/new-idea/hark/prototypes/07-continuation/verify.mjs:79:121
+    at async check (file:///Users/v/new-idea/hark/prototypes/07-continuation/verify.mjs:19:41)
+    at async file:///Users/v/new-idea/hark/prototypes/07-continuation/verify.mjs:79:3 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '当时想做的事\n' +
+    '\n' +
+    '读到好内容时，先留下来。过一阵子，再让它回到眼前。\n' +
+    '\n' +
+    '根据合成材料整理的项目概况。真实的初衷与搁置原因，仍需要你补充确认。\n' +
+    '\n' +
+    '已经留下的材料\n' +
+    '文章摘录的小组件\n' +
+    '保存与回访的交互草图\n' +
+    '一份写到一半的 README\n' +
+    '一个还没回答的问题\n' +
+    '\n' +
+    '第一次回来时，你希望看到随机片段，还是上次留下的那一段？\n' +
+    '\n' +
+    '查看这份概况的来源 →',
+  expected: /尚未连接外部来源/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v22.23.2
