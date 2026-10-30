@@ -15,7 +15,7 @@ colors:
 typography:
   brand:
     fontFamily: "Instrument, serif"
-    fontSize: "32px"
+    fontSize: "30px"
     fontWeight: 400
     lineHeight: 1
   app-title:
@@ -23,6 +23,12 @@ typography:
     fontSize: "16px"
     fontWeight: 500
     lineHeight: 1.5
+  opening:
+    fontSize: "18px"
+    lineHeight: 1.9
+  mobile-opening:
+    fontSize: "17px"
+    lineHeight: 1.9
   mobile-title:
     fontFamily: "-apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, sans-serif"
     fontSize: "15px"
@@ -47,7 +53,7 @@ rounded:
   field: "4px"
   message: "14px"
   action: "8px"
-  composer: "12px"
+  composer: "16px"
   scrollbar: "6px"
 spacing:
   small: "8px"
@@ -68,7 +74,7 @@ components:
 
 **Creative North Star: "每个被搁置的念头，都可以有下一页。"**
 
-个人项目Agent的对话工作台。用户打开后就可以输入；当前项目判断作为Agent的一条消息出现，材料按需查看。故事通过对话与项目记忆的连续性发生，主页面不陈列手稿。
+一个安静的个人项目Agent。主画面围绕一段正在发生的对话，首屏一句具体发现与输入框形成连续关系；项目和设置只通过角落入口访问。故事通过记住项目、继续讨论成立。
 
 这是本目录已实现的独立设计原型，不覆盖正式前端的设计系统。
 
@@ -93,11 +99,11 @@ components:
 
 ## Layout
 
-桌面为索引栏(210px)与单一对话区，内容最大宽度(760px)。顶栏(60px)，消息区独立滚动，输入框常驻。640附近以下转顶部导航；实际断点(620px)。窄屏整个工作台使用动态视口高度，消息区收缩而非挤出发送按钮。项目档案仍通过辅助页面按需查看。
+单列对话，最大宽度(680px)。没有常驻侧栏、项目计数或面包屑。初次打开时开场与输入框形成视口中部的一组；有历史后，消息区独立滚动，输入框保持可达。项目与设置在顶部角落，讨论对象收在输入框底部。窄屏沿用同一结构。
 
 ## Elevation & Depth
 
-大部分界面平面呈现。档案通过细边、轻微层叠与柔和阴影(0 14px 38px #21382a0a)产生“材料在手边”的感觉；窄屏减弱纸页旋转。没有纹理、火焰或大面积光效。
+主画面平面呈现，输入框以细边界定；不靠卡片层叠或阴影建立对话层次。辅助档案和依据弹窗保留原有样式，按需进入。
 
 ## Shapes
 
@@ -105,7 +111,7 @@ components:
 
 ## Components
 
-主动发现采用单条圆角操作建议：按钮、项目与一句判断并置，来源和暂缓置于下方。Agent消息靠左、用户消息靠右，均使用克制的圆角表面；参考Hark Pro的操作建议与聊天示意，保留本产品色系和权限边界。
+主动发现作为一句自然语言开场，继续讨论、依据、暂缓为轻量文字操作，不做独立卡片。Agent正文使用平面文字，用户消息保留低对比圆角表面。输入框是主画面唯一明显的控件容器。
 
 主按钮具备默认、悬停及可见焦点；输入框用细边与原生校验。导航以浅灰绿背景和文字加重标识当前页。判断页右侧材料可直接阅读，点击翻开项目档案；灰紫批注保留不确定性和下一步。依据弹窗支持Escape关闭并恢复焦点。
 

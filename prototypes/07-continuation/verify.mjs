@@ -21,6 +21,8 @@ async function shot(name) { await settled(); await page.locator('#toast').waitFo
 async function scope(value) { await page.getByLabel('讨论范围', {exact:true}).selectOption(value); await page.waitForFunction(value => document.querySelector('#conversation-scope')?.value === value, value); await settled(); }
 async function send(text) { await page.locator('#conversation-input').fill(text); await page.locator('#conversation-input').press('Enter'); }
 async function composerFits() {
+  const header = await page.locator('.topbar').boundingBox();
+  assert.ok(header.y >= 0 && header.y + header.height <= page.viewportSize().height, 'auxiliary header remains visible');
   const input = await page.locator('#conversation-input').boundingBox();
   const send = await page.getByRole('button',{name:'发送示例消息'}).boundingBox();
   const viewport = page.viewportSize();
@@ -32,7 +34,8 @@ try {
   await check('home opens directly into a usable conversation with one project finding', async () => {
     assert.match(await page.locator('.chat-transcript').innerText(), /片段/);
     assert.equal(await page.locator('#conversation-input').isVisible(), true);
-    assert.equal(await page.locator('.project-paper,.feature-story').count(),0);
+    assert.equal(await page.locator('.project-paper,.feature-story,.sidebar,.action-suggestion').count(),0);
+    assert.equal(await page.locator('.topbar-projects').count(),1);
     assert.match(await page.locator('.prototype-badge').innerText(), /交互原型.*示例资料/);
     await composerFits();
   });
@@ -126,7 +129,7 @@ try {
   await check('directory setup still creates only a demo record',async()=>assert.match(await page.locator('.demo-directories').innerText(),/synthetic-ideas/));
   await route('settings');
   await page.getByRole('button',{name:'切换为忙碌演示',exact:true}).click();
-  await check('busy state is clearly a simulation',async()=>assert.match(await page.locator('#busy-toggle').innerText(),/忙碌演示/));
+  await check('busy state is clearly a simulation',async()=>assert.match(await page.locator('.setting-row').first().innerText(),/忙碌演示/));
   await page.getByRole('button',{name:'切换为深色',exact:true}).click();
   await route('conversation/tide');
   await page.setViewportSize({width:1440,height:900});

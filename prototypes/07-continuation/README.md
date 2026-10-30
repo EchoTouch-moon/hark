@@ -1,6 +1,6 @@
 # Hearth · 续页
 
-一个独立、可点击的项目对话应用原型。主页可直接聊天，一条项目线索作为Agent的开场；资料按需查看。现有正式应用没有被替换。
+一个独立、可点击的个人项目Agent原型。无常驻侧栏，首屏一句具体发现接到输入框；项目和设置通过角落入口访问。现有正式应用没有被替换。
 
 在仓库根目录运行：
 
@@ -30,3 +30,5 @@ node prototypes/07-continuation/verify.mjs
 最新交互/布局证据在handoff/EVIDENCE/conversation-home-2026-10-30/。设计规则见 DESIGN.md；方向取舍见 DIRECTION.md。正式能力接入必须继续遵守根项目的数据、权限和安全合同。
 
 后续Hark参考修订：发现整合为带继续讨论操作的建议条，消息左右区分。当前22项检查及截图见handoff/EVIDENCE/hark-reference-2026-10-30/；参考依据见docs/design/2026-10-30-HARK-REFERENCE.md。
+
+最新形态：根据“仍像工作台”的反馈撤下管理框架与操作卡片，首屏围绕一段对话展开。证据handoff/EVIDENCE/quiet-agent-2026-10-30/，说明docs/design/2026-10-30-QUIET-AGENT.md。

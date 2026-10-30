@@ -11,24 +11,8 @@
 <body>
   <a class="skip-link" href="#app-main">跳到主要内容</a>
   <div class="app-shell">
-    <aside class="sidebar" aria-label="主要导航">
-      <a class="wordmark" href="#discover" aria-label="Hearth 首页">
-        <svg viewBox="0 0 30 34" aria-hidden="true"><path d="M5 5h19v25H5zM9 1h17v24M9 12h10M9 17h10M9 22h6"/></svg>
-        <span>hearth<span class="wordmark-dot">.</span></span>
-      </a>
-      <span class="edition-name">项目工作空间</span>
-      <nav class="main-nav" aria-label="工作空间">
-        <button type="button" data-route="discover" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4ZM8 8h8M8 12h5"/></svg>对话</button>
-        <button type="button" data-route="projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2-3h9v16H3ZM3 9h18"/></svg>项目库</button>
-      <button type="button" class="mobile-settings" data-route="settings">设置</button></nav>
-      <div class="sidebar-projects"><p>项目对话</p><button type="button" data-action="open-project-chat" data-project="fragments"><span class="project-dot"></span>片段</button><button type="button" data-action="open-project-chat" data-project="trails"><span class="project-dot project-dot--pale"></span>旧途</button></div>
-      <div class="sidebar-bottom">
-        <button type="button" id="busy-toggle" class="background-status"><span class="status-dot" aria-hidden="true"></span><span data-busy-label>空闲演示</span></button>
-        <button type="button" class="sidebar-setting" data-route="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg>权限与后台</button>
-      </div>
-    </aside>
     <div class="workspace-shell">
-      <header class="topbar"><span id="page-location">工作空间 / 发现</span><div class="topbar-actions"><span class="prototype-badge"><span aria-hidden="true"></span>交互原型 · 示例资料</span><button type="button" id="theme-toggle" class="icon-button" aria-label="切换明暗主题" title="切换明暗主题"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 15.5A8 8 0 0 1 8.5 5 8 8 0 1 0 19 15.5Z"/></svg></button></div></header>
+      <header class="topbar"><a class="wordmark" href="#discover" aria-label="Hearth 首页">hearth<span class="wordmark-dot">.</span></a><nav class="topbar-actions" aria-label="辅助入口"><button type="button" class="topbar-projects" data-route="projects" aria-label="项目库">项目</button><button type="button" class="icon-button" data-route="settings" aria-label="设置"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg></button><button type="button" id="theme-toggle" class="icon-button" aria-label="切换明暗主题"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 15.5A8 8 0 0 1 8.5 5 8 8 0 1 0 19 15.5Z"/></svg></button></nav></header>
       <main id="app-main" tabindex="-1"></main>
     </div>
   </div>

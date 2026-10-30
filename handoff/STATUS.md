@@ -326,3 +326,8 @@ IMPLEMENTED / VERIFIED：独立续页原型主页改为直接对话，发现融�
 ## 2026-10-30 · Hark Pro参考
 
 IMPLEMENTED / VERIFIED：依据Hark官方公开界面，把发现合成单条带操作的项目建议；双方消息左右区分、圆角表面。原型22项检查通过，证据handoff/EVIDENCE/hark-reference-2026-10-30/，依据docs/design/2026-10-30-HARK-REFERENCE.md。正式应用及后台未改动。
+
+
+## 2026-10-30 · 主画面退回Agent对话
+
+IMPLEMENTED / VERIFIED：同一原型撤下侧栏/面包屑/计数/建议卡，首屏为一句具体开场与输入框，项目/设置退到顶部角落。22项检查通过，证据handoff/EVIDENCE/quiet-agent-2026-10-30/。正式应用与后台未变。
