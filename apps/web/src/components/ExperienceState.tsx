@@ -60,8 +60,9 @@ export function OpinionCard({ vm }: { vm: HearthViewModel }) {
     <article className="xp-opinion" data-revision={op.revisionId} aria-label="观点">
       <p className="xp-opinion__judgement">{op.opinion}</p>
       <p className="xp-opinion__why">{op.whyNow}</p>
+      <EvidenceList items={op.evidence} />
       <p className="xp-opinion__meta">
-        {op.evidenceCount} 条依据
+        {op.evidence.length} 条依据
         {op.uncertainties.length ? ` · 有 ${op.uncertainties.length} 处不确定` : ''}
         {vm.observationFreshness === 'stale' ? ' · 依据可能过期' : ''}
       </p>

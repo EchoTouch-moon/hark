@@ -64,6 +64,8 @@ export function frozenFlame(label: string, reason: string): FlameVisual {
 export function shellFlame(vm: { status: string; observationFreshness: string; narrative: NarrativeState } | null): FlameVisual {
   if (!vm || vm.status === 'error') return frozenFlame('火候未知', '读不到数据，暂不判断火候。');
   if (vm.status === 'permission_denied') return frozenFlame('未授权读取', '没有读取权限，暂不判断火候。');
+  // 设计/产品 spec: empty = 尚未点火, neutral 0.10, not desaturated.
+  if (vm.status === 'empty') return { ...FLAME_LEVELS.neutral, level: 'neutral', golden: 0, reason: '还没有项目，火尚未点起。', label: '尚未点火' };
   const v = flameVisual(vm.narrative.flame);
   return vm.observationFreshness === 'stale' ? { ...v, label: `${v.label} · 旧观测` } : v;
 }

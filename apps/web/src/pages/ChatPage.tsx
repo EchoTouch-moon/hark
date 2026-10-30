@@ -9,7 +9,8 @@ import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
 import { readWelcomePreference } from '../features/welcome';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useThreads } from '../app/AppShell';
-import { ApiError, apiFetch } from '../features/api/client';
+import { ApiError } from '../features/api/client';
+import { Link } from 'react-router-dom';
 import {
   appendLocalMessage,
   executeMessageAction,
@@ -306,25 +307,16 @@ export function ChatPage() {
   const vmSource = useViewModelSource();
   const vm = vmSource.kind === 'ready' ? vmSource.vm : null;
   const vmError = blockingError(vmSource);
-  const [scanBusy, setScanBusy] = useState(false);
-  const [scanNote, setScanNote] = useState<string | null>(null);
-  const onScan = useCallback(async () => {
-    setScanBusy(true);
-    setScanNote(null);
-    try {
-      await apiFetch('/api/v1/discover', { method: 'POST', json: {} });
-      setScanNote('扫描完成');
-    } catch (cause) {
-      setScanNote(cause instanceof ApiError && cause.status === 429 ? '扫描太频繁，请稍后再试' : '扫描失败');
-    } finally {
-      setScanBusy(false);
-    }
-  }, []);
   const seedCopy = { band: emberBand, reason: messages.some((m) => m.role === 'user') ? 'returning' : 'no-interaction' };
 
   const reload = useCallback(async (threadId: string) => {
     setLoading(true);
     setLoadError(null);
+    // E1 runs on fixtures only: never call the legacy chat-history API.
+    if (vmSource.kind === 'invalid' || vmSource.fixture) {
+      if (currentThread.current === threadId) { setMessages([]); setLoading(false); }
+      return;
+    }
     try {
       const history = await fetchChatHistory(threadId);
       let next = history.messages;
@@ -343,7 +335,7 @@ export function ChatPage() {
     } finally {
       if (currentThread.current === threadId) setLoading(false);
     }
-  }, []);
+  }, [vmSource]);
 
   // Switching conversations cancels only the local wait. Delivery may already
   // have occurred, so restore the original draft with an explicit warning.
@@ -684,14 +676,7 @@ export function ChatPage() {
                 </button>
               ))}
             </div>}
-            {vmError || vm?.status === 'permission_denied' ? null : (
-              <>
-                <button type="button" className="xp-scan" disabled={scanBusy} onClick={() => void onScan()}>
-                  {scanBusy ? '扫描中…' : '重新扫描'}
-                </button>
-                {scanNote ? <p className="xp-scan__note" role="status">{scanNote}</p> : null}
-              </>
-            )}
+            <SeedActions vmError={!!vmError} status={vm?.status ?? null} />
             {vm && !vmError && vm.status === 'ok' ? (
               <>
                 <OpinionCard vm={vm} />
@@ -788,4 +773,28 @@ export function ChatPage() {
       />
     </section>
   );
+}
+
+/**
+ * Text actions below the Seed (spec 2026-10-31). Never calls /api/v1/discover:
+ * ok/stale → 重新扫描 (visual no-op); permission_denied → disabled + 去授权;
+ * error → 重新读取 (re-runs the ViewModel load only); empty → 添加项目.
+ */
+function SeedActions({ vmError, status }: { vmError: boolean; status: string | null }) {
+  if (vmError) {
+    // Fixture mode: the ViewModel load is synchronous and local, so this is a no-op re-read.
+    return <div className="xp-seed-actions"><button type="button" className="xp-text-btn">重新读取</button></div>;
+  }
+  if (status === 'empty') {
+    return <div className="xp-seed-actions"><Link to="/projects" className="xp-primary-btn">添加项目</Link></div>;
+  }
+  if (status === 'permission_denied') {
+    return (
+      <div className="xp-seed-actions">
+        <button type="button" className="xp-text-btn" aria-disabled="true" disabled title="未授权读取，无法扫描">重新扫描</button>
+        <Link to="/settings" className="xp-text-btn">去授权</Link>
+      </div>
+    );
+  }
+  return <div className="xp-seed-actions"><button type="button" className="xp-text-btn">重新扫描</button></div>;
 }
