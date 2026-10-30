@@ -16,26 +16,23 @@
         <svg viewBox="0 0 30 34" aria-hidden="true"><path d="M5 5h19v25H5zM9 1h17v24M9 12h10M9 17h10M9 22h6"/></svg>
         <span>hearth<span class="wordmark-dot">.</span></span>
       </a>
-      <span class="edition-name">续页 · 项目与新的可能</span>
+      <span class="edition-name">项目工作空间</span>
       <nav class="main-nav" aria-label="工作空间">
-        <button type="button" data-route="discover" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z"/></svg>发现<span class="nav-indicator" aria-label="有示例发现"></span></button>
+        <button type="button" data-route="discover" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4ZM8 8h8M8 12h5"/></svg>对话</button>
         <button type="button" data-route="projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2-3h9v16H3ZM3 9h18"/></svg>项目库</button>
-        <button type="button" data-route="conversation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4ZM8 8h8M8 12h5"/></svg>对话</button>
-      </nav>
-      <div class="sidebar-projects"><p>最近翻开的项目</p><button type="button" data-action="open-dossier" data-project="fragments"><span class="project-dot"></span>片段</button><button type="button" data-action="open-dossier" data-project="trails"><span class="project-dot project-dot--pale"></span>旧途</button></div>
+      <button type="button" class="mobile-settings" data-route="settings">设置</button></nav>
+      <div class="sidebar-projects"><p>项目对话</p><button type="button" data-action="open-project-chat" data-project="fragments"><span class="project-dot"></span>片段</button><button type="button" data-action="open-project-chat" data-project="trails"><span class="project-dot project-dot--pale"></span>旧途</button></div>
       <div class="sidebar-bottom">
-        <button type="button" id="busy-toggle" class="background-status"><span class="status-dot" aria-hidden="true"></span><span data-busy-label>空闲演示 · 慢慢了解</span></button>
-        <p class="background-description">你忙的时候，让想法安静地留在这里。</p>
+        <button type="button" id="busy-toggle" class="background-status"><span class="status-dot" aria-hidden="true"></span><span data-busy-label>空闲演示</span></button>
         <button type="button" class="sidebar-setting" data-route="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg>权限与后台</button>
       </div>
     </aside>
     <div class="workspace-shell">
       <header class="topbar"><span id="page-location">工作空间 / 发现</span><div class="topbar-actions"><span class="prototype-badge"><span aria-hidden="true"></span>交互原型 · 示例资料</span><button type="button" id="theme-toggle" class="icon-button" aria-label="切换明暗主题" title="切换明暗主题"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 15.5A8 8 0 0 1 8.5 5 8 8 0 1 0 19 15.5Z"/></svg></button></div></header>
       <main id="app-main" tabindex="-1"></main>
-      <footer class="workspace-footer"><span>每个被搁置的念头，都可以有下一页。</span><button type="button" id="setup-link">体验目录授权流程 <span aria-hidden="true"><svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></button></footer>
     </div>
   </div>
   <dialog id="evidence-dialog" aria-labelledby="evidence-title"><div class="dialog-top"><span>回到判断的来处</span><button type="button" id="close-evidence" class="icon-button" aria-label="关闭依据"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><div id="evidence-content"></div></dialog>
-  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

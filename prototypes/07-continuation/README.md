@@ -1,6 +1,6 @@
 # Hearth · 续页
 
-一个独立、可点击的前端设计备选，用“未完成手稿与新的页边线索”表达项目重新发现。现有正式应用没有被替换。
+一个独立、可点击的项目对话应用原型。主页可直接聊天，一条项目线索作为Agent的开场；资料按需查看。现有正式应用没有被替换。
 
 在仓库根目录运行：
 
@@ -11,7 +11,7 @@ python3 -m http.server 4341 --bind 127.0.0.1 --directory prototypes/07-continuat
 打开 http://127.0.0.1:4341 。退出服务按 Ctrl+C。
 
 - `/#setup`：从目录授权开始，模拟添加目录；不接触真实文件。
-- `/#discover`：一条当前判断、旧材料摘要、展开依据、继续讨论/暂缓。
+- `/#discover`：直接对话的主页，可输入、切换讨论范围、沿线索聊一个项目、查看依据或暂缓。
 - `/#projects`：三个合成项目的清晰索引。
 - `/#project/fragments/overview`：项目概况、研究线索、用户选择。
 - `/#conversation`：全局盘点；`/#conversation/fragments`：围绕一个项目接着聊。
@@ -27,4 +27,4 @@ python3 -m http.server 4341 --bind 127.0.0.1 --directory prototypes/07-continuat
 node prototypes/07-continuation/verify.mjs
 ```
 
-设计规则见 DESIGN.md；方向取舍见 DIRECTION.md。正式能力接入必须继续遵守根项目的数据、权限和安全合同。
+最新交互/布局证据在handoff/EVIDENCE/conversation-home-2026-10-30/。设计规则见 DESIGN.md；方向取舍见 DIRECTION.md。正式能力接入必须继续遵守根项目的数据、权限和安全合同。

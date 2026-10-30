@@ -110,7 +110,7 @@
   }
   function rememberDraft() {
     const input = document.getElementById('conversation-input');
-    if (route.view === 'conversation' && input) state.drafts[activeScope()] = input.value.slice(0, 2000);
+    if (['conversation', 'discover'].includes(route.view) && input) state.drafts[activeScope()] = input.value.slice(0, 2000);
   }
   function navigate(hash) {
     rememberDraft();
@@ -122,35 +122,7 @@
     return `<header class="page-heading"><div><h1>${title}</h1><p>${description}</p></div>${extra}</header>`;
   }
 
-  function renderDiscover() {
-    const project = projectIds.map(id => projects[id]).find(item => !state.deferred.includes(item.id)) || projects.fragments;
-    const allDeferred = projectIds.every(id => state.deferred.includes(id));
-    const otherProjects = projectIds.filter(id => id !== project.id);
-    return `${pageHeading('值得再看一眼', '有些想法，只是缺一个新的起点。', '<span class="page-date">2026 · 10 · 30</span>')}
-      ${state.deferred.length ? `<div class="saved-choice"><span>你选择稍后看 ${state.deferred.length} 条示例线索。</span><button type="button" class="text-button" data-action="restore">恢复这些线索</button></div>` : ''}
-      <div class="discovery-layout">
-        <article class="feature-story">
-          <h2>${allDeferred ? '给这些想法，留一点时间。' : escapeHTML(project.headline)}</h2>
-          <p class="story-disclosure">根据合成档案给出的示例判断</p><p class="story-description">${allDeferred ? '这三条示例线索都已被你搁置。它们还在项目档案里，不会因为暂时不看而丢失。' : escapeHTML(project.description)}</p>
-          <div class="story-context"><span class="context-label">之前留下的念头</span><p>“${escapeHTML(project.idea)}”</p><button type="button" class="project-inline" data-action="open-dossier" data-project="${project.id}">${escapeHTML(project.name)} <span aria-hidden="true"><svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></button></div>
-          <div class="story-actions"><button type="button" class="primary" data-action="open-project-chat" data-project="${project.id}">接着聊这个项目 <span aria-hidden="true"><svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></button><button type="button" class="text-button" data-action="${allDeferred ? 'restore' : 'defer'}" data-project="${project.id}">${allDeferred ? '重新看看线索' : '先放一放'}</button></div>
-          <button type="button" class="evidence-link" data-action="evidence" data-project="${project.id}">看看这条判断的依据 <span aria-hidden="true"><svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></span></button>
-        </article>
-        <aside class="project-paper" aria-label="合成项目档案摘页">
-          <span class="paper-tab">项目档案 / ${escapeHTML(project.english)}</span>
-          <header class="paper-heading"><span class="document-mark" aria-hidden="true"></span><h3>${escapeHTML(project.name)}</h3><span>${escapeHTML(project.date)}</span></header>
-          <p class="paper-purpose">${escapeHTML(project.purpose)}</p>
-          <div class="paper-rule"></div>
-          <pre class="paper-excerpt">${escapeHTML(project.excerpt)}</pre>
-          <p class="paper-annotation">一份未完成的念头，<br>也可以有下一页。</p>
-          <div class="attachment-row"><span>合成材料摘录</span><button type="button" class="text-button" data-action="open-dossier" data-project="${project.id}">翻开档案 <span aria-hidden="true"><svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></button></div>
-        </aside>
-      </div>
-      <section class="discovery-bottom" aria-labelledby="more-clues"><h3 id="more-clues">其他留在页边的线索</h3><div class="clue-list">${otherProjects.map(id => {
-        const item = projects[id];
-        return `<button type="button" class="clue-row" data-action="open-dossier" data-project="${id}"><span class="clue-title">${escapeHTML(item.name)}</span><span class="clue-description">${escapeHTML(item.question)}</span><span class="clue-date">${escapeHTML(item.date)}</span><span aria-hidden="true"><svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></button>`;
-      }).join('')}</div><p class="quiet-note">这些是设计演示中的合成项目。真实研究与后台能力尚未连接。</p></section>`;
-  }
+  function renderDiscover() { return renderConversation(); }
 
   function renderProjects() {
     return `${pageHeading('想法还在这里', '不必记得每一个细节。先找到那个你想接着做的项目。', '<span class="collection-count">3 份示例档案</span>')}
@@ -180,11 +152,12 @@
     const scope = activeScope();
     const project = scope === 'all' ? null : projects[scope];
     const messages = state.messages[scope] || [];
-    const initial = project ? `这份示例档案里，${project.name}想做的是：${project.purpose}\n\n${project.question}` : '我们可以从全部示例项目里找回一个念头，也可以从某一份档案接着聊。';
-    return `<header class="conversation-heading"><div><h1>从一个念头接着聊。</h1><p>${project ? `现在围绕「${escapeHTML(project.name)}」讨论` : '先不选项目，也能聊聊你留下的那些想法。'}</p></div><button type="button" class="scope-button" data-action="global-chat">${project ? '回到全部项目' : '全部示例项目'} <span aria-hidden="true"><svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></button></header>
-      <div class="conversation-layout"><section class="chat-transcript" aria-label="示例对话" aria-live="polite"><article class="chat-message is-assistant"><span class="message-author">Hearth <span>示例开场</span></span><p>${escapeHTML(initial).replace(/\n/g, '<br>')}</p>${project ? `<button type="button" class="evidence-link" data-action="open-dossier" data-project="${project.id}">翻开「${escapeHTML(project.name)}」的档案 <svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button>` : ''}</article>${messages.map(message => `<article class="chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'}"><span class="message-author">${message.role === 'user' ? '你' : 'Hearth <span>示例答复</span>'}</span><p>${escapeHTML(message.text).replace(/\n/g, '<br>')}</p>${message.role === 'assistant' ? `<button type="button" class="evidence-link" data-action="evidence" data-project="${project?.id || 'fragments'}">查看示例资料 <svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button>` : ''}</article>`).join('')}</section>
-      ${messages.length === 0 && !project ? `<div class="conversation-suggestions" aria-label="示例问题">${['有哪些想法，值得重新拾起？', '哪些项目可以先保留观察？', '我想找回「片段」的思路'].map(prompt => `<button type="button" class="suggestion-chip" data-action="prompt" data-prompt="${escapeHTML(prompt)}">${escapeHTML(prompt)} <span aria-hidden="true"><svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></button>`).join('')}</div>` : ''}
-      <form id="conversation-form" class="conversation-composer"><label for="conversation-input" class="composer-label">${project ? `${escapeHTML(project.name)} · 项目讨论` : '全部项目 · 自由讨论'}</label><div class="composer-input-row"><textarea id="conversation-input" name="message" rows="2" maxlength="2000" placeholder="${project ? '想先找回哪一段？' : '比如：有哪些想法，值得重新拾起？'}" required>${escapeHTML(state.drafts[scope] || '')}</textarea><button type="submit" class="primary composer-send" aria-label="发送示例消息">发送 <span aria-hidden="true"><svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></span></button></div><p class="composer-disclosure">交互设计演示 · 回复为本机预设示例，不连接模型。</p></form></div>`;
+    const finding = projectIds.map(id => projects[id]).find(item => !state.deferred.includes(item.id));
+    const initial = project ? `这份示例档案里，${project.name}想做的是：${project.purpose}\n\n${project.question}` : finding ? `「${finding.name}」可以重新看看。${finding.id === 'fragments' ? '先把“保存一段，回来再读”做通，就有一个值得验证的起点。' : finding.question}` : '暂时没有待讨论的示例线索。你可以直接提问，或从项目库选一个项目。';
+    return `<header class="conversation-heading"><h1>${project ? escapeHTML(project.name) : '全部项目'}</h1>${project ? `<button type="button" class="text-button" data-action="open-dossier" data-project="${project.id}">查看项目档案</button>` : '<span class="scope-caption">3 个示例项目</span>'}</header>
+      <div class="conversation-layout"><section class="chat-transcript" aria-label="示例对话" aria-live="polite" tabindex="0"><article class="chat-message is-assistant"><span class="message-author">Hearth <span>示例线索</span></span><p>${escapeHTML(initial).replace(/\n/g, '<br>')}</p><div class="message-actions">${project ? `<button type="button" class="evidence-link" data-action="evidence" data-project="${project.id}">查看依据</button>` : finding ? `<button type="button" class="chat-project-link" data-action="open-project-chat" data-project="${finding.id}">聊聊「${escapeHTML(finding.name)}」</button><button type="button" class="evidence-link" data-action="evidence" data-project="${finding.id}">查看依据</button><button type="button" class="text-button" data-action="defer" data-project="${finding.id}">稍后再看</button>` : '<button type="button" class="evidence-link" data-action="restore">恢复示例线索</button>'}</div></article>${messages.map(message => `<article class="chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'}"><span class="message-author">${message.role === 'user' ? '你' : 'Hearth <span>示例答复</span>'}</span><p>${escapeHTML(message.text).replace(/\n/g, '<br>')}</p>${message.role === 'assistant' ? `<button type="button" class="evidence-link" data-action="evidence" data-project="${project?.id || 'fragments'}">查看示例资料</button>` : ''}</article>`).join('')}</section>
+      <div class="conversation-entry">${messages.length === 0 && !project ? `<div class="conversation-suggestions" aria-label="示例问题">${['有哪些项目值得继续？', '帮我找回以前的思路'].map(prompt => `<button type="button" class="suggestion-chip" data-action="prompt" data-prompt="${escapeHTML(prompt)}">${escapeHTML(prompt)}</button>`).join('')}</div>` : ''}
+      <form id="conversation-form" class="conversation-composer"><label for="conversation-input" class="sr-only">${project ? escapeHTML(project.name) + ' · 项目讨论' : '全部项目 · 自由讨论'}</label><div class="composer-input-row"><textarea id="conversation-input" name="message" rows="2" maxlength="2000" placeholder="${project ? '接着聊这个项目…' : '问问你的项目，或说说现在的想法…'}" required>${escapeHTML(state.drafts[scope] || '')}</textarea></div><div class="composer-toolbar"><label class="composer-label" for="conversation-scope">讨论范围<select id="conversation-scope" aria-label="讨论范围">${[['all','全部项目'],...projectIds.map(id => [id,projects[id].name])].map(([id,label])=>`<option value="${id}"${id === scope ? ' selected' : ''}>${escapeHTML(label)}</option>`).join('')}</select></label><button type="submit" class="primary composer-send" aria-label="发送示例消息"${state.drafts[scope]?.trim() ? '' : ' disabled'}>发送<svg class="action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V4m-6 6 6-6 6 6"/></svg></button></div></form><p class="composer-disclosure">演示回复 · 不连接模型，不读取本机项目</p></div></div>`;
   }
 
   function renderSetup() {
@@ -201,11 +174,11 @@
     const themeButton = document.getElementById('theme-toggle');
     if (themeButton) { themeButton.setAttribute('aria-label', `切换为${state.theme === 'dark' ? '浅色' : '深色'}阅览`); themeButton.setAttribute('aria-pressed', String(state.theme === 'dark')); themeButton.dataset.theme = state.theme; }
     const busyButton = document.getElementById('busy-toggle');
-    if (busyButton) { busyButton.setAttribute('aria-label', `当前${state.busy ? '忙碌' : '空闲'}演示，点击切换`); busyButton.setAttribute('aria-pressed', String(state.busy)); busyButton.dataset.busy = String(state.busy); const label = busyButton.querySelector('[data-busy-label]'); if (label) label.textContent = state.busy ? '忙碌演示 · 暂缓新任务' : '空闲演示 · 慢慢了解'; }
-    const labels = { discover: '发现', projects: '项目库', dossier: '项目档案', conversation: '对话', setup: '目录授权演示', settings: '偏好设置' };
+    if (busyButton) { busyButton.setAttribute('aria-label', `当前${state.busy ? '忙碌' : '空闲'}演示，点击切换`); busyButton.setAttribute('aria-pressed', String(state.busy)); busyButton.dataset.busy = String(state.busy); const label = busyButton.querySelector('[data-busy-label]'); if (label) label.textContent = state.busy ? '忙碌演示 · 已暂缓' : '空闲演示'; }
+    const labels = { discover: '对话', projects: '项目库', dossier: '项目档案', conversation: '对话', setup: '目录授权演示', settings: '偏好设置' };
     const pageLocation = document.getElementById('page-location');
     if (pageLocation) pageLocation.textContent = route.project ? `${labels[route.view]} / ${projects[route.project].name}` : labels[route.view];
-    const navView = route.view === 'dossier' ? 'projects' : route.view === 'setup' ? 'settings' : route.view;
+    const navView = route.view === 'dossier' ? 'projects' : route.view === 'setup' ? 'settings' : route.view === 'conversation' ? 'discover' : route.view;
     document.querySelectorAll('nav [data-route]').forEach(button => {
       const current = button.dataset.route === navView;
       button.classList.toggle('is-active', current);
@@ -220,13 +193,13 @@
     main.dataset.renderHash = location.hash;
     main.innerHTML = ({ discover: renderDiscover, projects: renderProjects, dossier: renderDossier, conversation: renderConversation, setup: renderSetup, settings: renderSettings }[route.view] || renderDiscover)();
     main.classList.remove('view-enter');
-    if (focusMain) { void main.offsetWidth; main.classList.add('view-enter'); }
+    // App views appear immediately; interaction does not wait for page choreography.
     if (focusMain) { main.focus({ preventScroll: true }); main.scrollTop = 0; window.scrollTo({ top: 0 }); }
   }
   function openEvidence(projectId, trigger) {
     const project = projects[projectId] || projects.fragments;
     previousEvidenceTrigger = trigger;
-    evidenceContent.innerHTML = `<div class="evidence-header"><span class="evidence-kind">合成档案 / ${escapeHTML(project.name)}</span><h2 id="evidence-title">这条判断从哪里来</h2><p>这里只解释原型中的示例判断，不代表真实项目分析或联网研究。</p></div><div class="evidence-body"><section><h3>已给定的示例材料</h3><ul>${project.pieces.map(piece => `<li>${escapeHTML(piece)}</li>`).join('')}</ul><pre>${escapeHTML(project.excerpt)}</pre></section><section><h3>这次的示例推断</h3><p>${escapeHTML(project.description)}</p></section><section><h3>尚不知道的部分</h3><p>${escapeHTML(project.uncertainty)}</p></section><section class="source-note"><h3>研究来源状态</h3><p>示例研究笔记 R-03 · 尚未连接外部来源</p><p>原型没有研究过真实市场、论文或开源项目；这里没有可据以决策的真实外部引用。</p></section></div>`;
+    evidenceContent.innerHTML = `<div class="evidence-header"><h2 id="evidence-title">这条判断从哪里来</h2><span class="evidence-kind">合成档案 / ${escapeHTML(project.name)}</span><p>这里只解释原型中的示例判断，不代表真实项目分析或联网研究。</p></div><div class="evidence-body"><section><h3>已给定的示例材料</h3><ul>${project.pieces.map(piece => `<li>${escapeHTML(piece)}</li>`).join('')}</ul><pre>${escapeHTML(project.excerpt)}</pre></section><section><h3>这次的示例推断</h3><p>${escapeHTML(project.description)}</p></section><section><h3>尚不知道的部分</h3><p>${escapeHTML(project.uncertainty)}</p></section><section class="source-note"><h3>研究来源状态</h3><p>示例研究笔记 R-03 · 尚未连接外部来源</p><p>原型没有研究过真实市场、论文或开源项目；这里没有可据以决策的真实外部引用。</p></section></div>`;
     dialog.setAttribute('aria-labelledby', 'evidence-title');
     if (!dialog.open) dialog.showModal();
     closeEvidence.focus();
@@ -269,14 +242,21 @@
       case 'setup': navigate('#setup'); break;
       case 'dossier-tab': navigate(`#project/${id}/${button.dataset.tab}`); break;
       case 'evidence': openEvidence(id, button); break;
-      case 'defer': if (!state.deferred.includes(id)) state.deferred.push(id); save(); render(true); toast(`已在演示中记下：稍后看「${projects[id].name}」。`); break;
-      case 'restore': state.deferred = []; save(); render(true); toast('示例线索已恢复，可重新查看。'); break;
+      case 'defer': rememberDraft(); if (!state.deferred.includes(id)) state.deferred.push(id); save(); render(true); toast(`已在演示中记下：稍后看「${projects[id].name}」。`); break;
+      case 'restore': rememberDraft(); state.deferred = []; save(); render(true); toast('示例线索已恢复，可重新查看。'); break;
       case 'restore-project': state.deferred = state.deferred.filter(value => value !== id); save(); render(true); toast('这条示例线索已恢复。'); break;
       case 'keep-project': if (!state.kept.includes(id)) state.kept.push(id); save(); render(); toast(`已记下「${projects[id].name}」的示例方向，未执行任何项目操作。`); break;
-      case 'prompt': { const input = document.getElementById('conversation-input'); if (input) { input.value = button.dataset.prompt || ''; state.drafts[activeScope()] = input.value; save(); input.focus(); } break; }
+      case 'prompt': { const input = document.getElementById('conversation-input'); if (input) { input.value = button.dataset.prompt || ''; state.drafts[activeScope()] = input.value; document.querySelector('.composer-send').disabled = !input.value.trim(); save(); input.focus(); } break; }
       case 'busy': toggleBusy(); break;
       case 'theme': toggleTheme(); break;
       default: break;
+    }
+  });
+
+  document.addEventListener('change', event => {
+    if (event.target instanceof HTMLSelectElement && event.target.id === 'conversation-scope') {
+      navigate(event.target.value === 'all' ? '#conversation' : '#conversation/' + event.target.value);
+      document.getElementById('conversation-input')?.focus({preventScroll:true});
     }
   });
 
@@ -286,6 +266,7 @@
   document.addEventListener('input', event => {
     if (event.target instanceof HTMLTextAreaElement && event.target.id === 'conversation-input') {
       state.drafts[activeScope()] = event.target.value.slice(0, 2000);
+      document.querySelector('.composer-send').disabled = !event.target.value.trim();
       save();
     }
   });

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-30T13:26:44.713Z",
+  "generatedAt": "2026-10-30T13:51:17.276Z",
   "title": "Design System: Hearth · 续页",
   "extensions": {
     "colorMeta": {
@@ -140,13 +140,7 @@
         ]
       }
     },
-    "motion": [
-      {
-        "name": "view-entry",
-        "value": "240ms",
-        "purpose": "单次轻微切页；减少动态时关闭"
-      }
-    ],
+    "motion": [],
     "breakpoints": [
       {
         "name": "single-column",
@@ -162,12 +156,21 @@
         "name": "paper",
         "value": "0 14px 38px #21382a0a",
         "purpose": "材料摘页"
+      },
+      {
+        "name": "evidence-dialog",
+        "value": "0 30px 100px #101d2840",
+        "purpose": "保留的资料阅读弹窗"
       }
     ],
     "typographyMeta": {
       "brand": {
         "displayName": "Instrument Serif",
         "purpose": "自托管英文品牌与材料摘页；中文标题继续使用ContinuationSerif。"
+      },
+      "app-title": {
+        "displayName": "应用范围标题",
+        "purpose": "固定16px系统无衬线，帮助确认当前讨论范围。"
       }
     }
   },
@@ -197,22 +200,22 @@
       "name": "Navigation",
       "kind": "nav",
       "description": "Navigation",
-      "html": "<nav class=\"ds-nav\"><button aria-current=\"page\">发现</button><button>项目库</button><button>对话</button></nav>",
+      "html": "<nav class=\"ds-nav\"><button aria-current=\"page\">对话</button><button>项目库</button></nav>",
       "css": ".ds-nav{display:flex;gap:8px}.ds-nav button{padding:12px 14px;background:transparent;border:0;border-radius:5px;color:#25332d;cursor:pointer}.ds-nav button[aria-current]{background:#e0e6dc;font-weight:600}.ds-nav button:hover{background:#e0e6dc}.ds-nav button:focus-visible{outline:2px solid #607d68;outline-offset:5px}"
     },
     {
-      "name": "Project Sheet",
-      "kind": "card",
-      "description": "Project Sheet",
-      "html": "<article class=\"ds-sheet\"><h3>片段</h3><p>把读过的文章，变成以后还能找回的片段。</p><small>合成材料摘录</small></article>",
-      "css": ".ds-sheet{background:#fffefa;color:#25332d;padding:30px;border:1px solid #d3dacf;box-shadow:0 14px 38px #21382a0a}.ds-sheet h3{font-family:serif;font-size:26px;font-weight:500;margin:0 0 20px}.ds-sheet p{font-size:13px;line-height:1.8}.ds-sheet small{color:#626e65;font-size:11px}"
+      "name": "Conversation Composer",
+      "kind": "custom",
+      "description": "主页的主操作；选择范围后输入并发送。",
+      "html": "<form class=\"ds-composer\"><label class=\"ds-label\">消息<textarea placeholder=\"问问你的项目，或说说现在的想法…\"></textarea></label><div class=\"ds-toolbar\"><label>讨论范围 <select><option>全部项目</option><option>片段</option></select></label><button type=\"button\">发送</button></div></form>",
+      "css": ".ds-composer{background:var(--surface,#fffefa);border:1px solid var(--line,#d3dacf);border-radius:12px;padding:16px 18px 12px;color:var(--ink,#25332d)}.ds-label{font-size:11px}.ds-composer textarea{display:block;width:100%;min-height:56px;background:transparent;border:0;resize:none;color:inherit;font:14px/1.8 sans-serif}.ds-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:8px;font-size:11px}.ds-toolbar select{background:var(--surface,#fffefa);color:inherit;border:1px solid var(--line,#d3dacf);border-radius:5px;padding:6px 9px}.ds-toolbar button{background:var(--accent,#354e41);color:var(--on-accent,#fffefa);padding:8px 12px;border:0;border-radius:5px;min-height:36px;cursor:pointer}.ds-composer:focus-within{border-color:var(--focus,#607d68)}.ds-toolbar button:hover{opacity:.9}.ds-composer :focus-visible{outline:2px solid var(--focus,#607d68);outline-offset:4px}"
     }
   ],
   "narrative": {
     "northStar": "每个被搁置的念头，都可以有下一页。",
-    "overview": "个人研究助理的阅览工作台。窄索引承载导航，工作区围绕一个具体项目给出判断；可读档案与页边便笺承载材料与推断。故事通过阅读、翻开、继续讨论发生。",
+    "overview": "个人项目Agent的对话工作台。用户打开后就可以输入；当前项目判断作为Agent的一条消息出现，材料按需查看。故事通过对话与项目记忆的连续性发生，主页面不陈列手稿。",
     "keyCharacteristics": [
-      "单一当前判断，依据按需展开。",
+      "对话是主操作，判断融入消息，依据按需展开。",
       "中文阅读优先，材料与推断分层。",
       "安静背景、清晰动作、低存在感品牌。"
     ],
@@ -229,7 +232,7 @@
       }
     ],
     "dos": [
-      "Do 把具体项目与一句判断放在主要位置。",
+      "Do 让用户打开就能输入，一条判断作为对话开场。",
       "Do 让用户随时看见讨论范围、材料来源与未知部分。",
       "Do 将新发现接回原项目对话。"
     ],

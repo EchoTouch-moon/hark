@@ -9,14 +9,29 @@ colors:
   ink: "#25332d"
   muted: "#626e65"
   line: "#d3dacf"
+  selected: "#e0e6dc"
   note: "#e9eaf3"
   note-ink: "#464d65"
 typography:
   brand:
     fontFamily: "Instrument, serif"
-    fontSize: "40px"
+    fontSize: "32px"
     fontWeight: 400
     lineHeight: 1
+  app-title:
+    fontFamily: "-apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, sans-serif"
+    fontSize: "16px"
+    fontWeight: 500
+    lineHeight: 1.5
+  mobile-title:
+    fontFamily: "-apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, sans-serif"
+    fontSize: "15px"
+  label:
+    fontSize: "11px"
+  secondary:
+    fontSize: "12px"
+  action:
+    fontSize: "13px"
   display:
     fontFamily: "ContinuationSerif, Songti SC, serif"
     fontSize: "clamp(30px,3vw,44px)"
@@ -29,6 +44,10 @@ typography:
     lineHeight: 1.65
 rounded:
   control: "5px"
+  field: "4px"
+  message: "8px"
+  composer: "12px"
+  scrollbar: "6px"
 spacing:
   small: "8px"
   medium: "24px"
@@ -48,12 +67,12 @@ components:
 
 **Creative North Star: "每个被搁置的念头，都可以有下一页。"**
 
-个人研究助理的阅览工作台。窄索引承载导航，工作区围绕一个具体项目给出判断；可读档案与页边便笺承载材料与推断。故事通过阅读、翻开、继续讨论发生。
+个人项目Agent的对话工作台。用户打开后就可以输入；当前项目判断作为Agent的一条消息出现，材料按需查看。故事通过对话与项目记忆的连续性发生，主页面不陈列手稿。
 
 这是本目录已实现的独立设计原型，不覆盖正式前端的设计系统。
 
 **Key Characteristics:**
-- 单一当前判断，依据按需展开。
+- 对话是主操作，判断融入消息，依据按需展开。
 - 中文阅读优先，材料与推断分层。
 - 安静背景、清晰动作、低存在感品牌。
 
@@ -67,15 +86,13 @@ components:
 
 ## Typography
 
-中文标题使用本地Noto Serif SC子集；英文品牌和资料中的英文使用Instrument Serif。正文使用系统无衬线，辅助文字最低(11px)，正文默认(14px)。标题为桌面阅读服务，短句自然换行；不以英文装饰压过中文判断。
+主界面使用固定字号系统无衬线：范围标题(16px)、正文(14px)、辅助(11–12px)。Instrument仅保留小型品牌字标；中文衬线仅继续用于档案等辅助页。主操作不使用大幅展示标题。
 
 **The Reading Rule.** 标题先说清楚判断，再用字号表达层次。
 
 ## Layout
 
-桌面为窄索引栏(210px)加单一工作区；主区左右内边距通常(58px)。发现页判断与材料并置，其他项目通过分隔线列表出现。900px以内单列，620px以内侧栏改为顶部导航；390px无横向溢出。
-
-1280×800首屏内可达主动作，实测按钮底边(631px)。项目档案用概况、研究与线索、你的选择三个同级入口；对话始终显示当前项目范围。
+桌面为索引栏(210px)与单一对话区，内容最大宽度(760px)。顶栏(60px)，消息区独立滚动，输入框常驻。640附近以下转顶部导航；实际断点(620px)。窄屏整个工作台使用动态视口高度，消息区收缩而非挤出发送按钮。项目档案仍通过辅助页面按需查看。
 
 ## Elevation & Depth
 
@@ -89,12 +106,12 @@ components:
 
 主按钮具备默认、悬停及可见焦点；输入框用细边与原生校验。导航以浅灰绿背景和文字加重标识当前页。判断页右侧材料可直接阅读，点击翻开项目档案；灰紫批注保留不确定性和下一步。依据弹窗支持Escape关闭并恢复焦点。
 
-页面切换轻微入场(240ms)，减少动态偏好下取消；忙闲只是明确标注的手动演示，无持续呼吸或虚假进度。
+对话及页面切换立即出现，不编排入场。消息区可滚动；发送按钮在空白输入时禁用。讨论范围使用原生select，每个范围保留草稿和消息。忙闲仅手动演示，无持续呼吸或虚假进度。
 
 ## Do's and Don'ts
 
 ### Do:
-- Do 把具体项目与一句判断放在主要位置。
+- Do 让用户打开就能输入，一条判断作为对话开场。
 - Do 让用户随时看见讨论范围、材料来源与未知部分。
 - Do 将新发现接回原项目对话。
 

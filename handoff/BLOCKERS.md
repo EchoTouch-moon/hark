@@ -152,3 +152,8 @@
 本轮原型无交付阻塞。生产目录发现/独立记忆/后台研究/资源调度/通知仍是待实现能力，不能宣称已由原型完成。预览启动命令见prototypes/07-continuation/README.md；该原型无需模型或密钥。测试首次误读hash切换的旧页面，已增加渲染同步等待；round3通过。
 
 2026-10-30 续页字体hook复核：四条均为已选用Instrument品牌字体；补齐原型DESIGN.md typography.brand与sidecar元数据，按字值持久化design-system-font=instrument例外（大小写归一）。未忽略文件或整条规则，无未解决项；仅文档/检测配置变更，无需重跑浏览器。
+
+
+## 2026-10-30 · 主页面聚焦对话
+
+本轮无未解决阻塞。检查发现并修复范围select可访问名称、窄屏发送越界、初始空toast未隐藏；最终22项通过。失败日志保留在conversation-home-2026-10-30目录。预览启动命令仍见prototypes/07-continuation/README.md。
