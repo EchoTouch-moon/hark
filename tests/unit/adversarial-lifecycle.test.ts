@@ -185,7 +185,7 @@ describe('Adversarial Lifecycle, Teardown & Memory Leak Suite', () => {
       };
     }
 
-    it('cleanly calls loseContext, deletes shaders, programs, buffers, textures on dispose()', () => {
+    it('releases shaders, programs, buffers and textures without forcing context loss', () => {
       const { canvas, getDeleted } = setupMockBrowser();
       const renderer = createFlameRenderer(canvas);
       expect(renderer).not.toBeNull();
@@ -194,7 +194,7 @@ describe('Adversarial Lifecycle, Teardown & Memory Leak Suite', () => {
       renderer.dispose();
 
       const deleted = getDeleted();
-      expect(deleted.loseContextCalled).toBe(true);
+      expect(deleted.loseContextCalled).toBe(false);
       expect(deleted.deletedPrograms.length).toBeGreaterThanOrEqual(1);
       expect(deleted.deletedShaders.length).toBeGreaterThanOrEqual(2);
       expect(deleted.deletedBuffers.length).toBeGreaterThanOrEqual(1);

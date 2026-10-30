@@ -2,15 +2,15 @@ import { chromium, expect } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const base = process.env.HEARTH_QA_URL ?? 'http://127.0.0.1:4404';
-const out = 'handoff/EVIDENCE/flame-states-2026-10-30';
+const out = process.env.HEARTH_FLAME_CAPTURE_OUT ?? 'handoff/EVIDENCE/flame-shapes-refined';
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ args: ['--enable-webgl', '--use-angle=swiftshader'] });
 const stages = [
-  { key: 'spark', name: '初火星', count: 0, project: null, cards: [], events: [] },
-  { key: 'sprout', name: '初生火苗', count: 1, project: null, cards: [], events: [] },
-  { key: 'blaze', name: '繁盛之火', count: 3, project: null, cards: [], events: [] },
-  { key: 'golden', name: '常明金火', count: 0, project: 'fixture-project', cards: [{ status: 'completed' }], events: [] },
-  { key: 'dormant', name: '静卧余烬', count: 0, project: 'fixture-project', cards: [], events: [{ occurredAt: '2026-10-01T10:00:00+08:00', source: { observedAt: '2026-10-01T10:00:00+08:00' } }] },
+  { key: 'spark', name: '初火星', shape: [0.26, 0.23], count: 0, project: null, cards: [], events: [] },
+  { key: 'sprout', name: '初生火苗', shape: [0.54, 0.52], count: 1, project: null, cards: [], events: [] },
+  { key: 'blaze', name: '繁盛之火', shape: [1, 1], count: 3, project: null, cards: [], events: [] },
+  { key: 'golden', name: '常明金火', shape: [0.88, 0.82], count: 0, project: 'fixture-project', cards: [{ status: 'completed' }], events: [] },
+  { key: 'dormant', name: '静卧余烬', shape: [0.48, 0.25], count: 0, project: 'fixture-project', cards: [], events: [{ occurredAt: '2026-10-01T10:00:00+08:00', source: { observedAt: '2026-10-01T10:00:00+08:00' } }] },
 ];
 const lines = [];
 try {
@@ -77,6 +77,8 @@ try {
       const actual = await page.evaluate(() => window.__flameCaptureUniforms);
       expect(actual.u_heat).toBeCloseTo(Number(await room.getAttribute('data-heat')), 2);
       expect(actual.u_size).toBeCloseTo(1, 2);
+      expect(actual.u_shapeWidth).toBeCloseTo(stage.shape[0], 2);
+      expect(actual.u_shapeHeight).toBeCloseTo(stage.shape[1], 2);
       expect(actual.u_golden).toBeCloseTo(Number(await room.getAttribute('data-golden')), 2);
       expect(actual.u_dormant).toBeCloseTo(Number(await room.getAttribute('data-dormant')), 2);
       const info = `${period} ${stage.key}: heat=${await room.getAttribute('data-heat')} size=${await room.getAttribute('data-size')} golden=${await room.getAttribute('data-golden')} dormant=${await room.getAttribute('data-dormant')} rendered=${JSON.stringify(actual)}`;

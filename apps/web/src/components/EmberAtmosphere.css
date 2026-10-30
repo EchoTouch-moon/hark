@@ -11,8 +11,8 @@
 }
 .ember-atmosphere__canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .ember-atmosphere__fallback {
-  position: absolute; left: 50%; bottom: 12%; width: min(700px, 75vw); height: 74vh;
-  translate: -50% 0; opacity: .85; transform-origin: 50% 85%;
+  position: absolute; left: 50%; top: 53%; width: min(700px, 75vw); height: 74vh;
+  translate: -50% -50%; opacity: .85; transform-origin: 50% 50%;
 }
 .ember-atmosphere[data-renderer='webgl'] .ember-atmosphere__fallback { display: none; }
 .ember-atmosphere[data-renderer='fallback'] .ember-atmosphere__canvas { display: none; }

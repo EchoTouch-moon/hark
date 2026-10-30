@@ -1,4 +1,5 @@
 import flameTextureUrl from '../assets/living-fire.png';
+import { FLAME_SHAPES, type FlameShape } from './flameShape';
 
 /** A single transparent, bounded fire field with life-stage support. */
 export interface FlameFrame {
@@ -17,7 +18,7 @@ export interface FlameFrame {
 
 export interface FlameRenderer {
   resize: () => void;
-  draw: (frame: FlameFrame) => void;
+  draw: (frame: FlameFrame, shape?: FlameShape) => void;
   triggerSparks: (count?: number) => void;
   dispose: () => void;
 }
@@ -55,6 +56,10 @@ uniform float u_textureReady;
 uniform float u_golden;
 uniform float u_dormant;
 uniform float u_surge;
+uniform float u_shapeWidth;
+uniform float u_shapeHeight;
+uniform float u_shapeOpacity;
+uniform float u_shapeCenter;
 
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
@@ -81,10 +86,10 @@ void main() {
   float goldenFactor = 1.0 + u_golden * 0.08;
   float dormantFactor = 1.0 - u_dormant * 0.48;
   float surgeFactor = 1.0 + u_surge * 0.22;
-  float height = (0.58 + u_heat * 0.16) * size * goldenFactor * dormantFactor * surgeFactor;
-  float width = (0.235 + u_heat * 0.065) * size * (1.0 + u_golden * 0.06) * (1.0 - u_dormant * 0.30) * (1.0 + u_surge * 0.10);
+  float height = (0.58 + u_heat * 0.16) * size * u_shapeHeight * goldenFactor * dormantFactor * surgeFactor;
+  float width = (0.235 + u_heat * 0.065) * size * u_shapeWidth * (1.0 + u_golden * 0.06) * (1.0 - u_dormant * 0.30) * (1.0 + u_surge * 0.10);
   float x = (uv.x - 0.5) * aspect / width;
-  float y = (uv.y - 0.17) / height;
+  float y = (uv.y - (u_shapeCenter - 0.30 * size * u_shapeHeight)) / height;
   if (abs(x) > 2.1 || y < -0.18 || y > 1.8) {
     gl_FragColor = vec4(0.0);
     return;
@@ -129,9 +134,11 @@ void main() {
   vec3 glowColor = mix(vec3(0.88, 0.20, 0.025), vec3(0.95, 0.55, 0.08), u_golden * 0.6);
   col = mix(glowColor, col, fire);
 
-  float textureHeight = (0.68 + u_heat * 0.14) * size * (1.0 + (u_response + u_surge * 0.6) * 0.14) * goldenFactor * dormantFactor;
-  float tx = 0.5 + (uv.x - 0.5) * aspect / (textureHeight * 1.12);
-  float ty = (uv.y - 0.12) / textureHeight;
+  float textureBase = (0.68 + u_heat * 0.14) * size * (1.0 + (u_response + u_surge * 0.6) * 0.14) * goldenFactor * dormantFactor;
+  float textureHeight = textureBase * u_shapeHeight;
+  float textureWidth = textureBase * u_shapeWidth;
+  float tx = 0.5 + (uv.x - 0.5) * aspect / (textureWidth * 1.12);
+  float ty = (uv.y - (u_shapeCenter - 0.35 * size * u_shapeHeight)) / textureHeight;
   float lift = smoothstep(0.0, 0.35, ty);
   vec2 distortion = vec2((drift - 0.5) * 0.44 + sin(t * 1.4 + ty * 7.0) * 0.055,
                          (fine - 0.5) * 0.24 + sin(t * 1.2 + tx * 6.0) * 0.04) * lift;
@@ -169,7 +176,7 @@ void main() {
   float combined = photoAlpha + secondAlpha * (1.0 - photoAlpha) + proceduralAlpha * (1.0 - photoAlpha) * (1.0 - secondAlpha);
   vec3 combinedColor = (photoColor * photoAlpha + secondColor * secondAlpha * (1.0 - photoAlpha)
     + col * proceduralAlpha * (1.0 - photoAlpha) * (1.0 - secondAlpha)) / max(combined, 0.0001);
-  gl_FragColor = vec4(combinedColor, combined);
+  gl_FragColor = vec4(combinedColor, combined * u_shapeOpacity);
 }
 `;
 
@@ -277,6 +284,10 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
   const goldenUniform = gl.getUniformLocation(program, 'u_golden');
   const dormantUniform = gl.getUniformLocation(program, 'u_dormant');
   const surgeUniform = gl.getUniformLocation(program, 'u_surge');
+  const shapeWidthUniform = gl.getUniformLocation(program, 'u_shapeWidth');
+  const shapeHeightUniform = gl.getUniformLocation(program, 'u_shapeHeight');
+  const shapeOpacityUniform = gl.getUniformLocation(program, 'u_shapeOpacity');
+  const shapeCenterUniform = gl.getUniformLocation(program, 'u_shapeCenter');
 
   let textureReady = false;
   let disposed = false;
@@ -355,7 +366,7 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
     gl.viewport(0, 0, width, height);
   };
 
-  const draw = (frame: FlameFrame) => {
+  const draw = (frame: FlameFrame, shape: FlameShape = FLAME_SHAPES.blaze) => {
     if (disposed || gl.isContextLost()) return;
 
     // 1. Draw Living Fire Quad
@@ -374,6 +385,10 @@ export function createFlameRenderer(canvas: globalThis.HTMLCanvasElement, onText
     gl.uniform1f(goldenUniform, frame.golden ?? 0);
     gl.uniform1f(dormantUniform, frame.dormant ?? 0);
     gl.uniform1f(surgeUniform, frame.surge ?? 0);
+    gl.uniform1f(shapeWidthUniform, shape.width);
+    gl.uniform1f(shapeHeightUniform, shape.height);
+    gl.uniform1f(shapeOpacityUniform, shape.opacity);
+    gl.uniform1f(shapeCenterUniform, shape.center);
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);

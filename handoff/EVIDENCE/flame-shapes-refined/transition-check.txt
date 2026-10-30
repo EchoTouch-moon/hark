@@ -1,0 +1,5 @@
+PASS confirmed message transitions spark to sprout through intermediate GSAP frames
+PASS user size adjustment preserves the stage proportions
+PASS paused state updates to blaze without motion and resumes without losing its shape
+PASS no browser page errors
+PASS reduced-motion fallback keeps the spark proportions without WebGL

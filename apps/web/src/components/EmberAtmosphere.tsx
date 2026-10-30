@@ -3,6 +3,7 @@ import { gsap } from 'gsap';
 import { EMBER_CUE_EVENT, emitEmberCue, isEmberMotionPaused, readEmberCue } from '../features/ember-cues';
 import { createFlameRenderer } from '../features/flameRenderer';
 import type { ProjectFlameStage } from '../features/projectEmber';
+import { FLAME_SHAPES, type FlameShape } from '../features/flameShape';
 import flameTextureUrl from '../assets/living-fire.png';
 import type { HearthPeriod } from '../features/hearthPeriod';
 import {
@@ -44,9 +45,12 @@ export function EmberAtmosphere({
 }: EmberAtmosphereProps) {
   const root = useRef<HTMLDivElement>(null);
   const canvas = useRef<globalThis.HTMLCanvasElement>(null);
+  const fallbackLayer = useRef<HTMLDivElement>(null);
+  const shape = useRef<FlameShape>({ ...FLAME_SHAPES[stage] });
   const controllerRef = useRef<FlameMotionController | null>(null);
   const rendererRef = useRef<ReturnType<typeof createFlameRenderer>>(null);
   const timelines = useRef<gsap.core.Animation[]>([]);
+  const clockRef = useRef<gsap.core.Timeline | null>(null);
   const drawRef = useRef<(force?: boolean) => void>(() => {});
   const [preferencePaused, setPreferencePaused] = useState(isEmberMotionPaused);
   const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
@@ -132,7 +136,15 @@ export function EmberAtmosphere({
       if (!force && now - lastDraw < 30) return;
       if (document.hidden) return;
       lastDraw = now;
-      renderer?.draw(controller.frame);
+      renderer?.draw(controller.frame, shape.current);
+      if (fallbackLayer.current) {
+        fallbackLayer.current.style.scale = `${controller.frame.size * shape.current.width} ${controller.frame.size * shape.current.height}`;
+        fallbackLayer.current.style.opacity = String(shape.current.opacity * .85);
+        fallbackLayer.current.style.top = `${(1 - shape.current.center) * 100}%`;
+      }
+      node.dataset.shapeWidth = shape.current.width.toFixed(3);
+      node.dataset.shapeHeight = shape.current.height.toFixed(3);
+      node.dataset.shapeRate = shape.current.rate.toFixed(3);
       node.style.setProperty('--hearth-intensity', String(controller.frame.heat));
       node.dataset.frame = String(++renderedFrames);
       const responseVal = controller.frame.focus + controller.frame.pulse + controller.frame.waiting;
@@ -156,6 +168,8 @@ export function EmberAtmosphere({
       onUpdate: () => draw(),
     });
 
+    clock.timeScale(shape.current.rate);
+    clockRef.current = clock;
     const fallback = gsap.timeline({ paused: true }).to('.ember-atmosphere__fallback-flame', {
       scaleX: 1.08,
       scaleY: 1.04,
@@ -260,6 +274,7 @@ export function EmberAtmosphere({
       surface.removeEventListener('webglcontextrestored', restored);
       renderer?.dispose();
       rendererRef.current = null;
+      clockRef.current = null;
       controller.dispose();
       controllerRef.current = null;
       drawRef.current = () => {};
@@ -305,7 +320,19 @@ export function EmberAtmosphere({
       overwrite: 'auto',
       onUpdate: () => drawRef.current(true),
     });
-  }, { scope: root, dependencies: [heat, size, period, golden, dormant, stage, still] });
+  }, { scope: root, dependencies: [heat, size, period, golden, dormant, stage, still], revertOnUpdate: false });
+
+  // Stage proportions and the user's size preference are separate inputs.
+  // A GSAP tween carries shape across stages without changing business state.
+  useHearthTimeline(() => {
+    gsap.to(shape.current, {
+      ...FLAME_SHAPES[stage],
+      duration: still ? 0 : STAGE_TRANSITION_DURATION,
+      ease: HEARTH_EASE.gentle,
+      overwrite: 'auto',
+      onUpdate: () => { clockRef.current?.timeScale(shape.current.rate); drawRef.current(true); },
+    });
+  }, { scope: root, dependencies: [stage, still], revertOnUpdate: false });
 
   return (
     <div ref={root} className="ember-atmosphere" data-band={band} data-still={still}
@@ -313,7 +340,7 @@ export function EmberAtmosphere({
       data-heat={heat.toFixed(2)} data-golden={golden.toFixed(2)} data-dormant={dormant.toFixed(2)}
       data-size={size.toFixed(2)} data-renderer="pending" data-motion-engine="gsap" aria-hidden="true">
       <canvas ref={canvas} className="ember-atmosphere__canvas" />
-      <div className="ember-atmosphere__fallback" style={{ transform: `scale(${size * (0.9 + heat * 0.25)})` }}>
+      <div ref={fallbackLayer} className="ember-atmosphere__fallback">
         <img className="ember-atmosphere__fallback-flame" src={flameTextureUrl} alt="" />
       </div>
       <div className="ember-atmosphere__glass" />

@@ -5,3 +5,5 @@
 `comparison.txt` 记录了页面状态值和 WebGL 实际收到的参数，脚本对两者做了断言。脚本：`node scripts/qa/capture-flame-states.mjs`（使用 4404 隔离合成服务）。
 
 观察：初火星、初生火苗与繁盛之火使用相同火焰纹理；统一用户大小为 1.00 时，初火星 heat=0.12，初生火苗 heat=0.42。现有着色器的纹理高度系数是 `0.68 + heat * 0.14`，两者约相差 6%；38px 磨砂使轮廓差异更不明显。`STAGE_TARGETS` 中虽定义了不同的大小，但目前页面组件未调用其 `transitionToStage`，实际大小仍来自用户大小设置。本次只截取和分析现状，没有改变产品画面或火焰状态规则。
+
+此目录为调整前的历史基线；截图脚本现在默认输出调整后的结果至 `handoff/EVIDENCE/flame-shapes-refined/`。
