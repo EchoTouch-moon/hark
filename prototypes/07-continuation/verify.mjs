@@ -5,7 +5,7 @@ import path from 'node:path';
 
 // Test only the isolated design prototype, with synthetic projects and a fresh browser.
 const base = process.env.CONTINUATION_URL ?? 'http://127.0.0.1:4341';
-const dir = path.resolve('handoff/EVIDENCE/conversation-home-2026-10-30');
+const dir = path.resolve(process.env.CONTINUATION_EVIDENCE ?? 'handoff/EVIDENCE/conversation-home-2026-10-30');
 const round = process.env.CONTINUATION_ROUND ?? 'round1';
 await mkdir(dir, { recursive: true });
 const browser = await chromium.launch();

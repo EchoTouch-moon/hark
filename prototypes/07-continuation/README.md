@@ -28,3 +28,5 @@ node prototypes/07-continuation/verify.mjs
 ```
 
 最新交互/布局证据在handoff/EVIDENCE/conversation-home-2026-10-30/。设计规则见 DESIGN.md；方向取舍见 DIRECTION.md。正式能力接入必须继续遵守根项目的数据、权限和安全合同。
+
+后续Hark参考修订：发现整合为带继续讨论操作的建议条，消息左右区分。当前22项检查及截图见handoff/EVIDENCE/hark-reference-2026-10-30/；参考依据见docs/design/2026-10-30-HARK-REFERENCE.md。

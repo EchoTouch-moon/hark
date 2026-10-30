@@ -321,3 +321,8 @@ DESIGN PROTOTYPE / VERIFIED：独立可点原型prototypes/07-continuation，六
 ## 2026-10-30 · 主页面聚焦对话
 
 IMPLEMENTED / VERIFIED：独立续页原型主页改为直接对话，发现融入Agent消息；范围切换、按范围保存、档案按需查看、消息独立滚动、输入常驻。22项浏览器检查通过，终版截图和输出在handoff/EVIDENCE/conversation-home-2026-10-30/。未替换正式应用或接入后台能力。
+
+
+## 2026-10-30 · Hark Pro参考
+
+IMPLEMENTED / VERIFIED：依据Hark官方公开界面，把发现合成单条带操作的项目建议；双方消息左右区分、圆角表面。原型22项检查通过，证据handoff/EVIDENCE/hark-reference-2026-10-30/，依据docs/design/2026-10-30-HARK-REFERENCE.md。正式应用及后台未改动。

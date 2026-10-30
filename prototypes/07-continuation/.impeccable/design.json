@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-30T13:51:17.276Z",
+  "generatedAt": "2026-10-30T14:22:05.326Z",
   "title": "Design System: Hearth · 续页",
   "extensions": {
     "colorMeta": {
@@ -209,6 +209,13 @@
       "description": "主页的主操作；选择范围后输入并发送。",
       "html": "<form class=\"ds-composer\"><label class=\"ds-label\">消息<textarea placeholder=\"问问你的项目，或说说现在的想法…\"></textarea></label><div class=\"ds-toolbar\"><label>讨论范围 <select><option>全部项目</option><option>片段</option></select></label><button type=\"button\">发送</button></div></form>",
       "css": ".ds-composer{background:var(--surface,#fffefa);border:1px solid var(--line,#d3dacf);border-radius:12px;padding:16px 18px 12px;color:var(--ink,#25332d)}.ds-label{font-size:11px}.ds-composer textarea{display:block;width:100%;min-height:56px;background:transparent;border:0;resize:none;color:inherit;font:14px/1.8 sans-serif}.ds-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:8px;font-size:11px}.ds-toolbar select{background:var(--surface,#fffefa);color:inherit;border:1px solid var(--line,#d3dacf);border-radius:5px;padding:6px 9px}.ds-toolbar button{background:var(--accent,#354e41);color:var(--on-accent,#fffefa);padding:8px 12px;border:0;border-radius:5px;min-height:36px;cursor:pointer}.ds-composer:focus-within{border-color:var(--focus,#607d68)}.ds-toolbar button:hover{opacity:.9}.ds-composer :focus-visible{outline:2px solid var(--focus,#607d68);outline-offset:4px}"
+    },
+    {
+      "name": "Project Action Suggestion",
+      "kind": "custom",
+      "description": "项目与一句建议旁放继续讨论按钮，进入对应项目范围。",
+      "html": "<div class=\"ds-action\"><button>继续讨论</button><p><strong>片段</strong><span>先做通保存与回访，验证一次回来再读的体验。</span></p></div>",
+      "css": ".ds-action{display:flex;align-items:center;gap:18px;background:var(--wash,#e0e6dc);color:var(--ink,#25332d);padding:18px 20px;border-radius:14px}.ds-action button{flex-shrink:0;border:1px solid var(--line,#d3dacf);border-radius:8px;background:var(--surface,#fffefa);color:inherit;padding:10px 14px;font-size:13px;min-height:42px;cursor:pointer}.ds-action button:hover{background:var(--paper,#f5f5f0)}.ds-action button:focus-visible{outline:2px solid var(--focus,#607d68);outline-offset:5px}.ds-action p{margin:0;display:flex;flex-direction:column;gap:4px;min-width:0}.ds-action strong{font-size:14px;font-weight:500}.ds-action span{font-size:13px;line-height:1.8}"
     }
   ],
   "narrative": {
