@@ -253,11 +253,7 @@ export async function fetchChatHistory(
   });
   const withParts = attachStoredParts(server);
   const serverHasParts = server.some((m) => Array.isArray(m.parts) && m.parts.length > 0);
-  // 真 API / 服务端已带 parts：不合并旧 Mock 本地消息
-  const messages =
-    liveApi || serverHasParts
-      ? withParts
-      : mergeLocalMessages(threadId, withParts);
+  const messages = withParts;
   if (serverHasParts && !liveApi) preferLiveApi();
   return {
     ...data,
@@ -282,11 +278,11 @@ export async function sendChatMessage(
 
 /**
  * G3 proactive：打开线程时拉未处理建议。
- * 无后端时：空线程注入一条诚实 Mock 建议（文案标明演示）。
+ * 服务端返回 suggestion: null 或 404/错误时，静默关闭，不伪造任何 Mock 建议。
  */
 export async function fetchProactive(
   threadId: string,
-  opts: { hasMessages: boolean },
+  _opts?: { hasMessages?: boolean },
   signal?: AbortSignal,
 ): Promise<ProactiveDto> {
   try {
@@ -301,78 +297,10 @@ export async function fetchProactive(
       // ignore
     }
     return { suggestion: data.suggestion ?? null, mock: false };
-  } catch (err) {
-    if (err instanceof ApiError && err.status !== 404 && err.status !== 501 && err.status !== 0) {
-      // continue to mock
-    }
-  }
-
-  // 真 API 已可用但本拍 proactive 失败：安静，绝不回灌旧 Mock 盖住
-  if (liveApi) {
+  } catch {
+    // 404, 403, network failure, or unknown thread: fail closed, return null suggestion.
     return { suggestion: null, mock: false };
   }
-
-  if (opts.hasMessages) {
-    return { suggestion: null, mock: true };
-  }
-
-  const injectedKey = `${PROACTIVE_INJECT_PREFIX}${threadId}`;
-  try {
-    if (window.localStorage.getItem(injectedKey) === '1') {
-      return { suggestion: null, mock: true };
-    }
-  } catch {
-    // ignore
-  }
-
-  const id = `mock-proactive-${threadId}`;
-  const actions: MessageAction[] = [
-    {
-      id: 'mock-diagnose',
-      label: '诊断',
-      needsConfirm: false,
-      riskNote: '只读演示，不改任何东西',
-      demo: true,
-    },
-    {
-      id: 'mock-approve-build',
-      label: '批准重跑',
-      needsConfirm: true,
-      impact: '演示：假装批准一次本地构建（不会真的执行）',
-      riskNote: '演示授权 · 无真实副作用',
-      demo: true,
-    },
-    {
-      id: 'mock-ignore',
-      label: '忽略',
-      needsConfirm: false,
-      demo: true,
-    },
-  ];
-  const suggestion: CanvasMessage = {
-    id,
-    role: 'assistant',
-    content:
-      '演示：有一件事值得看一眼——本地演示仓库的最近一次检查还没跟进。（这是假建议，尚未接真洞察。）',
-    createdAt: new Date().toISOString(),
-    adapter: 'mock',
-    threadId,
-    parts: [
-      {
-        type: 'text',
-        text: '演示：有一件事值得看一眼——本地演示仓库的最近一次检查还没跟进。（这是假建议，尚未接真洞察。）',
-      },
-      { type: 'actions', actions },
-    ],
-  };
-  saveMessageParts(id, suggestion.parts ?? []);
-  appendLocalMessage(threadId, suggestion);
-  try {
-    window.localStorage.setItem(injectedKey, '1');
-  } catch {
-    // ignore
-  }
-  return { suggestion, mock: true };
 }
 
 export interface ExecuteActionResult {
@@ -380,7 +308,9 @@ export interface ExecuteActionResult {
   mock: boolean;
 }
 
-/** G4：执行行动后在同线程回写 ProgressBlock + 结果（Mock 本地模拟）。 */
+/**
+ * 执行行动。服务端拒绝或不可用时直接抛错，绝不伪造本地进度或完成状态。
+ */
 export async function executeMessageAction(
   threadId: string,
   action: MessageAction,
@@ -395,87 +325,11 @@ export async function executeMessageAction(
       preferLiveApi();
       return { message: data.message, mock: false };
     }
-  } catch {
-    // mock path
+    throw new ApiError(500, 'EMPTY_EXECUTE_RESPONSE', '执行接口未返回有效消息');
+  } catch (err) {
+    if (err instanceof ApiError) {
+      throw err;
+    }
+    throw new ApiError(0, 'EXECUTE_UNAVAILABLE', err instanceof Error ? err.message : '行动执行接口不可用');
   }
-
-  // 真 API 会话下 execute 失败：抛给调用方，不伪造本地 Progress
-  if (liveApi) {
-    throw new ApiError(0, 'execute_unavailable', '行动执行接口不可用');
-  }
-
-  if (action.id === 'mock-ignore' || action.id === 'demo-ignore' || action.label === '忽略') {
-    const message: CanvasMessage = {
-      id: `mock-result-${Date.now()}`,
-      role: 'assistant',
-      content: '好，已忽略这条演示建议。',
-      createdAt: new Date().toISOString(),
-      adapter: 'mock',
-      threadId,
-      parts: [{ type: 'result', text: '好，已忽略这条演示建议。', ok: true }],
-    };
-    saveMessageParts(message.id, message.parts ?? []);
-    appendLocalMessage(threadId, message);
-    return { message, mock: true };
-  }
-
-  const runRef = `mock-run-${Date.now()}`;
-  const steps: ProgressStep[] = [
-    { name: '确认范围', status: 'done', detail: '演示步骤' },
-    { name: action.needsConfirm ? '按批准执行' : '只读诊断', status: 'running', detail: '…' },
-    { name: '汇总结果', status: 'pending' },
-  ];
-  const progressId = `mock-progress-${Date.now()}`;
-  const progressMsg: CanvasMessage = {
-    id: progressId,
-    role: 'assistant',
-    content: `正在处理「${action.label}」…`,
-    createdAt: new Date().toISOString(),
-    adapter: 'mock',
-    threadId,
-    parts: [{ type: 'progress', steps, runRef }],
-  };
-  saveMessageParts(progressId, progressMsg.parts ?? []);
-
-  // 同步模拟短延迟由调用方 await；这里直接给终态消息，调用方可先插 progress 再换 result
-  await new Promise<void>((resolve) => {
-    const t = window.setTimeout(resolve, 700);
-    signal?.addEventListener('abort', () => {
-      window.clearTimeout(t);
-      resolve();
-    });
-  });
-
-  const finalSteps: ProgressStep[] = [
-    { name: '确认范围', status: 'done', detail: '演示步骤' },
-    {
-      name: action.needsConfirm ? '按批准执行' : '只读诊断',
-      status: 'done',
-      detail: '演示完成',
-    },
-    {
-      name: '汇总结果',
-      status: 'done',
-      detail: action.demo ? '假结果 · 未接真洞察/真构建' : '完成',
-    },
-  ];
-  const resultText = action.demo
-    ? `「${action.label}」演示跑通了：进度与结果留在本线程。这不是真实洞察或真实构建。`
-    : `「${action.label}」已完成。`;
-  const message: CanvasMessage = {
-    id: progressId,
-    role: 'assistant',
-    content: resultText,
-    createdAt: new Date().toISOString(),
-    adapter: 'mock',
-    threadId,
-    parts: [
-      { type: 'progress', steps: finalSteps, runRef },
-      { type: 'result', text: resultText, ok: true },
-    ],
-  };
-  saveMessageParts(message.id, message.parts ?? []);
-  appendLocalMessage(threadId, message);
-  touchLocalThread(threadId, resultText);
-  return { message, mock: true };
 }

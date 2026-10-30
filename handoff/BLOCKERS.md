@@ -111,6 +111,9 @@
 ## 2026-10-30 MVP G0 审查后
 - G0 文档审查已 PASS，原“待再次审阅”阻断解除；G1-A 等待用户明确发起，旧执行入口安全问题和远端 CI 失败尚未修复。
 
-## 2026-10-30 G1-A 待联调
-- 前端任务尚未派发或实现：本地没有发现 Gemini CLI，提示词见 `tasks/G1A-GEMINI-FRONTEND.md`。当前 `apps/web/src/features/chat.ts` 在无服务等情况下仍可能生成本地模拟建议/伪完成，线程列表空态也可能降级；因此整体 G1-A 不能 PASS。
-- 正常运行时旧 Demo 入口暂被关闭直到可证明数据隔离。完整浏览器 E2E 未运行，旧 CI 为 FAIL；需 Gemini 完成安全 UI 后用隔离数据库复测。当前已运行的 4402 服务可能还是旧进程，源码修改不自动保证该进程已更新。
+## 2026-10-30 G1-A 前端工程完成与遗留 UI 测试阻断说明
+- **前端阻断已解除**：G1-A 前端工程任务全部交付完成。`apps/web/src/features/chat.ts` 与 `threads.ts` 中所有的本地虚假建议、虚假执行、伪完成与种子线程 fallback 已被彻底删除；模式失败关闭机制健全；离线标识已实现真正可见。
+- **当前 BLOCKED 事项（待 G1-B/G4）**：
+  - `tests/e2e/hearth.spec.ts` 中针对旧卡片工作台的用例（`E2E-01..07`, `E2E-11`，涉及 `/cards`、`/runs/:id/execute` 等旧接口）受后端安全红线限制返回 403 `LEGACY_ACTIONS_DISABLED`。
+  - 按任务指令与 G0 安全合同：**不得通过删除断言或 skip 测试伪造变绿**，这些旧 UI 用例在此阶段保持不变，单独记录为 **BLOCKED**，等待 G1-B 运行时隔离 Demo 或 G4 正式界面就绪后再行衔接。
+  - 恢复命令：当后端开启隔离 Demo 能力或 G1-B/G4 接口就绪后，执行 `npx playwright test -c tests/e2e/playwright.config.ts tests/e2e/hearth.spec.ts`。

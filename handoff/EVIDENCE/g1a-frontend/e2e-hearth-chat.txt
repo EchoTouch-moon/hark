@@ -1,0 +1,16 @@
+npm notice run hearth@0.1.0 npx
+npm notice run 'playwright' test -c tests/e2e/playwright.config.ts tests/e2e/hearth.spec.ts -g E2E-08|Settings|视口
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 3 tests using 1 worker
+
+  ✓  1 tests/e2e/hearth.spec.ts:130:1 › E2E-08: Chat mock 回复、持久化、明确 Demo 标识 (4.4s)
+  ✓  2 tests/e2e/hearth.spec.ts:149:1 › Settings 保存可持久化 (3.0s)
+  ✓  3 tests/e2e/hearth.spec.ts:161:1 › 视口 1280×800 无水平滚动 (954ms)
+
+  3 passed (15.0s)

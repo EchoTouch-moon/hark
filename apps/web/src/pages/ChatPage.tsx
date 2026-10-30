@@ -11,7 +11,6 @@ import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useThreads } from '../app/AppShell';
 import { ApiError } from '../features/api/client';
 import {
-  appendLocalMessage,
   executeMessageAction,
   fetchChatHistory,
   fetchProactive,
@@ -174,7 +173,7 @@ function MessageTurn({
       className={`chat-msg ${isUser ? 'chat-msg--user' : 'chat-msg--assistant'}`}
     >
       <header className="chat-msg__meta">
-        <span className="chat-msg__role">{isUser ? '你' : 'Hearth'}</span>
+        <span className="chat-msg__role">{isUser ? '你' : msg.adapter === 'mock' || !isLiveApi() ? 'Hearth · Mock' : 'Hearth'}</span>
         <time dateTime={msg.createdAt}>{formatTime(msg.createdAt)}</time>
       </header>
       <div className="chat-msg__body">
@@ -231,11 +230,12 @@ function ComposerForm({
         onSubmit();
       }}
     >
-      <label htmlFor="canvas-input" className="visually-hidden">
+      <label htmlFor="chat-input" className="visually-hidden">
         输入消息
       </label>
       <textarea
-        id="canvas-input"
+        id="chat-input"
+        data-testid="chat-input"
         ref={inputRef as RefObject<HTMLTextAreaElement>}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -278,6 +278,7 @@ export function ChatPage() {
     flameLife,
     hearthPeriod,
     motionPaused,
+    setWelcomeActive,
     welcomeReplay,
     setWelcomeReplay,
   } = useThreads();
@@ -459,20 +460,8 @@ export function ChatPage() {
       if (!activeThreadId || actionBusy) return;
       setActionBusy(true);
       setPendingAction(null);
+      const placeholderId = `progress-pending-${Date.now()}`;
       try {
-        setMessages((prev) => {
-          const next = prev.map((m) => {
-            if (!m.parts?.some((p) => p.type === 'actions')) return m;
-            const patched = {
-              ...m,
-              parts: m.parts.filter((p) => p.type !== 'actions'),
-            };
-            if (!isLiveApi()) appendLocalMessage(activeThreadId, patched);
-            return patched;
-          });
-          return next;
-        });
-        const placeholderId = `progress-pending-${Date.now()}`;
         setMessages((prev) => [
           ...prev,
           {
@@ -502,6 +491,8 @@ export function ChatPage() {
         void refreshThreads();
       } catch (err) {
         emitEmberCue('failed');
+        // Clean up pending progress placeholder on failure or rejection
+        setMessages((prev) => prev.filter((m) => m.id !== placeholderId));
         setLoadError(err instanceof ApiError ? err.message : '行动执行失败');
       } finally {
         setActionBusy(false);
@@ -657,13 +648,15 @@ export function ChatPage() {
   const finishWelcome = useCallback(() => {
     setWelcomeVisible(false);
     setArrival(false);
+    setWelcomeActive(false);
     inputRef.current?.focus();
-  }, []);
+  }, [setWelcomeActive]);
   const startWelcomeExit = useCallback((name: string) => {
     setDisplayName(name);
     setWelcomeBlocking(false);
     setArrival(true);
-  }, []);
+    setWelcomeActive(false);
+  }, [setWelcomeActive]);
   const chips = SEED_CHIPS;
 
   return (

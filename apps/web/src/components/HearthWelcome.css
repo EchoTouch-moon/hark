@@ -12,6 +12,15 @@
 .welcome-header { display:flex; align-items:center; justify-content:space-between; padding:30px 42px; flex-shrink:0; }
 .welcome-wordmark { font-family:var(--font-serif); font-size:25px; letter-spacing:-.04em; }
 .welcome-wordmark>span { display:none; }
+.welcome-mode-badge {
+  font-size: 11px;
+  color: var(--color-ink-2);
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-surface) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
 .welcome-skip { background:transparent; border:0; padding:10px; color:var(--color-ink-2); font:inherit; font-size:12px; cursor:pointer; }
 .welcome-skip>span { margin-left:12px; }
 .welcome-stage { flex:1; min-height:360px; display:flex; align-items:center; justify-content:center; width:100%; padding:20px 32px 55px; }
@@ -47,6 +56,12 @@
 .hearth-welcome[data-period='night'] .welcome-chapter { color: #c9a888; }
 [data-hearth-period='night'] .welcome-name-field,
 .hearth-welcome[data-period='night'] .welcome-name-field { background: rgba(54,44,36,.85); }
+[data-hearth-period='night'] .welcome-mode-badge,
+.hearth-welcome[data-period='night'] .welcome-mode-badge {
+  color: #d6c0a8;
+  background: rgba(54, 44, 36, 0.85);
+  border-color: rgba(147, 120, 92, 0.35);
+}
 @media (prefers-reduced-motion: reduce) { .hearth-welcome { transition: none; } }
 /* A single focus ring belongs to the whole field, not its inner text box. */
 .hearth-welcome .welcome-name-field:focus-within { outline: 2px solid var(--color-focus); outline-offset: 3px; }

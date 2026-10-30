@@ -235,3 +235,23 @@ UI-02 全部完成并通关门禁：
 - 用户明确发起 G1-A；前端范围及可直接交给 Gemini 的提示词在 `tasks/G1A-GEMINI-FRONTEND.md`。当前环境未发现 Gemini 可执行程序，本轮未实际调用或派发 Gemini。
 - 后端已使旧主动 GET 只读返回空、未知线程不创建；旧线程 action 及默认旧执行/审批失败关闭，保留既有任务取消；可识别的旧不安全建议/伪完成不再回灌历史/预览，但原始记录保留。真实和未知模式及未证明隔离的运行时 Demo 不开启旧演示数据/执行接口；health 暴露 `legacyDemoAvailable`。
 - 独立合成数据验证：全仓 458 项测试通过（在最后 health 标识和新增 HTTP 测试之前），之后相关 49 项含真实本机 HTTP 通过；typecheck、lint（6 warnings）、build 通过，证据 `handoff/EVIDENCE/g1a-backend/`。尚未运行浏览器 E2E；前端仍有 Mock 回退风险，G1-A 整体 NOT PASSED，待 Gemini 前端及联合验收。
+
+## 2026-10-30 · G1-A 前端工程验收完成 (Frontend Engineering Verification PASS)
+- **状态**：COMPLETED · PASS（前端责任范围已全部交付并通过验证）
+- **范围限制**：严格遵循 `tasks/G1A-GEMINI-FRONTEND.md`，仅修改 `apps/web/src/` 及指定前端 E2E 测试；不接触后端、不改动数据库迁移与安全策略；零外部模型调用、零私人数据访问、零推送与合并。
+- **关键交付成果**：
+  1. **运行模式安全失败关闭**：`HealthRuntimeSchema` 使用 Zod 对 `/api/v1/health` 做严格校验。真实模式、未知模式、网络异常或破损返回时前端一律失败关闭；直接访问 `/demo` 同样触发 `DemoGate` 拒绝挂载旧演示操作；旧 Demo 行动展示严格取决于 `legacyDemoAvailable === true`，缺失或无效一律关闭。
+  2. **修复离线演示与 Mock 标识“定位到但隐藏”问题**：根除 `AppShell.css` 中 `.canvas-shell:has(.hearth-welcome:not([data-step='leaving'])) .canvas-chrome { visibility: hidden; }` 导致的隐藏缺陷；在首访欢迎遮罩顶部（昼/夜双主题）和对话头部常驻高对比度「离线演示 · 不连接真实模型」胶囊标签；回复明确标注「Hearth · Mock」角色，杜绝误导。
+  3. **拒绝虚假建议与虚假执行**：彻底清理 `apps/web/src/features/chat.ts` 与 `threads.ts` 中失败时的本地 Mock 回退机制。移除 `mock-proactive-*` 假建议生成、移除 `mock-progress-*` 假执行进度与 `mock-result-*` 伪造完成；移除不安全的本地种子线程生成。当后端返回 403 `LEGACY_ACTIONS_DISABLED`、404 或 null 时，诚实显示错误状态，且严格保留用户正在输入的草稿内容。
+  4. **全套浏览器端到端测试 PASS**：
+     - `tests/e2e/runtime-mode.spec.ts`：以对话优先架构重构 6 项测试，覆盖未知/真实模式直接 URL 失败关闭、非法模式错误恢复、`legacyDemoAvailable` 失败关闭、昼夜与桌面视口离线标识真正可见、后端拒绝动作时保留草稿且无伪造完成、主动建议 null 保持干净空态。**6/6 PASS**！
+     - `tests/e2e/hearth.spec.ts`：`E2E-08`（Chat mock 回复、持久化、明确 Demo 标识）、`Settings 保存可持久化`、`视口 1280×800 无水平滚动` 全部 **PASS**！旧 `/cards` 用例单独归入待 G1-B/G4 状态，未靠 skip 或删断言造假。
+  5. **工程指标**：
+     - `pnpm typecheck`：0 errors
+     - `pnpm lint`：0 errors, 6 warnings（前端代码 0 警告）
+     - `pnpm test`：57 文件 / 459 用例 100% 全部通过
+     - `pnpm test:e2e` (runtime-mode + hearth-chat)：9 项端到端测试全部通过
+  6. **证据归档**：
+     - 测试输出：`handoff/EVIDENCE/g1a-frontend/{typecheck,lint,tests,e2e-runtime-mode,e2e-hearth-chat}.txt`
+     - 桌面与交互截图：`handoff/EVIDENCE/g1a-frontend/01-welcome-mock-badge-day.png` 至 `09-proactive-null-clean-state.png`
+

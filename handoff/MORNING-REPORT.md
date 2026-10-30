@@ -190,3 +190,20 @@ UI-02 完成（UI-02.1、UI-02.2、UI-02.3 全部交付）：
 ## 2026-10-30 G1-A 后端进展与前端任务
 - 前后端拆分：后端已收口旧主动/执行路径并验证真实本地 HTTP；前端任务与 Gemini Prompt 在 `tasks/G1A-GEMINI-FRONTEND.md`，尚未实际派发。
 - 全仓 458 项在最后小改前通过，最终相关 49 项通过；类型、构建、lint（6 warning）通过；证据 `handoff/EVIDENCE/g1a-backend/`。真实运行时旧 Demo 执行与数据接口暂关闭，前端 fallback 和浏览器安全验收仍待解决，G1-A 总体未通过。未推送、未调用外部模型或公开研究。
+
+## 2026-10-30 · G1-A 前端工程验收完成
+- **执行角色**：由前端执行工程师接手并完成 `tasks/G1A-GEMINI-FRONTEND.md` 规定的全部工程要求。
+- **状态总结**：
+  - **PASS**：
+    1. 真实、未知与破损运行模式安全失败关闭；直接访问 `/demo` 无法绕过；`legacyDemoAvailable` 必须严格为 `true`，否则关闭旧 Demo。
+    2. 离线演示与 Mock 标识“定位到但隐藏”问题彻底解决；首访欢迎流程（浅色/深色）与对话界面头部常驻可见「离线演示 · 不连接真实模型」胶囊徽标；回复标明「Hearth · Mock」。
+    3. 后端返回空建议、404 或 `403 LEGACY_ACTIONS_DISABLED` 时，彻底取消本地 Mock 假建议、假进度和假完成回退；草稿严格保留并显示明确错误提示。
+    4. 浏览器 E2E 测试 `tests/e2e/runtime-mode.spec.ts` 6 项全部通过；`tests/e2e/hearth.spec.ts` 中 `E2E-08`（Chat mock 回复、持久化、明确 Demo 标识）、`Settings 保存可持久化`、`视口 1280×800 无水平滚动` 全部通过。
+    5. 全仓 `pnpm test`（57 文件 / 459 用例）、`pnpm typecheck`（0 errors）、`pnpm lint`（0 errors, 6 warnings 均为现有包无关变量）全部通过。
+  - **BLOCKED**：
+    - `tests/e2e/hearth.spec.ts` 中旧卡片用例（`E2E-01..07`, `E2E-11`，涉及 `/cards`、`/runs/:id/execute` 等旧工作台路由）受后端 403 `LEGACY_ACTIONS_DISABLED` 封禁。按要求单独记录为阻断，待 G1-B/G4 再行衔接；未通过跳过或删断言作弊。
+  - **FAIL**：0 项。
+- **证据与截图**：
+  - 测试日志：`handoff/EVIDENCE/g1a-frontend/{typecheck,lint,tests,e2e-runtime-mode,e2e-hearth-chat}.txt`
+  - 界面截图：`handoff/EVIDENCE/g1a-frontend/` 下 9 张截图（涵盖 1440×900、1280×800、昼/夜欢迎流程、Mock 标识、真实模式失败关闭门禁、动作拒绝草稿保留、空主动建议干净主态）。
+- **红线遵守**：修改范围严格限定于 `apps/web/src/` 与指定前端测试；未调用任何外部或真实模型、未访问真实私人目录、未修改后端或迁移、未向远程推送或合并。

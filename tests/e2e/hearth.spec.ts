@@ -130,7 +130,13 @@ test('E2E-07: 项目隔离由服务端保证', async ({ page }) => {
 test('E2E-08: Chat mock 回复、持久化、明确 Demo 标识', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText(/离线演示|不连接模型/).first()).toBeVisible();
+  const skip = page.getByRole('button', { name: /跳过欢迎/ });
+  if (await skip.isVisible()) {
+    await skip.click();
+  }
+  await expect(page.getByText(/离线演示/).first()).toBeVisible();
   const input = page.locator('#chat-input');
+  await expect(input).toBeVisible();
   await input.fill('CI 失败了怎么办');
   await input.press('Enter');
   await expect(page.getByText(/Mock|Hearth · Mock/).first()).toBeVisible({ timeout: 15_000 });

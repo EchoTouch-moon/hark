@@ -22,9 +22,31 @@ import { ObservationsPage } from '../pages/ObservationsPage';
 
 /** Defense for direct URLs as well as navigation: never mount Demo actions outside server Demo mode. */
 function DemoGate() {
-  const {state}=useRuntimeMode();
-  if(state.status !== 'ready' || !state.demoMode)return <section className="page"><h1>演示模式未启用</h1><p>当前使用真实项目模式。演示数据初始化仅在服务端显式开启 Demo 模式后可用。</p><Link to="/">返回发现</Link></section>;
-  return <Outlet/>;
+  const { state, retry } = useRuntimeMode();
+  if (state.status === 'loading') {
+    return (
+      <section className="page" aria-busy="true">
+        <p role="status">正在确认运行模式…</p>
+      </section>
+    );
+  }
+  if (state.status === 'error') {
+    return (
+      <section className="page">
+        <ErrorState message={state.message} onRetry={retry} />
+      </section>
+    );
+  }
+  if (!state.legacyDemoAvailable) {
+    return (
+      <section className="page">
+        <h1>演示模式未启用</h1>
+        <p>当前使用真实项目模式。演示数据初始化仅在服务端显式开启 Demo 模式后可用。</p>
+        <Link to="/">返回对话</Link>
+      </section>
+    );
+  }
+  return <Outlet />;
 }
 
 /** 路由级错误兜底 */

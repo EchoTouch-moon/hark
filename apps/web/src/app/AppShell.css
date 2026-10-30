@@ -501,7 +501,21 @@
 .hearth-wordmark { display:inline-flex; align-items:baseline; padding:4px 0; border:0; background:transparent; color:var(--color-ink); font-family:var(--font-serif); font-size:25px; font-weight:500; letter-spacing:-.045em; cursor:pointer; }
 .hearth-wordmark span { color:var(--color-accent); }
 .hearth-header-actions { display:flex; align-items:center; gap:20px; }
-.hearth-mode-label { font-size:11px; color:var(--color-ink-2); letter-spacing:.04em; }
+.hearth-mode-label {
+  font-size: 11px;
+  color: var(--color-ink-2);
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-surface) 75%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  white-space: nowrap;
+}
+[data-hearth-period='night'] .hearth-mode-label {
+  color: #d6c0a8;
+  background: rgba(54, 44, 36, 0.85);
+  border-color: rgba(147, 120, 92, 0.35);
+}
 .hearth-menu { position:relative; }
 .hearth-menu summary { display:grid; place-items:center; width:38px; height:38px; border:1px solid rgba(147,120,92,.22); border-radius:50%; color:var(--color-ink-2); background:rgba(255,253,249,.38); cursor:pointer; list-style:none; }
 .hearth-menu summary::-webkit-details-marker { display:none; }
@@ -574,7 +588,6 @@
 .hearth-flame-control output { color:var(--color-ink-3); font-variant-numeric:tabular-nums; }
 .hearth-flame-control input { display:block; width:100%; margin:12px 0 2px; accent-color:var(--color-accent); cursor:pointer; }
 .canvas-chrome, .thread-rail { transition: opacity 400ms ease; }
-.canvas-shell:has(.hearth-welcome:not([data-step='leaving'])) .canvas-chrome,
 .canvas-shell:has(.hearth-welcome:not([data-step='leaving'])) .thread-rail,
 .canvas-shell:has(.hearth-welcome:not([data-step='leaving'])) .canvas-column {
   opacity: 0;

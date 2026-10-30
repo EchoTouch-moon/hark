@@ -96,7 +96,11 @@ export function HearthWelcome({ initialName, paused, period, onExitStart, onComp
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
     if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }}>
-    <header className="welcome-header"><span className="welcome-wordmark">Hearth<span>私人炉边</span></span><button type="button" className="welcome-skip" disabled={step === 'leaving'} onClick={() => enter()}>跳过欢迎 <span aria-hidden="true">↗</span></button></header>
+    <header className="welcome-header">
+      <span className="welcome-wordmark">Hearth<span>私人炉边</span></span>
+      <span className="hearth-mode-label welcome-mode-badge" role="status" aria-label="离线演示 · 不连接真实模型" title="回复由本机模拟生成，不连接真实模型">离线演示 · 不连接真实模型</span>
+      <button type="button" className="welcome-skip" disabled={step === 'leaving'} onClick={() => enter()}>跳过欢迎 <span aria-hidden="true">↗</span></button>
+    </header>
     <div className="welcome-stage" aria-hidden={step === 'leaving' || undefined}>
       <div className="welcome-story" key={visibleStep}>
         <p className="welcome-chapter"><span /> {visibleStep === 'arrival' ? '01 — 初见' : '02 — 相识'}</p>

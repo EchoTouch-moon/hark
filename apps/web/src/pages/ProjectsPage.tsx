@@ -32,7 +32,7 @@ import './ProjectsPage.css';
 
 export function ProjectsPage() {
   const {state}=useRuntimeMode();
-  const demoMode=state.status==='ready' && state.demoMode;
+  const demoMode=state.status==='ready' && state.legacyDemoAvailable;
   const formId = useId();
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [observed, setObserved] = useState<ObserverProjectSummary[] | null>(null);

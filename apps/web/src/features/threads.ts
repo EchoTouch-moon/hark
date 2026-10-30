@@ -53,33 +53,17 @@ function writeLocal(threads: ThreadSummary[]): void {
   }
 }
 
-function ensureSeed(): ThreadSummary[] {
-  const existing = readLocal();
-  if (existing.length > 0) return existing;
-  const seed: ThreadSummary = {
-    id: 'thread-default',
-    title: '日常',
-    preview: '有需要时我会出现',
-    projectId: null,
-    updatedAt: nowIso(),
-  };
-  writeLocal([seed]);
-  return [seed];
-}
-
-/** 探测并列出线程；无后端时用本地 Mock。 */
+/** 列出线程。服务端返回空列表或异常时失败关闭，不回退虚假 Mock 线程。 */
 export async function listThreads(signal?: AbortSignal): Promise<ThreadListDto> {
   try {
     const data = await apiFetch<{ threads: ThreadSummary[] }>('/api/v1/threads', { signal });
-    if (Array.isArray(data.threads) && data.threads.length > 0) {
+    if (Array.isArray(data.threads)) {
       return { threads: data.threads, mock: false };
     }
-  } catch (err) {
-    if (!(err instanceof ApiError) || (err.status !== 404 && err.status !== 0 && err.status !== 501)) {
-      // 非「未实现」类错误仍可退 Mock，避免挡壳
-    }
+  } catch {
+    // Fail closed on error: do not fabricate fake mock threads
   }
-  return { threads: ensureSeed(), mock: true };
+  return { threads: [], mock: false };
 }
 
 export async function createThread(
@@ -93,19 +77,11 @@ export async function createThread(
       signal,
     });
     if (data.thread?.id) return { thread: data.thread, mock: false };
-  } catch {
-    // fall through
+    throw new ApiError(500, 'THREAD_CREATE_FAILED', '服务端未返回新建线程');
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError(0, 'THREAD_CREATE_FAILED', err instanceof Error ? err.message : '创建线程失败');
   }
-  const thread: ThreadSummary = {
-    id: `thread-${Date.now()}`,
-    title: input.title?.trim() || '新线程',
-    preview: '',
-    projectId: input.projectId ?? null,
-    updatedAt: nowIso(),
-  };
-  const all = ensureSeed();
-  writeLocal([thread, ...all]);
-  return { thread, mock: true };
 }
 
 export function getActiveThreadId(): string | null {

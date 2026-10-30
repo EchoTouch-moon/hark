@@ -35,6 +35,7 @@ import { EmberAtmosphere } from '../components/EmberAtmosphere';
 import { getHearthPeriod, type HearthPeriod } from '../features/hearthPeriod';
 import { readFlameSize, saveFlameSize } from '../features/flameSize';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
+import { readWelcomePreference } from '../features/welcome';
 import { useHearthTimeline, HEARTH_EASE } from '../motion';
 import { gsap } from 'gsap';
 import './AppShell.css';
@@ -83,6 +84,8 @@ export interface ThreadContextValue {
   recomputeEmber: () => void;
   motionPaused: boolean;
   setMotionPaused: (paused: boolean) => void;
+  welcomeActive: boolean;
+  setWelcomeActive: (active: boolean) => void;
   welcomeReplay: boolean;
   setWelcomeReplay: (value: boolean) => void;
 }
@@ -229,6 +232,11 @@ export function AppShell() {
   }, []);
   const [flameSize, setFlameSize] = useState(readFlameSize);
   const [welcomeReplay, setWelcomeReplay] = useState(false);
+  const [welcomeActive, setWelcomeActive] = useState(() => !readWelcomePreference().completed);
+  const handleSetWelcomeReplay = useCallback((value: boolean) => {
+    setWelcomeReplay(value);
+    if (value) setWelcomeActive(true);
+  }, []);
   const menuRef = useRef<ElementRef<'details'>>(null);
   useEffect(() => {
     document.documentElement.dataset.motionPaused = String(motionPaused || reducedMotion || isEmberMotionPaused());
@@ -256,7 +264,7 @@ export function AppShell() {
       fromPath ||
       getActiveThreadId() ||
       listed.threads[0]?.id ||
-      null;
+      'thread-default';
     if (preferred) {
       setActiveId(preferred);
       setActiveThreadId(preferred);
@@ -539,8 +547,10 @@ export function AppShell() {
       recomputeEmber,
       motionPaused: isPaused,
       setMotionPaused,
+      welcomeActive,
+      setWelcomeActive,
       welcomeReplay,
-      setWelcomeReplay,
+      setWelcomeReplay: handleSetWelcomeReplay,
     }),
     [
       threads,
@@ -559,7 +569,9 @@ export function AppShell() {
       recomputeEmber,
       isPaused,
       setMotionPaused,
+      welcomeActive,
       welcomeReplay,
+      handleSetWelcomeReplay,
     ],
   );
 
@@ -617,62 +629,67 @@ export function AppShell() {
           />
           <div className="canvas-body">
             {canvas ? (
-              <header className="canvas-chrome">
-                <button type="button" className="hearth-wordmark" onClick={() => { setShellMode('chat'); setRailCollapsed(true); }} aria-label="返回对话">Hearth<span aria-hidden="true">.</span></button>
-                <div className="hearth-header-actions">
-                  <div className="hearth-flame-pill" data-flame-stage={flameLife.stage} title={`炉火生命态：${flameLife.stageLabel} (${Math.round(flameLife.heat * 100)}% 活力)`}>
-                    <span className="hearth-flame-pill__icon" aria-hidden="true">
-                      {flameLife.stage === 'spark' ? '✨' : flameLife.stage === 'sprout' ? '🌱' : flameLife.stage === 'blaze' ? '🔥' : flameLife.stage === 'golden' ? '🌟' : '🪵'}
-                    </span>
-                    <span ref={topStageBadgeRef} className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
-                    <div className="hearth-vitality-track" aria-hidden="true" title={`${Math.round(flameLife.heat * 100)}% 活力`}>
-                      <div ref={topVitalityBarRef} className="hearth-vitality-fill" style={{ width: `${Math.round(flameLife.heat * 100)}%` }} />
+              !welcomeActive && (
+                <header className="canvas-chrome">
+                  <button type="button" className="hearth-wordmark" onClick={() => { setShellMode('chat'); setRailCollapsed(true); }} aria-label="返回对话">Hearth<span aria-hidden="true">.</span></button>
+                  <div className="hearth-header-actions">
+                    <div className="hearth-flame-pill" data-flame-stage={flameLife.stage} title={`炉火生命态：${flameLife.stageLabel} (${Math.round(flameLife.heat * 100)}% 活力)`}>
+                      <span className="hearth-flame-pill__icon" aria-hidden="true">
+                        {flameLife.stage === 'spark' ? '✨' : flameLife.stage === 'sprout' ? '🌱' : flameLife.stage === 'blaze' ? '🔥' : flameLife.stage === 'golden' ? '🌟' : '🪵'}
+                      </span>
+                      <span ref={topStageBadgeRef} className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
+                      <div className="hearth-vitality-track" aria-hidden="true" title={`${Math.round(flameLife.heat * 100)}% 活力`}>
+                        <div ref={topVitalityBarRef} className="hearth-vitality-fill" style={{ width: `${Math.round(flameLife.heat * 100)}%` }} />
+                      </div>
                     </div>
+                    <span className="hearth-mode-label" role="status" aria-label="离线演示 · 不连接真实模型" title="回复由本机模拟生成，不连接真实模型">离线演示 · 不连接真实模型</span>
+                    <details className="hearth-menu" ref={menuRef} onKeyDown={(event) => {
+                      if (event.key === 'Escape') { menuRef.current?.removeAttribute('open'); menuRef.current?.querySelector('summary')?.focus(); }
+                    }}>
+                      <summary aria-label="打开菜单" title="菜单"><span aria-hidden="true">···</span></summary>
+                      <div className="hearth-menu__panel">
+                        <div className="hearth-menu__flame-status" data-flame-stage={flameLife.stage}>
+                          <div className="hearth-menu__flame-row">
+                            <span ref={menuStageBadgeRef} className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
+                            <span ref={menuHeatLabelRef} className="hearth-menu__heat-label">{Math.round(flameLife.heat * 100)}% 活力</span>
+                          </div>
+                          <div className="hearth-vitality-track hearth-vitality-track--menu" aria-hidden="true">
+                            <div ref={menuVitalityBarRef} className="hearth-vitality-fill" style={{ width: `${Math.round(flameLife.heat * 100)}%` }} />
+                          </div>
+                          <p className="hearth-menu__flame-poetry">{flameLife.stagePoetry}</p>
+                          <button
+                            type="button"
+                            className="hearth-menu__stoke-action"
+                            onClick={(e) => handleTopBarStoke(e.currentTarget)}
+                          >
+                            🔥 添一把柴（散发火星）
+                          </button>
+                        </div>
+                        <button type="button" onClick={() => { setRailCollapsed(false); menuRef.current?.removeAttribute('open'); }}>历史对话</button>
+                        <button type="button" onClick={() => { setShellMode('projects'); menuRef.current?.removeAttribute('open'); }}>项目与话题</button>
+                        <button type="button" onClick={() => { setMotionPaused(!motionPaused); menuRef.current?.removeAttribute('open'); }}>{motionPaused ? '开启动效' : '暂停动效'}</button>
+                        <button type="button" onClick={() => { setShellMode('chat'); setWelcomeReplay(true); menuRef.current?.removeAttribute('open'); }}>重看欢迎</button>
+                        <Link to="/settings" onClick={() => menuRef.current?.removeAttribute('open')}>设置</Link>
+                        <div className="hearth-flame-control">
+                          <label htmlFor="hearth-flame-size">火焰大小 <output>{Math.round(flameSize * 100)}%</output></label>
+                          <input id="hearth-flame-size" type="range" min="0.65" max="1.4" step="0.05" value={flameSize}
+                            onChange={(event) => { const value = Number(event.currentTarget.value); setFlameSize(value); saveFlameSize(value); }} />
+                        </div>
+                        <p className="hearth-menu__hint">火光伴随项目的创立、推进与成果，赋予生命活力。</p>
+                      </div>
+                    </details>
                   </div>
-                  <span className="hearth-mode-label" title="回复由本机模拟生成，不连接真实模型">离线演示</span>
-                  <details className="hearth-menu" ref={menuRef} onKeyDown={(event) => {
-                    if (event.key === 'Escape') { menuRef.current?.removeAttribute('open'); menuRef.current?.querySelector('summary')?.focus(); }
-                  }}>
-                    <summary aria-label="打开菜单" title="菜单"><span aria-hidden="true">···</span></summary>
-                    <div className="hearth-menu__panel">
-                      <div className="hearth-menu__flame-status" data-flame-stage={flameLife.stage}>
-                        <div className="hearth-menu__flame-row">
-                          <span ref={menuStageBadgeRef} className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
-                          <span ref={menuHeatLabelRef} className="hearth-menu__heat-label">{Math.round(flameLife.heat * 100)}% 活力</span>
-                        </div>
-                        <div className="hearth-vitality-track hearth-vitality-track--menu" aria-hidden="true">
-                          <div ref={menuVitalityBarRef} className="hearth-vitality-fill" style={{ width: `${Math.round(flameLife.heat * 100)}%` }} />
-                        </div>
-                        <p className="hearth-menu__flame-poetry">{flameLife.stagePoetry}</p>
-                        <button
-                          type="button"
-                          className="hearth-menu__stoke-action"
-                          onClick={(e) => handleTopBarStoke(e.currentTarget)}
-                        >
-                          🔥 添一把柴（散发火星）
-                        </button>
-                      </div>
-                      <button type="button" onClick={() => { setRailCollapsed(false); menuRef.current?.removeAttribute('open'); }}>历史对话</button>
-                      <button type="button" onClick={() => { setShellMode('projects'); menuRef.current?.removeAttribute('open'); }}>项目与话题</button>
-                      <button type="button" onClick={() => { setMotionPaused(!motionPaused); menuRef.current?.removeAttribute('open'); }}>{motionPaused ? '开启动效' : '暂停动效'}</button>
-                      <button type="button" onClick={() => { setShellMode('chat'); setWelcomeReplay(true); menuRef.current?.removeAttribute('open'); }}>重看欢迎</button>
-                      <Link to="/settings" onClick={() => menuRef.current?.removeAttribute('open')}>设置</Link>
-                      <div className="hearth-flame-control">
-                        <label htmlFor="hearth-flame-size">火焰大小 <output>{Math.round(flameSize * 100)}%</output></label>
-                        <input id="hearth-flame-size" type="range" min="0.65" max="1.4" step="0.05" value={flameSize}
-                          onChange={(event) => { const value = Number(event.currentTarget.value); setFlameSize(value); saveFlameSize(value); }} />
-                      </div>
-                      <p className="hearth-menu__hint">火光伴随项目的创立、推进与成果，赋予生命活力。</p>
-                    </div>
-                  </details>
-                </div>
-              </header>
+                </header>
+              )
             ) : (
               <header className="canvas-chrome canvas-chrome--page">
                 <Link to="/" className="canvas-chrome__back" onClick={() => setShellMode('chat')}>
                   ← 对话
                 </Link>
                 <p className="canvas-chrome__title">{sectionLabel(location.pathname)}</p>
+                <div className="canvas-chrome__right">
+                  <span className="hearth-mode-label" role="status" aria-label="离线演示 · 不连接真实模型" title="回复由本机模拟生成，不连接真实模型">离线演示 · 不连接真实模型</span>
+                </div>
               </header>
             )}
             <main className="canvas-main" id="main-content">
