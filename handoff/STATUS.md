@@ -305,3 +305,8 @@ IMPLEMENTED / VERIFIED：项目优先入口、Observer线程绑定、一句观�
 ## 2026-10-30 · 全站产品与体验重构蓝图
 
 DESIGN DELIVERED：完成全站产品与体验重构蓝图、根PRODUCT.md事实摘要及入口索引。用户确认当前最值得决定的一件事优先、火影低存在感；新页面结构和迁移方案为提案，未改前端/后端、未制作新交互原型、未运行应用测试。文件：docs/design/PRODUCT-EXPERIENCE-BLUEPRINT.md；审阅：handoff/EVIDENCE/experience-blueprint-2026-10-30/review.md。
+
+
+## 2026-10-30 · 后台项目重新发现场景
+
+REQUIREMENTS REVISED：依据用户完整安装/授权/后台场景更新PRODUCT、MVP v0.2合同与体验蓝图，新增docs/mvp/04-PROJECT-REDISCOVERY.md及H2验收场景。目录自动发现、多项目独立记忆、全局对话、资源让路、后台研究与本机通知提升为核心。仅文档交付；无真实目录扫描、服务安装、研究/模型调用、通知或应用代码变更。
