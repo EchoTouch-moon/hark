@@ -140,6 +140,7 @@ test('E2E-08: E1 composer on ?fixture= — input, send gating, Demo badge', asyn
   await expect(send).not.toHaveAttribute('aria-disabled', 'true');
   await input.fill('   ');
   await expect(send).toHaveAttribute('aria-disabled', 'true');
+  await page.waitForTimeout(1_000);
   expect(apiRequests).toEqual([]);
 });
 
