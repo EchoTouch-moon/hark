@@ -17,6 +17,7 @@ export default defineConfig({
       '@hearth/eval': r('./packages/eval/src/index.ts'),
       '@hearth/project-observer': r('./packages/project-observer/src/index.ts'),
       '@hearth/project-insight': r('./packages/project-insight/src/index.ts'),
+      '@hearth/hearth-contract/fixtures': r('./packages/hearth-contract/fixtures'),
       '@hearth/hearth-contract': r('./packages/hearth-contract/src/index.ts'),
       '@hearth/project-analysis': r('./packages/project-analysis/src/index.ts'),
       'gsap': path.resolve(__dirname, 'apps/web/node_modules/gsap'),
