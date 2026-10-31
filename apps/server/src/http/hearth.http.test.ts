@@ -152,7 +152,10 @@ describe('GET /api/v1/hearth', () => {
 
   it('unknown project → 404 error; bad query → 400 error', async () => {
     await setup(OBSERVE_ON);
-    expect((await get('/api/v1/hearth?scope=project&projectId=nope')).status).toBe(404);
+    const nf = await get('/api/v1/hearth?scope=project&projectId=nope-xyz-123');
+    expect(nf.status).toBe(404);
+    expect(nf.body.scope).toEqual({ kind: 'global' });
+    expect(JSON.stringify(nf.body)).not.toContain('nope-xyz-123');
     const spy = vi.spyOn(observer, 'listProjects');
     const bad = await get('/api/v1/hearth?scope=project');
     expect(spy).not.toHaveBeenCalled();

@@ -1,3 +1,4 @@
+import { deriveFlame } from './flame.js';
 /**
  * @fileoverview M1 只读观察视图（纯函数）。
  * 输入只有观察者读数 + 授权；不触达研究、模型、卡片或任何写入。
@@ -91,7 +92,7 @@ export function buildObserveView(input: ObserveInput): ObserveResult {
     if (input.scope.kind === 'project') {
       const { projectId } = input.scope;
       const found = all.find((p) => p.id === projectId);
-      if (found === undefined) return failure(perms, fallbackScope, 404, 'project_not_found', '项目不存在或未启用观察');
+      if (found === undefined) return failure(perms, globalScope, 404, 'project_not_found', '项目不存在或未启用观察');
       projects = [found];
       scope = { kind: 'project', projectId: found.id, title: found.name };
     } else {
@@ -120,12 +121,10 @@ export function buildObserveView(input: ObserveInput): ObserveResult {
         ...viewBase(perms, scope),
         status: 'ok',
         narrative: {
-          // M1 只读切片：尚无叙事判断，火焰保持 neutral；后续由 Mind 叙事层给出。
-          flame: {
-            level: 'neutral',
-            reason: stale ? `观察已过期：${staleNames.join('、')}，暂按旧数据显示。` : '观察正常，叙事判断尚未生成。',
-            milestoneGold: false,
-          },
+          flame: (() => {
+            const f = deriveFlame(story, input.now);
+            return stale ? { ...f, reason: `观察已过期：${staleNames.join('、')}，暂按旧数据显示。` } : f;
+          })(),
           story,
         },
         observationFreshness: stale ? 'stale' : 'fresh',
