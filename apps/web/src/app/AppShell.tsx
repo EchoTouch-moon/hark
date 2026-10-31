@@ -28,8 +28,6 @@ import { EmberAtmosphere } from '../components/EmberAtmosphere';
 import type { HearthPeriod } from '../features/hearthPeriod';
 import { readFlameSize, saveFlameSize } from '../features/flameSize';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
-import { useHearthTimeline, HEARTH_EASE } from '../motion';
-import { gsap } from 'gsap';
 import './AppShell.css';
 
 /* ------------------------------------------------------------------ */

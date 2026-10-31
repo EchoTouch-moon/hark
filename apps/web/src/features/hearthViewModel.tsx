@@ -118,7 +118,7 @@ export async function putHearthObserve(observe: boolean, signal?: AbortSignal): 
     };
   }
 
-  let raw: unknown = null;
+  let raw: unknown;
   try {
     const text = await response.text();
     raw = text.length === 0 ? null : (JSON.parse(text) as unknown);

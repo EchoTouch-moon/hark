@@ -18,7 +18,7 @@ test('timeline nodes render from the ok story; hollow uses inset ring', async ({
   const marks = await page.locator('.xp-story__mark').evaluateAll((els) => els.map((e) => e.getAttribute('data-mark')));
   for (const m of marks) expect(['filled', 'hollow']).toContain(m);
   const hollow = page.locator('.xp-story__mark[data-mark="hollow"]').first();
-  const beforeShadow = await hollow.evaluate((el) => getComputedStyle(el, '::before').boxShadow);
+  const beforeShadow = await hollow.evaluate((el) => window.getComputedStyle(el, '::before').boxShadow);
   expect(beforeShadow).toContain('rgb(168, 80, 28)');
   expect(beforeShadow.toLowerCase()).toMatch(/inset/);
   await expect(beats.nth(0)).toContainText('项目建立，写下第一版叙事。');
@@ -84,10 +84,10 @@ test('I-19 milestoneGold paints data attr and gold edge; false clears it', async
   await page.goto('/');
   await dismissWelcome(page);
   await expect(page.locator('.canvas-shell')).toHaveAttribute('data-milestone-gold', 'true');
-  const edge = await page.locator('.hearth-flame-pill__mark').evaluate((el) => getComputedStyle(el).boxShadow);
+  const edge = await page.locator('.hearth-flame-pill__mark').evaluate((el) => window.getComputedStyle(el).boxShadow);
   expect(edge).toMatch(/rgba?\(232,\s*178,\s*74/);
 
-  const plain = structuredClone(gold) as Record<string, unknown>;
+  const plain = JSON.parse(JSON.stringify(gold)) as Record<string, unknown>;
   const narrative = plain.narrative as { flame: { milestoneGold: boolean } };
   narrative.flame.milestoneGold = false;
   await page.unroute('**/api/v1/hearth');
@@ -110,11 +110,11 @@ test('I-9..I-12 reason caption clamps to 2 lines with title+aria-label', async (
   await expect(reason).toHaveAttribute('title', narrative.flame.reason);
   await expect(reason).toHaveAttribute('aria-label', narrative.flame.reason);
   const style = await reason.evaluate((el) => {
-    const cs = getComputedStyle(el);
+    const cs = window.getComputedStyle(el) as CSSStyleDeclaration & { webkitLineClamp?: string; lineClamp?: string };
     return {
       fontSize: cs.fontSize,
       color: cs.color,
-      webkitLineClamp: cs.webkitLineClamp || (cs as CSSStyleDeclaration & { lineClamp?: string }).lineClamp,
+      webkitLineClamp: cs.webkitLineClamp || cs.lineClamp,
     };
   });
   expect(style.fontSize).toBe('13px');
