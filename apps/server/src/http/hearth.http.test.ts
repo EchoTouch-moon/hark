@@ -93,9 +93,11 @@ describe('GET /api/v1/hearth', () => {
   it('checks permission before touching the observer', async () => {
     await setup({});
     const spy = vi.spyOn(observer, 'listProjects');
-    const { status } = await get('/api/v1/hearth?scope=project&projectId=x');
+    const { status, body } = await get('/api/v1/hearth?scope=project&projectId=%3Cscript%3E');
     expect(status).toBe(403);
     expect(spy).not.toHaveBeenCalled();
+    expect(body.scope).toEqual({ kind: 'global' });
+    expect(JSON.stringify(body)).not.toContain('<script>');
   });
 
   it('empty when no projects', async () => {
@@ -151,7 +153,9 @@ describe('GET /api/v1/hearth', () => {
   it('unknown project → 404 error; bad query → 400 error', async () => {
     await setup(OBSERVE_ON);
     expect((await get('/api/v1/hearth?scope=project&projectId=nope')).status).toBe(404);
+    const spy = vi.spyOn(observer, 'listProjects');
     const bad = await get('/api/v1/hearth?scope=project');
+    expect(spy).not.toHaveBeenCalled();
     expect(bad.status).toBe(400);
     expect(bad.body.status).toBe('error');
   });

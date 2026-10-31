@@ -71,7 +71,8 @@ export function buildObserveView(input: ObserveInput): ObserveResult {
     return {
       httpStatus: 403,
       view: {
-        ...viewBase(perms, input.scope.kind === 'global' ? globalScope : { kind: 'project', projectId: input.scope.projectId, title: input.scope.projectId }),
+        // 未授权时不回显请求里的 scope。
+        ...viewBase(perms, globalScope),
         status: 'permission_denied',
         narrative: { flame: { level: 'neutral', reason: '未授权观察，无法判断火势。', milestoneGold: false }, story: [] },
         observationFreshness: 'disabled',
