@@ -314,18 +314,25 @@ export function EmberAtmosphere({
     const targetGolden = Number.isFinite(golden) ? Math.max(0, Math.min(1, golden)) : 0;
     const targetDormant = Number.isFinite(dormant) ? Math.max(0, Math.min(1, dormant)) : 0;
 
+    // milestoneGold tint: prefers-reduced-motion → 200ms linear cut (no sweep elsewhere).
     gsap.to(controllerRef.current.frame, {
       heat: targetHeat,
       size: targetSize,
       day: targetDay,
-      golden: targetGolden,
       dormant: targetDormant,
       duration: still ? 0 : transition,
       ease,
       overwrite: 'auto',
       onUpdate: () => drawRef.current(true),
     });
-  }, { scope: root, dependencies: [heat, size, period, golden, dormant, stage, still], revertOnUpdate: false });
+    gsap.to(controllerRef.current.frame, {
+      golden: targetGolden,
+      duration: reduced ? 0.2 : still ? 0 : transition,
+      ease: reduced ? 'none' : ease,
+      overwrite: 'auto',
+      onUpdate: () => drawRef.current(true),
+    });
+  }, { scope: root, dependencies: [heat, size, period, golden, dormant, stage, still, reduced], revertOnUpdate: false });
 
   // Stage proportions and the user's size preference are separate inputs.
   // A GSAP tween carries shape across stages without changing business state.

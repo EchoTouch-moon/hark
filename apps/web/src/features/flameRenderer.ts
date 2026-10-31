@@ -120,6 +120,9 @@ void main() {
   float goldLuma = max(dot(goldHue, vec3(0.299, 0.587, 0.114)), 0.001);
   vec3 goldTinted = goldHue * (luma / goldLuma);
   col = mix(col, goldTinted, u_golden * coalMask);
+  // Settled gold-edge ember on coal outer rim (#E8B24A @ 0.55); scale-invariant via field edge.
+  float coalRim = (1.0 - smoothstep(0.0, 0.045, abs(field))) * ground * (1.0 - smoothstep(0.05, 0.42, y));
+  col = mix(col, goldHue, u_golden * coalRim * 0.55);
 
   // Dormant deep ember: deep red ash glow for shelved projects
   vec3 dormantCol = mix(vec3(0.18, 0.02, 0.005), vec3(0.55, 0.07, 0.01), smoothstep(0.0, 0.60, core));
