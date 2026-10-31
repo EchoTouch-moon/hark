@@ -26,6 +26,7 @@ import { registerObserverRoutes } from './routes/observer.js';
 import { registerInsightRoutes } from './routes/insights.js';
 import { registerAnalysisRoutes } from './routes/analysis.js';
 import { registerOverviewRoutes } from './routes/overview.js';
+import { registerHearthRoutes } from './routes/hearth.js';
 import type { Services } from './services.js';
 
 /** 服务构建所需全部依赖 */
@@ -110,6 +111,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerInsightRoutes(app, deps);
   registerAnalysisRoutes(app, deps);
   registerOverviewRoutes(app, deps);
+  registerHearthRoutes(app, deps);
 
   return app;
 }

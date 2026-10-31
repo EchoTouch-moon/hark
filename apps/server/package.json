@@ -17,6 +17,7 @@
     "@hearth/connectors": "workspace:*",
     "@hearth/contracts": "workspace:*",
     "@hearth/core": "workspace:*",
+    "@hearth/hearth-contract": "workspace:*",
     "@hearth/project-observer": "workspace:*",
     "@hearth/project-insight": "workspace:*",
     "@hearth/project-analysis": "workspace:*",

@@ -25,7 +25,13 @@ export interface ServerConfig {
   staticDir: string | null;
   /** 代码仓仓库根目录绝对路径 */
   repoRoot: string;
+  /** Hearth 授权（M1）：显式服务端开关，默认全部关闭；execute 在 MVP 恒为 false，不可配置 */
+  hearthPermissions: { observe: boolean; research: boolean; model: boolean };
+  /** 观察超过该时长未更新即视为 stale（毫秒），默认 30 分钟 */
+  observeStaleMs: number;
 }
+
+const flag = (name: string): boolean => process.env[name] === '1';
 
 /**
  * 加载并解析服务端配置，支持通过环境变量及入参覆盖
@@ -51,6 +57,12 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     ],
     staticDir: process.env['HEARTH_STATIC'] ?? path.join(repoRoot, 'apps', 'web', 'dist'),
     repoRoot,
+    hearthPermissions: {
+      observe: flag('HEARTH_PERMIT_OBSERVE'),
+      research: flag('HEARTH_PERMIT_RESEARCH'),
+      model: flag('HEARTH_PERMIT_MODEL'),
+    },
+    observeStaleMs: Number(process.env['HEARTH_OBSERVE_STALE_MS'] ?? 30 * 60_000),
     ...overrides,
   };
   if (!['127.0.0.1', '::1', 'localhost'].includes(config.host)) throw new Error('仅允许 loopback 监听；当前没有远程身份认证');
