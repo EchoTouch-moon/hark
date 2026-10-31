@@ -770,10 +770,11 @@
 .hearth-gold-sweep {
   position: fixed;
   left: 50%;
-  bottom: max(12vh, 48px);
-  transform: translateX(-50%);
-  width: min(200px, 28vw);
-  height: min(42vh, 360px);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 160px;
+  height: 160px;
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
   background: linear-gradient(0deg, transparent 0%, rgba(232, 178, 74, 0.28) 48%, transparent 92%);

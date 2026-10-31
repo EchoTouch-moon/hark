@@ -818,6 +818,9 @@ function useFlameFloor(deps: unknown[]) {
     sync();
     const ro = new window.ResizeObserver(sync);
     ro.observe(t.el);
+    if (title) ro.observe(title);
+    const reasonEl = document.querySelector('.ember-seed .ember-seed__reason');
+    if (reasonEl) ro.observe(reasonEl);
     window.addEventListener('resize', sync);
     window.addEventListener('scroll', sync, true);
     return () => { ro.disconnect(); window.removeEventListener('resize', sync); window.removeEventListener('scroll', sync, true); props.forEach((p) => root.style.removeProperty(p)); };
