@@ -103,10 +103,66 @@
 - [ ] 观点卡最多 1 张、输入中不出现；EvidenceLabel 三 kind 形状+色区分
 - [ ] reduced-motion：无闪烁、无位移
 
+## 9. E1 评审锁定规则（2026-10-31，优先于上文冲突条目）
+
+### 9.1 观点卡证据
+- `FeaturedOpinion.evidence: EvidenceLabel[]`，`EvidenceLabel = {id, kind: 'observer'|'research'|'decision', label}`；不再有 `evidenceCount`，显示的证据数 = `evidence.length`。
+- 标记：observer 实心 ember 圆点；research 空心淡蓝方块；decision 墨色菱形。标记色只上标记本身，文字永不着色。
+
+### 9.2 历史版本
+- `GET /opinions/:revisionId/history`，展开时懒加载。
+- 加载中 = 骨架行；失败 = 仅该节内局部报错 +「重试」，不影响卡片其余部分。
+
+### 9.3 研究清单（Should，不在 E1）
+- `/research/watchlist` 在设置页独立成块，自带 loading / error 态。
+
+### 9.4 稍后再说
+- 前端只看 `featuredOpinion`：非空即显示卡片，为空即不显示；是否再次出现由服务端决定。
+- 单独的 `revisionId` 变化不是信号（撤回原歧义 6 的提法）。
+
+### 9.5 火焰标签按状态
+| 状态 | 标签 | 视觉 | 操作 |
+|---|---|---|---|
+| ok | 档位名（如 温火 / 旺火） | 按档位 | — |
+| empty | 尚未点火 | neutral 0.10，不去饱和 | 主按钮「添加项目」 |
+| error | 火候未知 | 0.10 去饱和，无过渡 | 仅「重新读取」（只重读 ViewModel） |
+| permission-denied | 未授权读取 | 0.10 去饱和，无过渡 | 「重新扫描」禁用（40% 不透明 + aria-disabled）+「去授权」链接 |
+| stale | 保留上次档位名 + 后缀「· 旧观测」 | 保持上次档位 | — |
+
+- error / permission-denied / empty 永不显示「静火」。
+- 全局范围 stale：reason 必须写明是哪个项目的观测过期。
+
+### 9.6 重新扫描
+- 次级 13px 文字按钮，位于 Seed 下方，永不放在火焰旁。
+- M1 只读观察接口上线前不调用任何 API。
+
+### 9.7 flame.reason 与遮罩带
+- reason 为可见行，居中紧贴 hero 标题下方，13px #5A514B，间距 8px；stale 提示放在 reason 下方。
+- 遮罩带：标题顶部 → reason 底部 +12px；带内火焰不透明度 ≤0.15，上下各 24px 羽化；所有状态下 reason 对比度 ≥4.5:1。
+
+### 9.8 火焰纵向范围
+- 止于观点卡底边；无卡片时止于「重新扫描」底部 +24px 或时间线顶部，取更高者。
+- 末端 56px 渐隐；火焰永不进入时间线。
+
+### 9.9 观点卡样式
+- 不透明底 #FFFDF9；标题 --ink 700；正文 / why-now #5A514B；左边框 --line-strong（不用 accent）。
+- 「查看依据」链接 #A8501C 700。
+
+### 9.10 色彩与时间线节点
+- Accent #D9773A 只用于火焰和证据标记。
+- 时间线节点 #A8501C 9px：实心 = 填充；空心 = `box-shadow: inset 0 0 0 1.5px #A8501C`（不用 border）。
+
+### 9.11 按钮
+- 「发送」：--ink 底、paper 字；草稿为空时 0.4 不透明 + aria-disabled，仍可聚焦。
+- 文字按钮：次级文字 #24201E（≥4.5:1），13px，hover 下划线，2px 焦点环。
+
+### 9.12 模式
+- 仅日间（paper）模式；独立夜间规范出来之前不做夜间叠层。
+
 ## 合同歧义（交 产品/后端）
 1. `status` 枚举无 `stale`；本文用 `observationFreshness:'stale'` 表达过期态（与 stale.json 一致）。
 2. 05 §3 写的是 `EvidenceRef`；按产品更正统一为 `EvidenceLabel {id,kind,label}`，需改合同文本。
-3. `FeaturedOpinion` 只有 `evidenceCount`，无 evidence 数组；Editorial「证据」节需要 `evidence: EvidenceLabel[]`。
-4. 「历史版本」需 revision 列表字段；当前只有单个 `revisionId`。
-5. 研究清单无 ViewModel 字段（05 §4 仅描述），设置页需后端补形状。
-6. 「稍后再说」复燃需要知道是否有新证据：可用 `revisionId` 变化判断，请后端确认语义。
+3. 已定：去掉 `evidenceCount`，改为 `evidence: EvidenceLabel[]`，见 §9.1。
+4. 已定：历史版本走 `GET /opinions/:revisionId/history` 懒加载，见 §9.2。
+5. 已定：研究清单走 `/research/watchlist`，设置页独立块（Should），见 §9.3。
+6. 撤回：不用 `revisionId` 变化判断复燃；由服务端决定，前端只看 `featuredOpinion` 是否非空，见 §9.4。
