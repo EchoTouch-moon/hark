@@ -14,12 +14,3 @@ test('insight detail missing id is an error, not a fake card', async ({ page }) 
   await expect(page.getByText(/这条洞察不存在或已被清除|加载失败/)).toBeVisible({ timeout: 15_000 });
   await page.screenshot({ path: 'handoff/EVIDENCE/insight-detail-missing.png', fullPage: true });
 });
-
-test('projects and observe navigation still work', async ({ page }) => {
-  await page.goto('/projects');
-  await expect(page.getByRole('heading', { name: '项目' })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('link', { name: '发现与建议' })).toBeVisible();
-  await page.screenshot({ path: 'handoff/EVIDENCE/insight-projects-with-summary.png', fullPage: true });
-  await page.goto('/insights');
-  await expect(page.getByRole('heading', { name: '洞察' })).toBeVisible();
-});

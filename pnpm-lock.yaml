@@ -92,6 +92,9 @@ importers:
       '@hearth/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@hearth/hearth-contract':
+        specifier: workspace:*
+        version: link:../../packages/hearth-contract
       gsap:
         specifier: ^3.15.0
         version: 3.15.0

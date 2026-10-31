@@ -2,7 +2,7 @@
  * 沉浸对话画布 · Style Bible v6 / v6.1 Ember Seed
  * 空态炉心 Seed → 首条后 Composer 落底；本地炉温；G1–G4 真 API 优先。
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { gsap } from 'gsap';
 import { HearthWelcome } from '../components/HearthWelcome';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
@@ -10,6 +10,7 @@ import { readWelcomePreference } from '../features/welcome';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useThreads } from '../app/AppShell';
 import { ApiError } from '../features/api/client';
+import { Link } from 'react-router-dom';
 import {
   appendLocalMessage,
   executeMessageAction,
@@ -21,10 +22,8 @@ import {
   type MessageAction,
   type ProgressStep,
 } from '../features/chat';
-import {
-  computeEmberHeat,
-  latestConfirmedInteraction,
-} from '../features/emberHeat';
+import { useViewModelSource } from '../features/hearthViewModel';
+import { blockingError, ErrorBar, OpinionCard, StateNotices, StoryBeats } from '../components/ExperienceState';
 import {
   useHearthTimeline,
   HEARTH_EASE,
@@ -254,7 +253,9 @@ function ComposerForm({
       <button
         type="submit"
         className="composer__send"
-        disabled={sending || draft.trim().length === 0 || disabled}
+        disabled={sending || disabled}
+        aria-disabled={sending || draft.trim().length === 0 || disabled || undefined}
+        onClick={(e) => { if (draft.trim().length === 0) e.preventDefault(); }}
       >
         {sending ? '…' : '发送'}
       </button>
@@ -305,17 +306,19 @@ export function ChatPage() {
 
 
 
-  const seedCopy = useMemo(
-    () =>
-      computeEmberHeat({
-        lastConfirmedAt: latestConfirmedInteraction(messages),
-      }),
-    [messages, emberBand],
-  );
+  const vmSource = useViewModelSource();
+  const vm = vmSource.kind === 'ready' ? vmSource.vm : null;
+  const vmError = blockingError(vmSource);
+  const seedCopy = { band: emberBand, reason: messages.some((m) => m.role === 'user') ? 'returning' : 'no-interaction' };
 
   const reload = useCallback(async (threadId: string) => {
     setLoading(true);
     setLoadError(null);
+    // E1 runs on fixtures only: never call the legacy chat-history API.
+    if (vmSource.kind === 'invalid' || vmSource.fixture) {
+      if (currentThread.current === threadId) { setMessages([]); setLoading(false); }
+      return;
+    }
     try {
       const history = await fetchChatHistory(threadId);
       let next = history.messages;
@@ -334,7 +337,7 @@ export function ChatPage() {
     } finally {
       if (currentThread.current === threadId) setLoading(false);
     }
-  }, []);
+  }, [vmSource]);
 
   // Switching conversations cancels only the local wait. Delivery may already
   // have occurred, so restore the original draft with an explicit warning.
@@ -392,6 +395,7 @@ export function ChatPage() {
     }
     return false;
   }, [loading, hasUserMessage, messages]);
+  useFlameFloor([showSeed, vmSource]);
   const seedOverlays = useMemo(() => {
     if (!showSeed) return [] as CanvasMessage[];
     return messages.filter((m) => m.role === 'assistant').slice(0, 1);
@@ -526,26 +530,6 @@ export function ChatPage() {
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [updateDraft]);
 
-  const handleStoke = useCallback(
-    contextSafe((btn: HTMLElement) => {
-      emitEmberCue('stoke');
-      if (!motionPaused && !isEmberMotionPaused()) {
-        gsap.timeline()
-          .to(btn, { scale: 0.90, duration: 0.08, ease: 'power2.in' })
-          .to(btn, { scale: 1.08, duration: 0.16, ease: 'back.out(2)' })
-          .to(btn, { scale: 1, duration: 0.12 });
-        const card = btn.closest<HTMLElement>('.flame-life-card');
-        if (card) {
-          gsap.fromTo(
-            card,
-            { boxShadow: '0 0 28px rgba(244, 162, 97, 0.5)', borderColor: 'rgba(244, 162, 97, 0.85)' },
-            { boxShadow: '0 4px 18px rgba(0, 0, 0, 0.04)', borderColor: '', duration: 0.8, ease: 'power2.out', clearProps: 'boxShadow,borderColor' }
-          );
-        }
-      }
-    }),
-    [contextSafe, motionPaused]
-  );
 
   // GSAP animation for new message entrance
   useHearthTimeline(() => {
@@ -676,31 +660,15 @@ export function ChatPage() {
         ) : showSeed ? (
           <div className="ember-seed" data-ember-band={seedCopy.band} data-flame-stage={flameLife.stage}>
             <div className="ember-seed__glow" aria-hidden="true" />
-            <div className="flame-life-card" data-flame-stage={flameLife.stage}>
-              <div className="flame-life-card__head">
-                <span className="flame-life-card__icon" aria-hidden="true">
-                  {flameLife.stage === 'spark' ? '✨' : flameLife.stage === 'sprout' ? '🌱' : flameLife.stage === 'blaze' ? '🔥' : flameLife.stage === 'golden' ? '🌟' : '🪵'}
-                </span>
-                <span className={`status-badge is-${flameLife.stageBadgeTone}`}>{flameLife.stageLabel}</span>
-                <button
-                  type="button"
-                  className="flame-life-card__stoke"
-                  onClick={(e) => handleStoke(e.currentTarget)}
-                  title="添一把柴，激荡火舌并飞升火星"
-                >
-                  添柴 +
-                </button>
-              </div>
-              <p className="flame-life-card__poetry">{flameLife.stagePoetry}</p>
-              <p className="flame-life-card__hint">{flameLife.fuelHint}</p>
-            </div>
-            <p className="seed-eyebrow">在这里，慢慢向前</p>
-            <h1 className="ember-seed__greeting">{displayName && seedCopy.reason === 'no-interaction' ? `${displayName}，想从哪里开始？` : seedCopy.reason === 'no-interaction' ? (hearthPeriod === 'night' ? '今晚，想聊些什么？' : '今天，想聊些什么？') : seedCopy.greeting}</h1>
-            {seedCopy.subline ? (
-              <p className="ember-seed__subline">{seedCopy.subline}</p>
-            ) : null}
+            {vmError ? <ErrorBar message={vmError.message} code={vmError.code} /> : null}
+            {vm && !vmError ? <StateNotices vm={vm} only="permission" /> : null}
+            {vmError ? null : (
+              <h1 className="ember-seed__greeting" data-flame-level={flameLife.level}>{displayName && vm?.status === 'empty' ? `${displayName}，从哪儿开始？` : flameLife.greeting}</h1>
+            )}
+            {vmError ? null : <p className="ember-seed__reason" aria-hidden="true">{flameLife.reason}</p>}
+            {vm && !vmError ? <StateNotices vm={vm} only="stale" /> : null}
             <div ref={slotRef} className="ember-seed__composer-slot" aria-hidden="true" />
-            <div className="ember-seed__chips" aria-label="开始讨论">
+            {vmError ? null : <div className="ember-seed__chips" aria-label="开始讨论">
               {chips.map((c) => (
                 <button
                   key={c.id}
@@ -712,7 +680,14 @@ export function ChatPage() {
                   {c.label}
                 </button>
               ))}
-            </div>
+            </div>}
+            <SeedActions vmError={!!vmError} status={vm?.status ?? null} />
+            {vm && !vmError && vm.status === 'ok' ? (
+              <>
+                <OpinionCard vm={vm} />
+                <StoryBeats story={vm.narrative.story} />
+              </>
+            ) : null}
             {seedOverlays.map((m) => {
               const textPart = m.parts?.find((p) => p.type === 'text');
               const body =
@@ -803,4 +778,68 @@ export function ChatPage() {
       />
     </section>
   );
+}
+
+/**
+ * Text actions below the Seed (spec 2026-10-31). Never calls /api/v1/discover:
+ * ok/stale → 重新扫描 (visual no-op); permission_denied → disabled + 去授权;
+ * error → 重新读取 (re-runs the ViewModel load only); empty → 添加项目.
+ */
+/**
+ * The flame ends above the timeline in every state: at the opinion card's bottom edge when there
+ * is a card, otherwise 24px below the seed actions (「重新扫描」 etc.). Published as --flame-floor
+ * (viewport px) for the fixed atmosphere's 56px fade mask.
+ */
+function useFlameFloor(deps: unknown[]) {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const target = (): { el: NonNullable<ReturnType<typeof document.querySelector>>; offset: number } | null => {
+      const card = document.querySelector('.ember-seed .xp-opinion');
+      if (card) return { el: card, offset: 0 };
+      const actions = document.querySelector('.ember-seed .xp-seed-actions');
+      return actions ? { el: actions, offset: 24 } : null;
+    };
+    const t = target();
+    const props = ['--flame-floor', '--flame-band-top', '--flame-band-bottom'];
+    if (!t) { props.forEach((p) => root.style.removeProperty(p)); return; }
+    const title = document.querySelector('.ember-seed .ember-seed__greeting');
+    // Never let the flame reach the timeline, even if the 24px gap would overlap it.
+    const sync = () => {
+      const story = document.querySelector('.ember-seed .xp-story');
+      const floor = t.el.getBoundingClientRect().bottom + t.offset;
+      const cap = story ? story.getBoundingClientRect().top : Infinity;
+      root.style.setProperty('--flame-floor', `${Math.round(Math.min(floor, cap))}px`);
+      // Quiet band behind the hero title + reason so the 13px reason keeps ≥4.5:1 over the flame.
+      const reason = document.querySelector('.ember-seed .ember-seed__reason') ?? title;
+      if (title && reason) {
+        root.style.setProperty('--flame-band-top', `${Math.round(title.getBoundingClientRect().top)}px`);
+        root.style.setProperty('--flame-band-bottom', `${Math.round(reason.getBoundingClientRect().bottom + 12)}px`);
+      } else { root.style.removeProperty('--flame-band-top'); root.style.removeProperty('--flame-band-bottom'); }
+    };
+    sync();
+    const ro = new window.ResizeObserver(sync);
+    ro.observe(t.el);
+    window.addEventListener('resize', sync);
+    window.addEventListener('scroll', sync, true);
+    return () => { ro.disconnect(); window.removeEventListener('resize', sync); window.removeEventListener('scroll', sync, true); props.forEach((p) => root.style.removeProperty(p)); };
+  }, deps);
+}
+
+function SeedActions({ vmError, status }: { vmError: boolean; status: string | null }) {
+  if (vmError) {
+    // Fixture mode: the ViewModel load is synchronous and local, so this is a no-op re-read.
+    return <div className="xp-seed-actions"><button type="button" className="xp-text-btn">重新读取</button></div>;
+  }
+  if (status === 'empty') {
+    return <div className="xp-seed-actions"><Link to="/projects" className="xp-primary-btn">添加项目</Link></div>;
+  }
+  if (status === 'permission_denied') {
+    return (
+      <div className="xp-seed-actions">
+        <button type="button" className="xp-text-btn" aria-disabled="true" disabled title="未授权读取，无法扫描">重新扫描</button>
+        <Link to="/settings" className="xp-text-btn">去授权</Link>
+      </div>
+    );
+  }
+  return <div className="xp-seed-actions"><button type="button" className="xp-text-btn">重新扫描</button></div>;
 }

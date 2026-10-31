@@ -9,7 +9,7 @@ import {
   STAGE_TARGETS,
   createFlameMotionController,
 } from '../../apps/web/src/motion';
-import type { ProjectFlameStage } from '../../apps/web/src/features/projectEmber';
+import type { ProjectFlameStage } from '../../apps/web/src/features/flameVisual';
 
 describe('Hearth GSAP 动效系统 (ember-motion)', () => {
   describe('缓动与时间令牌规范 (HEARTH_EASE & Duration Tokens)', () => {
