@@ -49,3 +49,7 @@ curl -s -b /tmp/h.jar -w '\n%{http_code}\n' 'http://127.0.0.1:4317/api/v1/hearth
 ## Fixture
 测试不使用 `packages/hearth-contract/fixtures/*`（那是给前端的 demo 数据）：用 `createGitRepo` 建临时 git 仓并注册到临时观察者库；失败路径用 spy 让 `listProjects` 抛错。
 研究、模型、卡片相关依赖（discovery / orchestrator / chat / insight / analysis / coordinator）在测试里注入成访问即抛错的 Proxy，并断言 `storage.setSetting` 在请求期间没有被调用。
+
+## 全局 stale 的说明
+
+全局范围下只要有一个项目 stale，整体就判 `ok` 加 `stale`。stale 的项目名写在 `narrative.flame.reason` 里，格式是「观察已过期：A、B，暂按旧数据显示。」。合同包没有改，也没有加字段。

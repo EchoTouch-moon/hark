@@ -128,6 +128,7 @@ describe('GET /api/v1/hearth', () => {
     expect(status).toBe(200);
     expect(body.status).toBe('ok');
     expect(body.observationFreshness).toBe('stale');
+    expect(body.narrative.flame.reason).toContain('Repo B');
   });
 
   it('observer failure → 503 error, never fixture data', async () => {

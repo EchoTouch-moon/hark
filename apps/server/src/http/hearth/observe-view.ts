@@ -110,7 +110,8 @@ export function buildObserveView(input: ObserveInput): ObserveResult {
       };
     }
 
-    const stale = projects.some((p) => isStale(p, input.port!.getObserverHealth(p.id), input.now, input.staleMs));
+    const staleNames = projects.filter((p) => isStale(p, input.port!.getObserverHealth(p.id), input.now, input.staleMs)).map((p) => p.name);
+    const stale = staleNames.length > 0;
     const story = projects.map(birthBeat).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
     return {
       httpStatus: 200,
@@ -121,7 +122,7 @@ export function buildObserveView(input: ObserveInput): ObserveResult {
           // M1 只读切片：尚无叙事判断，火焰保持 neutral；后续由 Mind 叙事层给出。
           flame: {
             level: 'neutral',
-            reason: stale ? '最近一次观察已过期，暂按旧数据显示。' : '观察正常，叙事判断尚未生成。',
+            reason: stale ? `观察已过期：${staleNames.join('、')}，暂按旧数据显示。` : '观察正常，叙事判断尚未生成。',
             milestoneGold: false,
           },
           story,
