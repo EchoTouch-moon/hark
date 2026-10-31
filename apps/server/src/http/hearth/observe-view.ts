@@ -1,10 +1,11 @@
 import { deriveFlame } from './flame.js';
+import { buildChronicle } from './chronicle.js';
 /**
  * @fileoverview M1 只读观察视图（纯函数）。
  * 输入只有观察者读数 + 授权；不触达研究、模型、卡片或任何写入。
  * real 模式下任何失败都返回 status:'error'，不回退到 Mock / fixture。
  */
-import type { HearthViewModel, Permissions, Scope, StoryBeat } from '@hearth/hearth-contract';
+import type { HearthViewModel, Permissions, Scope } from '@hearth/hearth-contract';
 import type { ObserverHealth, ProjectSummary } from '@hearth/project-observer';
 
 /** 视图所需的最小只读端口（ProjectObserver 的子集，仅读方法） */
@@ -47,15 +48,6 @@ function failure(perms: Permissions, scope: Scope, httpStatus: number, code: str
   };
 }
 
-function birthBeat(p: ProjectSummary): StoryBeat {
-  const where = [p.shortSha, p.branch].filter((x): x is string => x !== null).join(' ') || p.name;
-  return {
-    kind: '诞生',
-    at: p.createdAt,
-    summary: `开始观察 ${p.name}。`,
-    evidence: [{ id: `obs_${p.id}`, kind: 'observer', label: where }],
-  };
-}
 
 function isStale(p: ProjectSummary, health: ObserverHealth, now: Date, staleMs: number): boolean {
   if (health.collectionStatus !== 'OK') return true;
@@ -114,7 +106,7 @@ export function buildObserveView(input: ObserveInput): ObserveResult {
 
     const staleNames = projects.filter((p) => isStale(p, input.port!.getObserverHealth(p.id), input.now, input.staleMs)).map((p) => p.name);
     const stale = staleNames.length > 0;
-    const story = projects.map(birthBeat).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+    const story = buildChronicle(projects);
     return {
       httpStatus: 200,
       view: {
