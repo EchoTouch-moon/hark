@@ -31,7 +31,6 @@ import { formatDateTime } from '../features/runs';
 import { fetchInsightSummary } from '../features/insights';
 import { fetchAnalysisRuns, type AnalysisRun } from '../features/analysis';
 import { emitEmberCue } from '../features/ember-cues';
-import { deriveProjectFlame } from '../features/projectEmber';
 import { AnalysisLaunch } from '../components/AnalysisLaunch';
 import { RecommendationCard } from '../components/RecommendationCard';
 import './ObserverDetailPage.css';
@@ -126,23 +125,9 @@ export function ObserverDetailPage() {
   const snapshot = detail?.snapshot ?? null;
   const test = testLabel(snapshot?.test ?? null);
 
-  const flame = useMemo(() => {
-    if (!detail) return null;
-    return deriveProjectFlame({
-      project: {
-        enabled: detail.project.enabled,
-        lastObservedAt: detail.health.lastSuccessAt,
-        testStatus: snapshot?.test.result,
-        openInsightCount: openInsights,
-        unborn: snapshot?.unborn,
-      },
-    });
-  }, [detail, snapshot, openInsights]);
-
   async function onScan(): Promise<void> {
     setBusy(true);
     try {
-      emitEmberCue('stoke');
       await scanObserverProject(projectId);
       setReloadKey((key) => key + 1);
     } catch (cause) {
@@ -247,15 +232,6 @@ export function ObserverDetailPage() {
                   最近成功 {formatDateTime(detail.health.lastSuccessAt ?? undefined)} · 监听 {detail.health.watchStatus}
                 </p>
               </article>
-              {flame ? (
-                <article className="card obs-stat obs-stat--flame" data-flame-stage={flame.stage}>
-                  <p className="obs-stat-label">炉火生命态</p>
-                  <p>
-                    <span className={`status-badge is-${flame.stageBadgeTone}`}>{flame.stageLabel}</span>
-                  </p>
-                  <p className="obs-stat-sub">{flame.stagePoetry}</p>
-                </article>
-              ) : null}
             </div>
           </div>
 
@@ -348,8 +324,8 @@ export function ObserverDetailPage() {
                 <button className="btn btn-ghost" type="button" disabled={busy} onClick={() => void onAddReport()}>
                   声明 JUnit 报告
                 </button>
-                <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void onScan()} title="只读重扫并添柴激荡火星">
-                  🔥 添柴重扫
+                <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void onScan()} title="只读重扫">
+                  重新扫描
                 </button>
                 <AnalysisLaunch
                   input={{ projectId, trigger: 'observe' }}
