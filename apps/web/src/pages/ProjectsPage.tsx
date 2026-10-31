@@ -27,7 +27,6 @@ import { useRuntimeMode } from '../features/runtime-mode';
 import { formatDateTime } from '../features/runs';
 import { fetchInsightSummary } from '../features/insights';
 import { emitEmberCue } from '../features/ember-cues';
-import { deriveProjectFlame } from '../features/projectEmber';
 import './ProjectsPage.css';
 
 export function ProjectsPage() {
@@ -146,7 +145,6 @@ export function ProjectsPage() {
 
   async function onScanProject(project: ObserverProjectSummary): Promise<void> {
     try {
-      emitEmberCue('stoke');
       await scanObserverProject(project.id);
       setReloadKey((key) => key + 1);
     } catch (cause) {
@@ -230,27 +228,15 @@ export function ProjectsPage() {
           <ul className="project-grid">
             {observed.map((project) => {
               const test = testLabel(project.test);
-              const flame = deriveProjectFlame({
-                project: {
-                  enabled: project.enabled,
-                  lastObservedAt: project.lastSuccessAt,
-                  testStatus: project.test?.result,
-                  openInsightCount: insightCounts[project.id] ?? 0,
-                  unborn: project.unborn,
-                },
-              });
               return (
                 <li key={project.id}>
-                  <article className="project-tile card obs-tile" data-flame-stage={flame.stage}>
+                  <article className="project-tile card obs-tile">
                     <Link to={`/observe/${encodeURIComponent(project.id)}`} className="obs-tile-link">
                       <span className="project-tile-name">{project.name}</span>
                       <span className="obs-tile-meta mono">
                         {project.detached ? 'detached' : project.branch ?? '—'} · {project.shortSha ?? (project.unborn ? 'UNBORN' : '—')}
                       </span>
                       <span className="obs-tile-badges">
-                        <span className={`status-badge is-${flame.stageBadgeTone}`} title={flame.stagePoetry}>
-                          {flame.stageLabel}
-                        </span>
                         <span className={`status-badge is-${collectionTone(project.collectionStatus)}`}>
                           {COLLECTION_LABELS[project.collectionStatus]}
                         </span>
@@ -271,9 +257,9 @@ export function ProjectsPage() {
                         type="button"
                         className="btn btn-ghost obs-tile-stoke"
                         onClick={() => void onScanProject(project)}
-                        title="扫描仓库并添一把柴，激荡火舌与飞升火星"
+                        title="只读扫描仓库"
                       >
-                        🔥 添柴扫描
+                        扫描
                       </button>
                       <button
                         type="button"

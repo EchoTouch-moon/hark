@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { EMBER_CUE_EVENT, emitEmberCue, isEmberMotionPaused, readEmberCue } from '../features/ember-cues';
 import { createFlameRenderer } from '../features/flameRenderer';
-import type { ProjectFlameStage } from '../features/projectEmber';
+import type { ProjectFlameStage } from '../features/flameVisual';
 import { FLAME_SHAPES, type FlameShape } from '../features/flameShape';
 import flameTextureUrl from '../assets/living-fire.png';
 import type { HearthPeriod } from '../features/hearthPeriod';
@@ -24,6 +24,9 @@ export interface EmberAtmosphereProps {
   stage?: ProjectFlameStage;
   period?: HearthPeriod;
   size?: number;
+  /** Level transition duration in seconds (v7 §1). */
+  transition?: number;
+  ease?: string | ((t: number) => number);
 }
 
 function isWritingSurface(target: globalThis.EventTarget | null): target is HTMLElement {
@@ -42,6 +45,8 @@ export function EmberAtmosphere({
   paused = false,
   period = 'day',
   size = 1,
+  transition = STAGE_TRANSITION_DURATION,
+  ease = HEARTH_EASE.gentle,
 }: EmberAtmosphereProps) {
   const root = useRef<HTMLDivElement>(null);
   const canvas = useRef<globalThis.HTMLCanvasElement>(null);
@@ -315,8 +320,8 @@ export function EmberAtmosphere({
       day: targetDay,
       golden: targetGolden,
       dormant: targetDormant,
-      duration: still ? 0 : STAGE_TRANSITION_DURATION,
-      ease: HEARTH_EASE.gentle,
+      duration: still ? 0 : transition,
+      ease,
       overwrite: 'auto',
       onUpdate: () => drawRef.current(true),
     });
@@ -327,8 +332,8 @@ export function EmberAtmosphere({
   useHearthTimeline(() => {
     gsap.to(shape.current, {
       ...FLAME_SHAPES[stage],
-      duration: still ? 0 : STAGE_TRANSITION_DURATION,
-      ease: HEARTH_EASE.gentle,
+      duration: still ? 0 : transition,
+      ease,
       overwrite: 'auto',
       onUpdate: () => { clockRef.current?.timeScale(shape.current.rate); drawRef.current(true); },
     });

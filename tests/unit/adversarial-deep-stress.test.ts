@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import {
   createFlameMotionController,
 } from '../../apps/web/src/motion';
-import type { ProjectFlameStage } from '../../apps/web/src/features/projectEmber';
+import type { ProjectFlameStage } from '../../apps/web/src/features/flameVisual';
 import { createFlameRenderer } from '../../apps/web/src/features/flameRenderer';
 import {
   isEmberMotionPaused,
