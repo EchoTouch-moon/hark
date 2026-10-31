@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openFixture } from './fixture-helpers';
 
 /**
  * Hearth E2E（docs/06 用例主表）
@@ -127,17 +128,19 @@ test('E2E-07: 项目隔离由服务端保证', async ({ page }) => {
   await expect(page.getByText('Project Beacon').first()).toBeVisible();
 });
 
-test('E2E-08: Chat mock 回复、持久化、明确 Demo 标识', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByText(/离线演示|不连接模型/).first()).toBeVisible();
-  const input = page.locator('#chat-input');
+test('E2E-08: E1 composer on ?fixture= — input, send gating, Demo badge', async ({ page }) => {
+  const { apiRequests } = await openFixture(page, 'ok');
+  await expect(page.locator('.hearth-demo-badge')).toHaveText('演示数据');
+  const input = page.locator('#canvas-input');
+  const send = page.locator('.composer__send');
+  await expect(input).toBeVisible();
+  await expect(send).toHaveAttribute('aria-disabled', 'true');
   await input.fill('CI 失败了怎么办');
-  await input.press('Enter');
-  await expect(page.getByText(/Mock|Hearth · Mock/).first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(/离线演示/).first()).toBeVisible();
-  await page.screenshot({ path: `${SHOT_DIR}/ui-chat.png`, fullPage: true });
-  await page.reload();
-  await expect(page.getByText(/CI 失败了怎么办/).first()).toBeVisible({ timeout: 15_000 });
+  await expect(input).toHaveValue('CI 失败了怎么办');
+  await expect(send).not.toHaveAttribute('aria-disabled', 'true');
+  await input.fill('   ');
+  await expect(send).toHaveAttribute('aria-disabled', 'true');
+  expect(apiRequests).toEqual([]);
 });
 
 test('Settings 保存可持久化', async ({ page }) => {
