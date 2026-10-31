@@ -28,6 +28,8 @@ let observer: ProjectObserver;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let app: any;
 let cookie: string;
+let csrf: string;
+const ORIGIN = 'http://127.0.0.1:4317';
 
 async function setup(over: Partial<ServerConfig>, withObserver = true) {
   const config = loadConfig({
@@ -54,6 +56,7 @@ async function setup(over: Partial<ServerConfig>, withObserver = true) {
   const res = await app.inject({ method: 'GET', url: '/api/v1/auth/session' });
   const raw = res.headers['set-cookie'];
   cookie = (Array.isArray(raw) ? raw[0] : String(raw)).split(';')[0]!;
+  csrf = (res.json() as { csrfToken: string }).csrfToken;
 }
 
 const OBSERVE_ON = { hearthPermissions: { observe: true, research: false, model: false } };
@@ -152,12 +155,67 @@ describe('GET /api/v1/hearth', () => {
 
   it('unknown project → 404 error; bad query → 400 error', async () => {
     await setup(OBSERVE_ON);
-    expect((await get('/api/v1/hearth?scope=project&projectId=nope')).status).toBe(404);
+    const nf = await get('/api/v1/hearth?scope=project&projectId=nope-xyz-123');
+    expect(nf.status).toBe(404);
+    expect(nf.body.scope).toEqual({ kind: 'global' });
+    expect(JSON.stringify(nf.body)).not.toContain('nope-xyz-123');
     const spy = vi.spyOn(observer, 'listProjects');
     const bad = await get('/api/v1/hearth?scope=project');
     expect(spy).not.toHaveBeenCalled();
     expect(bad.status).toBe(400);
     expect(bad.body.status).toBe('error');
+  });
+});
+
+
+describe('PUT /api/v1/hearth/permissions', () => {
+  async function put(body: unknown, headers: Record<string, string> = {}) {
+    return app.inject({
+      method: 'PUT',
+      url: '/api/v1/hearth/permissions',
+      headers: { cookie, origin: ORIGIN, 'content-type': 'application/json', ...headers },
+      payload: body,
+    });
+  }
+
+  it('grants observe → GET 403 becomes 200; execute stays false; no csrf required', async () => {
+    await setup({});
+    expect((await get('/api/v1/hearth')).status).toBe(403);
+    const res = await put({ observe: true });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { permissions: Record<string, boolean> };
+    expect(body.permissions).toEqual({ observe: true, research: false, model: false, execute: false });
+    expect((await get('/api/v1/hearth')).status).toBe(200);
+  });
+
+  it('revoke observe → GET back to 403', async () => {
+    await setup({});
+    await put({ observe: true });
+    await put({ observe: false });
+    expect((await get('/api/v1/hearth')).status).toBe(403);
+  });
+
+  it('rejects extra fields and execute attempts with 400', async () => {
+    await setup({});
+    expect((await put({ observe: true, execute: true })).statusCode).toBe(400);
+    expect((await put({ observe: true, research: true })).statusCode).toBe(400);
+    expect((await put({})).statusCode).toBe(400);
+  });
+
+  it('rejects foreign origin with origin_rejected', async () => {
+    await setup({});
+    // 全局 onRequest 先拦；允许名单外 Origin 进不到路由
+    const res = await put({ observe: true }, { origin: 'http://evil.example' });
+    expect(res.statusCode).toBe(403);
+    const code = (res.json() as { error: { code: string } }).error.code;
+    expect(['origin_rejected', 'ORIGIN_DENIED']).toContain(code);
+  });
+
+  it('persists across app rebuild (DB wins over env default)', async () => {
+    await setup({});
+    await put({ observe: true });
+    await setup({}); // 新 app，仍用同一 store；env 默认 observe=false
+    expect((await get('/api/v1/hearth')).status).toBe(200);
   });
 });
 
