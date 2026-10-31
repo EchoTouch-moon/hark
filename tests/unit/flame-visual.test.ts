@@ -31,4 +31,12 @@ describe('flameVisual (v7, reads only narrative.flame)', () => {
     expect(v.level).toBe('bright');
     expect(v.heat).toBe(0.9);
   });
+  it('milestoneGold stacks on level without changing heat table', () => {
+    const v = shellFlame(vm('ok'));
+    expect(v.golden).toBe(1);
+    expect(v.heat).toBe(FLAME_LEVELS.warm.heat);
+    expect(v.outer).toBe(FLAME_LEVELS.warm.outer);
+    expect(v.inner).toBe(FLAME_LEVELS.warm.inner);
+    expect(v.flicker).toBe(FLAME_LEVELS.warm.flicker);
+  });
 });

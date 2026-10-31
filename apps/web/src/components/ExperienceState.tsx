@@ -6,10 +6,16 @@ import './ExperienceState.css';
 const PERMISSION_LABELS: Record<Exclude<keyof Permissions, 'execute'>, string> = { observe: '观察', research: '研究', model: '模型' };
 const EVIDENCE_PREFIX: Record<EvidenceLabel['kind'], string> = { observer: '观察', research: '研究', decision: '决定' };
 
-export function ErrorBar({ message, code }: { message: string; code?: string }) {
+export function ErrorBar({ message, code, detail }: { message: string; code?: string; detail?: string }) {
+  const detailId = detail ? 'xp-error-server-detail' : undefined;
   return (
-    <div className="xp-error" role="alert">
+    <div className="xp-error" role="alert" aria-describedby={detailId}>
       <p className="xp-error__message">{message}</p>
+      {detail ? (
+        <span id={detailId} className="xp-error__sr-only">
+          {detail}
+        </span>
+      ) : null}
       <div className="xp-error__row">
         {code ? <span className="xp-error__code mono">{code}</span> : null}
       </div>
@@ -97,9 +103,20 @@ export function StoryBeats({ story }: { story: readonly StoryBeat[] }) {
   );
 }
 
-/** Blocking states: invalid fixture or status error. Never shows mock or stale data. */
-export function blockingError(source: ViewModelSource): { message: string; code?: string } | null {
-  if (source.kind === 'invalid') return { message: source.message, code: 'viewmodel_invalid' };
-  if (source.vm.status === 'error') return { message: source.vm.error.message, code: source.vm.error.code };
+/** Blocking states: network / invalid / status error. §9 copy only; server message → log + aria-describedby. */
+export function blockingError(source: ViewModelSource): { message: string; code?: string; detail?: string } | null {
+  if (source.kind === 'loading') return null;
+  if (source.kind === 'invalid') {
+    console.info('[hearth] viewmodel invalid', source.message);
+    return { message: '火候未知', code: 'viewmodel_invalid', detail: source.message };
+  }
+  if (source.kind === 'network_error') {
+    console.info('[hearth] hearth fetch failed', source.code, source.message);
+    return { message: '火候未知', code: source.code, detail: source.message };
+  }
+  if (source.kind === 'ready' && source.vm.status === 'error') {
+    console.info('[hearth] viewmodel error', source.vm.error.code, source.vm.error.message);
+    return { message: '火候未知', code: source.vm.error.code, detail: source.vm.error.message };
+  }
   return null;
 }

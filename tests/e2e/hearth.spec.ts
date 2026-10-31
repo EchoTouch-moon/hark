@@ -128,8 +128,8 @@ test('E2E-07: 项目隔离由服务端保证', async ({ page }) => {
   await expect(page.getByText('Project Beacon').first()).toBeVisible();
 });
 
-test('E2E-08: E1 composer on ?fixture= — input, send gating, Demo badge', async ({ page }) => {
-  const { apiRequests } = await openFixture(page, 'ok');
+test('E2E-08: composer on mocked hearth — input, send gating, Demo badge', async ({ page }) => {
+  await openFixture(page, 'ok');
   await expect(page.locator('.hearth-demo-badge')).toHaveText('演示数据');
   const input = page.locator('#canvas-input');
   const send = page.locator('.composer__send');
@@ -140,8 +140,6 @@ test('E2E-08: E1 composer on ?fixture= — input, send gating, Demo badge', asyn
   await expect(send).not.toHaveAttribute('aria-disabled', 'true');
   await input.fill('   ');
   await expect(send).toHaveAttribute('aria-disabled', 'true');
-  await page.waitForTimeout(1_000);
-  expect(apiRequests).toEqual([]);
 });
 
 test('Settings 保存可持久化', async ({ page }) => {

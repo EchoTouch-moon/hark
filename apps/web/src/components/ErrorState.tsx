@@ -13,7 +13,7 @@ export interface ErrorStateProps {
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
     <div className="error-state" role="alert">
-      <p className="error-state-title">出了点问题</p>
+      <h1 className="error-state-title">出了点问题</h1>
       <p className="error-state-message">{message}</p>
       {onRetry ? (
         <button type="button" className="btn btn-ghost error-state-retry" onClick={onRetry}>
