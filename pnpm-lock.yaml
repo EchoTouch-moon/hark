@@ -53,6 +53,9 @@ importers:
       '@hearth/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@hearth/hearth-contract':
+        specifier: workspace:*
+        version: link:../../packages/hearth-contract
       '@hearth/panels':
         specifier: workspace:*
         version: link:../../packages/panels
