@@ -4,7 +4,9 @@ import { loadFixtureViewModel } from '../../apps/web/src/features/hearthViewMode
 
 const vm = (key: string) => {
   const s = loadFixtureViewModel('', key);
-  if (s.kind !== 'ready') throw new Error(s.message);
+  if (s.kind !== 'ready') {
+    throw new Error(s.kind === 'loading' ? 'fixture unexpectedly loading' : s.message);
+  }
   return s.vm;
 };
 
