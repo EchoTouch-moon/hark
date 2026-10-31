@@ -18,7 +18,6 @@ import { ActivityPage } from '../pages/ActivityPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { InsightsPage } from '../pages/InsightsPage';
 import { InsightDetailPage } from '../pages/InsightDetailPage';
-import { ObservationsPage } from '../pages/ObservationsPage';
 
 /** Defense for direct URLs as well as navigation: never mount Demo actions outside server Demo mode. */
 function DemoGate() {
@@ -61,7 +60,7 @@ export const router = createBrowserRouter([
       { path: 'observe/:id', element: <ObserverDetailPage /> },
       { path: 'insights', element: <InsightsPage /> },
       { path: 'insights/:id', element: <InsightDetailPage /> },
-      { path: 'observations', element: <ObservationsPage /> },
+      { path: 'observations', element: <Navigate to="/" replace /> },
       { element: <DemoGate/>, children: [
         { path: 'demo', element: <DemoHomePage/> },
         { path: 'projects/:id', element: <ProjectDetailPage/> },

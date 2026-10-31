@@ -22,7 +22,7 @@ import {
   type MessageAction,
   type ProgressStep,
 } from '../features/chat';
-import { useViewModelSource } from '../features/hearthViewModel';
+import { useHearthViewModel, useViewModelSource } from '../features/hearthViewModel';
 import { blockingError, ErrorBar, OpinionCard, StateNotices, StoryBeats } from '../components/ExperienceState';
 import {
   useHearthTimeline,
@@ -314,8 +314,7 @@ export function ChatPage() {
   const reload = useCallback(async (threadId: string) => {
     setLoading(true);
     setLoadError(null);
-    // E1 runs on fixtures only: never call the legacy chat-history API.
-    if (vmSource.kind === 'invalid' || vmSource.fixture) {
+    if (vmSource.kind === 'loading' || vmSource.kind === 'invalid' || vmSource.kind === 'network_error') {
       if (currentThread.current === threadId) { setMessages([]); setLoading(false); }
       return;
     }
@@ -660,12 +659,12 @@ export function ChatPage() {
         ) : showSeed ? (
           <div className="ember-seed" data-ember-band={seedCopy.band} data-flame-stage={flameLife.stage}>
             <div className="ember-seed__glow" aria-hidden="true" />
-            {vmError ? <ErrorBar message={vmError.message} code={vmError.code} /> : null}
+            {vmError ? <ErrorBar message={vmError.message} code={vmError.code} detail={vmError.detail} /> : null}
             {vm && !vmError ? <StateNotices vm={vm} only="permission" /> : null}
             {vmError ? null : (
               <h1 className="ember-seed__greeting" data-flame-level={flameLife.level}>{displayName && vm?.status === 'empty' ? `${displayName}，从哪儿开始？` : flameLife.greeting}</h1>
             )}
-            {vmError ? null : <p className="ember-seed__reason" aria-hidden="true">{flameLife.reason}</p>}
+            {vmError ? null : <p className="ember-seed__reason" title={flameLife.reason} aria-label={flameLife.reason}>{flameLife.reason}</p>}
             {vm && !vmError ? <StateNotices vm={vm} only="stale" /> : null}
             <div ref={slotRef} className="ember-seed__composer-slot" aria-hidden="true" />
             {vmError ? null : <div className="ember-seed__chips" aria-label="开始讨论">
@@ -819,6 +818,9 @@ function useFlameFloor(deps: unknown[]) {
     sync();
     const ro = new window.ResizeObserver(sync);
     ro.observe(t.el);
+    if (title) ro.observe(title);
+    const reasonEl = document.querySelector('.ember-seed .ember-seed__reason');
+    if (reasonEl) ro.observe(reasonEl);
     window.addEventListener('resize', sync);
     window.addEventListener('scroll', sync, true);
     return () => { ro.disconnect(); window.removeEventListener('resize', sync); window.removeEventListener('scroll', sync, true); props.forEach((p) => root.style.removeProperty(p)); };
@@ -826,18 +828,42 @@ function useFlameFloor(deps: unknown[]) {
 }
 
 function SeedActions({ vmError, status }: { vmError: boolean; status: string | null }) {
+  const { reload, authorizeObserve, authBusy, authError } = useHearthViewModel();
   if (vmError) {
-    // Fixture mode: the ViewModel load is synchronous and local, so this is a no-op re-read.
-    return <div className="xp-seed-actions"><button type="button" className="xp-text-btn">重新读取</button></div>;
+    return (
+      <div className="xp-seed-actions">
+        <button type="button" className="xp-text-btn" onClick={() => reload()}>
+          重新读取
+        </button>
+      </div>
+    );
   }
   if (status === 'empty') {
     return <div className="xp-seed-actions"><Link to="/projects" className="xp-primary-btn">添加项目</Link></div>;
   }
   if (status === 'permission_denied') {
+    const detailId = authError ? 'xp-auth-error-detail' : undefined;
     return (
       <div className="xp-seed-actions">
         <button type="button" className="xp-text-btn" aria-disabled="true" disabled title="未授权读取，无法扫描">重新扫描</button>
-        <Link to="/settings" className="xp-text-btn">去授权</Link>
+        <button
+          type="button"
+          className="xp-text-btn"
+          disabled={authBusy}
+          aria-busy={authBusy || undefined}
+          onClick={() => { void authorizeObserve(); }}
+        >
+          去授权
+        </button>
+        {authError ? (
+          <span className="xp-auth-error" role="alert" aria-describedby={detailId}>
+            未授权读取
+            <span id={detailId} className="xp-error__sr-only">{authError.message}</span>
+            <button type="button" className="xp-auth-error__retry" disabled={authBusy} onClick={() => { void authorizeObserve(); }}>
+              重试
+            </button>
+          </span>
+        ) : null}
       </div>
     );
   }

@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { RuntimeModeSchema } from '@hearth/contracts';
 import { apiFetch } from './api/client';
 import { ErrorState } from '../components/ErrorState';
-import { FIXTURE_MODE } from './hearthViewModel';
 
 type RuntimeState = { status: 'loading' } | { status: 'ready'; demoMode: boolean } | { status: 'error'; message: string };
 const RuntimeContext = createContext<{state: RuntimeState; retry: () => void} | null>(null);
@@ -11,8 +10,6 @@ export function RuntimeModeProvider({children}: {children: ReactNode}) {
   const [revision,setRevision]=useState(0);
   const retry=useCallback(()=>setRevision(value=>value+1),[]);
   useEffect(()=>{
-    // Fixture mode: never probe /api/v1/health.
-    if(FIXTURE_MODE){setState({status:'ready',demoMode:true});return;}
     const controller=new AbortController();
     setState({status:'loading'});
     void apiFetch<unknown>('/api/v1/health',{signal:controller.signal}).then(raw=>{

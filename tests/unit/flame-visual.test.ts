@@ -4,7 +4,9 @@ import { loadFixtureViewModel } from '../../apps/web/src/features/hearthViewMode
 
 const vm = (key: string) => {
   const s = loadFixtureViewModel('', key);
-  if (s.kind !== 'ready') throw new Error(s.message);
+  if (s.kind !== 'ready') {
+    throw new Error(s.kind === 'loading' ? 'fixture unexpectedly loading' : s.message);
+  }
   return s.vm;
 };
 
@@ -30,5 +32,13 @@ describe('flameVisual (v7, reads only narrative.flame)', () => {
     const v = shellFlame(vm('bright'));
     expect(v.level).toBe('bright');
     expect(v.heat).toBe(0.9);
+  });
+  it('milestoneGold stacks on level without changing heat table', () => {
+    const v = shellFlame(vm('ok'));
+    expect(v.golden).toBe(1);
+    expect(v.heat).toBe(FLAME_LEVELS.warm.heat);
+    expect(v.outer).toBe(FLAME_LEVELS.warm.outer);
+    expect(v.inner).toBe(FLAME_LEVELS.warm.inner);
+    expect(v.flicker).toBe(FLAME_LEVELS.warm.flicker);
   });
 });

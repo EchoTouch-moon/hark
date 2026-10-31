@@ -83,11 +83,11 @@ void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
   float aspect = u_resolution.x / u_resolution.y;
   float size = clamp(u_size, 0.65, 1.4);
-  float goldenFactor = 1.0 + u_golden * 0.08;
   float dormantFactor = 1.0 - u_dormant * 0.48;
   float surgeFactor = 1.0 + u_surge * 0.22;
-  float height = (0.58 + u_heat * 0.16) * size * u_shapeHeight * goldenFactor * dormantFactor * surgeFactor;
-  float width = (0.235 + u_heat * 0.065) * size * u_shapeWidth * (1.0 + u_golden * 0.06) * (1.0 - u_dormant * 0.30) * (1.0 + u_surge * 0.10);
+  /* milestoneGold: hue only — outer/inner/flicker/size stay on level table. */
+  float height = (0.58 + u_heat * 0.16) * size * u_shapeHeight * dormantFactor * surgeFactor;
+  float width = (0.235 + u_heat * 0.065) * size * u_shapeWidth * (1.0 - u_dormant * 0.30) * (1.0 + u_surge * 0.10);
   float x = (uv.x - 0.5) * aspect / width;
   float y = (uv.y - (u_shapeCenter - 0.30 * size * u_shapeHeight)) / height;
   if (abs(x) > 2.1 || y < -0.18 || y > 1.8) {
@@ -113,10 +113,16 @@ void main() {
   col = mix(col, vec3(1.0, 0.65, 0.10), smoothstep(0.38, 0.83, core));
   col = mix(col, vec3(1.0, 0.93, 0.65), smoothstep(0.78, 1.0, core) * 0.75);
 
-  // Golden serene hearth: rich warm gold for completed / accomplished projects
-  vec3 goldenCol = mix(vec3(0.62, 0.28, 0.03), vec3(1.0, 0.80, 0.20), smoothstep(0.0, 0.50, core));
-  goldenCol = mix(goldenCol, vec3(1.0, 0.96, 0.78), smoothstep(0.50, 1.0, core) * 0.90);
-  col = mix(col, goldenCol, u_golden * 0.85);
+  // milestoneGold: coal + aura hue → #E8B24A only; preserve luminance (no brighten).
+  vec3 goldHue = vec3(0.910, 0.698, 0.290);
+  float coalMask = 1.0 - smoothstep(0.05, 0.55, core);
+  float luma = dot(col, vec3(0.299, 0.587, 0.114));
+  float goldLuma = max(dot(goldHue, vec3(0.299, 0.587, 0.114)), 0.001);
+  vec3 goldTinted = goldHue * (luma / goldLuma);
+  col = mix(col, goldTinted, u_golden * coalMask);
+  // Settled gold-edge ember on coal outer rim (#E8B24A @ 0.55); scale-invariant via field edge.
+  float coalRim = (1.0 - smoothstep(0.0, 0.045, abs(field))) * ground * (1.0 - smoothstep(0.05, 0.42, y));
+  col = mix(col, goldHue, u_golden * coalRim * 0.55);
 
   // Dormant deep ember: deep red ash glow for shelved projects
   vec3 dormantCol = mix(vec3(0.18, 0.02, 0.005), vec3(0.55, 0.07, 0.01), smoothstep(0.0, 0.60, core));
@@ -131,10 +137,13 @@ void main() {
   body *= mix(1.0, 0.60 + 0.15 * sin(t * 0.8), u_dormant);
   float glow = exp(-dot(vec2(x * 1.5, (y - 0.20) * 2.15), vec2(x * 1.5, (y - 0.20) * 2.15)) * 2.0) * 0.12 * ground;
   float alpha = clamp(body + glow * (1.0 - body), 0.0, 0.93);
-  vec3 glowColor = mix(vec3(0.88, 0.20, 0.025), vec3(0.95, 0.55, 0.08), u_golden * 0.6);
+  // Aura glow: same gold hue, keep glow strength from level.
+  float glowLuma = max(dot(vec3(0.88, 0.20, 0.025), vec3(0.299, 0.587, 0.114)), 0.001);
+  vec3 glowGold = goldHue * (glowLuma / goldLuma);
+  vec3 glowColor = mix(vec3(0.88, 0.20, 0.025), glowGold, u_golden);
   col = mix(glowColor, col, fire);
 
-  float textureBase = (0.68 + u_heat * 0.14) * size * (1.0 + (u_response + u_surge * 0.6) * 0.14) * goldenFactor * dormantFactor;
+  float textureBase = (0.68 + u_heat * 0.14) * size * (1.0 + (u_response + u_surge * 0.6) * 0.14) * dormantFactor;
   float textureHeight = textureBase * u_shapeHeight;
   float textureWidth = textureBase * u_shapeWidth;
   float tx = 0.5 + (uv.x - 0.5) * aspect / (textureWidth * 1.12);
@@ -162,12 +171,14 @@ void main() {
     second.a *= secondEdgeFade;
   }
   float flicker = 0.88 + 0.12 * noise(vec2(tx * 4.0 + t, ty * 4.0 - t * 2.0));
-  flicker = mix(flicker, 0.96 + 0.04 * sin(t * 1.2), u_golden * 0.7);
   vec3 nightGrade = vec3(1.0, 0.88, 0.73);
   vec3 dayGrade = vec3(0.95, 0.84, 0.76);
   vec3 grade = mix(nightGrade, dayGrade, u_day);
-  grade = mix(grade, vec3(1.10, 0.94, 0.70), u_golden * 0.85);
   grade = mix(grade, vec3(0.82, 0.46, 0.30), u_dormant * 0.90);
+  // Photo coal/aura hue toward gold without lifting grade brightness.
+  float photoCoal = 1.0 - smoothstep(0.15, 0.70, ty);
+  vec3 gradeGold = goldHue * (max(dot(grade, vec3(0.299, 0.587, 0.114)), 0.001) / goldLuma);
+  grade = mix(grade, gradeGold, u_golden * photoCoal);
   vec3 photoColor = photo.rgb * grade * flicker;
   vec3 secondColor = second.rgb * grade * flicker;
   float photoAlpha = min(1.0, photo.a * (1.0 + (u_response + u_surge * 0.5) * 0.25)) * mix(0.94, 0.90, u_day) * (1.0 - u_dormant * 0.45) * u_textureReady;

@@ -10,7 +10,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
   type ElementRef,
 } from 'react';
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -29,28 +28,7 @@ import { EmberAtmosphere } from '../components/EmberAtmosphere';
 import type { HearthPeriod } from '../features/hearthPeriod';
 import { readFlameSize, saveFlameSize } from '../features/flameSize';
 import { emitEmberCue, isEmberMotionPaused } from '../features/ember-cues';
-import { useHearthTimeline, HEARTH_EASE } from '../motion';
-import { gsap } from 'gsap';
 import './AppShell.css';
-
-/* ------------------------------------------------------------------ */
-/* Detail Drawer 兼容插槽（v2 默认不用） */
-/* ------------------------------------------------------------------ */
-
-export interface DetailDrawerValue {
-  content: ReactNode | null;
-  setContent: (content: ReactNode | null) => void;
-}
-
-const DetailDrawerContext = createContext<DetailDrawerValue | null>(null);
-
-export function useDetailDrawer(): DetailDrawerValue {
-  const value = useContext(DetailDrawerContext);
-  if (value === null) {
-    throw new Error('useDetailDrawer 必须在 AppShell 内部使用');
-  }
-  return value;
-}
 
 /* ------------------------------------------------------------------ */
 /* Thread 上下文 */
@@ -200,7 +178,6 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [drawerContent, setDrawerContent] = useState<ReactNode | null>(null);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [threadsMock, setThreadsMock] = useState(true);
   const [activeThreadId, setActiveId] = useState<string | null>(null);
@@ -261,11 +238,6 @@ export function AppShell() {
     void refreshThreads();
   }, [refreshThreads]);
 
-  useEffect(() => {
-    setDrawerContent(null);
-  }, [location.pathname]);
-
-
   const [nowMs, setNowMs] = useState(Date.now);
   useEffect(() => {
     const update = () => {
@@ -287,11 +259,25 @@ export function AppShell() {
   const vmSource = useViewModelSource();
   const vm = vmSource.kind === 'ready' ? vmSource.vm : null;
   // v7 §1/§6: flame reads ONLY narrative.flame; error / invalid freezes it.
-  const flameLife = useMemo<FlameVisual>(() => shellFlame(vm), [vm]);
+  const flameLife = useMemo<FlameVisual>(() => {
+    if (vmSource.kind === 'loading') {
+      return { ...shellFlame(null), label: '静火', reason: '正在读取火候…', desaturated: false, instant: true, golden: 0 };
+    }
+    return shellFlame(vm);
+  }, [vm, vmSource.kind]);
   const prevLevel = useRef<FlameLevel>(flameLife.level);
   const flameTransition = flameLife.instant ? 0 : flameTransitionSeconds(prevLevel.current, flameLife.level);
   useEffect(() => { prevLevel.current = flameLife.level; }, [flameLife.level]);
   const ember = { band: flameLife.band, heat: flameLife.heat };
+  const milestoneGold = flameLife.golden > 0;
+  const [goldSweepKey, setGoldSweepKey] = useState(0);
+  const prevMilestoneGold = useRef(false);
+  useEffect(() => {
+    if (milestoneGold && !prevMilestoneGold.current && !reducedMotion) {
+      setGoldSweepKey((k) => k + 1);
+    }
+    prevMilestoneGold.current = milestoneGold;
+  }, [milestoneGold, reducedMotion]);
 
   useEffect(() => {
     const s = document.documentElement.style;
@@ -324,11 +310,6 @@ export function AppShell() {
     await refreshThreads();
     selectThread(thread.id);
   }, [refreshThreads, selectThread]);
-
-  const drawerValue = useMemo<DetailDrawerValue>(
-    () => ({ content: drawerContent, setContent: setDrawerContent }),
-    [drawerContent],
-  );
 
   const isPaused = motionPaused || reducedMotion || isEmberMotionPaused();
 
@@ -384,8 +365,7 @@ export function AppShell() {
   }, [chapter]);
 
   return (
-    <DetailDrawerContext.Provider value={drawerValue}>
-      <ThreadContext.Provider value={threadValue}>
+    <ThreadContext.Provider value={threadValue}>
         <a className="skip-link" href="#main-content">
           跳到主要内容
         </a>
@@ -407,7 +387,7 @@ export function AppShell() {
           data-golden={flameLife.golden.toFixed(2)}
           data-dormant={flameLife.dormant.toFixed(2)}
           data-flame-level={flameLife.level}
-          data-milestone-gold={flameLife.golden ? 'true' : 'false'}
+          data-milestone-gold={milestoneGold ? 'true' : 'false'}
           data-flame-frozen={!vm || vm.status === 'error' ? 'true' : undefined}
           data-ember-heat={flameLife.heat.toFixed(2)}
         >
@@ -422,7 +402,7 @@ export function AppShell() {
             transition={flameTransition}
             ease={EMBER_EASE}
           />
-          {flameLife.golden ? <div className="hearth-gold-sweep" aria-hidden="true" /> : null}
+          {goldSweepKey > 0 && milestoneGold ? <div key={goldSweepKey} className="hearth-gold-sweep" aria-hidden="true" /> : null}
           <ThreadRail
             threads={threads}
             activeThreadId={activeThreadId}
@@ -488,14 +468,8 @@ export function AppShell() {
               )}
             </main>
           </div>
-          {drawerContent !== null ? (
-            <aside className="detail-drawer" aria-label="详情面板">
-              {drawerContent}
-            </aside>
-          ) : null}
         </div>
-      </ThreadContext.Provider>
-    </DetailDrawerContext.Provider>
+    </ThreadContext.Provider>
   );
 }
 

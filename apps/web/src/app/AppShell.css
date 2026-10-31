@@ -421,22 +421,6 @@
   color: var(--color-ink-3);
 }
 
-.detail-drawer {
-  position: fixed;
-  inset: auto 0 0 0;
-  z-index: var(--z-drawer);
-  max-height: min(48dvh, 380px);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  background: var(--color-bg-raised);
-  border-top: 1px solid var(--color-border);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  box-shadow: var(--shadow-2);
-  overflow-y: auto;
-}
-
 .app-shell {
   display: contents;
 }
@@ -774,15 +758,41 @@
 /* ── Style Bible v7 §1/§6 · E1 ── */
 .canvas-shell { background-color: var(--flame-tone, transparent); transition: background-color var(--duration-ember, 500ms) var(--ease-ember, cubic-bezier(.22,1,.36,1)); }
 .hearth-flame-pill__mark { width: 10px; height: 14px; border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%; background: radial-gradient(circle at 50% 70%, #f4a261, #D9773A 60%, #8a4a2a); opacity: calc(0.35 + var(--ember-heat, 0.1) * 0.65); }
-.canvas-shell[data-milestone-gold='true'] .hearth-flame-pill__mark { box-shadow: 0 0 0 1.5px #E8B24A; }
+/* milestoneGold one-pager: coal/aura hue #E8B24A only; settled 1px gold edge @0.55; no whole-atmosphere filter. */
+.canvas-shell { --gold: #E8B24A; }
+.hearth-flame-pill__mark { transition: box-shadow 300ms ease; }
+.canvas-shell[data-milestone-gold='true'] .hearth-flame-pill__mark { box-shadow: 0 0 0 1px rgba(232, 178, 74, 0.55); }
+.canvas-shell[data-milestone-gold='false'] .hearth-flame-pill__mark { box-shadow: none; }
 .hearth-flame-pill__label { font-size: 13px; }
 .hearth-stale-dot { width: 6px; height: 6px; border-radius: 50%; background: #9a928b; }
 .hearth-demo-badge { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: #3A3330; color: #fff; white-space: nowrap; }
-.canvas-shell[data-milestone-gold='true'] .ember-atmosphere { filter: sepia(0.18) saturate(1.08) hue-rotate(-6deg); }
-.hearth-gold-sweep { position: fixed; inset: 0; pointer-events: none; z-index: 0; background: linear-gradient(100deg, transparent 35%, rgba(232, 178, 74, 0.28) 50%, transparent 65%); background-size: 300% 100%; background-position: 100% 0; opacity: 0; animation: hearth-gold-sweep 1.2s cubic-bezier(.22,1,.36,1) 1 forwards; }
-@keyframes hearth-gold-sweep { 0% { opacity: 1; background-position: 100% 0; } 100% { opacity: 0; background-position: 0 0; } }
+/* One-shot bottom→top gold sweep scoped to flame widget (Seed ~160px / topbar 20px scale). */
+.hearth-gold-sweep {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 160px;
+  height: 160px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(0deg, transparent 0%, rgba(232, 178, 74, 0.28) 48%, transparent 92%);
+  background-size: 100% 220%;
+  background-position: 50% 100%;
+  opacity: 0;
+  animation: hearth-gold-sweep 1.2s cubic-bezier(.22,1,.36,1) 1 forwards;
+}
+@keyframes hearth-gold-sweep {
+  0% { opacity: 1; background-position: 50% 100%; }
+  100% { opacity: 0; background-position: 50% -20%; }
+}
 .canvas-shell[data-flame-frozen='true'] .ember-atmosphere { filter: saturate(0.3); }
-@media (prefers-reduced-motion: reduce) { .hearth-gold-sweep { display: none; } .canvas-shell { transition: background-color 200ms linear; } }
+@media (prefers-reduced-motion: reduce) {
+  .hearth-gold-sweep { display: none; }
+  .canvas-shell { transition: background-color 200ms linear; }
+  .hearth-flame-pill__mark { transition: box-shadow 200ms linear; }
+}
 
 /* 设计 notes PR #8: error / permission_denied flame is desaturated and static. */
 .canvas-shell[data-flame-desaturated] .ember-atmosphere,
