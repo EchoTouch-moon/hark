@@ -33,14 +33,15 @@ E1 与 M1–M3 并行。两轨只通过 `HearthViewModel` 相连，任一轨改 
 type Scope = { kind: 'global' } | { kind: 'project'; projectId: Id; title: string };
 type Freshness = 'fresh' | 'stale' | 'gap' | 'unknown' | 'disabled' | 'unavailable';
 type FlameLevel = 'neutral' | 'ember' | 'warm' | 'bright';     // 旺/温/黯 + 无项目中性
-type StoryBeat = { kind: '诞生' | '探索' | '推进' | '沉淀'; at: ISODate; summary: string; evidence: EvidenceRef[] };
+type EvidenceLabel = { id: Id; kind: 'observer' | 'research' | 'decision'; label: string }; // 界面展示用，≠ 02 的 EvidenceRef
+type StoryBeat = { kind: '诞生' | '探索' | '推进' | '沉淀'; at: ISODate; summary: string; evidence: EvidenceLabel[] };
 type NarrativeState = {
   flame: { level: FlameLevel; reason: string; milestoneGold: boolean }; // reason 为可读文字
   story: StoryBeat[];                                                 // 与 flame 同源
 };
 type FeaturedOpinion = {
   revisionId: Id; opinion: string; whyNow: string;
-  evidenceCount: number; uncertainties: string[];
+  evidence: EvidenceLabel[]; uncertainties: string[];
   actions: ['查看依据', '讨论计划', '稍后再说'];
 } | null;
 type Permissions = { observe: boolean; research: boolean; model: boolean; execute: false };
@@ -57,6 +58,10 @@ type HearthViewModel = {
 ```
 
 硬规则：
+- 观点历史版本不进 ViewModel，展开时按需读 `GET /opinions/:revisionId/history`。研究关注清单走独立接口，不进 ViewModel。
+- 「稍后再说」后是否重新出现由服务端主动呈现判定（§5）决定，前端不自行推断，不拿 `revisionId` 变化当信号；`featuredOpinion` 非空即显示。
+- `status` 为 error 或 permission_denied 时，火焰旁只显示「暂无法判断」类文字，不给任何焰态名（如「静火」），以免把读取失败说成项目安静。
+- Seed 的「扫描」只触发一次只读观察：`permissions.observe=false` 时禁用并引导授权；不得连带触发研究或模型调用。
 - 火焰只由 `narrative.flame` 决定。消息数、卡片数、完成数一律不得参与；`emberHeat.ts` 与 `projectEmber.ts` 的计数规则删除。
 - `mode: 'real'` 下任何服务失败都返回 `status: 'error'`，界面显示错误，不得静默改读 Mock 或 fixture。全局规则，不只 chat。
 - `permissions.execute` 在 MVP 恒为 `false`。
