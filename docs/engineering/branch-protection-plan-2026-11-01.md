@@ -36,7 +36,7 @@
 
 **关于「个人公开仓库能不能用 Rulesets」**：`plan` 返回 null，按 GitHub 的表现对应 Free 方案。Rulesets 对公开仓库的能力与私有仓库不同，**而 available 与否的最终判据只有一条：真正执行写入时 API 返回什么**。本轮**没有**执行写入，因此**不声称任何规则已启用**。
 
-应对方式：命令里先写 Rulesets，若返回 403/404 则回退到 classic branch protection（第 6 节）。两者在本场景要达成的效果一致，不需要为此争论。
+应对方式：先写 Rulesets（§5.1），若 API 返回 403/404 则回退到 classic branch protection（§5.5）。注意两者并非完全等价——见 §5.5 对 classic 局限的说明与 §9 未决项。
 
 ## 3. 推荐配置（最终锁定版，对应你的 6 条要求）
 
@@ -47,7 +47,7 @@
 | 禁止删除 | `deletion` 规则 |
 | 禁止强推 | `non_fast_forward` 规则 |
 | 单人 + 编码 Agent，暂不强制他人审批 | `required_approving_review_count=0`（仍强制走 PR，但不要求第二人 approve） |
-| 先 master 验证，再 G0；启用前提交配置与回退、等待确认 | §6 执行序列 + 本文件 §5.3 回退 + 状态仍为「NOT APPLIED」 |
+| 先 master 验证，再 G0；启用前提交配置与回退、等待确认 | §6 执行序列 + §5.3/§5.4 禁用与回退 + 状态仍为「NOT APPLIED」 |
 
 ### 3.1 两条线的共同项
 
@@ -57,7 +57,7 @@
 | 必需状态检查 | `ci-gate`（严格模式：分支须与基线同步） | G1 的产物。只列这一个名字，以后加 job 不必改保护配置 |
 | 禁止删除 | 开启 | G3 要清理历史分支，但这是**有意、逐项批准**的动作，不该由误操作完成 |
 | 禁止强推 | 开启 | 同上；历史 PR 里 SHA 被多处引用，一次 force push 会让所有审计证据失效 |
-| 绕过名单 | **留空**，或仅给 repository admin 且 `bypass_mode: always` | 留空最安全。若给 admin 绕过，则每次绕过都会写审计日志，是可事后追责的；但没有绕过意味着真正紧急时也只能走正常流程 |
+| 绕过名单 | **不配置任何 bypass actor**（最终决策，见 §3.2） | `bypass_actors` 显式为空。仓库管理员的应急出路是「编辑/暂停 ruleset 本身」，该动作进审计日志、可事后追责 |
 | 必需检查是否「严格」（`strict_required_status_checks_policy`） | **true** | 要求分支与基线同步后再判定。代价：#12、#15 两个 draft 长期不 rebase 会一直卡在「未与基线同步」，见第 4 节 |
 
 ### 3.2 两条线的最终决策：配置完全一致，仅执行顺序有先后
@@ -87,61 +87,129 @@
 
 结论：开启前先把 #12、#15 两个 draft 的目标说清楚（继续 / rebase / 关闭），否则它们会长期挂在「无法合并」状态，看起来像被遗忘，实际是被规则挡住。这属于决策，不是执行，放进 Decision Queue。
 
-## 5. 待批准才执行的命令（**本轮未运行任何一条**）
+## 5. 待批准才执行的命令（本轮未运行任何一条）
 
-### 5.1 Rulesets（首选）
+### 5.0 配置模板（惰性文件，GitHub 不会自动应用）
 
-`master`：
+两个 JSON 是唯一事实来源，随本 PR 入库、可评审、可版本化：
+
+- `.github/rulesets/protect-master.json`
+- `.github/rulesets/protect-g0.json`
+
+⚠ **重要**：GitHub **不会**扫描 `.github/rulesets/` 目录自动生效。规则只有通过 §5.1 的显式 `POST` 才会创建。
+这两个文件只是模板；其结构、目标范围与双线一致性由本地只读脚本 `scripts/validate-rulesets.ts` 校验（见 §5.2）。
+
+### 5.1 创建（Rulesets 首选）
 
 ```bash
-# ⛔ 需要批准后才执行
-gh api --method POST repos/EchoTouch-moon/hark/rulesets \
-  -f name="protect-master" \
-  -f target=branch \
-  -f enforcement=active \
-  -f 'conditions[ref_name][include][]'='~DEFAULT_BRANCH' \
-  -f 'conditions[ref_name][exclude][]'='refs/heads/bot/**' \
-  -f 'rules[][type]'=deletion \
-  -f 'rules[][type]'=non_fast_forward \
-  -f 'rules[][type]'=pull_request \
-  -f 'rules[][type]'=required_status_checks \
-  -f 'rules[][parameters][required_status_checks][][context]'=ci-gate \
-  -f 'rules[][parameters][required_status_checks][][integration_id]'=15368 \
-  -f 'rules[][parameters][strict_required_status_checks_policy]'=true \
-  -f 'rules[][parameters][dismiss_stale_reviews_on_push]'=true \
-  -f 'rules[][parameters][require_code_owner_review]'=false \
-  -f 'rules[][parameters][require_last_push_approval]'=false \
-  -f 'rules[][parameters][required_approving_review_count]'=0
+# ⛔ 需要批准后才执行 —— 阶段 A（先 master）
+gh api --method POST repos/EchoTouch-moon/hark/rulesets --input .github/rulesets/protect-master.json
+
+# ⛔ 阶段 A 验证通过后 —— 阶段 B（G0）
+gh api --method POST repos/EchoTouch-moon/hark/rulesets --input .github/rulesets/protect-g0.json
 ```
 
-`bot/hearth-g0-contract`（同样内容，`conditions` 改为包含该分支，且先不含 `deletion`）：
+每条命令成功后，把返回体里的 `id` 记下来（禁用与回退都要用）。
+两条线的 JSON 只有 `name` 与 `conditions.ref_name.include` 不同，其余字段逐字节一致（§5.2 脚本会再验证）。
 
-> `integration_id=15368` 用于把必需检查绑定到 GitHub Actions,而不是任意第三方上报的同名 check——少了这一项,同名检查可被外部伪造,不建议去掉。该值已**在本仓库实取确认**:现有 master check-run 返回 `app={'id': 15368, 'slug': 'github-actions'}`。复核命令:
-> `gh api repos/EchoTouch-moon/hark/commits/79fa67e0.../check-runs --jq '.check_runs[] | {name, app_id: .app.id, app_slug: .app.slug}'`
-
-### 5.2 回退方案 A：改用 classic branch protection
+### 5.2 只读验证（不写任何东西）
 
 ```bash
-# ⛔ 需要批准后才执行
-gh api --method PUT repos/EchoTouch-moon/hark/branches/master/protection \
-  -f 'required_status_checks[strict]'=true \
-  -f 'required_status_checks[contexts][]'=ci-gate \
-  -f 'required_pull_request_reviews[dismiss_stale_reviews]'=true \
-  -f 'required_pull_request_reviews[required_approving_review_count]'=0 \
-  -f 'enforce_admins'=true \
-  -f 'allow_force_pushes'=false \
-  -f 'allow_deletions'=false
+# 1) 列出当前全部 ruleset
+gh api repos/EchoTouch-moon/hark/rulesets --jq '.[] | "\(.id)\t\(.name)\t\(.enforcement)"'
+
+# 2) 读单个 ruleset（用创建时返回的 id）
+gh api repos/EchoTouch-moon/hark/rulesets/<id>
+
+# 3) 本地只读校验模板（结构 / 覆盖范围 / 双线一致性；不联网、不写）
+pnpm exec tsx scripts/validate-rulesets.ts
 ```
 
-### 5.3 回退方案 B：整体撤销
+第 3 步只读两个本地 JSON，检查：JSON 结构与 `target=branch`、`enforcement=active`、
+目标分支**精确匹配**（拒绝 `~DEFAULT_BRANCH` 与通配）、四条规则参数、`context=ci-gate` +
+`integration_id=15368`、审批数 0、`bypass_actors` 为空，以及 master 与 G0 规则语义一致。
+该脚本有单元测试覆盖（`tests/unit/ruleset-schema.test.ts`，含正例与反例）。
+
+### 5.3 禁用（软回退，不删规则）
 
 ```bash
-# ⛔ 需要批准后才执行
+# 暂停但不删除：只把 enforcement 改成 disabled。PATCH 仅改这一个字段。
+printf '{"enforcement":"disabled"}' | gh api --method PATCH \
+  repos/EchoTouch-moon/hark/rulesets/<id> --input -
+```
+
+禁用后规则仍在，随时 PATCH 回 `"enforcement":"active"` 重新启用，比删除温和。
+
+### 5.4 完整回退（删除，精确到单个 id）
+
+```bash
+# 先列出确认 id（不要凭记忆）
 gh api repos/EchoTouch-moon/hark/rulesets --jq '.[] | "\(.id)\t\(.name)"'
-gh api --method DELETE repos/EchoTouch-moon/hark/rulesets/<id>
-# classic 版本：
-gh api --method DELETE repos/EchoTouch-moon/hark/branches/master/protection
+
+# 只删除本方案创建的那一个 ruleset 的 id
+gh api --method DELETE repos/EchoTouch-moon/hark/rulesets/<该 ruleset 的 id>
 ```
+
+⚠ 回退只删 **`protect-master` / `protect-g0`** 两个、用创建时记录的具体 id。
+**绝不**用「遍历全部 ruleset 逐个 DELETE」的写法——那会误删未来可能存在的其他 ruleset。
+
+### 5.5 备用方案：classic branch protection（仅当 §5.1 返回 403/404 时）
+
+先说明它的局限：classic 的 `required_pull_request_reviews` 把「要求 PR」与「要求审批」绑在一起，
+无法像 ruleset 那样干净表达「必须走 PR 但 0 审批」。所以退到此方案时，PR 门槛的语义会退化，
+属于需要你拍板的问题（见 §9 未决项）。
+
+```bash
+# ⛔ 需要批准后才执行 —— 完整 JSON 请求体（master）
+gh api --method PUT repos/EchoTouch-moon/hark/branches/master/protection --input - <<'JSON'
+{
+  "required_status_checks": {
+    "strict": true,
+    "checks": [ { "context": "ci-gate", "app_id": 15368 } ]
+  },
+  "enforce_admins": true,
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 0,
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": false,
+    "require_last_push_approval": false
+  },
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "restrictions": null
+}
+JSON
+```
+
+G0 同理，把 URL 里的 `master` 换成 `bot%2Fhearth-g0-contract`（分支名中的 `/` 需 URL 编码）。
+回退 classic：`gh api --method DELETE repos/EchoTouch-moon/hark/branches/master/protection`（以及 G0 的同名端点）。
+
+### 5.6 JSON 字段与 GitHub API Schema 对照（校验结果）
+
+下列字段经 GitHub REST API 文档（`POST /repos/{owner}/{repo}/rulesets`）逐项核对：
+
+| 字段 | 类型 | 必填 | 本方案值 | 结论 |
+| --- | --- | --- | --- | --- |
+| `name` | string | 是 | `protect-master` / `protect-g0` | ✅ |
+| `target` | `branch` \| `tag` \| `push` | 是 | `branch` | ✅ |
+| `enforcement` | `disabled` \| `active` \| `evaluate` | 是 | `active` | ✅ |
+| `bypass_actors` | array | 否（默认空） | `[]` | ✅ 显式空，无绕过 |
+| `conditions.ref_name.include` | string[] | 是 | `["refs/heads/<branch>"]` 精确匹配 | ✅ 无通配 |
+| `conditions.ref_name.exclude` | string[] | 否 | `[]` | ✅ |
+| `rules[].type` | string enum | 是 | `pull_request` / `required_status_checks` / `non_fast_forward` / `deletion` | ✅ |
+| `pull_request.parameters.required_approving_review_count` | integer | 是 | `0` | ✅ |
+| `pull_request.parameters.dismiss_stale_reviews_on_push` | boolean | 是 | `true` | ✅ |
+| `pull_request.parameters.require_code_owner_review` | boolean | 是 | `false` | ✅ |
+| `pull_request.parameters.require_last_push_approval` | boolean | 是 | `false` | ✅ |
+| `pull_request.parameters.required_review_thread_resolution` | boolean | 是 | `false` | ✅ |
+| `required_status_checks.parameters.required_status_checks[].context` | string | 是 | `ci-gate` | ✅ |
+| `required_status_checks.parameters.required_status_checks[].integration_id` | integer | 否 | `15368` | ✅ 绑定 Actions |
+| `required_status_checks.parameters.strict_required_status_checks_policy` | boolean | 是 | `true` | ✅ |
+| `deletion` / `non_fast_forward` | 无参数独立规则 | 是（各自独立列出） | 两者单独列出 | ✅ |
+
+`pull_request` 的 5 个参数在 Schema 中均为 required，本方案已全部给出。审批数为 0 时，
+`dismiss_stale_reviews_on_push` / `require_code_owner_review` / `require_last_push_approval` 对当前配置是惰性的，
+但必须传以通过 schema 校验——它们只在将来把审批数调成 >0 时才会起作用。
 
 ## 6. 执行序列与验证清单（先 master，后 G0）
 
@@ -152,7 +220,7 @@ gh api --method DELETE repos/EchoTouch-moon/hark/branches/master/protection
 按序执行，任一步失败就停：
 
 1. 写 master ruleset → 记录返回 HTTP 状态。**403 表示当前套餐不支持**，转 §5.2 classic；**201/200 表示成功**。
-2. `gh api repos/EchoTouch-moon/hark/rulesets` 确认规则存在、`targets` 命中 `master`（且排除 `bot/**`）。
+2. `gh api repos/EchoTouch-moon/hark/rulesets` 确认规则存在、`conditions.ref_name.include` 精确命中 `refs/heads/master`（不是 `~DEFAULT_BRANCH`、不含通配）。
 3. 开一个**正常功能 PR → master**，确认 `ci-gate` 出现、变绿、合并按钮可用（证明没把自己锁死）。
 4. 建一个**故意失败**的 PR，确认 `ci-gate` 变红且合并按钮被挡。
 5. 尝试 `git push --force-with-lease` 与直接 `git push` 到 master，确认均被拒。
@@ -165,25 +233,21 @@ gh api --method DELETE repos/EchoTouch-moon/hark/branches/master/protection
 对 `bot/hearth-g0-contract` 重复同一 ruleset（`conditions` 改为包含该分支），并重复步骤 2–6。
 因为 #12 / #15 两个 draft 挂在 G0 上，阶段 B 开始前先确认它们的处置（见 §4），避免它们被 `strict` 模式卡成「长期无法合并」的观感。
 
-### 通用验证要点（阶段 A / B 第 2–6 步复用）
+### 验收判据（阶段 A / B 通用，不做步骤，只做判据）
 
-按序执行，任一步失败就停：
+- 只读脚本 `pnpm exec tsx scripts/validate-rulesets.ts` 输出两行 OK 且「语义一致 = YES」。
+- 纯文档 PR 的 `ci-gate` 变**绿**而非停在 Expected（这是 D2 的唯一真机判据，已在 #22 / #24 复验）。
+- 故意失败 PR 的 `ci-gate` 变**红**、合并按钮被挡。
+- 直接 `git push` 与 `git push --force-with-lease` 到受保护主线都被拒。
+- Settings → Rules 页面与 API 返回一致（API 成功不等于 UI 符合预期）。
 
-1. 写 ruleset → 记录返回的 HTTP 状态。**403 表示当前套餐不支持该能力**，转 5.2；**201 表示成功**。
-2. `gh api repos/EchoTouch-moon/hark/rulesets` 确认规则存在、`targets` 命中预期分支。
-3. `gh api repos/EchoTouch-moon/hark/branches/master/protection` 确认不再是 404。
-4. 建一个**纯文档 PR**，确认 `ci-gate` 出现并变**绿**（这是 D2 是否真修好的唯一真机判据）。
-5. 建一个**故意失败**的 PR，确认 `ci-gate` 变**红**且合并按钮被挡住。
-6. 尝试 `git push --force-with-lease` 到 master，确认被拒。
-7. 到 Settings → Rules 页面人工复核一次：API 成功不等于 UI 显示符合预期。
-
-只有第 4 步变绿，才能说「保护规则」而不是「保护阻碍」。
+只有全部满足，才叫「保护规则」而不是「保护阻碍」。
 
 ## 7. 已知风险
 
 | 风险 | 说明 | 缓解 |
 | --- | --- | --- |
-| 把自己锁在门外 | 单人仓库 + `strict` 必需检查 | 保留 Token 的 admin 权限；`enforce_admins=true` 时管理员也被管——若不想被自己制定的规则挡住，需显式决定是否启用该字段，二选一：安全 or 便利 |
+| 把自己锁在门外 | 单人仓库 + `strict` 必需检查 | 不配 bypass actor；管理员应急出路是「编辑/暂停 ruleset 本身」（进审计日志）。若担心，可先以 `enforcement: evaluate` 影子模式跑一轮再切 `active` |
 | G0 被两块规则同时覆盖 | Rulesets 与 classic protection 可以叠加 | 只用一种机制，避免语义冲突 |
 | 必需检查名漂移 | 若 G1 再改 job 名，保护配置会指空导致永久 Pending | Todo-check 名固定为 `ci-gate`，改动需走同一 PR 同步更新保护配置 |
 | 历史 draft PR 长期阻塞 | #12 #15 挂着 | 见第 4 节，需先决策 |
@@ -195,3 +259,13 @@ gh api --method DELETE repos/EchoTouch-moon/hark/branches/master/protection
 
 **这就是最终方案。** 是否进入 §6 阶段 A（在 master 上启用），等你一句明确的「开始执行 G2」。
 在那之前，我不会写入任何 ruleset、不会开 classic protection、也不会改仓库的任何设置。
+
+
+## 9. 未决项（需要你决定）
+
+1. **Rulesets 可用性尚未实测**。仓库 `plan` 字段为 null（个人 Free 倾向），rulesets 对公开仓库的能力
+   需在真正 `POST` 时才见分晓。若返回 403/404 才走 §5.5 classic，此时「必须 PR 但 0 审批」无法干净表达，
+   需要你在「退化为要求 ≥1 审批」与「退化为只保留状态检查 + 禁删禁强推（放弃强制 PR）」之间选一个。
+2. **`deletion` 的语义确认**：只禁止删除受保护的 master / G0 本身，不影响 G3 清理 feature 分支。
+3. **#12 / #15 两个 G0 draft 的处置**：进入阶段 B 前需先定（rebase / 继续 / 关闭），否则会被 `strict` 卡成「长期无法合并」。
+4. **`dismiss_stale_reviews_on_push=true` 在 0 审批下是惰性的**：当前无影响，仅当未来审批数调 >0 才生效，保持为 true 是否认可。

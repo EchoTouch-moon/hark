@@ -1,0 +1,35 @@
+===== G2 ruleset JSON 校验证据（2026-11-01） =====
+时间: 2026-11-01T12:16:50Z
+
+--- 1. 本地只读校验脚本 ---
+protect-master.json: OK
+protect-g0.json:     OK
+master/g0 规则语义一致（仅 name 与 target 不同）: YES
+  exit=0
+
+--- 2. 单元测试（正例 + 反例） ---
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Duration  1.19s (transform 76ms, setup 0ms, collect 138ms, tests 11ms, environment 0ms, prepare 494ms)
+
+--- 3. typecheck / lint ---
+  typecheck: PASS
+  lint: 0 errors, 6 warnings (all pre-existing, none from new files)
+
+--- 4. JSON 语法（三个 JSON 对象） ---
+  .github/rulesets/protect-master.json: valid
+  .github/rulesets/protect-g0.json: valid
+  §5.5 classic fallback: valid（app_id=15368, restrictions=null）
+
+--- 5. Schema 字段核对（来源：GitHub REST API 文档 rulesets） ---
+  pull_request 5 个必填参数：required_approving_review_count=0 / dismiss_stale_reviews_on_push=true / require_code_owner_review=false / require_last_push_approval=false / required_review_thread_resolution=false
+  required_status_checks：context=ci-gate + integration_id=15368 + strict=true
+  deletion / non_fast_forward：无参数独立规则，各自单独列出
+  bypass_actors=[]（无绕过）；target=branch；enforcement=active
+
+--- 6. 双线一致性 ---
+  master 与 G0 仅 name 与 conditions.ref_name.include 不同，其余逐字段一致（脚本判定 YES）
+
+--- 7. 未对 GitHub 发送任何 ruleset 创建/修改/删除请求 ---
+  本轮只做了本地读文件 + 本地脚本/测试/typecheck/lint。
+===== end =====
