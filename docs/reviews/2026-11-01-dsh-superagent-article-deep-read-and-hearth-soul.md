@@ -5,6 +5,11 @@
 > 本次**亲自读取了两个来源**：[公众号原文](https://mp.weixin.qq.com/s/zoS7GlReWPhfCjENGxXCdg)（完整正文）与[链捕手转载](https://www.chaincatcher.com/article/2300676)（用于逐段比对，两处内容一致）。前几轮文档使用的是转载二手引用，本轮的引用以公众号原文为准。
 > 对照物：`dsh-superagent-prototype@6337fc8`（本地全量检出）；Hearth `NARRATIVE.md`（炉心）、`docs/mvp/01-PRODUCT-CONTRACT.md`（产品合同）、`bot/hearth-g0-contract@e470436`。
 > 本文回答一个问题：**这篇文章的底层机制，能在多大程度上帮 Hearth 把"灵魂"写实**。
+>
+> ⚠️ **本文第 3.2 / 第 6.2 节的判断已被证伪，阅读时请以 [R7 定稿](./2026-11-01-dsh-superagent-r7-mechanism-contract-freeze.md) 为准。**
+> 其一，「Hearth 的克制只在呈现层」**不成立**：G0-05 §5 本身就是服务端判定合同（四条门槛写死在合同里），差距在实现而非设计。
+> 其二，「炉心应成为持有全部项目状态的唯一序点」**不成立**：G0-05 §3 的 `HearthViewModel` 已是唯一呈现入口；事实权威按 ADR-01/02 分域，不能聚合。
+> 原文正文保留不改写，以免抹掉错误轨迹；勘误理由与源码证据见 R7 §0。
 
 ---
 
