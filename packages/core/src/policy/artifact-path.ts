@@ -29,12 +29,19 @@ export function resolveArtifactPath(demoRoot: string, relPath: string): Artifact
   if (segments.includes('..')) {
     return { ok: false, code: 'PATH_TRAVERSAL', reason: 'artifact path escapes demo root' };
   }
-  const absPath = path.resolve(demoRoot, normalized);
-  const rootWithSep = demoRoot.endsWith(path.sep) ? demoRoot : demoRoot + path.sep;
-  if (absPath !== demoRoot && !absPath.startsWith(rootWithSep)) {
+  // Resolve the root first: a caller may pass a rooted-but-unqualified root
+  // (e.g. "/tmp/..." on Windows). Comparing that literal against an absolute
+  // `absPath` collapses to a false traversal denial for every legal path.
+  const rootAbs = path.resolve(demoRoot);
+  const absPath = path.resolve(rootAbs, normalized);
+  const rootWithSep = rootAbs.endsWith(path.sep) ? rootAbs : rootAbs + path.sep;
+  if (absPath !== rootAbs && !absPath.startsWith(rootWithSep)) {
     return { ok: false, code: 'PATH_TRAVERSAL', reason: 'resolved path outside demo root' };
   }
-  return { ok: true, absPath, relPath: normalized };
+  // Contracts, evidence records and API payloads speak POSIX separators on every
+  // platform; only `absPath` is allowed to carry native separators.
+  const posixRelPath = normalized.split(path.sep).join('/');
+  return { ok: true, absPath, relPath: posixRelPath };
 }
 
 /**

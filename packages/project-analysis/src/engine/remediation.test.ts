@@ -71,7 +71,9 @@ it('a killed writer leaves an interrupted record that restart can recover',async
  const p=await project();const c=assembleProjectContext(observer,insight,p.id,new Date().toISOString());
  store.insertRunning({id:'killed',projectId:p.id,insightId:null,trigger:'observe',provider:'pi',model:'m',snapshotId:c.snapshotId,headSha:c.headSha,streamEpoch:c.streamEpoch,contextFingerprint:c.contextFingerprint,startedAt:new Date().toISOString()});
  const child=spawnSync(process.execPath,['--input-type=module','-e',`import {DatabaseSync} from 'node:sqlite'; const db=new DatabaseSync(${JSON.stringify(store.dbPath)}); db.prepare("UPDATE analysis_runs SET error_message='child-in-flight' WHERE run_id='killed'").run(); process.kill(process.pid,'SIGKILL');`]);
- expect(child.signal).toBe('SIGKILL');
+ // Windows has no POSIX signal termination, so the child reports an exit code
+ // instead of `signal`. Either way it must not look like a clean exit.
+ if(process.platform==='win32'){ expect(child.signal ?? child.status).not.toBe(0); } else { expect(child.signal).toBe('SIGKILL'); }
  const dbPath=store.dbPath;service.close();store=new AnalysisStore(dbPath);
  service=new AnalysisService({observer,store,insight,provider:new MockAnalysisProvider()});
  expect(service.recoverInterrupted()).toBe(1);expect(store.get('killed')?.errorCode).toBe('INTERRUPTED');

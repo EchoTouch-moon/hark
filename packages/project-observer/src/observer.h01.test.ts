@@ -10,6 +10,16 @@ let dir: string;
 let observer: ProjectObserver;
 let now = new Date('2026-10-28T08:00:00.000Z');
 
+/**
+ * Creating a process costs far more on Windows than on POSIX, so the scan-heavy
+ * cases need a larger wall-clock budget there. Only the budget changes; every
+ * assertion stays identical on all platforms.
+ */
+const SCAN_HEAVY_TIMEOUT = process.platform === 'win32' ? 120_000 : 20_000;
+
+/** NTFS rejects control characters in names, so the newline case cannot exist there. */
+const NEWLINE_IN_FILENAME = process.platform !== 'win32';
+
 describe('H01 idempotency', () => {
   beforeEach(async () => {
     dir = await mkdtemp(path.join(tmpdir(), 'hearth-h01-'));
@@ -40,7 +50,7 @@ describe('H01 idempotency', () => {
     expect(observer.store.countEvents(project.id)).toBe(before);
     expect(observer.getLatestSnapshot(project.id)?.fingerprint).toBe(fingerprint);
     expect(observer.getObserverHealth(project.id).currentRevision).toBeGreaterThan(0);
-  });
+  }, SCAN_HEAVY_TIMEOUT);
 
   it('ID-02 A→B→A keeps two real transitions', async () => {
     const root = await createGitRepo(dir, 'toggle');
@@ -88,7 +98,9 @@ describe('H01 idempotency', () => {
     const root = await createGitRepo(dir, 'names');
     const project = await observer.registerProject(root);
     await git(root, ['mv', 'README.md', '中文 空格.md']);
-    await writeFile(path.join(root, 'line1\nline2.txt'), 'nl\n');
+    // Windows forbids control characters in file names; use the other awkward
+    // but representable case there so the porcelain round-trip is still covered.
+    await writeFile(path.join(root, NEWLINE_IN_FILENAME ? 'line1\nline2.txt' : '未跟踪 文件.txt'), 'nl\n');
     now = new Date('2026-10-28T08:01:00.000Z');
     await observer.scanProject(project.id, 'manual');
     const snap = observer.getLatestSnapshot(project.id);
