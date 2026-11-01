@@ -219,37 +219,47 @@ G0 同理，把 URL 里的 `master` 换成 `bot%2Fhearth-g0-contract`（分支�
 
 ### 阶段 A：master
 
-按序执行，任一步失败就停：
+按序执行，任一步失败就停。**关键顺序**：disabled 的 ruleset 不会出现在 `GET /rules/branches/master` 的生效规则里，
+所以「读生效规则」必须放在激活之后，而不是之前。
 
-1. **影子预检（推荐）**：先以 `enforcement: "disabled"` 创建，核对后再激活。
+1. **创建 Disabled Ruleset，记录返回的 `id`**：
    ```bash
    # ⛔ 需要批准后才执行 —— 只把 active 临时改成 disabled，其余字段原样
    sed 's/"enforcement": "active"/"enforcement": "disabled"/' .github/rulesets/protect-master.json \
      | gh api --method POST repos/EchoTouch-moon/hark/rulesets --input -
    ```
-   若你选择直接启用，则改用 §5.1 的 active 模板创建，并跳过下面的第 3 步。
+   记下返回体里的 `id`（后续读取与激活都要用）。
 
-2. **读回并核对真实生效规则（只读，不写任何东西）**：
+2. **读回单个 ruleset，对照 JSON 模板验证配置（只读，不写）**：
    ```bash
-   gh api repos/EchoTouch-moon/hark/rulesets/<id>          # 读回单个 ruleset 配置
-   gh api repos/EchoTouch-moon/hark/rules/branches/master  # 该分支实际生效的规则
+   gh api repos/EchoTouch-moon/hark/rulesets/<id>
    ```
-   确认返回里包含 `pull_request` / `required_status_checks`（context=ci-gate）/ `non_fast_forward` / `deletion`，
-   且 `conditions.ref_name.include` 精确命中 `refs/heads/master`。
+   逐字段对照 `.github/rulesets/protect-master.json`：四条规则、`context=ci-gate` + `integration_id=15368`、
+   `strict_required_status_checks_policy=true`、审批数 0、`bypass_actors=[]`、
+   目标精确命中 `refs/heads/master`。**这一步还看不到生效规则（尚未激活）。**
 
-3. **激活（仅当第 1 步用 disabled 创建时）**：
+3. **获得明确启用授权后，PATCH 为 Active**：
    ```bash
    gh api --method PATCH repos/EchoTouch-moon/hark/rulesets/<id> -f enforcement=active
    ```
 
-4. 开一个**正常功能 PR → master**，确认 `ci-gate` 出现、变绿、合并按钮可用（证明没把自己锁死）。
+4. **激活后读回生效规则（只读）**：
+   ```bash
+   gh api repos/EchoTouch-moon/hark/rules/branches/master   # 现在才包含实际生效规则
+   ```
+   确认返回里包含 `pull_request` / `required_status_checks`（context=ci-gate）/ `non_fast_forward` / `deletion` 四条。
 
-5. 建一个**故意失败**的 PR，确认 `ci-gate` 变红且合并按钮被挡。
+5. 开一个**正常功能 PR → master**，确认 `ci-gate` 出现、变绿、合并按钮可用（证明没把自己锁死）。
 
-6. **（可选，仅当确有需要）** 用额外的受保护测试分支验证 push 拒绝：给一个临时分支套上同样的 ruleset 后，
+6. 建一个**故意失败**的 PR，确认 `ci-gate` 变红且合并按钮被挡。
+
+7. **（可选，仅当确有需要）** 用额外的受保护测试分支验证 push 拒绝：给一个临时分支套上同样的 ruleset 后，
    对它做非快进 `push` 验证被拒。**绝不对 master / G0 本身做 force-push 或非快进 push。**
 
-7. 到 Settings → Rules 人工复核一次（API 成功不等于 UI 显示符合预期）。
+8. 到 Settings → Rules 人工复核一次（API 成功不等于 UI 显示符合预期）。
+
+**异常处置**：任一步失败（尤其第 5/6 步出现「红」或「没挡住」），立即停止，按 §5.3 用 PATCH 把该 ruleset 的
+`enforcement` 改为 `disabled`，排查后再从第 1 步重来。绝不带着异常继续下一步。
 
 **只有阶段 A 全部通过，才进入阶段 B。**
 
