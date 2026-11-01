@@ -5,10 +5,19 @@
 > 基线：`deepseek-ai/dsh-superagent-prototype@6337fc8`（本地全量检出，`src/` 12,390 行）；Hearth `e470436`。
 > 承接：[R7 机制定稿](./2026-11-01-dsh-superagent-r7-mechanism-contract-freeze.md) 与 R7 的 6 项复核意见（PR 评论，2026-11-01 06:14）。
 > 本文所有"代码事实"都带 `file:line`；凡未打开源码核过的，一律标 `UNVERIFIED`。
+>
+> 🔴 **RETRACTED（2026-11-01，见 [R10 复审](./2026-11-01-dsh-superagent-r10-core-runtime-deep-audit.md)）**
+> 本文 §0、§2.4、M6 以及结论里"原型未实现生成列"的判断**是错的，必须撤回**。生成列在 `src/app/store.ts` 里真实存在：
+> `SETS`（L30-48）定义 `ticket.open/active`、`thread.active/subscribed`、`outbox.pending/dropped` 的表达式；构造函数（L67-96）在建表后调用 `addColumns()`（L98-119）动态 `ALTER TABLE ... ADD COLUMN` 并建 `WHERE col IS NOT NULL` 部分索引。
+> **我的检索失效原因**：SQLite 允许省略 `GENERATED ALWAYS`，代码写的是 `INTEGER AS (...)`；我用 `grep "GENERATED ALWAYS|generated"` 自然零命中。**"搜不到关键词"不等于"不存在"**，尤其当关键词有官方简写时。
+> 更正后的判断：**JSON 行体 + 派生生成列/部分索引并存**（详见 R10 §1）。原文保留以留痕，但引用时必须以 R10 为准。
 
 ---
 
-## 0. 先把同一个错误认领第三次
+## 0. ~~先把同一个错误认领第三次~~ **RETRACTED：这一段本身就是错的**
+
+> 🔴 本节结论（"原型未实现生成列"）已被 [R10 §1](./2026-11-01-dsh-superagent-r10-core-runtime-deep-audit.md) 用源码推翻，见文首横幅。下面保留原文只为留痕。
+> 有意思的是：我以为自己在做第三次自我更正，实际上是**第四次犯错**——而且这次的错误类型是"用关键词检索代替读实现"。
 
 这轮我抓到一个新的、指向**我自己**的问题，比前两轮更值得记：
 
@@ -101,9 +110,17 @@ if (!filter.listened) {
 
 这条直接回答了我们争论两轮的"被拒绝的候选要不要持久化"——**原型在字段级别已经这么做了**，粒度是"一个事件一行、只存去向与码"。R7 开放问题里我倾向的"短期留存 reason + ruleRefs、不落正文"，与它同构，只是原型没有 TTL。
 
-### 2.4 `store.ts`：文档式存储 + 复合主键队列
+### 2.4 `store.ts`：JSON 行体 + **派生生成列与部分索引**（RETRACTED 后重写）
 
-见 §0。可迁移的只有两处：`effect(kind, key)` 复合主键 + `due/seq` 索引（延后队列的形状），`trigger_thread(thread, id)` 复合主键（避免重复 fan-out）。其余 JSON 文档存储对 Hearth 无参考价值——Hearth 的表是关系式的。
+> 🔴 本节原判断"文档式存储、生成列不存在"**已撤回**。实际结构是三层：基础表（`id + JSON value`）→ `SETS` 定义生成列表达式（L30-48）→ `addColumns()` 在打开数据库时 `ALTER TABLE ADD COLUMN` 并建 `WHERE col IS NOT NULL` 部分索引（L98-119）。
+
+可迁移的有三处：
+
+1. **活跃工作集索引**：`ticket.open/active`、`thread.active/subscribed` 由 JSON 行体派生，passes 只扫活跃行——这是"状态在 JSON 里、索引在列上"的折中，Hearth 若坚持关系式 schema 则**不需要**它；
+2. `effect(kind, key)` 复合主键 + `due/seq` 索引（延后队列的形状）；
+3. `trigger_thread(thread, id)` 复合主键（避免重复 fan-out）。
+
+**方法论补记**：`addColumns()` 还会在定义变更时先 `DROP COLUMN` 再重建，说明"schema 只增"这个我先前也写过的说法同样不准确——它对生成列是**可重建**的。
 
 ### 2.5 `atomic()` 包裹一切
 
@@ -182,9 +199,11 @@ type Eligibility =
 - **前置**：**本轮未核实**，需先做一次静态走查（`orchestrator.ts` → `storage.ts` 的调用链），确认是否已由 `transitionRun` 覆盖。
 - **验收**：故障注入——在写 evidence 之后抛错，重启后不得出现"run 已完成但无证据"或反之。
 
-### M6 · 明确不做：按文档做生成列索引
+### M6 · ~~明确不做：按文档做生成列索引~~ **RETRACTED**
 
-- **理由**：§0 已证 `docs/007` 的生成列在原型代码里不存在。若 Hearth 要做活跃集合索引，那是独立工程决策，**不得以"DeepSeek 这么做"论证**。
+> 🔴 本条基于错误前提（"生成列不存在"），**废除**。原型确实实现了生成列 + 部分索引（见 §2.4 重写与文首横幅）。
+>
+> 但结论方向仍然保留一半：**Hearth 是否需要活跃集合索引，是独立工程判断**——Hearth 的 schema 是关系式且已有显式状态列，没有 JSON 行体带来的扫描放大问题。所以不是"不能做"，而是"没有从原型得到做它的理由"。
 
 ---
 
@@ -232,11 +251,13 @@ R7 的我方倾向、R7 复核建议（14 天 TTL、不记正文）、以及原�
 
 这轮的净产出不是"又发现一个机制"，而是**四种可以直接照形状写的实现形态**，以及一个必须先改的前提：
 
-1. **角色化 API**（`Pick<>`）——把授权从运行时收窄到编译期；
+1. **角色化 API**（`Pick<>`）——把越权从"评审意见"变成"编译错误"（**仅编译期，非运行时沙箱**，见 R10 §2）；
 2. **19 行纯分类器**（`stage.ts`）——把"当前处于哪一段"变成可枚举对象，Hearth 的 `featuredOpinion` 正缺这个；
-3. **一行一事件 disposition**（`intake.ts`）——静默可复核，且已被三方意见收敛；
-4. **外部驱动的单一时钟**（`evaluateDue`）——直接对应我们已经踩到的 flaky。
+3. **一行一事件 disposition**（`intake.ts`）——静默可复核；但注意原型同时保存了原始 Trigger，**Hearth 的差异点应是不存正文**；
+4. **核心逻辑与 scheduler 分离**（`evaluateDue`）——注意原型另有 `passes.ts:28` 的 `setInterval(2000)` 驱动，所以是"可单步推进的核心"，不是"全局唯一时钟"。
 
-而 §0 那条自我更正，比这四条都重要：**原型最值钱的不是它写了什么，是它哪部分真的写出来了。**
+§0 那条"自我更正"**已被证明是错的**（生成列真实存在），已全文标注 RETRACTED。它留下的真正教训不是"原型比文档简单"，而是：
 
-状态：`RESEARCH_CONDITIONAL_PASS / IMPLEMENTATION_HOLD / H1_NOT_MEASURED`。
+> **用关键词检索代替读实现，会得出精确而错误的结论。** 关键词有官方简写（SQLite 的 `AS` 省略 `GENERATED ALWAYS`），也有动态构造（`addColumns()` 里的字符串拼接），两种都会让 grep 干净地漏掉。
+
+状态：`RESEARCH_CORRECTED / IMPLEMENTATION_HOLD / H1_NOT_MEASURED`（R10 更正后）。

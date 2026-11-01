@@ -17,9 +17,16 @@ PR #12 的三条 P0 里，H-P0-03 是"旧卡片执行/审批 API 仍调用 Orche
 
 ## 1. 三种结构性差异
 
-### 1.1 原型：Engine 从不执行，Executor 只上报事实
+### 1.1 原型：Engine 不在调用内执行，但会在事务内**排入副作用**
 
 `engine.ts` 的 25 个方法全部是**同步的领域变更**，包在 `repo.atomic()` 里（`:48`、`:55`、`:100`、`:174-247`……）。没有任何一个方法启动子进程、等待 I/O 或跑流水线。
+
+**（2026-11-01 更正，见 [R10 §3](./2026-11-01-dsh-superagent-r10-core-runtime-deep-audit.md)）** 不能说"Engine 与执行没有关系"。它确实通过端口在**事务内**排入 durable Effects，真正的 I/O 在 COMMIT 之后由 pass 调度执行：
+
+- `app/outbox.ts:31`：`store.atomic(() => { if (store.receipts.add(message)) effects.enqueue('reply', message.id, {}) })`
+- `app/assessment.ts:104`、`app/sessions.ts:171,173`：同样在事务边界内 `enqueue`
+
+所以准确的说法是 **"决策事务与异步副作用分离"**：决定与"要发生什么"在同一事务里落库，真正的执行在事务外、由调度器消费。这比"不执行"更可迁移，也更难做对。
 
 执行由外部组件完成，它只把**事实**回传：
 
@@ -83,7 +90,21 @@ storage.updateCard(card.id, { status: 'blocked' });                      // 事�
 - 但 `executeCard` 的幂等短路读的是 **run**（`getRunByCard`），不是 card，所以"不一致导致重复执行"未必成立；
 - 具体哪一对写入的窗口会导致用户可见的错误，**本轮未验证，标 `UNVERIFIED`**。
 
-要确认它，最小成本的做法是故障注入：在 `updateCard` 前抛错，重启后看 `recoverInterrupted` 是否能把两者重新对齐——`recoverInterrupted` 里确实同时改 run 和 card（`:204`、`:208`），所以很可能自愈。
+~~要确认它，最小成本的做法是故障注入：在 `updateCard` 前抛错，重启后看 `recoverInterrupted` 是否能把两者重新对齐——`recoverInterrupted` 里确实同时改 run 和 card（`:204`、`:208`），所以很可能自愈。~~
+
+**（2026-11-01 更正，见 [R10 §3](./2026-11-01-dsh-superagent-r10-core-runtime-deep-audit.md)）"很可能自愈"是错的，而且实际窗口比我写的更严重。**
+
+查证后的写入顺序（`orchestrator.ts`）：
+
+| 行号 | 动作 |
+|---|---|
+| `:287-296` | `transitionRun(run.id, 'completed', ...)` ← **先把 run 标记为完成** |
+| `:297` | `storage.addEvidence({ id: \`evd-${run.id}\`, ... })` ← **之后才写证据** |
+| `:306` | `updateCard(card.id, { status: 'completed' })` |
+
+而 `recoverInterrupted` 的扫描范围是 `listRunsInStates(['executing'])` 与 `['verifying']`（`:181`）。**`completed` 不在其中。**
+
+所以：若进程在 `:295` 与 `:297` 之间崩溃，会留下一个"状态已完成、证据不存在"的 run，且**恢复逻辑永远不会再看它**——不是"大概率自愈"，而是"确定不会被修"。这条已从我原判断的 `UNVERIFIED` 升级为 **源码可确认的窗口**；至于它是否可被外部触发或造成用户可见损害，仍需故障注入验证，不能据此宣称已有可利用漏洞。
 
 **本轮结论只到"窗口存在"**，不下"必须修"的结论。
 
@@ -109,7 +130,7 @@ storage.updateCard(card.id, { status: 'blocked' });                      // 事�
 |---|---|---|
 | A1 | 模式门禁必须**在 `executeCard` 与 `recoverInterrupted` 的入口**，不能只在路由层 | `process()` 在流水线内部，路由层拦截不到已入队的 run（§1.2） |
 | A2 | 模式门禁**不适合塞进 `evaluatePolicy`** | 现有 ctx 无 `demoMode`；把运行模式混进授权判定，会让"授权正确但模式不允许"和"模式允许但未授权"两种拒绝无法区分（§1.3） |
-| A3 | 两条写入路径（执行、恢复）应共用**同一个入口函数** | 现在两者各自 `transitionRun` + `updateCard`，是两处独立的双写窗口（§2、§3） |
+| A3 | 两条路径（执行、恢复）应共用**同一套检查与原子状态转移规则**，但**不能合并成同一个入口** | 现在两者各自 `transitionRun` + `updateCard`，是两处独立的双写窗口（§2、§3）。合并入口会让"恢复"变成"可能重复执行"的第二条路径（R10 §3 补充） |
 
 三条都不涉及"要不要执行"的产品决策，只描述"检查点该在哪"。
 
