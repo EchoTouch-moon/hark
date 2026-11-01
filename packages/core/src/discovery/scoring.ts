@@ -46,3 +46,5 @@ export function suppressLowQuality<T extends Pick<Candidate, 'score'>>(candidate
   }
   return { kept, suppressed };
 }
+
+// Verification probe: a comment-only change must still be classified as code, not documentation.
