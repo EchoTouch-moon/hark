@@ -4,7 +4,7 @@ import { FixtureConnector } from '@hearth/connectors';
 import { DEFAULT_SETTINGS, SettingsDtoSchema, type SettingsDto } from '../services.js';
 import type { AppDeps } from '../app.js';
 import type { SessionManager } from '../session.js';
-import { legacyDemoAllowed, rejectLegacyDemo } from '../legacy-demo.js';
+import { legacyDemoAllowed } from '../legacy-demo.js';
 
 const SETTINGS_KEY = 'settings';
 
@@ -53,7 +53,9 @@ export function registerCoreRoutes(app: FastifyInstance, deps: AppDeps, sessions
   });
 
   app.post('/api/v1/demo/seed', async (req, reply) => {
-    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
+    if (!deps.config.demoMode) {
+      return reply.status(409).send({ error: { code: 'NOT_DEMO', message: 'demo mode off; refusing to seed' } });
+    }
     const connector = new FixtureConnector(deps.config.repoRoot ?? process.cwd());
     const projects = connector.loadProjects();
     deps.storage.seedProjects(projects);
@@ -67,7 +69,9 @@ export function registerCoreRoutes(app: FastifyInstance, deps: AppDeps, sessions
   });
 
   app.post('/api/v1/demo/reset', async (req, reply) => {
-    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
+    if (!deps.config.demoMode) {
+      return reply.status(409).send({ error: { code: 'NOT_DEMO', message: 'demo mode off; refusing reset' } });
+    }
     try {
       deps.storage.resetDemoData();
       deps.storage.audit('demo.reset', 'user', 'demo', {});

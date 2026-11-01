@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../app.js';
-import { legacyDemoAllowed, rejectLegacyDemo } from '../legacy-demo.js';
 
 function projectSnapshot(deps: AppDeps, projectId: string) {
   return {
@@ -13,12 +12,10 @@ function projectSnapshot(deps: AppDeps, projectId: string) {
 
 export function registerProjectRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/v1/projects', async (_req, reply) => {
-    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
     return reply.send({ projects: deps.storage.listProjects() });
   });
 
   app.get('/api/v1/projects/:id', async (req, reply) => {
-    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
     const { id } = req.params as { id: string };
     if (!deps.storage.projectExists(id)) {
       return reply.status(404).send({ error: { code: 'PROJECT_NOT_FOUND', message: `project ${id} not found` } });
@@ -27,7 +24,6 @@ export function registerProjectRoutes(app: FastifyInstance, deps: AppDeps): void
   });
 
   app.get('/api/v1/events', async (req, reply) => {
-    if (!legacyDemoAllowed(deps)) return rejectLegacyDemo(reply);
     const q = req.query as { projectId?: string; limit?: string };
     const limit = Math.min(Number(q.limit ?? 30) || 30, 100);
     const events = deps.storage

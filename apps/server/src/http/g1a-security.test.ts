@@ -82,28 +82,47 @@ describe('G1-A legacy endpoints fail closed', () => {
     expect(snapshot()).toEqual(before);
   });
 
-  it.each([false, true, 'unknown'] as const)('does not expose or mutate legacy demo cards without isolated demo execution in mode %s', async mode => {
-    const { app, headers } = await createClient(mode as boolean);
+  it.each([false, true] as const)('normal read and local feedback stay available and never trigger the executor in mode %s', async mode => {
+    const { app, headers } = await createClient(mode);
+    const execute = vi.spyOn(orchestrator, 'executeCard');
+    const approve = vi.spyOn(orchestrator, 'decideApproval');
     const health = await app.inject({ method: 'GET', url: '/api/v1/health' });
     expect(health.json().legacyDemoAvailable).toBe(false);
     const card = store.listCards({ limit: 1 })[0]!;
-    const before = snapshot();
-    const requests = [
-      { method: 'GET' as const, url: '/api/v1/cards' },
-      { method: 'GET' as const, url: `/api/v1/cards/${card.id}` },
-      { method: 'GET' as const, url: '/api/v1/projects' },
-      { method: 'GET' as const, url: '/api/v1/projects/project-atlas' },
-      { method: 'GET' as const, url: '/api/v1/events?projectId=project-beacon' },
-      { method: 'POST' as const, url: `/api/v1/cards/${card.id}/dismiss`, payload: {} },
-      { method: 'POST' as const, url: '/api/v1/discover' },
-      { method: 'POST' as const, url: '/api/v1/demo/seed' },
-      { method: 'POST' as const, url: '/api/v1/demo/reset' },
-    ];
-    for (const request of requests) {
-      const result = await app.inject({ ...request, headers });
-      expect(result.statusCode).toBe(403);
+    expect(card).toBeDefined();
+
+    // 只读查询必须可用（不再被 legacyDemoAllowed 误封）
+    for (const url of ['/api/v1/cards', `/api/v1/cards/${card.id}`, '/api/v1/projects', '/api/v1/projects/project-atlas', '/api/v1/events?projectId=project-beacon']) {
+      const result = await app.inject({ method: 'GET', url, headers });
+      expect(result.statusCode, url).toBe(200);
     }
-    expect(snapshot()).toEqual(before);
+
+    // 本地反馈 / 显式发现必须可用，且不触发执行器
+    const dismiss = await app.inject({ method: 'POST', url: `/api/v1/cards/${card.id}/dismiss`, headers, payload: {} });
+    expect(dismiss.statusCode).toBe(200);
+    const until = new Date(Date.now() + 24 * 3_600_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const snooze = await app.inject({ method: 'POST', url: `/api/v1/cards/${card.id}/snooze`, headers, payload: { until } });
+    expect(snooze.statusCode).toBe(200);
+    const discover = await app.inject({ method: 'POST', url: '/api/v1/discover', headers });
+    expect([200, 429]).toContain(discover.statusCode);
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(approve).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true] as const)('demo seed/reset only in explicit demo mode (mode %s)', async mode => {
+    const { app, headers } = await createClient(mode);
+    const seed = await app.inject({ method: 'POST', url: '/api/v1/demo/seed', headers });
+    const reset = await app.inject({ method: 'POST', url: '/api/v1/demo/reset', headers });
+    if (mode === true) {
+      expect(seed.statusCode).toBe(200);
+      expect(reset.statusCode).toBe(200);
+    } else {
+      expect(seed.statusCode).toBe(409);
+      expect(seed.json().error.code).toBe('NOT_DEMO');
+      expect(reset.statusCode).toBe(409);
+      expect(reset.json().error.code).toBe('NOT_DEMO');
+    }
   });
 
   it.each([false, true, 'unknown'] as const)('rejects forged simulated actions and legacy execution in mode %s', async mode => {

@@ -1,0 +1,32 @@
+===== D-01 范围修订证据（新合同 vs 旧合同，2026-11-01） =====
+时间: 2026-11-01T16:09:57Z
+
+背景：cherry-pick 的 5c0a9101 来自 codex/project-first-conversation（前端已重构为对话工作台），
+它把 G0 仍在用的只读+demo 面也一并 403 了。经裁定，按最小化重划（不整文件回退）。
+
+--- 新合同（按接口能力分类） ---
+  [允许] GET /cards, /cards/:id, /projects, /projects/:id, /events —— 只读查询，200
+  [允许] POST /cards/:id/dismiss|snooze, /discover —— 本地反馈/显式发现，200，且不触发执行器
+  [允许] POST /demo/seed|reset —— 仅显式 demo 模式（demoMode=true）；非 demo 返回 409 NOT_DEMO
+  [拒绝] POST /cards/:id/execute, /approvals/:runId —— 403 LEGACY_ACTIONS_DISABLED
+  [拒绝] POST /threads/:id/actions/:actionId/execute —— 403 LEGACY_ACTIONS_DISABLED
+  [拒绝] orchestrator.executeCard / decideApproval —— 默认 throw（allowLegacyExecution 仅测试开启）
+  [保留] proactive GET 恒 { suggestion: null }；demoMode 严格解析(=1)；isUnsafeLegacyMessage 历史过滤；
+         取消/中断恢复（verifying→pending_verification，不伪造完成）
+
+--- 旧合同（过度门禁，已废弃） ---
+  projects/events/cards 只读 + dismiss/snooze/discover/seed/reset 全部 403 —— 破坏了 G0 前端正常读/反馈/demo 流程
+
+--- 变更文件 ---
+  回退: apps/server/src/http/routes/{cards.ts, projects.ts}（恢复 G0 原样）
+        apps/server/src/http/routes/core.ts 的 seed/reset 守卫改回 !demoMode→409 NOT_DEMO
+  保留: runs.ts（execute/approvals 403）、threads.ts（execute 403 + proactive null + 消息过滤）、
+        legacy-demo.ts、config.ts、chat.ts、mock-adapter.ts、orchestrator.ts、app.test.ts
+  更新: apps/server/src/http/g1a-security.test.ts（按接口能力分类）、tests/e2e/hearth.spec.ts（断言执行被拒）
+
+--- 验证（本地全绿） ---
+  unit: 61 文件 / 507 passed / 1 skipped
+  typecheck: 0 错误；lint: 0 error（11 条 warning 全为既有）；build: 0
+  Linux Playwright E2E: 25 passed（含改写的 E2E-02/03/04 + Activity 空态）
+  resetDemoData 护栏（未改动，既有）: 存在非 demo 项目时拒绝清空（storage.ts:679）
+===== end =====
