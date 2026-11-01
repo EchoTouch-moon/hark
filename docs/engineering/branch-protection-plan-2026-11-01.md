@@ -1,8 +1,8 @@
 # 分支保护配置单（G2，2026-11-01）——**拟定，未应用**
 
-> 状态：**NOT APPLIED**。本文件里所有写命令都未被执行。
+> 状态：**NOT APPLIED · 最终配置已锁定，等待你的明确确认**。本文件里所有写命令都未被执行。
 > 配套：`docs/engineering/ci-gate-refactor-2026-11-01.md`（G1，`ci-gate` 状态名的来源）
-> 前置条件：G1 在两条线上都已合并、稳定运行，且 `ci-gate` 名字不再变动。
+> 前置条件：G1 已合并验收通过（§5.5 有真机证据），`ci-gate` 名字稳定。
 
 ## 1. 前置条件：三件，均已满足（2026-11-01 更新）
 
@@ -38,7 +38,16 @@
 
 应对方式：命令里先写 Rulesets，若返回 403/404 则回退到 classic branch protection（第 6 节）。两者在本场景要达成的效果一致，不需要为此争论。
 
-## 3. 推荐配置
+## 3. 推荐配置（最终锁定版，对应你的 6 条要求）
+
+| 你的要求 | 本方案落点 |
+| --- | --- |
+| 唯一必需检查 = `ci-gate`，绑定 App ID `15368` | §5.1 ruleset 的 `required_status_checks`，`context=ci-gate`、`integration_id=15368` |
+| 必须通过 PR 合并 | `pull_request` 规则（必需），`required_approving_review_count=0` |
+| 禁止删除 | `deletion` 规则 |
+| 禁止强推 | `non_fast_forward` 规则 |
+| 单人 + 编码 Agent，暂不强制他人审批 | `required_approving_review_count=0`（仍强制走 PR，但不要求第二人 approve） |
+| 先 master 验证，再 G0；启用前提交配置与回退、等待确认 | §6 执行序列 + 本文件 §5.3 回退 + 状态仍为「NOT APPLIED」 |
 
 ### 3.1 两条线的共同项
 
@@ -51,12 +60,19 @@
 | 绕过名单 | **留空**，或仅给 repository admin 且 `bypass_mode: always` | 留空最安全。若给 admin 绕过，则每次绕过都会写审计日志，是可事后追责的；但没有绕过意味着真正紧急时也只能走正常流程 |
 | 必需检查是否「严格」（`strict_required_status_checks_policy`） | **true** | 要求分支与基线同步后再判定。代价：#12、#15 两个 draft 长期不 rebase 会一直卡在「未与基线同步」，见第 4 节 |
 
-### 3.2 两条线的差异
+### 3.2 两条线的最终决策：配置完全一致，仅执行顺序有先后
 
-| 分支 | 额外要求 | 理由 |
-| --- | --- | --- |
-| `master` | 无 | 发布基线 |
-| `bot/hearth-g0-contract` | 同样开启，但**在 G3 的分支清理批准之前，暂缓开启「禁止删除」** | G0 是当前事实上的集成主线，G5 的收敛设计还在进行；过早锁死删除会让 staging integration 失去回旋余地 |
+| 项 | 决策 |
+| --- | --- |
+| 配置内容 | **master 与 G0 完全一致**：要求 PR 合并、`ci-gate` 为唯一必需检查（app id `15368`）、禁止删除、禁止强推、审批数 0 |
+| 执行顺序 | **先 master，验证通过后再 G0**（见 §6 的执行序列）。不并行、不一次全上 |
+
+关于「禁止删除」的澄清：这里的 `deletion` 规则**只禁止删除受保护的主线本身**（master / G0），
+**不影响** G3 清理历史 feature 分支（那些分支不受本规则覆盖）。所以 master 与 G0 都应开 `deletion`，无需为此留例外。
+
+关于「绕过」的最终决策：**不配置任何 bypass actor**。仓库管理员（也就是你）在紧急情况下的出路是
+「编辑 / 暂停该 ruleset 本身」，而这个动作会进审计日志、可事后追责。比留一个静默绕过更符合本仓库
+「append-only 审计」的取向。
 
 ## 4. 开启前必须先处理的影响面
 
@@ -127,7 +143,29 @@ gh api --method DELETE repos/EchoTouch-moon/hark/rulesets/<id>
 gh api --method DELETE repos/EchoTouch-moon/hark/branches/master/protection
 ```
 
-## 6. 应用时的验证清单
+## 6. 执行序列与验证清单（先 master，后 G0）
+
+**总原则：两步走，绝不一次全上。** 先在 master 上把「规则 + 正常 PR 流程」跑通，确认没有把自己锁在门外，再对 G0 重复。
+
+### 阶段 A：master
+
+按序执行，任一步失败就停：
+
+1. 写 master ruleset → 记录返回 HTTP 状态。**403 表示当前套餐不支持**，转 §5.2 classic；**201/200 表示成功**。
+2. `gh api repos/EchoTouch-moon/hark/rulesets` 确认规则存在、`targets` 命中 `master`（且排除 `bot/**`）。
+3. 开一个**正常功能 PR → master**，确认 `ci-gate` 出现、变绿、合并按钮可用（证明没把自己锁死）。
+4. 建一个**故意失败**的 PR，确认 `ci-gate` 变红且合并按钮被挡。
+5. 尝试 `git push --force-with-lease` 与直接 `git push` 到 master，确认均被拒。
+6. 到 Settings → Rules 人工复核一次。
+
+**只有阶段 A 全部通过，才进入阶段 B。**
+
+### 阶段 B：G0
+
+对 `bot/hearth-g0-contract` 重复同一 ruleset（`conditions` 改为包含该分支），并重复步骤 2–6。
+因为 #12 / #15 两个 draft 挂在 G0 上，阶段 B 开始前先确认它们的处置（见 §4），避免它们被 `strict` 模式卡成「长期无法合并」的观感。
+
+### 通用验证要点（阶段 A / B 第 2–6 步复用）
 
 按序执行，任一步失败就停：
 
@@ -154,3 +192,6 @@ gh api --method DELETE repos/EchoTouch-moon/hark/branches/master/protection
 ## 8. 本轮边界
 
 未执行任何写命令。截至本文件生成：`rulesets=0`，`protected=0`，`deleted=0`，`closed=0`，`merged=0`。
+
+**这就是最终方案。** 是否进入 §6 阶段 A（在 master 上启用），等你一句明确的「开始执行 G2」。
+在那之前，我不会写入任何 ruleset、不会开 classic protection、也不会改仓库的任何设置。
