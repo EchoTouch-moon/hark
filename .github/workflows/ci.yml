@@ -1,9 +1,31 @@
 name: CI
 
+# Skip the whole pipeline when a change cannot affect the build: documentation,
+# evidence images and top-level markdown. The verify job installs Chromium with
+# system packages and runs the full E2E suite, which costs minutes of runner
+# time and tells a docs-only change nothing.
+#
+# `paths-ignore` only skips when EVERY changed path matches, so a mixed
+# docs+code change still runs in full.
+#
+# There is no branch protection and no required status check on this repository,
+# so a skipped run cannot leave a pull request waiting for a check that will
+# never report. If required checks are ever enabled, this filter must be
+# revisited: a required check that is skipped stays "Expected" forever.
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - 'docs/**'
+      - 'handoff/**'
+      - '**.md'
+      - 'LICENSE'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'handoff/**'
+      - '**.md'
+      - 'LICENSE'
   workflow_dispatch:
 
 permissions:
