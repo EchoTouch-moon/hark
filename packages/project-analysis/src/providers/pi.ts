@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import os from 'node:os';
 import { z } from 'zod';
 import { RecommendationSchema, ProviderOutcomeSchema, type ProviderOutcome } from '../contracts.js';
 import { AnalysisError } from '../errors.js';
@@ -50,14 +51,21 @@ function extractJsonObject(text: string): unknown {
 
 function sanitizeEnv(extra: Record<string, string>): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = {
-    PATH: process.env['PATH'] ?? '/usr/bin:/bin',
+    PATH: process.env['PATH'] ?? (process.platform === 'win32' ? '' : '/usr/bin:/bin'),
     HOME: process.env['HOME'] ?? '',
     LANG: process.env['LANG'] ?? 'C',
-    TMPDIR: process.env['TMPDIR'] ?? '/tmp',
+    TMPDIR: process.env['TMPDIR'] ?? os.tmpdir(),
     TERM: 'dumb',
     PI_OFFLINE: '1',
     PI_TELEMETRY: '0',
   };
+  if (process.platform === 'win32') {
+    // A child started with an explicit env still needs these to load the runtime.
+    env['SystemRoot'] = process.env['SystemRoot'] ?? '';
+    env['USERPROFILE'] = process.env['USERPROFILE'] ?? os.tmpdir();
+    env['TEMP'] = os.tmpdir();
+    env['TMP'] = os.tmpdir();
+  }
   const allow = (process.env['HEARTH_PI_PASS_PROVIDER_ENV'] ?? '').split(',').map((item) => item.trim()).filter(Boolean);
   for (const key of allow) {
     const value = process.env[key];
@@ -141,9 +149,13 @@ export class PiAnalysisProvider implements AnalysisProvider {
       // A private POSIX process group lets cancellation also stop ordinary descendants.
       // Windows has no POSIX groups; only the direct child can be signalled there.
       const processGroup = process.platform !== 'win32';
-      const child = spawn(bin, args, {
+      // A JavaScript entry point has no executable bit or shebang support on
+      // Windows, so run it under the current runtime. This never involves a
+      // shell: argv stays a real argument vector.
+      const scriptEntry = /\.(?:cjs|mjs|js)$/i.test(bin);
+      const child = spawn(scriptEntry ? process.execPath : bin, scriptEntry ? [bin, ...args] : args, {
         env: sanitizeEnv(this.options.extraEnv ?? {}),
-        cwd: '/tmp',
+        cwd: os.tmpdir(),
         detached: processGroup,
         stdio: ['ignore', 'pipe', 'pipe'],
       });

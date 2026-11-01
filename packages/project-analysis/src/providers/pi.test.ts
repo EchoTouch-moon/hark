@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from 'vitest';
-import { mkdtempSync, writeFileSync, chmodSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -11,9 +11,11 @@ afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: tru
 function cli(body: string): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'hearth-pi-test-'));
   dirs.push(dir);
-  const bin = path.join(dir, 'pi');
-  writeFileSync(bin, `#!${process.execPath}\n${body}`);
-  chmodSync(bin, 0o700);
+  // Written as a .js entry point rather than a shebang script: Windows cannot
+  // execute extensionless files, and the provider runs a .js bin under the
+  // current runtime on every platform.
+  const bin = path.join(dir, 'pi.js');
+  writeFileSync(bin, body);
   return bin;
 }
 const recommendation = {

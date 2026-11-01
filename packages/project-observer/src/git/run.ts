@@ -8,6 +8,22 @@ import { redactText } from '../redact.js';
 const EMPTY_HOOKS = path.join(os.tmpdir(), 'hearth-observer-empty-hooks');
 mkdirSync(EMPTY_HOOKS, { recursive: true });
 
+const IS_WINDOWS = process.platform === 'win32';
+
+/**
+ * Windows has no `/dev/null`; `NUL` is the equivalent sink. Pointing git at a
+ * POSIX-only path there makes every `git` invocation resolve a bogus config file.
+ */
+const NULL_DEVICE = IS_WINDOWS ? 'NUL' : '/dev/null';
+
+/**
+ * The child inherits no ambient environment, so PATH must be rebuilt explicitly.
+ * On Windows the inherited PATH is the only way `git.exe` stays resolvable
+ * (CreateProcess appends `.exe` while searching it); a POSIX literal yields
+ * `spawn git ENOENT` on every scan.
+ */
+const SAFE_PATH = IS_WINDOWS ? (process.env['PATH'] ?? '') : '/usr/bin:/bin:/usr/local/bin';
+
 const ALLOWED_SUBCOMMANDS = new Set(['rev-parse', 'status', 'merge-base', 'log']);
 
 export interface GitRunResult {
@@ -118,20 +134,28 @@ export function createGitRunner(): GitRunner {
       '-c',
       'diff.external=',
       '-c',
-      'core.attributesFile=/dev/null',
+      'core.attributesFile=' + NULL_DEVICE,
       '-c',
-      'core.excludesFile=/dev/null',
+      'core.excludesFile=' + NULL_DEVICE,
       ...args,
     ];
     return new Promise<GitRunResult>((resolve, reject) => {
       const child = spawn('git', argv, {
         cwd: options.cwd,
         env: {
-          PATH: '/usr/bin:/bin:/usr/local/bin',
+          PATH: SAFE_PATH,
+          ...(IS_WINDOWS
+            ? {
+                SystemRoot: process.env['SystemRoot'] ?? '',
+                USERPROFILE: os.tmpdir(),
+                TEMP: os.tmpdir(),
+                TMP: os.tmpdir(),
+              }
+            : {}),
           GIT_TERMINAL_PROMPT: '0',
           GIT_OPTIONAL_LOCKS: '0',
           GIT_CONFIG_NOSYSTEM: '1',
-          GIT_CONFIG_GLOBAL: '/dev/null',
+          GIT_CONFIG_GLOBAL: NULL_DEVICE,
           GIT_ATTR_NOSYSTEM: '1',
           LANG: 'C',
           LC_ALL: 'C',

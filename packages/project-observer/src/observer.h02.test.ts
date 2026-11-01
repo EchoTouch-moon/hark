@@ -10,6 +10,20 @@ import { SAMPLE_JUNIT_BAD, SAMPLE_JUNIT_PASS, commitAll, createGitRepo, writeFil
 let dir: string;
 let now = new Date('2026-10-28T08:00:00.000Z');
 
+/**
+ * Windows process creation and recursive deletes are far slower than on POSIX,
+ * so scan-heavy cases get a larger wall-clock budget there. Assertions are
+ * unchanged; only the budget differs.
+ */
+const SCAN_HEAVY_TIMEOUT = process.platform === 'win32' ? 180_000 : 20_000;
+
+/**
+ * POSIX `chmod 000` genuinely revokes read/execute for the owner. Windows ACLs
+ * ignore the POSIX mode bits, so the same call leaves the directory readable and
+ * the case cannot be reproduced there.
+ */
+const POSIX_PERMISSIONS = process.platform !== 'win32';
+
 function makeObserver(dbName = 'observer.sqlite'): ProjectObserver {
   return new ProjectObserver({
     dbPath: path.join(dir, dbName),
@@ -73,7 +87,7 @@ describe('H02 recovery', () => {
     observer.close();
   });
 
-  it('RE-04 temporarily unreadable repo then recovered keeps last-good until recover', async () => {
+  it.skipIf(!POSIX_PERMISSIONS)('RE-04 temporarily unreadable repo then recovered keeps last-good until recover', async () => {
     const observer = makeObserver();
     const root = await createGitRepo(dir, 'perm');
     const project = await observer.registerProject(root);
@@ -141,5 +155,5 @@ describe('H02 recovery', () => {
     expect(observer.store.countEvents(project.id, ['REPOSITORY_UNAVAILABLE'])).toBeLessThanOrEqual(25);
     await observer.stop();
     observer.close();
-  });
+  }, SCAN_HEAVY_TIMEOUT);
 });
