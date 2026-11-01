@@ -1,0 +1,48 @@
+===== change-detection end-to-end evidence =====
+executed: 2026-11-01T09:22:12Z  host=MINGW64_NT-10.0-22621  node=v22.22.2
+command under test: pnpm exec tsx scripts/ci-change-detection.ts
+note: 'unknown-diff-conservative' is the fail-safe branch -- an unreadable or empty diff
+      MUST NOT be mistaken for 'nothing important changed', so it forces a full run.
+
+--- CASE 1: real three-dot diff of a docs-only branch vs master ---
+git diff --name-only master...ops/g0-inventory-20261101
+    file: docs/engineering/branch-inventory-2026-11-01.md
+    file: docs/engineering/ci-baseline-2026-11-01.md
+    mode=docs-only
+    skip-heavy=true
+    reason=all-documents
+    forcing-path-count=0
+    expected: mode=docs-only skip-heavy=true
+
+--- CASE 2: single source file ---
+    mode=code
+    skip-heavy=false
+    reason=code-changed
+    forcing-path-count=1
+    forcing-paths=apps/web/src/App.tsx
+    expected: mode=code reason=code-changed
+
+--- CASE 3: the workflow changes itself (must never be docs-only) ---
+    mode=code
+    skip-heavy=false
+    reason=verification-tooling-changed
+    forcing-path-count=1
+    forcing-paths=.github/workflows/ci.yml
+    expected: mode=code reason=verification-tooling-changed
+
+--- CASE 4: docs + code mixed (must NOT skip) ---
+    mode=code
+    skip-heavy=false
+    reason=code-changed
+    forcing-path-count=1
+    forcing-paths=packages/core/src/a.ts
+    expected: mode=code reason=code-changed
+
+--- CASE 5: empty / unreadable diff (fail-safe) ---
+    mode=code
+    skip-heavy=false
+    reason=unknown-diff-conservative
+    forcing-path-count=0
+    expected: mode=code reason=unknown-diff-conservative
+
+===== end =====

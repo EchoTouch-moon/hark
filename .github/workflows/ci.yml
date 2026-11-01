@@ -1,31 +1,16 @@
 name: CI
 
-# Skip the whole pipeline when a change cannot affect the build: documentation,
-# evidence images and top-level markdown. The verify job installs Chromium with
-# system packages and runs the full E2E suite, which costs minutes of runner
-# time and tells a docs-only change nothing.
+# Every pull request and every push to a protected line produces a run. Nothing is
+# filtered at the trigger any more: a required check that the trigger skipped stays
+# "Expected" forever, because GitHub never gets a result to report. Filtering moved
+# *inside* the workflow, where skipping heavy jobs still leaves `ci-gate` green.
 #
-# `paths-ignore` only skips when EVERY changed path matches, so a mixed
-# docs+code change still runs in full.
-#
-# There is no branch protection and no required status check on this repository,
-# so a skipped run cannot leave a pull request waiting for a check that will
-# never report. If required checks are ever enabled, this filter must be
-# revisited: a required check that is skipped stays "Expected" forever.
+# `ci-gate` is the only name that ever needs to be added to a branch protection
+# required-status-check list. Jobs may be added or reordered freely afterwards.
 on:
   push:
-    branches: [master]
-    paths-ignore:
-      - 'docs/**'
-      - 'handoff/**'
-      - '**.md'
-      - 'LICENSE'
+    branches: [master, bot/hearth-g0-contract]
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - 'handoff/**'
-      - '**.md'
-      - 'LICENSE'
   workflow_dispatch:
 
 permissions:
@@ -36,12 +21,101 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Node 22 / deterministic checks and Mock E2E
+  # Always runs. Decides, from the actual diff, whether verification is worth paying
+  # for. Fails safe: anything it cannot prove is documentation-only is treated as code.
+  detect-changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      skip-heavy: ${{ steps.detect.outputs.skip-heavy }}
+      reason: ${{ steps.detect.outputs.reason }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+
+      - name: Set up pnpm 11
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11.9.0
+          run_install: false
+          cache: true
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve the merge base
+        id: range
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PUSH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            pull_request)
+              echo "base=$BASE_SHA" >> "$GITHUB_OUTPUT"
+              echo "head=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+              ;;
+            push)
+              # A brand new branch reports before=000...0, which is not a diffable
+              # parent. Falling back to the single parent keeps the history honest;
+              # if even that fails we deliberately emit nothing so detection runs
+              # the conservative full path.
+              parent=$(git rev-parse --verify --quiet "${BEFORE_SHA}^{commit}" || true)
+              if [ -z "$parent" ]; then
+                echo "base=" >> "$GITHUB_OUTPUT"
+                echo "head=$PUSH_SHA" >> "$GITHUB_OUTPUT"
+              else
+                echo "base=$parent" >> "$GITHUB_OUTPUT"
+                echo "head=$PUSH_SHA" >> "$GITHUB_OUTPUT"
+              fi
+              ;;
+            *)
+              echo "base=" >> "$GITHUB_OUTPUT"
+              echo "head=$PUSH_SHA" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Classify the change set
+        id: detect
+        env:
+          BASE: ${{ steps.range.outputs.base }}
+          HEAD: ${{ steps.range.outputs.head }}
+        run: |
+          set -euo pipefail
+          if [ -n "$BASE" ]; then
+            # Three dot form: everything reachable from head since it diverged.
+            git diff --name-only "$BASE...$HEAD"
+          else
+            git show --pretty= --name-only "$HEAD"
+          fi | pnpm exec tsx scripts/ci-change-detection.ts >> "$GITHUB_OUTPUT"
+
+      - name: Report the decision
+        env:
+          MODE: ${{ steps.detect.outputs.mode }}
+          REASON: ${{ steps.detect.outputs.reason }}
+        run: echo "mode=$MODE reason=$REASON"
+
+  verify-linux:
+    name: Node 22 / Linux / deterministic checks and Mock E2E
+    needs: detect-changes
+    if: needs.detect-changes.outputs.skip-heavy != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       CI: 'true'
+      # Demo closed loop only. The analyser is mocked and the Pi provider path
+      # points at a location that cannot exist, so a real model call fails closed.
       HEARTH_ANALYSIS_PROVIDER: mock
       HEARTH_PI_BIN: /nonexistent/live-provider-disabled
     steps:
@@ -71,3 +145,74 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Controlled Mock browser tests
         run: pnpm test:e2e
+
+  # Stage one of Windows coverage: the parts that are deterministic and cheap.
+  # Browser E2E on Windows stays off until this job has a stability record, at
+  # which point it becomes its own step rather than silently widening this one.
+  verify-windows:
+    name: Node 22 / Windows / typecheck, test and build
+    needs: detect-changes
+    if: needs.detect-changes.outputs.skip-heavy != 'true'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      HEARTH_ANALYSIS_PROVIDER: mock
+      HEARTH_PI_BIN: C:/nonexistent/live-provider-disabled
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - name: Set up pnpm 11
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11.9.0
+          run_install: false
+          cache: true
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Type check
+        run: pnpm typecheck
+      - name: Unit and integration tests
+        run: pnpm test
+      - name: Build web and server
+        run: pnpm build
+
+  # The single required status check. `if: always()` keeps it alive after an
+  # upstream failure, and it converts every non-success into a red conclusion so
+  # a cancelled verification can never be read as "nothing failed".
+  ci-gate:
+    name: ci-gate
+    needs: [detect-changes, verify-linux, verify-windows]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - name: Set up pnpm 11
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11.9.0
+          run_install: false
+          cache: true
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Decide the gate
+        env:
+          DETECT: ${{ needs.detect-changes.result }}
+          LINUX: ${{ needs.verify-linux.result }}
+          WINDOWS: ${{ needs.verify-windows.result }}
+          SKIP_HEAVY: ${{ needs.detect-changes.outputs.skip-heavy }}
+        # scripts/ci-gate-decision.ts owns the rule that nothing non-green may be
+        # reported as green. It is unit tested; see tests/unit/ci-gate-decision.test.ts.
+        run: pnpm exec tsx scripts/ci-gate-decision.ts

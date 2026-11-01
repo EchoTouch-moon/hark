@@ -1,0 +1,15 @@
+   ✓ error isolation and recovery > T11 deleted repo becomes UNAVAILABLE and keeps history  908ms
+   ✓ error isolation and recovery > T16 reconcile recovers missed watch events  1122ms
+ ✓ packages/project-observer/src/observer.h01.test.ts (7 tests) 53715ms
+   ✓ H01 idempotency > ID-01 100 identical scans add no change events  43145ms
+   ✓ H01 idempotency > ID-02 A→B→A keeps two real transitions  1403ms
+   ✓ H01 idempotency > ID-03 concurrent watch/api/timer requests share one in-flight scan  1113ms
+   ✓ H01 idempotency > ID-04 retry after successful commit does not duplicate events  1291ms
+   ✓ H01 idempotency > ID-06 rename plus chinese/space/newline paths parse via real git  1200ms
+   ✓ H01 idempotency > ID-07 repeated identical adapter faults do not flood the timeline  5516ms
+
+ Test Files  44 passed (44)
+      Tests  363 passed | 1 skipped (364)
+   Start at  17:21:13
+   Duration  56.14s (transform 6.10s, setup 0ms, collect 35.82s, tests 368.19s, environment 23ms, prepare 28.05s)
+
