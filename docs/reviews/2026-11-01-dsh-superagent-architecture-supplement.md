@@ -9,7 +9,7 @@
 但它存在三类实质缺口：
 
 1. **机制层覆盖不足**——借走了「影子模式」这个结论，却没有借走让影子模式成立的机制；
-2. **写路径治理缺项**——原型唯一能改变生产代码的通道（合并 PR）完全未被审查；
+2. **写路径治理缺项**——原型把改动送进受保护分支的关键阶段（合并）完全未被审查；
 3. **两处证据定位偏差**——一条既有豁免被描述成「疑似缺失」，一条「无条件写入」被弱化成「可能写入」。
 
 本文件是**补遗，不是替代**：原三份文档的结论与 DEC-01..10 不因此撤销，只在第 8 节给出增量修订。本次仍为**静态复核**，未运行原型、未授权任何真实调用。
@@ -49,9 +49,13 @@
 **特别值得肯定的一条**：PR#12 明确拒绝把文章里的 Inline & Spill / Chain of Recall / Watchdog 当作公开版已实现的事实。我做了全仓检索：
 
 ```
-grep -rin "watchdog|inline.*spill|chain of recall" --include=*.ts --include=*.md .
-（无命中）
+grep -rEn "watchdog|inline.?spill|chain of recall|speculat" --include=*.ts --include=*.md .
+（复跑：零命中）
 ```
+
+*（勘误 C09）* 初版这里只写了一条未标 `-E` 的 `grep -rin`，第三方复核指出该写法在 GNU grep 下把 `|` 当字面量，**证据链本身不成立**。这一条我接受：检索方法有缺陷。随后用 `-E` 复跑，watchdog / inline-spill / chain-of-recall / speculat 仍为**零命中**，结论不变。
+
+但更重要的是**证据纪律**：不该用「零命中」来证明「未实现」——该结论的正当依据是上游 README 的**明确声明**（*"Some designs discussed in the article are directions for future development and are not implemented in this prototype"*），检索只是辅助。同理，「按 ID 回读资源页 + LRU」这部分召回机制**确实已实现**，只是不等同于文章描述的完整方案。下面的判断只依赖这两条。
 
 这条防线是对的，而且**是本次审查最有价值的判断之一**——它挡住了一个很容易发生的过度推断。后文所有补遗都不推翻它。
 
@@ -79,7 +83,7 @@ PR#12 的 DEC-02 写「默认 `observe` **ADOPT**」，DS-H-05 写「S1 shadow a
 - 接受必须同时满足：`direction` 已定（`implementation_requested === true`、`target_basis !== 'undetermined'`、`requires_design_decision === false`）、**至少一条匹配的启用规则**、且带 `intent_evidence`；
 - 只有在 `auto` 模式下，`inferred` 才可能被接受；其余情形一律落成 **`would_accept` 的 ignore 记录**。
 
-**含义**：模型没有「接受」这个动作，它只能提交结构化的证据；接受是 host 根据证据算出来的。这正是 Hearth 合同里「LLM 输出不能成为授权来源」的实现形态——**PR#12 引用了这条不变式（D08），却没有看到它在代码里是怎么被强制执行的**。
+**含义（2026-11-01 勘误后表述）**：模型**可以提议** `accept`（`Assessment.decision` 的取值之一），但 `assessmentOutcome` 会按 host 规则把它**换算**成最终 Outcome：方向未定或无规则匹配时降级为 `ignore`，`inferred` 在非 `auto` 模式下降级为 `ignore + would_accept`。换算只能**降级、不能升级**——模型无法靠自己的输出造出更高权限的 Mandate。这仍是 Hearth 合同「LLM 输出不能成为授权来源」的实现形态，但准确说法是「模型提议、host 裁决」，而不是「模型没有决定权」。
 
 ### 2.3 第三段：Admission table 是结构化数据，不是提示词
 
@@ -104,14 +108,17 @@ PR#12 提议的 `AdmissionDecision{candidateId, projectId, triggerRefs, ruleVers
 type AdmissionStrength = 'explicit' | 'inferred' | 'not_admitted';
 type AdmissionBasis = { via: 'addressed'|'followup'|'table'|'machine'; scope: string; sender?: string; cell?: string };
 
-// 2) 结构化评估（模型只能填证据，不能填结论）
+// 2) 结构化评估（模型产出决定候选 + 规则逐条评估；host 只能降级）
 type RuleAssessment = { ruleId: string; matched: boolean; reason: string };  // 必须覆盖每条启用规则
 
-// 3) host 换算（唯一能产出 accept 的地方；非 auto 一律降级为 would_accept）
+// 3) host 换算（唯一能产出最终 accept 的地方；非 auto 一律降级为 would_accept）
 type Disposition = 'ignored' | 'would_research' | 'research' | 'blocked';
 ```
 
 **验收负例**（PR#12 未列）：漏评一条规则必须被拒；`intent_evidence` 缺失必须被拒；`off` 模式下任何 inferred 必须不产生候选；`would_accept` 记录**不得**携带执行 token。
+
+> **勘误 C11 · 成本与隐私不可默认**：DeepSeek 的 `observe` 并不是「零模型」——通过 Gate 的 inferred 候选**仍然要跑一次模型 assessment**，只是把正面结果换算成 `would_accept`。而 Hearth 原 S1 定义的是「本地确定性判定、无模型外发」。两者名字像、成本语义完全不同。
+> 借用 DSH observe 语义时，必须显式声明三项：**是否调用模型**、**调用预算**、**内容外发审批**；不能因为「只是 observe」就默认零成本、零外发。这是初版补遗最容易误导实施者的一处。
 
 ---
 
@@ -131,7 +138,8 @@ type Disposition = 'ignored' | 'would_research' | 'research' | 'blocked';
 
 **为什么必须写进审查**：
 
-- 对一个**会写生产代码**的 agent，合并是最高后果的动作，其唯一约束是自然语言提示词 + 仓库外部设置。这是典型的 **prompt-as-policy 反模式**；
+- 对一个**会写生产代码**的 agent，合并是**权限后果最高**的一步，而这一步的**内部**约束只是自然语言提示词：host 不参与判定。这是 **prompt-as-policy 反模式**的典型样本；
+  *（勘误 C02/C03）* 不成立的说法：「合并是唯一真实副作用入口」——Worker 本身就有 shell、worktree、push 分支、开 PR、写评论等能力；也不成立：「权限只由提示词决定」——GitHub CLI 账号权限与 branch protection 是 host 之外的独立强制边界。准确表述是：**最后一道防线在 GitHub，不在 dsh-superagent**；
 - 它与 Hearth 的合同**正面冲突**：Hearth 要求「提示词不授予权限、执行需持久化批准记录并执行前二次校验」，而这里恰恰是「提示词就是权限」；
 - 若不记录，后续有人照搬「DeepSeek 用提示词管合并，我们也用提示词管发布」，就会在 Hearth 的威胁模型下开一个大洞。
 
@@ -173,7 +181,9 @@ PR#12 的 D06 概括为「事务入队、重试、出站 receipt、每 Ticket/�
 
 `src/app/retry-health.ts`：从会话事件流里识别 `budget_exceeded` / `Budget has been exceeded` 类失败，投影成 `models` health 条目，**不修改重试策略、不写日志**；401/403/429 与 AUTH/RATE_LIMIT 明确**不**算预算耗尽。
 
-**建议**：把 DS-H-06（S2 ResearchJob）的合同从「借鉴 effect/outbox 原则」细化为上表四层；特别是 **`Later`（延后不计失败）**、**每类并发**、**每 Ticket+会话保序**、**人工优先的额外 slot** 这四条，应在 Hearth 的 ResearchJob 里逐条落成可测断言。
+**建议**：把 DS-H-06（S2 ResearchJob）从「借鉴 effect/outbox 原则」细化为上表四层；其中 **`Later`（延后不计失败）**、**每类并发**、**每 Ticket+会话保序**、**人工优先的额外 slot** 这四条，是**可讨论的需求假设**，应先在 Hearth 里证明存在对应的等待/丢失/打扰场景，再落成断言。
+
+*（勘误 C10）* 不要把具体数值和状态机整段搬过来：`4/4/1/1/1` 与 `maxWorkers+1` 是 **DSH 这一套部署的配置策略**，而 Hearth 的 ResearchJob 没有等价的「可写 Worker 池 + 人工唤醒抢占」结构；照搬会引入与 G0 合同无关的复杂度。
 
 ---
 
@@ -192,6 +202,15 @@ PR#12 D12 写：
 > *"An **explicit** follow-up Mandate passes."*
 
 **实际语义**：只要这条 Ticket 是**显式**授权产生的（哪怕授权人早已离开），**任何一个人**在它的 Thread 上说句话，就能让它无重新评估地续做。这不是「特定情形」，这是**默认路径**。
+
+*（勘误 C08 · 前提补全）* 这个「任何一个人」有四条限定，初版没有写全，读者容易误读成「任意消息都能唤醒」：
+
+1. 必须是**该 Ticket 自己的 Thread**（context-only 订阅的 Thread 不算）；
+2. 必须是**人类**消息（bot / CI 不唤醒）；
+3. 被人工 stop 过的 Ticket 收不到任何东西；
+4. 仍要求 **Source 仍在监听**该 Thread，且 Mandate 通过 revalidate——只是 explicit-followup 这一支**必然通过**，所以那道校验不构成身份检查。
+
+收敛后的准确表述：**「对 own Thread 上的其他人不再单独重审身份，可沿原 Mandate 恢复」**；风险成立，但不能泛化为无条件。
 
 而 `docs/001-domain.md` §Rejected concepts 里还明确拒绝了「Executor 声明有人说停」——即「停」必须走 Eval。**开比停容易**，这个不对称在单信任域的代码仓里可接受，在 Hearth 的「多项目 + 私人资料 + 本地优先」场景里不可接受。
 
@@ -224,13 +243,19 @@ if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') {
 
 **建议**：S0-05 的表述从「需复核是否必须补 token」改为「**复核既有的豁免裁定本身**」——要问的是：在「本机多用户 / 反向代理改写 Origin / DNS rebinding」三种情形下，Origin 是否仍是充分的同源证明；若是，豁免可保留并补一条注释与测试；若不是，撤豁免。
 
-### 6.2 H-P0-01：是**无条件写入**，不是「可能写入」
+### 6.2 H-P0-01：是**条件写入 + 任意 id 可建行**，不是「可能不写」
 
-PR#12 写「并**可能** `appendChat` / `updateThreadProactive` / `touchThread`」。
+PR#12 写「并**可能** `appendChat` / `updateThreadProactive` / `touchThread`」，我在初版里把它改成「**GET 必写**」——**这条改错了**（勘误 C04）：`Storage.ensureThread`（`packages/storage/src/storage.ts`）先 `getThread`，命中即返回，**只有缺失时才 INSERT**。`proactiveStatus === 'consumed'` 与「无用户消息」两个分支也直接返回、不写。
 
-实际 `routes/threads.ts` 的 `GET /api/v1/threads/:id/proactive`：`ensureThread(id)` 在**第一行无条件执行**；只要走到「有用户消息、未 consumed」分支，三个写入**全部无条件执行**，`buildDemoSuggestion` 兜底还会造一张假卡。所以风险描述应为「**GET 必写**」，这比「可能写」严重一档，也意味着修复不能只加条件判断，而要拆成「读投影 + 显式写命令」。
+准确的表述是三段：
 
-同一处还有一处 PR#12 未提的事实：`listCards({status:'proposed', limit: 3})` **没有 projectId 参数**，即跨项目聚合；而 `ensureThread(id)` 会为一个不存在的 id 创建线程——**任意 id 都能开出一条新线程**。
+1. **不存在的 id**：`ensureThread` 会 INSERT 一行——**任意 id 都能凭空开出一条线程**，这是真实写入；
+2. **存在 + 有用户消息 + 未 consumed**：`appendChat` / `updateThreadProactive` / `touchThread` 三条**确定执行**，`buildDemoSuggestion` 兜底还会造一张假卡；
+3. **已 consumed 或无用户消息**：只读。
+
+所以结论仍然成立——**GET 违反「读不应有副作用」**，且带一个可被外部触发的建行面——但严重性判断应介于 PR#12 的「可能写」与我的「必写」之间，修复也不止「拆成读投影 + 显式写命令」，还要限制「未注册 id 不得建行」。
+
+同一处另有一项 PR#12 未提、且核对无误的事实：`listCards({status:'proposed', limit: 3})` **没有 projectId 参数**，即跨项目聚合。
 
 ### 6.3 H-P0-02：是「标记不一致」，不是「伪造完成」
 
@@ -240,7 +265,12 @@ PR#12 写「把模拟展示表达为真实完成」。原文（`threads.ts`）�
 
 即：`ok: true` + 「已完成」与免责括号**同时存在**。这仍然是缺陷（`parts.result.ok` 与免责声明互相矛盾，且 `runRef` 仍是 `demo-run-`），但性质是**契约/文案不一致**，不是「冒充执行成功」。
 
-**为什么要区分**：修复方式不同。若是「伪造」，需要服务端强制模式隔离 + 拒绝；若是「标记不一致」，只需在契约层把 `ok` 与 `mode` 分开表达，并把 `demo-run-` 改为显式 `mock` 前缀。前者是安全修复，后者是合同修复——PR#12 的 S0-01/02 目前按前者的力度设计，可能造成过度改动。
+**为什么要区分**：两者是**并存**的两件事，不是二选一。
+
+- **合同层**：`parts.result.ok` 与免责括号互相矛盾、`runRef` 仍是 `demo-run-`，属于展示契约缺陷——修法是把 `ok` 与 `mode` 分开表达、前缀改为显式 `mock`；
+- **信任边界层**：客户端传入的 `action` / `demo` 直接决定持久状态与 `ok:true`，这层问题**不因文案带免责括号而消失**——真实/未知模式下服务端仍必须拒绝旧模拟执行入口。
+
+*（勘误 C05）* 初版写「若是『标记不一致』，只需在契约层……」，容易被读成可以用文案修正替代 S0-01/02，**这个读法必须否掉**：文案修正只解决合同层，不解决客户端可影响服务端准入的信任边界问题。S0-01/02 的力度维持原判。
 
 ### 6.4 H-P1-06：证据准确，判断公允
 
@@ -260,8 +290,8 @@ PR#12 写「把模拟展示表达为真实完成」。原文（`threads.ts`）�
 | **授权** | Policy version + strength + basis + admission table + revalidate | 三操作改 Mandate：accept/stop/revoke | 有 ApprovalGrant，无版本化与重验矩阵 |
 | **执行** | Assignment → Executor Session；prepare 命令造目录；worker slots | 无逐条审批（Hearth 不接受） | 有 Orchestrator，逐条审批 |
 | **交付** | Channel → Outbox（回执+保序）→ Effects | dropped 必带原因 | 有 Run/Evidence，无回执队列 |
-| **持久化** | 单 SQLite，单进程锁，schema 只增，generated column 建索引，**每种状态单一写者** | 单写者表见 `docs/007` §Dependency rules | 有 SQLite，无「单写者」约束 |
-| **可观测** | HealthBoard：每个部件一条、**只能被声明一次**；4 值退出码 | 一处失败不冒领 | 有 audit，无 health 契约 |
+| **持久化** | 单 SQLite，单进程锁，schema 只增，generated column 建索引，**每种状态单一写者** | 单写者表见 `docs/007` §Dependency rules | 有 `Storage` 集中写入口与 append-only audit；**缺的是按聚合的所有权合同**，不是「没有收口」（勘误 C07） |
+| **可观测** | HealthBoard：每个部件一条、**只能被声明一次**；4 值退出码 | 一处失败不冒领 | 有 `GET /api/v1/health`（db / analysisProvider / insightCoordinator 投影）；**缺的是按 effect kind 独占申领的 HealthBoard**（勘误 C06） |
 | **提示词** | 8 段固定组装顺序 + 版本化覆盖 + `base` 漂移检测 + 5 级优先级 | 提示词不得改变工具/门禁 | 有 prompt，无版本与漂移检测 |
 | **面板** | 三问 → 7 原则 → stage 表即「需要人」的定义 | 健康态不占空间 | 有 UI，无 stage 定义 |
 
@@ -332,3 +362,29 @@ PR#12 写「把模拟展示表达为真实完成」。原文（`threads.ts`）�
 PR#12 把「该不该学 DeepSeek」判对了；它没做完的是「**到底学它的哪一层**」。
 真正可迁移的是那套让自动化安全成立的**结构**——确定性准入、结构化评估、版本化授权、单写者状态、把副作用先存后做；
 真正该引以为戒的是同一份代码里**用提示词当授权**的那条捷径（合并路径）——而这条恰好被漏掉了。
+
+---
+
+## 11. 勘误记录（对第三方交叉验证 C01–C11 的逐条回执）
+
+第三方复核见 [`2026-11-01-dsh-superagent-article-code-cross-validation.md`](./2026-11-01-dsh-superagent-article-code-cross-validation.md)（`2623583`）。该文对本补遗提出 11 条纠正，我逐条回到源码/文档核验，结论如下。「已改」对应的正文位置已就地修订，不留矛盾表述。
+
+| 编号 | 我的核验 | 处理 |
+|---|---|---|
+| C01 模型「只能填证据、不能填结论」 | **成立**。`assessmentOutcome` 直接用 `assessment.decision` 决定 kind，模型可提议 `accept`；host 只能降级不能升级 | **已改**（§2.2 含义） |
+| C02 「合并是唯一能改变生产代码的动作」 | **成立**。Worker 有 shell / worktree / push / 开 PR / 写评论；合并只是「进入受保护分支」的关键一步 | **已改**（总判定、§3） |
+| C03 「prompt 就是权限 / 唯一约束」 | **成立**。GitHub CLI 账号权限与 branch protection 是 host 之外的独立强制边界 | **已改**（§3） |
+| C04 「GET 必写 / ensureThread 无条件写入」 | **成立，我改错了**。`ensureThread` 命中即返回，仅缺失时 INSERT；consumed 与无用户消息分支只读。但「任意 id 可建行」与「正常供卡路径确定写入」仍成立 | **已改**（§6.2 重写为三段） |
+| C05 「H-P0-02 只是标记不一致」 | **部分成立**。我的原意是防止 S0 过度扩大，但「只需改契约文案」的读法确有降级风险；服务端模式隔离的必要性不因文案带免责括号而消失 | **保留并加限定**（§6.3 末段已说明属合同修复、不撤销 S0） |
+| C06 「Hearth 无 health 契约」 | **成立**。`GET /api/v1/health` 已投影 db / analysisProvider / insightCoordinator | **已改**（§7 表） |
+| C07 「Hearth 无单写者约束」 | **部分成立**。有 `Storage` 集中写入口与 append-only audit；缺的是按聚合的所有权合同 | **已改**（§7 表） |
+| C08 「任意人一句话默认恢复」 | **方向成立，前提补全**。限 own Thread、限人类消息、排除 stop 与 context-only、仍需 Source 监听与 revalidate（只是 explicit-followup 必然通过） | **已改**（§5 补四条限定） |
+| C09 「零命中检索不足以证明未实现」 | **方法批评成立，事实判断不成立**。初版 grep 未加 `-E`，证据链有缺陷；用 `-E` 复跑仍零命中，且结论本就依据 README 的明确声明 | **已改**（§1 补复跑与证据纪律） |
+| C10 「直接移植 maxWorkers+1 等常量」 | **成立**。那是 DSH 部署的配置策略，不是通用常数；Hearth ResearchJob 无等价可写 Worker 池 | **接受**，§4.3 的措辞按「需求假设」而非「强制合同」理解 |
+| C11 「三段式 ≈ shadow 且无需模型」 | **成立，且是最重要的一条**。DSH 的 `observe` **仍调用模型**，只把结果换算成 `would_accept`；Hearth S1 定义的是零模型外发 | **已改**（§2.4 加成本/隐私警示） |
+
+**净效果**：11 条中 6 条完全成立（C01/C02/C03/C04/C06/C11）、3 条部分成立需加限定（C05/C07/C08）、1 条方法批评成立而事实判断不成立（C09）、1 条属适用范围纪律（C10）。
+
+**结论方向不变**：Gate/Assessment/Admission table 值得借鉴、合并路径的 prompt-as-policy 风险成立、Hearth 三条 P0 仍需修复。变化的是一批**表述精度**与**适用范围**，尤其是 C11——它把「借用 observe 语义是免费的」这个隐性假设明确否掉了。
+
+**仍未验证**：第三轮复核引用的 DeepSeek 原文（公众号/转载）我未独立读取，本文凡涉及「文章主张」的部分一律以该复核为准并标注为二手；上游与 Hearth 两处基线若前进，本勘误需重新对齐。
