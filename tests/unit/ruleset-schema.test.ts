@@ -159,4 +159,44 @@ describe('validate-rulesets against the locked G2 policy', () => {
     });
     expect(rulesAreSemanticallyEqual(canonical(), relaxed)).toBe(false);
   });
+
+  it('rejects a non-string entry inside the include array', () => {
+    const errors = validateRuleset(
+      mutate((o) => {
+        o.conditions.ref_name.include = ['refs/heads/master', 123] as unknown as string[];
+      }),
+      'refs/heads/master',
+      'protect-master',
+    );
+    expect(errors.some((e) => e.includes('array of strings'))).toBe(true);
+  });
+
+  it('rejects a duplicate rule type', () => {
+    const errors = validateRuleset(
+      mutate((o) => {
+        o.rules.push({ type: 'pull_request' });
+      }),
+      'refs/heads/master',
+      'protect-master',
+    );
+    expect(errors.some((e) => e.includes('duplicate rule type'))).toBe(true);
+  });
+
+  it('rejects a non-object entry in the rules array', () => {
+    const errors = validateRuleset(
+      mutate((o) => {
+        (o.rules as unknown[]).push('garbage');
+      }),
+      'refs/heads/master',
+      'protect-master',
+    );
+    expect(errors.some((e) => e.includes('rules['))).toBe(true);
+  });
+
+  it('flags an unexpected change to conditions.ref_name.exclude as a semantic difference', () => {
+    const withExclude = mutate((o) => {
+      o.conditions.ref_name.exclude = ['refs/heads/release-*'];
+    });
+    expect(rulesAreSemanticallyEqual(canonical(), withExclude)).toBe(false);
+  });
 });

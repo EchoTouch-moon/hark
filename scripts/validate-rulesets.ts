@@ -42,24 +42,42 @@ const asNumber = (value: Json): number => (typeof value === 'number' ? value : N
 
 const asBool = (value: Json): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
 
-const asStringArray = (value: Json): string[] =>
-  Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+/** Strict string array: returns null when the value is not an array of only strings. */
+const asStringArray = (value: Json): string[] | null => {
+  if (!Array.isArray(value)) return null;
+  if (value.some((v) => typeof v !== 'string')) return null;
+  return value as string[];
+};
 
 interface RuleRecord {
   type: string;
   parameters: Record<string, Json> | null;
 }
 
-const asRules = (value: Json): RuleRecord[] => {
-  if (!Array.isArray(value)) return [];
-  const out: RuleRecord[] = [];
-  for (const item of value) {
-    if (!isRecord(item)) continue;
-    const type = asString(item['type']);
-    if (type === '') continue;
-    out.push({ type, parameters: isRecord(item['parameters']) ? item['parameters'] : null });
+interface RulesParseResult {
+  rules: RuleRecord[];
+  problems: string[];
+}
+
+/** Strict rule parsing: rejects non-object entries and duplicate rule types. */
+const parseRules = (value: Json): RulesParseResult => {
+  if (!Array.isArray(value)) {
+    return { rules: [], problems: ['rules must be an array'] };
   }
-  return out;
+  const rules: RuleRecord[] = [];
+  const problems: string[] = [];
+  const seen = new Set<string>();
+  value.forEach((item, index) => {
+    if (!isRecord(item) || typeof item['type'] !== 'string') {
+      problems.push(`rules[${index}] must be an object with a string "type"`);
+      return;
+    }
+    const type = item['type'];
+    if (seen.has(type)) problems.push(`duplicate rule type "${type}"`);
+    seen.add(type);
+    rules.push({ type, parameters: isRecord(item['parameters']) ? item['parameters'] : null });
+  });
+  return { rules, problems };
 };
 
 const rule = (rules: RuleRecord[], type: string): RuleRecord | undefined => rules.find((r) => r.type === type);
@@ -97,17 +115,22 @@ export function validateRuleset(ruleset: Json, expectedRef: string, expectedName
   } else {
     const include = asStringArray(refName['include']);
     const exclude = asStringArray(refName['exclude']);
-    if (include.length !== 1 || include[0] !== expectedRef) {
+    if (include === null) {
+      errors.push('conditions.ref_name.include must be an array of strings');
+    } else if (include.length !== 1 || include[0] !== expectedRef) {
       errors.push(
         `conditions.ref_name.include must be exactly ["${expectedRef}"] (exact match, no wildcard); got ${JSON.stringify(include)}`,
       );
     }
-    if (exclude.length !== 0) {
+    if (exclude === null) {
+      errors.push('conditions.ref_name.exclude must be an array of strings');
+    } else if (exclude.length !== 0) {
       errors.push(`conditions.ref_name.exclude must be empty; got ${JSON.stringify(exclude)}`);
     }
   }
 
-  const rules = asRules(ruleset['rules']);
+  const { rules, problems: ruleProblems } = parseRules(ruleset['rules']);
+  errors.push(...ruleProblems);
   for (const type of REQUIRED_RULE_TYPES) {
     if (!rule(rules, type)) errors.push(`missing rule of type "${type}"`);
   }
@@ -159,14 +182,24 @@ export function validateRuleset(ruleset: Json, expectedRef: string, expectedName
   return errors;
 }
 
-/** Compare two rulesets ignoring name and target ref; true when policy is identical. */
+/** Compare two rulesets ignoring only name and target ref; true when policy is identical. */
 export function rulesAreSemanticallyEqual(a: Json, b: Json): boolean {
   const strip = (value: Json): string => {
     if (!isRecord(value)) return JSON.stringify(value);
-    const copy: Record<string, Json> = { ...value };
+    const copy = JSON.parse(JSON.stringify(value)) as Record<string, Json>;
+    // Only these two are allowed to differ between the two lines. Everything else,
+    // including conditions.ref_name.exclude, must match exactly.
     delete copy['name'];
-    delete copy['conditions'];
-    return JSON.stringify(copy, null, 0);
+    const conditions = copy['conditions'];
+    if (isRecord(conditions)) {
+      const refName = conditions['ref_name'];
+      if (isRecord(refName)) {
+        const ref = { ...refName };
+        delete ref['include'];
+        conditions['ref_name'] = ref;
+      }
+    }
+    return JSON.stringify(copy);
   };
   return strip(a) === strip(b);
 }

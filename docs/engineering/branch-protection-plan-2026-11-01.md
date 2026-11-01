@@ -36,7 +36,7 @@
 
 **关于「个人公开仓库能不能用 Rulesets」**：`plan` 返回 null，按 GitHub 的表现对应 Free 方案。Rulesets 对公开仓库的能力与私有仓库不同，**而 available 与否的最终判据只有一条：真正执行写入时 API 返回什么**。本轮**没有**执行写入，因此**不声称任何规则已启用**。
 
-应对方式：先写 Rulesets（§5.1），若 API 返回 403/404 则回退到 classic branch protection（§5.5）。注意两者并非完全等价——见 §5.5 对 classic 局限的说明与 §9 未决项。
+应对方式：先写 Rulesets（§5.1）。注意 **403/404 不一定是套餐限制**，也可能是令牌权限或路径问题——先诊断（读 `/rulesets`、核对令牌 scope），确认是套餐限制才回退 classic（§5.5）。
 
 ## 3. 推荐配置（最终锁定版，对应你的 6 条要求）
 
@@ -153,11 +153,11 @@ gh api --method DELETE repos/EchoTouch-moon/hark/rulesets/<该 ruleset 的 id>
 ⚠ 回退只删 **`protect-master` / `protect-g0`** 两个、用创建时记录的具体 id。
 **绝不**用「遍历全部 ruleset 逐个 DELETE」的写法——那会误删未来可能存在的其他 ruleset。
 
-### 5.5 备用方案：classic branch protection（仅当 §5.1 返回 403/404 时）
+### 5.5 备用方案：classic branch protection（仅当确认套餐不支持 rulesets 时）
 
-先说明它的局限：classic 的 `required_pull_request_reviews` 把「要求 PR」与「要求审批」绑在一起，
-无法像 ruleset 那样干净表达「必须走 PR 但 0 审批」。所以退到此方案时，PR 门槛的语义会退化，
-属于需要你拍板的问题（见 §9 未决项）。
+关于「0 审批」的更正：classic 的 `required_pull_request_reviews` 表达「要求先有 PR 再合并」，
+其中的 `required_approving_review_count=0` 表示**不要求任何审核者批准**——这与 ruleset 的 0 审批等价。
+本文件上一版「classic 无法干净表达必须 PR 但 0 审批」的说法有误，已更正：classic 也能干净表达。
 
 ```bash
 # ⛔ 需要批准后才执行 —— 完整 JSON 请求体（master）
@@ -215,31 +215,57 @@ G0 同理，把 URL 里的 `master` 换成 `bot%2Fhearth-g0-contract`（分支�
 
 **总原则：两步走，绝不一次全上。** 先在 master 上把「规则 + 正常 PR 流程」跑通，确认没有把自己锁在门外，再对 G0 重复。
 
+**另一条红线：绝不对生产主线做破坏性推送验证。** 不用 `git push --force-with-lease` 或非快进 `push` 去「验证」主线是否拒绝推送——如果规则没生效，这类命令会真的改写主线历史。验证用**只读接口**和**独立的受保护测试分支**（见阶段 A 第 2、6 步）。
+
 ### 阶段 A：master
 
 按序执行，任一步失败就停：
 
-1. 写 master ruleset → 记录返回 HTTP 状态。**403 表示当前套餐不支持**，转 §5.2 classic；**201/200 表示成功**。
-2. `gh api repos/EchoTouch-moon/hark/rulesets` 确认规则存在、`conditions.ref_name.include` 精确命中 `refs/heads/master`（不是 `~DEFAULT_BRANCH`、不含通配）。
-3. 开一个**正常功能 PR → master**，确认 `ci-gate` 出现、变绿、合并按钮可用（证明没把自己锁死）。
-4. 建一个**故意失败**的 PR，确认 `ci-gate` 变红且合并按钮被挡。
-5. 尝试 `git push --force-with-lease` 与直接 `git push` 到 master，确认均被拒。
-6. 到 Settings → Rules 人工复核一次。
+1. **影子预检（推荐）**：先以 `enforcement: "disabled"` 创建，核对后再激活。
+   ```bash
+   # ⛔ 需要批准后才执行 —— 只把 active 临时改成 disabled，其余字段原样
+   sed 's/"enforcement": "active"/"enforcement": "disabled"/' .github/rulesets/protect-master.json \
+     | gh api --method POST repos/EchoTouch-moon/hark/rulesets --input -
+   ```
+   若你选择直接启用，则改用 §5.1 的 active 模板创建，并跳过下面的第 3 步。
+
+2. **读回并核对真实生效规则（只读，不写任何东西）**：
+   ```bash
+   gh api repos/EchoTouch-moon/hark/rulesets/<id>          # 读回单个 ruleset 配置
+   gh api repos/EchoTouch-moon/hark/rules/branches/master  # 该分支实际生效的规则
+   ```
+   确认返回里包含 `pull_request` / `required_status_checks`（context=ci-gate）/ `non_fast_forward` / `deletion`，
+   且 `conditions.ref_name.include` 精确命中 `refs/heads/master`。
+
+3. **激活（仅当第 1 步用 disabled 创建时）**：
+   ```bash
+   gh api --method PATCH repos/EchoTouch-moon/hark/rulesets/<id> -f enforcement=active
+   ```
+
+4. 开一个**正常功能 PR → master**，确认 `ci-gate` 出现、变绿、合并按钮可用（证明没把自己锁死）。
+
+5. 建一个**故意失败**的 PR，确认 `ci-gate` 变红且合并按钮被挡。
+
+6. **（可选，仅当确有需要）** 用额外的受保护测试分支验证 push 拒绝：给一个临时分支套上同样的 ruleset 后，
+   对它做非快进 `push` 验证被拒。**绝不对 master / G0 本身做 force-push 或非快进 push。**
+
+7. 到 Settings → Rules 人工复核一次（API 成功不等于 UI 显示符合预期）。
 
 **只有阶段 A 全部通过，才进入阶段 B。**
 
 ### 阶段 B：G0
 
-对 `bot/hearth-g0-contract` 重复同一 ruleset（`conditions` 改为包含该分支），并重复步骤 2–6。
-因为 #12 / #15 两个 draft 挂在 G0 上，阶段 B 开始前先确认它们的处置（见 §4），避免它们被 `strict` 模式卡成「长期无法合并」的观感。
+对 `bot/hearth-g0-contract` 重复上述步骤（模板换 `protect-g0.json`；`rules/branches/` 路径里的分支名用
+`bot%2Fhearth-g0-contract`）。进入阶段 B 前先确认 #12 / #15 两个 draft 的处置（见 §4），避免它们被 `strict`
+模式卡成「长期无法合并」的观感。
 
 ### 验收判据（阶段 A / B 通用，不做步骤，只做判据）
 
 - 只读脚本 `pnpm exec tsx scripts/validate-rulesets.ts` 输出两行 OK 且「语义一致 = YES」。
-- 纯文档 PR 的 `ci-gate` 变**绿**而非停在 Expected（这是 D2 的唯一真机判据，已在 #22 / #24 复验）。
+- `gh api repos/EchoTouch-moon/hark/rules/branches/<branch>` 返回的生效规则包含四条规则且目标精确。
+- 纯文档 PR 的 `ci-gate` 变**绿**而非停在 Expected（D2 的唯一真机判据，已在 #22 / #24 复验）。
 - 故意失败 PR 的 `ci-gate` 变**红**、合并按钮被挡。
-- 直接 `git push` 与 `git push --force-with-lease` 到受保护主线都被拒。
-- Settings → Rules 页面与 API 返回一致（API 成功不等于 UI 符合预期）。
+- Settings → Rules 页面与 API 返回一致。
 
 只有全部满足，才叫「保护规则」而不是「保护阻碍」。
 
@@ -247,7 +273,7 @@ G0 同理，把 URL 里的 `master` 换成 `bot%2Fhearth-g0-contract`（分支�
 
 | 风险 | 说明 | 缓解 |
 | --- | --- | --- |
-| 把自己锁在门外 | 单人仓库 + `strict` 必需检查 | 不配 bypass actor；管理员应急出路是「编辑/暂停 ruleset 本身」（进审计日志）。若担心，可先以 `enforcement: evaluate` 影子模式跑一轮再切 `active` |
+| 把自己锁在门外 | 单人仓库 + `strict` 必需检查 | 不配 bypass actor；管理员应急出路是「编辑/暂停 ruleset 本身」（进审计日志）。更稳妥的是 §6 的「disabled 创建 → 读回核对 → 再激活」，全程无不可逆操作 |
 | G0 被两块规则同时覆盖 | Rulesets 与 classic protection 可以叠加 | 只用一种机制，避免语义冲突 |
 | 必需检查名漂移 | 若 G1 再改 job 名，保护配置会指空导致永久 Pending | Todo-check 名固定为 `ci-gate`，改动需走同一 PR 同步更新保护配置 |
 | 历史 draft PR 长期阻塞 | #12 #15 挂着 | 见第 4 节，需先决策 |
@@ -264,8 +290,10 @@ G0 同理，把 URL 里的 `master` 换成 `bot%2Fhearth-g0-contract`（分支�
 ## 9. 未决项（需要你决定）
 
 1. **Rulesets 可用性尚未实测**。仓库 `plan` 字段为 null（个人 Free 倾向），rulesets 对公开仓库的能力
-   需在真正 `POST` 时才见分晓。若返回 403/404 才走 §5.5 classic，此时「必须 PR 但 0 审批」无法干净表达，
-   需要你在「退化为要求 ≥1 审批」与「退化为只保留状态检查 + 禁删禁强推（放弃强制 PR）」之间选一个。
+   需在真正 `POST` 时才见分晓。注意：**403/404 不一定是套餐限制**，也可能是令牌权限或路径问题，
+   不应一看到错误就自动切 classic——先诊断，确认是套餐限制才走 §5.5。
+   而 classic 的 `required_approving_review_count=0` 已能等价表达「必须 PR、0 审批」，
+   无需在「≥1 审批」与「放弃 PR」之间二选一。
 2. **`deletion` 的语义确认**：只禁止删除受保护的 master / G0 本身，不影响 G3 清理 feature 分支。
 3. **#12 / #15 两个 G0 draft 的处置**：进入阶段 B 前需先定（rebase / 继续 / 关闭），否则会被 `strict` 卡成「长期无法合并」。
 4. **`dismiss_stale_reviews_on_push=true` 在 0 审批下是惰性的**：当前无影响，仅当未来审批数调 >0 才生效，保持为 true 是否认可。

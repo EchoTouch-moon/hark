@@ -9,7 +9,7 @@ master/g0 规则语义一致（仅 name 与 target 不同）: YES
 
 --- 2. 单元测试（正例 + 反例） ---
  Test Files  1 passed (1)
-      Tests  12 passed (12)
+      Tests  16 passed (16)
    Duration  1.19s (transform 76ms, setup 0ms, collect 138ms, tests 11ms, environment 0ms, prepare 494ms)
 
 --- 3. typecheck / lint ---
@@ -26,6 +26,11 @@ master/g0 规则语义一致（仅 name 与 target 不同）: YES
   required_status_checks：context=ci-gate + integration_id=15368 + strict=true
   deletion / non_fast_forward：无参数独立规则，各自单独列出
   bypass_actors=[]（无绕过）；target=branch；enforcement=active
+
+--- 5b. 校验器严格性（本轮补强） ---
+  解析层：asStringArray 拒绝非字符串元素；parseRules 拒绝非对象规则条目与重复规则类型；
+  rulesAreSemanticallyEqual 只忽略 name 与 conditions.ref_name.include（保留 exclude 等其余条件差异）。
+  负例测试新增：include 含非字符串、重复规则类型、非对象规则条目、exclude 意外变化。
 
 --- 6. 双线一致性 ---
   master 与 G0 仅 name 与 conditions.ref_name.include 不同，其余逐字段一致（脚本判定 YES）
