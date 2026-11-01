@@ -4,15 +4,21 @@
 > 配套：`docs/engineering/ci-gate-refactor-2026-11-01.md`（G1，`ci-gate` 状态名的来源）
 > 前置条件：G1 在两条线上都已合并、稳定运行，且 `ci-gate` 名字不再变动。
 
-## 1. 为什么不现在就应用
+## 1. 前置条件：三件，均已满足（2026-11-01 更新）
 
-保护规则一旦开启，**写代码的人（包括你这台机器上的 agent）也会被同一个规则挡住**。在下面三件事确认之前开启，等于把自己锁在门外：
+保护规则一旦开启，**写代码的人（包括这台机器上的 agent）也会被同一个规则挡住**。所以当初列了三条前置条件，现已逐条用真机运行兑现：
 
-1. `ci-gate` 这个名字不再改（G1 一旦合并就固定）；
-2. 它在**两条线**上都真的跑过并变绿——目前只在本地验证过，GitHub 上一次都没跑过；
-3. 纯文档 PR 确实能从 Trigger 走到绿色 `ci-gate`（这正是 D2 修的东西，只有真实运行才算数）。
+| # | 前置条件 | 兑现证据 |
+| --- | --- | --- |
+| 1 | `ci-gate` 名字不再改 | #20、#21 已合并并稳定运行，检查名实测就是 `ci-gate` |
+| 2 | 它在**两条线**上都真的跑过并变绿 | master push [#62](https://github.com/EchoTouch-moon/hark/actions/runs/41299786155)、G0 push [#63](https://github.com/EchoTouch-moon/hark/actions/runs/41300110831)，四作业全 success |
+| 3 | 纯文档 PR 能走到绿色 `ci-gate`（而非永久 Pending） | PR [#22](https://github.com/EchoTouch-moon/hark/pull/22)：日志 `mode=docs-only reason=all-documents`，Linux/Windows **skipped**，`ci-gate` **pass 19s** |
 
-所以这份文档先给出**可直接执行的命令**，等你批准后执行一次，而不是反复微调。
+第 3 条是当初最担心的一条：改造前纯文档 PR 完全没有 run，一旦设为必需检查会永远停在 Expected。现在它变成了「有检查、且快速变绿」，**启用必需检查的最后一块障碍已经清除**。
+
+配套的反例也已验证：PR #23（文档 + 一行源码注释）日志为 `mode=code reason=code-changed`，Linux 1m18s / Windows 2m1s 实际执行——混合改动不会被误判成纯文档而跳过检查。
+
+**即便如此，本文件里的写命令仍未执行。** 启用保护规则属于「会挡住写代码的人」的不可逆感操作，仍需单独批准（决策队列 D-04）。
 
 ## 2. 已确认的事实（本次实取，非假设）
 
@@ -25,6 +31,8 @@
 | 现有 rulesets | **空数组** | `gh api repos/EchoTouch-moon/hark/rulesets` |
 | `master` 保护 | **HTTP 404 Branch not protected** | `gh api repos/EchoTouch-moon/hark/branches/master/protection` |
 | `bot/hearth-g0-contract` 保护 | **HTTP 404 Branch not protected** | 同上，分支名 URL 编码 |
+| 必需检查名（实测） | **`ci-gate`** | run #62 / #63 / #22 / #23 的检查名 |
+| Actions app id（实测） | **`15368`** | master check-run 返回 `app={id:15368, slug:github-actions}` |
 
 **关于「个人公开仓库能不能用 Rulesets」**：`plan` 返回 null，按 GitHub 的表现对应 Free 方案。Rulesets 对公开仓库的能力与私有仓库不同，**而 available 与否的最终判据只有一条：真正执行写入时 API 返回什么**。本轮**没有**执行写入，因此**不声称任何规则已启用**。
 
@@ -41,6 +49,7 @@
 | 禁止删除 | 开启 | G3 要清理历史分支，但这是**有意、逐项批准**的动作，不该由误操作完成 |
 | 禁止强推 | 开启 | 同上；历史 PR 里 SHA 被多处引用，一次 force push 会让所有审计证据失效 |
 | 绕过名单 | **留空**，或仅给 repository admin 且 `bypass_mode: always` | 留空最安全。若给 admin 绕过，则每次绕过都会写审计日志，是可事后追责的；但没有绕过意味着真正紧急时也只能走正常流程 |
+| 必需检查是否「严格」（`strict_required_status_checks_policy`） | **true** | 要求分支与基线同步后再判定。代价：#12、#15 两个 draft 长期不 rebase 会一直卡在「未与基线同步」，见第 4 节 |
 
 ### 3.2 两条线的差异
 
@@ -55,8 +64,8 @@
 
 | PR | base | 现状 | 开启后的影响 |
 | --- | --- | --- | --- |
-| #12 | G0 | draft，`ahead=20` | 需要重跑；若长期不 rebase，`strict` 模式会一直判为「未与基线同步」→ 无法合并 |
-| #15 | G0 | draft，`ahead=1` | 同上，但成本低 |
+| #12 | G0 | draft，`ahead=20 / behind=9`（相对新 G0 `b2b70c27`） | 需要 rebase 并重跑；`strict` 模式下不 rebase 会一直判「未与基线同步」→ 无法合并 |
+| #15 | G0 | draft，`ahead=1 / behind=9`（相对新 G0 `b2b70c27`） | 成本较低，建议先 rebase 到 `b2b70c27` 再谈 |
 | #1 #3 #4 | master | open | #4 内容已在 G0，#5 为 CONFLICTING；开启后这些 PR 的 red/conflict 状态会变成显式的合并阻塞项，反而更清楚 |
 | #6 | `codex/ember-narrative-motion` | open，base 是另一条分支 | **不受影响**——保护规则只配在 `master` 和 G0 上 |
 
