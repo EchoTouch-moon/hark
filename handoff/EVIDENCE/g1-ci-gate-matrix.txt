@@ -1,0 +1,77 @@
+==================== ci-gate decision matrix ====================
+executed: 2026-11-01T09:19:04Z  host=MINGW64_NT-10.0-22621  node=v22.22.2
+
+--- CASE: docs-only PR -> heavy jobs skipped, gate green
+    inputs: detect=success verify-linux=skipped verify-windows=skipped skip-heavy=true
+detect-changes=success verify-linux=skipped verify-windows=skipped skip-heavy=true
+ci-gate: passed
+    exit=0 expected_exit=0
+    RESULT: PASS
+
+--- CASE: code PR -> all green
+    inputs: detect=success verify-linux=success verify-windows=success skip-heavy=false
+detect-changes=success verify-linux=success verify-windows=success skip-heavy=false
+ci-gate: passed
+    exit=0 expected_exit=0
+    RESULT: PASS
+
+--- CASE: code PR -> linux fails
+    inputs: detect=success verify-linux=failure verify-windows=success skip-heavy=false
+detect-changes=success verify-linux=failure verify-windows=success skip-heavy=false
+::error::verify-linux: verification failed
+ci-gate: failed
+    exit=1 expected_exit=1
+    RESULT: PASS
+
+--- CASE: code PR -> windows cancelled (D5)
+    inputs: detect=success verify-linux=success verify-windows=cancelled skip-heavy=false
+detect-changes=success verify-linux=success verify-windows=cancelled skip-heavy=false
+::error::verify-windows: verification was cancelled; treated as failure
+ci-gate: failed
+    exit=1 expected_exit=1
+    RESULT: PASS
+
+--- CASE: code PR -> job skipped but not docs-only
+    inputs: detect=success verify-linux=skipped verify-windows=skipped skip-heavy=false
+detect-changes=success verify-linux=skipped verify-windows=skipped skip-heavy=false
+::error::verify-linux: verification was skipped although the change required it; the job matrix is misconfigured
+::error::verify-windows: verification was skipped although the change required it; the job matrix is misconfigured
+ci-gate: failed
+    exit=1 expected_exit=1
+    RESULT: PASS
+
+--- CASE: detection failed
+    inputs: detect=failure verify-linux=success verify-windows=success skip-heavy=true
+detect-changes=failure verify-linux=success verify-windows=success skip-heavy=true
+::error::change detection did not succeed (failure); refusing to report green
+ci-gate: failed
+    exit=1 expected_exit=1
+    RESULT: PASS
+
+--- CASE: detection cancelled
+    inputs: detect=cancelled verify-linux=success verify-windows=success skip-heavy=true
+detect-changes=cancelled verify-linux=success verify-windows=success skip-heavy=true
+::error::change detection did not succeed (cancelled); refusing to report green
+ci-gate: failed
+    exit=1 expected_exit=1
+    RESULT: PASS
+
+--- CASE: unrecognised result
+    inputs: detect=success verify-linux=oops verify-windows=success skip-heavy=false
+detect-changes=success verify-linux=oops verify-windows=success skip-heavy=false
+::error::verify-linux: unrecognised result "oops"; treated as failure
+ci-gate: failed
+    exit=1 expected_exit=1
+    RESULT: PASS
+
+--- CASE: missing/empty inputs
+    inputs: detect= verify-linux= verify-windows= skip-heavy=
+detect-changes= verify-linux= verify-windows= skip-heavy=
+::error::change detection did not succeed (missing); refusing to report green
+::error::verify-linux: unrecognised result "missing"; treated as failure
+::error::verify-windows: unrecognised result "missing"; treated as failure
+ci-gate: failed
+    exit=1 expected_exit=1
+    RESULT: PASS
+
+================================================================

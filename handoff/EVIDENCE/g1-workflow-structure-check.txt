@@ -1,0 +1,25 @@
+===== workflow structural validation =====
+executed: 2026-11-01T09:23:23Z
+file: .github/workflows/ci.yml
+
+YAML parse: OK
+
+triggers: ["push","pull_request","workflow_dispatch"]
+push.branches: ["master","bot/hearth-g0-contract"]
+paths-ignore present at trigger level: false
+permissions: {"contents":"read"}
+concurrency.cancel-in-progress: true
+
+job detect-changes | name= "detect changes" | runs-on= ubuntu-latest | needs= null | if= null | timeout= 5
+job verify-linux | name= "Node 22 / Linux / deterministic checks and Mock E2E" | runs-on= ubuntu-latest | needs= "detect-changes" | if= "needs.detect-changes.outputs.skip-heavy != 'true'" | timeout= 20
+job verify-windows | name= "Node 22 / Windows / typecheck, test and build" | runs-on= windows-latest | needs= "detect-changes" | if= "needs.detect-changes.outputs.skip-heavy != 'true'" | timeout= 20
+job ci-gate | name= "ci-gate" | runs-on= ubuntu-latest | needs= ["detect-changes","verify-linux","verify-windows"] | if= "always()" | timeout= 5
+
+action references: 12
+pinned to a 40-char SHA: 12
+unpinned (must be 0): 0 []
+pull_request_target used (must be false): false
+verify-linux keeps mocked analyser: true
+windows job runs browser E2E (must be false at stage 1): false
+
+===== end =====
