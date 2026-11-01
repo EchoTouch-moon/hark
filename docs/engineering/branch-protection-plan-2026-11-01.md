@@ -146,6 +146,10 @@ gh api --method PUT repos/EchoTouch-moon/hark/rulesets/<id> --input .github/rule
 
 禁用后规则仍在、随时可整包 PUT 回 active，比删除温和。G0 同理换 `protect-g0.json`。
 
+> ⚠ **PUT 是整包替换**：若远端配置此后被手工改过（例如新增 rule、bypass actor、或改了 include），直接用模板 PUT 会把这些改动覆盖掉。
+> 回退/重试前先 `gh api repos/EchoTouch-moon/hark/rulesets/<id>` 读回当前配置并保存，**只把 `enforcement` 改成目标值**后再 PUT，
+> 而不是无脑用模板覆盖。重试时**复用现有 ruleset id**，不要重新 POST 创建。
+
 ### 5.4 完整回退（删除，精确到单个 id）
 
 ```bash
@@ -264,8 +268,10 @@ G0 同理，把 URL 里的 `master` 换成 `bot%2Fhearth-g0-contract`（分支�
 
 8. 到 Settings → Rules 人工复核一次（API 成功不等于 UI 显示符合预期）。
 
-**异常处置**：任一步失败（尤其第 5/6 步出现「红」或「没挡住」），立即停止，按 §5.3 用**整包 PUT（disabled 模板）**把该 ruleset 的
-`enforcement` 改为 `disabled`，排查后再从第 1 步重来。绝不带着异常继续下一步。
+**异常处置**：判断基准——**正常 PR 被阻止、或故意失败 PR 被放行**，才是异常。
+第 6 步故意失败 PR 出现「红」是**预期成功**，不是异常。真正异常时，立即停止，按 §5.3 用**整包 PUT（disabled 模板）**
+把该 ruleset 的 `enforcement` 改为 `disabled`，排查后**复用现有 ruleset id** 整包 PUT 重新激活，不要重新 POST 创建（避免产生重复规则）。
+绝不带着异常继续下一步。
 
 **只有阶段 A 全部通过，才进入阶段 B。**
 
