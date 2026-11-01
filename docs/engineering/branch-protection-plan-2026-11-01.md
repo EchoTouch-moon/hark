@@ -132,13 +132,19 @@ pnpm exec tsx scripts/validate-rulesets.ts
 
 ### 5.3 禁用（软回退，不删规则）
 
+> ⚠ 规则更新端点是 **PUT（整包替换）**，不是 PATCH。用 PATCH 会 404。所以「禁用」= 用**完整模板**、
+> 只把 `enforcement` 改为 `disabled` 后整包 PUT 回去；「启用」= 整包 PUT 回 active 模板。
+
 ```bash
-# 暂停但不删除：只把 enforcement 改成 disabled。PATCH 仅改这一个字段。
-printf '{"enforcement":"disabled"}' | gh api --method PATCH \
-  repos/EchoTouch-moon/hark/rulesets/<id> --input -
+# 暂停但不删除：完整模板只改 enforcement 一个字段后整包替换
+sed 's/"enforcement": "active"/"enforcement": "disabled"/' .github/rulesets/protect-master.json \
+  | gh api --method PUT repos/EchoTouch-moon/hark/rulesets/<id> --input -
+
+# 重新启用：整包 PUT 回 active 模板（或直接 --input 原始模板）
+gh api --method PUT repos/EchoTouch-moon/hark/rulesets/<id> --input .github/rulesets/protect-master.json
 ```
 
-禁用后规则仍在，随时 PATCH 回 `"enforcement":"active"` 重新启用，比删除温和。
+禁用后规则仍在、随时可整包 PUT 回 active，比删除温和。G0 同理换 `protect-g0.json`。
 
 ### 5.4 完整回退（删除，精确到单个 id）
 
@@ -238,9 +244,9 @@ G0 同理，把 URL 里的 `master` 换成 `bot%2Fhearth-g0-contract`（分支�
    `strict_required_status_checks_policy=true`、审批数 0、`bypass_actors=[]`、
    目标精确命中 `refs/heads/master`。**这一步还看不到生效规则（尚未激活）。**
 
-3. **获得明确启用授权后，PATCH 为 Active**：
+3. **获得明确启用授权后，整包 PUT 为 Active**（更新端点是 PUT 整包替换，非 PATCH）：
    ```bash
-   gh api --method PATCH repos/EchoTouch-moon/hark/rulesets/<id> -f enforcement=active
+   gh api --method PUT repos/EchoTouch-moon/hark/rulesets/<id> --input .github/rulesets/protect-master.json
    ```
 
 4. **激活后读回生效规则（只读）**：
@@ -258,7 +264,7 @@ G0 同理，把 URL 里的 `master` 换成 `bot%2Fhearth-g0-contract`（分支�
 
 8. 到 Settings → Rules 人工复核一次（API 成功不等于 UI 显示符合预期）。
 
-**异常处置**：任一步失败（尤其第 5/6 步出现「红」或「没挡住」），立即停止，按 §5.3 用 PATCH 把该 ruleset 的
+**异常处置**：任一步失败（尤其第 5/6 步出现「红」或「没挡住」），立即停止，按 §5.3 用**整包 PUT（disabled 模板）**把该 ruleset 的
 `enforcement` 改为 `disabled`，排查后再从第 1 步重来。绝不带着异常继续下一步。
 
 **只有阶段 A 全部通过，才进入阶段 B。**
