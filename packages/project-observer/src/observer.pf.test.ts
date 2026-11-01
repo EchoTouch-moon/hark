@@ -15,7 +15,11 @@ describe('H05 PF-03 resource limits', () => {
   });
 
   afterEach(async () => {
-    await rm(dir, { recursive: true, force: true });
+    // Windows keeps a directory locked while a handle inside it closes, so an
+    // immediate recursive delete races the executor's artifact writer and fails
+    // with EBUSY. Retrying is the documented remedy, not a workaround for a leak:
+    // the same test passes when run alone.
+    await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   });
 
   it('GIT_TIMEOUT isolates the failing repo', async () => {
