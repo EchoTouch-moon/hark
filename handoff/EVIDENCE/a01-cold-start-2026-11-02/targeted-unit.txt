@@ -1,0 +1,12 @@
+RUN  v3.2.7 <isolated-worktree>
+
+ ✓ tests/unit/hearth-cold-start.test.ts (10 tests) 18ms
+ ✓ tests/unit/api-csrf.test.ts (16 tests) 21ms
+
+ Test Files  2 passed (2)
+      Tests  26 passed (26)
+   Start at  16:18:19
+   Duration  581ms (transform 136ms, setup 0ms, collect 292ms, tests 39ms, environment 0ms, prepare 208ms)
+
+
+EXIT_CODE=0

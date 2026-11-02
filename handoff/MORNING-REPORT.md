@@ -1,5 +1,15 @@
 # Morning Report — 2026-10-28 夜间运行（主交付 HEAD: f076cb4，前序 145213c）
 
+## 2026-11-02 · PR #32 冷启动复审跟进
+
+已用全新浏览器和空服务端会话复现旧版 401 导致“火候未知”；新增精确会话恢复和真实浏览器授权、写后重读回归。测试与证据见 `handoff/EVIDENCE/a01-cold-start-2026-11-02/`；后续等待新 head CI 和独立安全复审。PATCH 防护是独立后续项；完整 G1-A 尚未通过。
+
+
+## 2026-11-02 · A-01 CSRF 修复
+
+修复 observe 权限写入的 CSRF 豁免，并将前端迁移至受限重试的统一会话客户端；未增加研究、模型或执行权限。基线与合成数据库前后快照、本机 545 项单元及 27 项 Mock E2E 结果见 `handoff/EVIDENCE/a01-csrf-2026-11-02/`。Linux/Windows/ci-gate 依 PR 当前 head 的实际检查结果；等待最终独立安全复审，不自动合并，G1-A 仍未整体通过。
+
+
 ## 2026-11-02 · G0 合并及事件脱敏跟进
 
 PR #29 经用户单独授权合并到 G0（`de31607`），合并后 CI 已通过。其后的独立修复统一 `/events`、`/projects/:id`、`/cards/:id` 的 restricted 事件 `payloadRef` 脱敏；旧泄露已用合成数据复现，本地定向和全量测试及工程检查通过。独立 PR 仍待实际 CI 和复核；Demo reset 继续保守拒绝并留待后续。证据见 `handoff/EVIDENCE/restricted-event-redaction-2026-11-02/`。

@@ -4,8 +4,8 @@
  * 约定（见 docs/04-CONTRACTS.md）：
  * - 会话 cookie 由服务器管理（HttpOnly），前端只缓存 CSRF token；
  * - 写方法自动携带 `content-type: application/json` 与 `x-csrf-token`；
- * - 无 token 或收到 401/403 时，先 GET /api/v1/auth/session 获取 { csrfToken }
- *   并保存，然后重试一次写请求（旧 localStorage token 失效常见为 403）。
+ * - 无 token 时先建立会话；仅服务端门禁明确拒绝且请求可安全重放时，
+ *   刷新会话并重试一次。普通业务错误和网络失败绝不自动重放写请求。
  */
 
 export class ApiError extends Error {
@@ -26,6 +26,16 @@ const SESSION_PATH = '/api/v1/auth/session';
 const CSRF_STORAGE_KEY = 'hearth.csrfToken';
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/** Only same-origin API paths can return our pre-handler gate errors. */
+function isLocalApiRequest(path: string, credentials: string | undefined): boolean {
+  if (!path.startsWith('/api/v1/') || (credentials !== undefined && credentials !== 'same-origin')) return false;
+  try {
+    return new URL(path, 'http://localhost').pathname.startsWith('/api/v1/');
+  } catch {
+    return false;
+  }
+}
 
 /** 请求初始化参数；`json` 存在时自动序列化为请求体 */
 export type ApiFetchInit = RequestInit & { json?: unknown };
@@ -95,13 +105,14 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 /** 向服务器请求新的会话 CSRF token 并保存 */
-async function fetchSessionToken(): Promise<string> {
+export async function fetchSessionToken(signal?: AbortSignal | null): Promise<string> {
   let response: Response;
   try {
     response = await window.fetch(SESSION_PATH, {
       method: 'GET',
       credentials: 'same-origin',
       headers: { accept: 'application/json' },
+      signal,
     });
   } catch (cause) {
     throw new ApiError(
@@ -127,10 +138,10 @@ async function fetchSessionToken(): Promise<string> {
   return token;
 }
 
-async function ensureCsrfToken(): Promise<string> {
+async function ensureCsrfToken(signal?: AbortSignal | null): Promise<string> {
   const existing = getCsrfToken();
   if (existing !== null && existing.length > 0) return existing;
-  return fetchSessionToken();
+  return fetchSessionToken(signal);
 }
 
 /**
@@ -165,8 +176,9 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     if (body !== null && !headers.has('content-type')) {
       headers.set('content-type', 'application/json');
     }
-    const token = await ensureCsrfToken();
-    if (token !== null) headers.set('x-csrf-token', token);
+    const token = await ensureCsrfToken(baseInit.signal);
+    if (baseInit.signal?.aborted) throw new ApiError(0, 'network_error', '请求已取消');
+    headers.set('x-csrf-token', token);
 
     let response: Response;
     try {
@@ -179,14 +191,22 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       );
     }
 
-    // 写请求 401/403：刷新一次 CSRF token 后重试（过期 token 常返回 403）
-    if (response.status === 401 || response.status === 403) {
+    if (!response.ok) {
+      const error = await toApiError(response);
+      // 仅这两个代码由同源服务端的全局门禁在路由执行前返回；
+      // 仅重放确定可重复读取的请求体，避免流或业务 403 导致写入重复。
+      const gateRejected = (error.status === 401 && error.code === 'UNAUTHORIZED') ||
+        (error.status === 403 && error.code === 'CSRF_DENIED' && method !== 'PATCH');
+      const replayable = body === null || typeof body === 'string';
+      const localApi = isLocalApiRequest(path, baseInit.credentials);
+      if (!gateRejected || !replayable || !localApi || baseInit.signal?.aborted) throw error;
       try {
-        const freshToken = await fetchSessionToken();
+        const freshToken = await fetchSessionToken(baseInit.signal);
         headers.set('x-csrf-token', freshToken);
       } catch {
-        throw await toApiError(response);
+        throw error;
       }
+      if (baseInit.signal?.aborted) throw error;
       try {
         const retried = await doFetch();
         if (!retried.ok) throw await toApiError(retried);
@@ -197,7 +217,6 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       }
     }
 
-    if (!response.ok) throw await toApiError(response);
     return parseResponseBody<T>(response);
   }
 
@@ -211,14 +230,16 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       cause instanceof Error ? `网络请求失败：${cause.message}` : '网络请求失败',
     );
   }
-  if (response.status === 401) {
-    // 读请求也可能先于会话建立（首次加载）：建立会话后重试一次
+  if (!response.ok) {
+    const error = await toApiError(response);
+    const localApi = isLocalApiRequest(path, baseInit.credentials);
+    if (method !== 'GET' || !localApi || error.status !== 401 || error.code !== 'UNAUTHORIZED' || baseInit.signal?.aborted) throw error;
     try {
-      await fetchSessionToken();
-      if (WRITE_METHODS.has(method)) headers.set('x-csrf-token', getCsrfToken() ?? '');
+      await fetchSessionToken(baseInit.signal);
     } catch {
-      throw await toApiError(response);
+      throw error;
     }
+    if (baseInit.signal?.aborted) throw error;
     try {
       const retried = await doFetch();
       if (!retried.ok) throw await toApiError(retried);
@@ -228,7 +249,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       throw new ApiError(0, 'network_error', '重试请求失败');
     }
   }
-  if (!response.ok) throw await toApiError(response);
+
   return parseResponseBody<T>(response);
 }
 

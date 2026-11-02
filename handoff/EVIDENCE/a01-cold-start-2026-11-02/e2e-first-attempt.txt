@@ -1,0 +1,490 @@
+$ playwright test -c tests/e2e/playwright.config.ts
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 28 tests using 1 worker
+
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+R2_BROWSER_PASS: Pi UI identity simulated only; cancel+ESC zero runs; exclusions persisted and re-previewed; exact consent fingerprint sent once; actual Mock result; feedback persists and failure is visible. No real model was called.
+  ✓   1 tests/e2e/analysis-privacy.spec.ts:8:1 › R2: explicit privacy confirmation, exclusions and persisted feedback (6.3s)
+[WebServer]
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+  ✘   2 tests/e2e/coordinator.spec.ts:8:1 › R1: watched JUnit automatically becomes one Insight without a model run (26.2s)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   3 tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1024px (176ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   4 tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1440px (213ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   5 tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1920px (172ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   6 tests/e2e/experience-fixtures.spec.ts:13:1 › timeline nodes render from the ok story; hollow uses inset ring (168ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   7 tests/e2e/experience-fixtures.spec.ts:28:1 › permission_denied: 重新扫描 disabled; 去授权 PUT+refetch; inline error+retry (234ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   8 tests/e2e/experience-fixtures.spec.ts:74:1 › I-14 /observations redirects home (no ObservationsPage) (145ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   9 tests/e2e/experience-fixtures.spec.ts:81:1 › I-19 milestoneGold paints data attr and gold edge; false clears it (140ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  10 tests/e2e/experience-fixtures.spec.ts:100:1 › I-9..I-12 reason caption clamps to 2 lines with title+aria-label (142ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+  ✓  11 tests/e2e/hearth-permissions-csrf.spec.ts:10:1 › 全新浏览器和空服务端会话可进入授权并重新读取真实火候 (2.6s)
+  ✘  12 tests/e2e/hearth-permissions-csrf.spec.ts:100:1 › 首次授权取得 CSRF 会话，写入成功后重新读取真实火候 (109ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+  ✘  13 tests/e2e/hearth-permissions-csrf.spec.ts:123:1 › 业务拒绝会显示错误，且不会自动重复写入 (108ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  14 tests/e2e/hearth.spec.ts:31:1 › E2E-11: 首次运行是真实空态，不制造假任务 (141ms)
+  -  15 tests/e2e/hearth.spec.ts:36:1 › E2E-01: 初始化 Demo → 3 张卡片含 whyNow/来源/风险
+  -  16 tests/e2e/hearth.spec.ts:48:1 › E2E-02: 查看证据 → 执行被拒绝 → 不伪造 completed/artifact
+  -  17 tests/e2e/hearth.spec.ts:64:1 › E2E-03: 刷新后执行拒绝状态不消失、不伪造完成
+  -  18 tests/e2e/hearth.spec.ts:75:1 › E2E-04: 快速双击执行被拒且不产生任何 run
+  -  19 tests/e2e/hearth.spec.ts:85:1 › E2E-06: 忽略后卡片不再出现在主动建议（刷新也不重现）
+  -  20 tests/e2e/hearth.spec.ts:97:1 › E2E-07: 项目隔离由服务端保证
+  -  21 tests/e2e/hearth.spec.ts:107:1 › E2E-08: composer on mocked hearth — input, send gating, Demo badge
+  -  22 tests/e2e/hearth.spec.ts:121:1 › Settings 保存可持久化
+  -  23 tests/e2e/hearth.spec.ts:135:1 › 视口 1280×800 无水平滚动
+  -  24 tests/e2e/hearth.spec.ts:144:1 › Activity 页无伪造 run 时间线（执行被拒后为空态）
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  25 tests/e2e/insights.spec.ts:3:1 › insights empty feed is not a fake-success wall (158ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  26 tests/e2e/insights.spec.ts:12:1 › insight detail missing id is an error, not a fake card (135ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  27 tests/e2e/runtime-mode.spec.ts:4:1 › mocked ok paints demo badge from ViewModel mode and skips Demo init on canvas (138ms)
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  28 tests/e2e/runtime-mode.spec.ts:11:1 › mocked error fails closed: 火候未知 + 重新读取 only (143ms)
+
+
+  1) tests/e2e/coordinator.spec.ts:8:1 › R1: watched JUnit automatically becomes one Insight without a model run
+
+    Error: apiRequestContext.delete: connect ECONNREFUSED 127.0.0.1:4321
+    Call log:
+      - → DELETE http://127.0.0.1:4321/api/v1/observer/projects/prj_b2ef9be05601972f
+        - user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+        - x-csrf-token: b6b0d3601321d6cdc64655a77066d8beeafcabec6a598874
+        - origin: http://127.0.0.1:4321
+        - cookie: hearth_session=2ef10a15056c9f3d55e88f9e324d273f608906790bc1910f058d34a62128f102
+
+
+      70 |     console.log('R1_BROWSER_PASS: watched report -> one evidence-backed Insight; repeated notification deduped; zero manual scan/consume and zero analysis runs.');
+      71 |   } finally {
+    > 72 |     if (projectId) await page.request.delete(`/api/v1/observer/projects/${encodeURIComponent(projectId)}`, { headers });
+         |                                             ^
+      73 |     rmSync(repo, { recursive: true, force: true });
+      74 |   }
+      75 | });
+        at <isolated-worktree>/tests/e2e/coordinator.spec.ts:72:45
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/coordinator-R1-watched-JUn-a6ec4-Insight-without-a-model-run/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/coordinator-R1-watched-JUn-a6ec4-Insight-without-a-model-run/error-context.md
+
+  2) tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1024px ────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/
+    Call log:
+      - navigating to "http://127.0.0.1:4321/", waiting until "load"
+
+
+       at fixture-helpers.ts:58
+
+      56 |   });
+      57 |   await mockHearth(page, fixture);
+    > 58 |   await page.goto('/');
+         |              ^
+      59 |   await dismissWelcome(page);
+      60 |   await expect(page.locator('.ember-seed')).toBeVisible({ timeout: 15_000 });
+      61 |   return { apiPaths };
+        at openHearth (<isolated-worktree>/tests/e2e/fixture-helpers.ts:58:14)
+        at <isolated-worktree>/tests/e2e/experience-fixtures.spec.ts:7:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/experience-fixtures-mocked-162fc-rizontal-overflow-at-1024px/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/experience-fixtures-mocked-162fc-rizontal-overflow-at-1024px/error-context.md
+
+  3) tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1440px ────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/
+    Call log:
+      - navigating to "http://127.0.0.1:4321/", waiting until "load"
+
+
+       at fixture-helpers.ts:58
+
+      56 |   });
+      57 |   await mockHearth(page, fixture);
+    > 58 |   await page.goto('/');
+         |              ^
+      59 |   await dismissWelcome(page);
+      60 |   await expect(page.locator('.ember-seed')).toBeVisible({ timeout: 15_000 });
+      61 |   return { apiPaths };
+        at openHearth (<isolated-worktree>/tests/e2e/fixture-helpers.ts:58:14)
+        at <isolated-worktree>/tests/e2e/experience-fixtures.spec.ts:7:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/experience-fixtures-mocked-b647b-rizontal-overflow-at-1440px/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/experience-fixtures-mocked-b647b-rizontal-overflow-at-1440px/error-context.md
+
+  4) tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1920px ────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/
+    Call log:
+      - navigating to "http://127.0.0.1:4321/", waiting until "load"
+
+
+       at fixture-helpers.ts:58
+
+      56 |   });
+      57 |   await mockHearth(page, fixture);
+    > 58 |   await page.goto('/');
+         |              ^
+      59 |   await dismissWelcome(page);
+      60 |   await expect(page.locator('.ember-seed')).toBeVisible({ timeout: 15_000 });
+      61 |   return { apiPaths };
+        at openHearth (<isolated-worktree>/tests/e2e/fixture-helpers.ts:58:14)
+        at <isolated-worktree>/tests/e2e/experience-fixtures.spec.ts:7:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/experience-fixtures-mocked-16792-rizontal-overflow-at-1920px/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/experience-fixtures-mocked-16792-rizontal-overflow-at-1920px/error-context.md
+
+  5) tests/e2e/experience-fixtures.spec.ts:13:1 › timeline nodes render from the ok story; hollow uses inset ring
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/
+    Call log:
+      - navigating to "http://127.0.0.1:4321/", waiting until "load"
+
+
+       at fixture-helpers.ts:58
+
+      56 |   });
+      57 |   await mockHearth(page, fixture);
+    > 58 |   await page.goto('/');
+         |              ^
+      59 |   await dismissWelcome(page);
+      60 |   await expect(page.locator('.ember-seed')).toBeVisible({ timeout: 15_000 });
+      61 |   return { apiPaths };
+        at openHearth (<isolated-worktree>/tests/e2e/fixture-helpers.ts:58:14)
+        at <isolated-worktree>/tests/e2e/experience-fixtures.spec.ts:14:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/experience-fixtures-timeli-40ec5-tory-hollow-uses-inset-ring/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/experience-fixtures-timeli-40ec5-tory-hollow-uses-inset-ring/error-context.md
+
+  6) tests/e2e/experience-fixtures.spec.ts:28:1 › permission_denied: 重新扫描 disabled; 去授权 PUT+refetch; inline error+retry
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/
+    Call log:
+      - navigating to "http://127.0.0.1:4321/", waiting until "load"
+
+
+       at fixture-helpers.ts:58
+
+      56 |   });
+      57 |   await mockHearth(page, fixture);
+    > 58 |   await page.goto('/');
+         |              ^
+      59 |   await dismissWelcome(page);
+      60 |   await expect(page.locator('.ember-seed')).toBeVisible({ timeout: 15_000 });
+      61 |   return { apiPaths };
+        at openHearth (<isolated-worktree>/tests/e2e/fixture-helpers.ts:58:14)
+        at <isolated-worktree>/tests/e2e/experience-fixtures.spec.ts:29:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/experience-fixtures-permis-3cc98--refetch-inline-error-retry/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/experience-fixtures-permis-3cc98--refetch-inline-error-retry/error-context.md
+
+  7) tests/e2e/experience-fixtures.spec.ts:74:1 › I-14 /observations redirects home (no ObservationsPage)
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/observations
+    Call log:
+      - navigating to "http://127.0.0.1:4321/observations", waiting until "load"
+
+
+      74 | test('I-14 /observations redirects home (no ObservationsPage)', async ({ page }) => {
+      75 |   await mockHearth(page, 'ok');
+    > 76 |   await page.goto('/observations');
+         |              ^
+      77 |   await expect(page).toHaveURL(/\/$/);
+      78 |   await expect(page.locator('.observations-page')).toHaveCount(0);
+      79 | });
+        at <isolated-worktree>/tests/e2e/experience-fixtures.spec.ts:76:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/experience-fixtures-I-14-o-8fe14-s-home-no-ObservationsPage-/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/experience-fixtures-I-14-o-8fe14-s-home-no-ObservationsPage-/error-context.md
+
+  8) tests/e2e/experience-fixtures.spec.ts:81:1 › I-19 milestoneGold paints data attr and gold edge; false clears it
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/
+    Call log:
+      - navigating to "http://127.0.0.1:4321/", waiting until "load"
+
+
+      82 |   const gold = readHearthFixture('ok');
+      83 |   await mockHearth(page, gold);
+    > 84 |   await page.goto('/');
+         |              ^
+      85 |   await dismissWelcome(page);
+      86 |   await expect(page.locator('.canvas-shell')).toHaveAttribute('data-milestone-gold', 'true');
+      87 |   const edge = await page.locator('.hearth-flame-pill__mark').evaluate((el) => window.getComputedStyle(el).boxShadow);
+        at <isolated-worktree>/tests/e2e/experience-fixtures.spec.ts:84:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/experience-fixtures-I-19-m-2f542-d-gold-edge-false-clears-it/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/experience-fixtures-I-19-m-2f542-d-gold-edge-false-clears-it/error-context.md
+
+  9) tests/e2e/experience-fixtures.spec.ts:100:1 › I-9..I-12 reason caption clamps to 2 lines with title+aria-label
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/
+    Call log:
+      - navigating to "http://127.0.0.1:4321/", waiting until "load"
+
+
+      104 |     '这是一段故意写得很长的火候说明，用来验证最多两行省略：观察已过期但仍保留上次判断，项目名 Hearth 与其它字段都不拆、不换色，整句维持十三像素与既定色值。';
+      105 |   await mockHearth(page, body);
+    > 106 |   await page.goto('/');
+          |              ^
+      107 |   await dismissWelcome(page);
+      108 |   const reason = page.locator('.ember-seed__reason');
+      109 |   await expect(reason).toBeVisible();
+        at <isolated-worktree>/tests/e2e/experience-fixtures.spec.ts:106:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/experience-fixtures-I-9-I--b9969-lines-with-title-aria-label/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/experience-fixtures-I-9-I--b9969-lines-with-title-aria-label/error-context.md
+
+  10) tests/e2e/hearth-permissions-csrf.spec.ts:100:1 › 首次授权取得 CSRF 会话，写入成功后重新读取真实火候 ───────────────
+
+    Error: apiRequestContext.get: connect ECONNREFUSED 127.0.0.1:4321
+    Call log:
+      - → GET http://127.0.0.1:4321/api/v1/auth/session
+        - user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+
+
+      85 |
+      86 | async function prepareDeniedState(page: Page): Promise<void> {
+    > 87 |   const session = await page.request.get('/api/v1/auth/session');
+         |                                      ^
+      88 |   expect(session.ok()).toBeTruthy();
+      89 |   const { csrfToken } = await session.json() as { csrfToken: string };
+      90 |   const origin = new URL(session.url()).origin;
+        at prepareDeniedState (<isolated-worktree>/tests/e2e/hearth-permissions-csrf.spec.ts:87:38)
+        at <isolated-worktree>/tests/e2e/hearth-permissions-csrf.spec.ts:101:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/hearth-permissions-csrf-首次授权取得-CSRF-会话，写入成功后重新读取真实火候/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/hearth-permissions-csrf-首次授权取得-CSRF-会话，写入成功后重新读取真实火候/error-context.md
+
+  11) tests/e2e/hearth-permissions-csrf.spec.ts:123:1 › 业务拒绝会显示错误，且不会自动重复写入 ────────────────────────
+
+    Error: apiRequestContext.get: connect ECONNREFUSED 127.0.0.1:4321
+    Call log:
+      - → GET http://127.0.0.1:4321/api/v1/auth/session
+        - user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+
+
+      85 |
+      86 | async function prepareDeniedState(page: Page): Promise<void> {
+    > 87 |   const session = await page.request.get('/api/v1/auth/session');
+         |                                      ^
+      88 |   expect(session.ok()).toBeTruthy();
+      89 |   const { csrfToken } = await session.json() as { csrfToken: string };
+      90 |   const origin = new URL(session.url()).origin;
+        at prepareDeniedState (<isolated-worktree>/tests/e2e/hearth-permissions-csrf.spec.ts:87:38)
+        at <isolated-worktree>/tests/e2e/hearth-permissions-csrf.spec.ts:124:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/hearth-permissions-csrf-业务拒绝会显示错误，且不会自动重复写入/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/hearth-permissions-csrf-业务拒绝会显示错误，且不会自动重复写入/error-context.md
+
+  12) tests/e2e/hearth.spec.ts:31:1 › E2E-11: 首次运行是真实空态，不制造假任务 ─────────────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/cards
+    Call log:
+      - navigating to "http://127.0.0.1:4321/cards", waiting until "load"
+
+
+      30 |
+      31 | test('E2E-11: 首次运行是真实空态，不制造假任务', async ({ page }) => {
+    > 32 |   await page.goto('/cards');
+         |              ^
+      33 |   await expect(page.getByText(/没有值得打扰你的事情/)).toBeVisible({ timeout: 15_000 });
+      34 | });
+      35 |
+        at <isolated-worktree>/tests/e2e/hearth.spec.ts:32:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/hearth-E2E-11-首次运行是真实空态，不制造假任务/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/hearth-E2E-11-首次运行是真实空态，不制造假任务/error-context.md
+
+  13) tests/e2e/insights.spec.ts:3:1 › insights empty feed is not a fake-success wall ──────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/insights
+    Call log:
+      - navigating to "http://127.0.0.1:4321/insights", waiting until "load"
+
+
+      2 |
+      3 | test('insights empty feed is not a fake-success wall', async ({ page }) => {
+    > 4 |   await page.goto('/insights');
+        |              ^
+      5 |   await expect(page.getByRole('heading', { name: '洞察' })).toBeVisible({ timeout: 15_000 });
+      6 |   await expect(page.getByText(/尚未评估洞察|当前没有需要关注的洞察/)).toBeVisible();
+      7 |   await expect(page.getByRole('button', { name: '待关注' })).toBeVisible();
+        at <isolated-worktree>/tests/e2e/insights.spec.ts:4:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/insights-insights-empty-feed-is-not-a-fake-success-wall/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/insights-insights-empty-feed-is-not-a-fake-success-wall/error-context.md
+
+  14) tests/e2e/insights.spec.ts:12:1 › insight detail missing id is an error, not a fake card ─────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/insights/ins_missingmissing1
+    Call log:
+      - navigating to "http://127.0.0.1:4321/insights/ins_missingmissing1", waiting until "load"
+
+
+      11 |
+      12 | test('insight detail missing id is an error, not a fake card', async ({ page }) => {
+    > 13 |   await page.goto('/insights/ins_missingmissing1');
+         |              ^
+      14 |   await expect(page.getByText(/这条洞察不存在或已被清除|加载失败/)).toBeVisible({ timeout: 15_000 });
+      15 |   await page.screenshot({ path: 'handoff/EVIDENCE/insight-detail-missing.png', fullPage: true });
+      16 | });
+        at <isolated-worktree>/tests/e2e/insights.spec.ts:13:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/insights-insight-detail-mi-53de8-is-an-error-not-a-fake-card/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/insights-insight-detail-mi-53de8-is-an-error-not-a-fake-card/error-context.md
+
+  15) tests/e2e/runtime-mode.spec.ts:4:1 › mocked ok paints demo badge from ViewModel mode and skips Demo init on canvas
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/
+    Call log:
+      - navigating to "http://127.0.0.1:4321/", waiting until "load"
+
+
+       at fixture-helpers.ts:58
+
+      56 |   });
+      57 |   await mockHearth(page, fixture);
+    > 58 |   await page.goto('/');
+         |              ^
+      59 |   await dismissWelcome(page);
+      60 |   await expect(page.locator('.ember-seed')).toBeVisible({ timeout: 15_000 });
+      61 |   return { apiPaths };
+        at openHearth (<isolated-worktree>/tests/e2e/fixture-helpers.ts:58:14)
+        at <isolated-worktree>/tests/e2e/runtime-mode.spec.ts:5:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/runtime-mode-mocked-ok-pai-0c15f-d-skips-Demo-init-on-canvas/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/runtime-mode-mocked-ok-pai-0c15f-d-skips-Demo-init-on-canvas/error-context.md
+
+  16) tests/e2e/runtime-mode.spec.ts:11:1 › mocked error fails closed: 火候未知 + 重新读取 only ────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4321/
+    Call log:
+      - navigating to "http://127.0.0.1:4321/", waiting until "load"
+
+
+       at fixture-helpers.ts:58
+
+      56 |   });
+      57 |   await mockHearth(page, fixture);
+    > 58 |   await page.goto('/');
+         |              ^
+      59 |   await dismissWelcome(page);
+      60 |   await expect(page.locator('.ember-seed')).toBeVisible({ timeout: 15_000 });
+      61 |   return { apiPaths };
+        at openHearth (<isolated-worktree>/tests/e2e/fixture-helpers.ts:58:14)
+        at <isolated-worktree>/tests/e2e/runtime-mode.spec.ts:12:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/runtime-mode-mocked-error-fails-closed-火候未知-重新读取-only/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/runtime-mode-mocked-error-fails-closed-火候未知-重新读取-only/error-context.md
+
+  16 failed
+    tests/e2e/coordinator.spec.ts:8:1 › R1: watched JUnit automatically becomes one Insight without a model run
+    tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1024px ─────
+    tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1440px ─────
+    tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1920px ─────
+    tests/e2e/experience-fixtures.spec.ts:13:1 › timeline nodes render from the ok story; hollow uses inset ring
+    tests/e2e/experience-fixtures.spec.ts:28:1 › permission_denied: 重新扫描 disabled; 去授权 PUT+refetch; inline error+retry
+    tests/e2e/experience-fixtures.spec.ts:74:1 › I-14 /observations redirects home (no ObservationsPage)
+    tests/e2e/experience-fixtures.spec.ts:81:1 › I-19 milestoneGold paints data attr and gold edge; false clears it
+    tests/e2e/experience-fixtures.spec.ts:100:1 › I-9..I-12 reason caption clamps to 2 lines with title+aria-label
+    tests/e2e/hearth-permissions-csrf.spec.ts:100:1 › 首次授权取得 CSRF 会话，写入成功后重新读取真实火候 ─────────────────
+    tests/e2e/hearth-permissions-csrf.spec.ts:123:1 › 业务拒绝会显示错误，且不会自动重复写入 ──────────────────────────
+    tests/e2e/hearth.spec.ts:31:1 › E2E-11: 首次运行是真实空态，不制造假任务 ───────────────────────────────────────
+    tests/e2e/insights.spec.ts:3:1 › insights empty feed is not a fake-success wall ────────────────
+    tests/e2e/insights.spec.ts:12:1 › insight detail missing id is an error, not a fake card ───────
+    tests/e2e/runtime-mode.spec.ts:4:1 › mocked ok paints demo badge from ViewModel mode and skips Demo init on canvas
+    tests/e2e/runtime-mode.spec.ts:11:1 › mocked error fails closed: 火候未知 + 重新读取 only ──────────────
+  10 did not run
+  2 passed (45.0s)
+[ELIFECYCLE] Command failed with exit code 1.
+
+EXIT_CODE=1

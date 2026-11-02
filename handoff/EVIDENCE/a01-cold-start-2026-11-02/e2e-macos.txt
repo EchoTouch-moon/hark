@@ -1,0 +1,53 @@
+$ playwright test -c tests/e2e/playwright.config.ts
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer]
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 28 tests using 1 worker
+
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+R2_BROWSER_PASS: Pi UI identity simulated only; cancel+ESC zero runs; exclusions persisted and re-previewed; exact consent fingerprint sent once; actual Mock result; feedback persists and failure is visible. No real model was called.
+  ✓   1 tests/e2e/analysis-privacy.spec.ts:8:1 › R2: explicit privacy confirmation, exclusions and persisted feedback (4.6s)
+R1_BROWSER_PASS: watched report -> one evidence-backed Insight; repeated notification deduped; zero manual scan/consume and zero analysis runs.
+  ✓   2 tests/e2e/coordinator.spec.ts:8:1 › R1: watched JUnit automatically becomes one Insight without a model run (10.8s)
+  ✓   3 tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1024px (1.5s)
+  ✓   4 tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1440px (1.5s)
+  ✓   5 tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1920px (1.5s)
+  ✓   6 tests/e2e/experience-fixtures.spec.ts:13:1 › timeline nodes render from the ok story; hollow uses inset ring (1.7s)
+  ✓   7 tests/e2e/experience-fixtures.spec.ts:28:1 › permission_denied: 重新扫描 disabled; 去授权 PUT+refetch; inline error+retry (2.4s)
+  ✓   8 tests/e2e/experience-fixtures.spec.ts:74:1 › I-14 /observations redirects home (no ObservationsPage) (1.1s)
+  ✓   9 tests/e2e/experience-fixtures.spec.ts:81:1 › I-19 milestoneGold paints data attr and gold edge; false clears it (6.5s)
+  ✓  10 tests/e2e/experience-fixtures.spec.ts:100:1 › I-9..I-12 reason caption clamps to 2 lines with title+aria-label (1.1s)
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+  ✓  11 tests/e2e/hearth-permissions-csrf.spec.ts:10:1 › 全新浏览器和空服务端会话可进入授权并重新读取真实火候 (3.5s)
+  ✓  12 tests/e2e/hearth-permissions-csrf.spec.ts:100:1 › 首次授权取得 CSRF 会话，写入成功后重新读取真实火候 (1.6s)
+  ✓  13 tests/e2e/hearth-permissions-csrf.spec.ts:123:1 › 业务拒绝会显示错误，且不会自动重复写入 (1.5s)
+  ✓  14 tests/e2e/hearth.spec.ts:31:1 › E2E-11: 首次运行是真实空态，不制造假任务 (994ms)
+  ✓  15 tests/e2e/hearth.spec.ts:36:1 › E2E-01: 初始化 Demo → 3 张卡片含 whyNow/来源/风险 (1.4s)
+  ✓  16 tests/e2e/hearth.spec.ts:48:1 › E2E-02: 查看证据 → 执行被拒绝 → 不伪造 completed/artifact (1.4s)
+  ✓  17 tests/e2e/hearth.spec.ts:64:1 › E2E-03: 刷新后执行拒绝状态不消失、不伪造完成 (1.7s)
+  ✓  18 tests/e2e/hearth.spec.ts:75:1 › E2E-04: 快速双击执行被拒且不产生任何 run (1.3s)
+  ✓  19 tests/e2e/hearth.spec.ts:85:1 › E2E-06: 忽略后卡片不再出现在主动建议（刷新也不重现） (1.9s)
+  ✓  20 tests/e2e/hearth.spec.ts:97:1 › E2E-07: 项目隔离由服务端保证 (1.7s)
+  ✓  21 tests/e2e/hearth.spec.ts:107:1 › E2E-08: composer on mocked hearth — input, send gating, Demo badge (1.6s)
+  ✓  22 tests/e2e/hearth.spec.ts:121:1 › Settings 保存可持久化 (2.3s)
+  ✓  23 tests/e2e/hearth.spec.ts:135:1 › 视口 1280×800 无水平滚动 (948ms)
+  ✓  24 tests/e2e/hearth.spec.ts:144:1 › Activity 页无伪造 run 时间线（执行被拒后为空态） (1.1s)
+  ✓  25 tests/e2e/insights.spec.ts:3:1 › insights empty feed is not a fake-success wall (4.1s)
+  ✓  26 tests/e2e/insights.spec.ts:12:1 › insight detail missing id is an error, not a fake card (1.7s)
+  ✓  27 tests/e2e/runtime-mode.spec.ts:4:1 › mocked ok paints demo badge from ViewModel mode and skips Demo init on canvas (2.3s)
+  ✓  28 tests/e2e/runtime-mode.spec.ts:11:1 › mocked error fails closed: 火候未知 + 重新读取 only (1.6s)
+
+  28 passed (1.2m)
+
+EXIT_CODE=0
