@@ -1,5 +1,10 @@
 # Actual implementation decisions
 
+## 2026-11-02 · A-01 重试安全边界
+
+仅针对同源 API、可重放空或字符串 body，在服务端处理器前门禁明确返回 `401 UNAUTHORIZED` 或 `403 CSRF_DENIED` 时刷新会话并最多重试一次；取消、网络失败及普通业务拒绝不重放。PATCH 不按 CSRF 错误重试，因为当前服务端 CSRF 门禁不覆盖 PATCH。保留 observe-only、严格请求体验证和 `execute=false`；详见 `handoff/EVIDENCE/a01-csrf-2026-11-02/`。
+
+
 ## 2026-11-02 · restricted 事件响应投影
 
 在三个 HTTP 返回入口统一对 restricted 事件移除 `payloadRef`，保留其他字段及内部存储原值；不修改存储模型或扩大到其他事件类型。该修复单独提交和验收，不将其外推为完整 G1-A 或真实数据安全认证；Demo reset 可信归属另行处理。

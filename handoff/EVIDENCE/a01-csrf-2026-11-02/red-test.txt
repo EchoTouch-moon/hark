@@ -1,0 +1,54 @@
+
+ RUN  v3.2.7 <isolated-worktree>
+
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ apps/server/src/http/hearth.http.test.ts (18 tests | 2 failed | 16 skipped) 111ms
+   ↓ GET /api/v1/hearth > defaults to observe=false → 403 permission_denied
+   ↓ GET /api/v1/hearth > checks permission before touching the observer
+   ↓ GET /api/v1/hearth > empty when no projects
+   ↓ GET /api/v1/hearth > ok + fresh for a just-observed project, execute stays false
+   ↓ GET /api/v1/hearth > stale observation → ok + stale
+   ↓ GET /api/v1/hearth > observer failure → 503 error, never fixture data
+   ↓ GET /api/v1/hearth > observer not configured → 503 error
+   ↓ GET /api/v1/hearth > unknown project → 404 error; bad query → 400 error
+   × PUT /api/v1/hearth/permissions > CSRF rejection: missing token preserves persisted data 98ms
+     → expected 200 to be 403 // Object.is equality
+   × PUT /api/v1/hearth/permissions > CSRF rejection: incorrect token preserves persisted data 12ms
+     → expected 200 to be 403 // Object.is equality
+   ↓ PUT /api/v1/hearth/permissions > grants observe → GET 403 becomes 200; execute stays false
+   ↓ PUT /api/v1/hearth/permissions > revoke observe → GET back to 403
+   ↓ PUT /api/v1/hearth/permissions > preserves existing research and model values while granting and revoking observe
+   ↓ PUT /api/v1/hearth/permissions > rejects extra fields and execute attempts with 400
+   ↓ PUT /api/v1/hearth/permissions > rejects foreign origin with origin_rejected
+   ↓ PUT /api/v1/hearth/permissions > rejects missing Origin and invalid session without changing persisted data
+   ↓ PUT /api/v1/hearth/permissions > persists across app rebuild (DB wins over env default)
+   ↓ buildObserveView (pure) > only reads through the port and never mutates input
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/server/src/http/hearth.http.test.ts > PUT /api/v1/hearth/permissions > CSRF rejection: missing token preserves persisted data
+ FAIL  apps/server/src/http/hearth.http.test.ts > PUT /api/v1/hearth/permissions > CSRF rejection: incorrect token preserves persisted data
+AssertionError: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ apps/server/src/http/hearth.http.test.ts:202:28
+    200|       payload: { observe: true },
+    201|     });
+    202|     expect(res.statusCode).toBe(403);
+       |                            ^
+    203|     expect(res.json().error.code).toBe('CSRF_DENIED');
+    204|     expect(permissionSnapshot()).toEqual(before);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 16 skipped (18)
+   Start at  15:33:11
+   Duration  914ms (transform 302ms, setup 0ms, collect 551ms, tests 111ms, environment 0ms, prepare 55ms)

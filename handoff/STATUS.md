@@ -1,5 +1,10 @@
 # Task Status — Hearth 夜间自动开发
 
+## 2026-11-02 · A-01 首批 CSRF 修复
+
+基于 G0 `5bcbcfb` 消除 observe 权限 PUT 的 CSRF 豁免，前端迁移统一会话并限制写请求重试。合成数据红→绿、545 单元测试及本机 27 项 Mock E2E 等证据见 `handoff/EVIDENCE/a01-csrf-2026-11-02/`。Linux/Windows/ci-gate 以独立 PR 当前 head 检查为准，最终独立安全复审待完成；本批不代表完整 G1-A PASS。
+
+
 ## 2026-11-02 · restricted 事件响应脱敏
 
 PR #29 已经用户单独授权后合并到 G0，合并提交 `de31607`；G0 合并后 Actions run `41379450079` 全绿。基于该版本独立修复三个事件 API 的 restricted `payloadRef`：旧代码的项目详情和卡片详情泄露已在合成测试中复现，修复后的 44 项定向、525 项全量测试、typecheck、lint、build 均通过。详见 `handoff/EVIDENCE/restricted-event-redaction-2026-11-02/`。独立 PR 的 CI 与安全验收以对应提交实际结果为准，尚未合并；Demo reset 后续项未实施。

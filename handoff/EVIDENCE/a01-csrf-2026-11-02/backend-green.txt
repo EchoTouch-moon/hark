@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 <isolated-worktree>
+
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ apps/server/src/http/hearth.http.test.ts (18 tests) 614ms
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  15:34:41
+   Duration  1.58s (transform 383ms, setup 0ms, collect 681ms, tests 614ms, environment 0ms, prepare 48ms)

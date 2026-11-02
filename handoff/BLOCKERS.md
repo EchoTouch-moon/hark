@@ -1,5 +1,10 @@
 # Blockers
 
+## 2026-11-02 · A-01 独立复审与跨平台结果
+
+本批本机检查通过；Linux Mock E2E、Windows 和 `ci-gate` 以独立 PR 当前 head 对应结果为准。最终独立安全复审及合并未授权，不能视为完整 G1-A PASS。Demo reset 和其他 G1-A 缺口仍按各自计划处理。
+
+
 ## 2026-11-02 · restricted 脱敏独立验收
 
 PR #29 已获单独授权并合并 G0；其合并后 CI run `41379450079` success。restricted 事件脱敏修复已本地验证，独立 PR 尚待对应提交的 CI 和安全复核，不得自动合并。Demo reset 可信归属及 API/前端语义仍待单独设计与验证。

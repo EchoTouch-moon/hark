@@ -173,12 +173,38 @@ describe('PUT /api/v1/hearth/permissions', () => {
     return app.inject({
       method: 'PUT',
       url: '/api/v1/hearth/permissions',
-      headers: { cookie, origin: ORIGIN, 'content-type': 'application/json', ...headers },
+      headers: { cookie, origin: ORIGIN, 'x-csrf-token': csrf, 'content-type': 'application/json', ...headers },
       payload: body,
     });
   }
 
-  it('grants observe → GET 403 becomes 200; execute stays false; no csrf required', async () => {
+  function permissionSnapshot() {
+    return {
+      permissions: store.getSetting('hearth.permissions'),
+      audit: store.db.prepare('SELECT * FROM audit_log ORDER BY id').all(),
+    };
+  }
+
+  it.each(['missing', 'incorrect'] as const)('CSRF rejection: %s token preserves persisted data', async (kind) => {
+    await setup({});
+    store.setSetting('hearth.permissions', { observe: false, research: true, model: true });
+    store.audit('synthetic.test', 'test', 'permission-snapshot');
+    const before = permissionSnapshot();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/hearth/permissions',
+      headers: {
+        cookie, origin: ORIGIN, 'content-type': 'application/json',
+        ...(kind === 'incorrect' ? { 'x-csrf-token': 'incorrect-synthetic-token' } : {}),
+      },
+      payload: { observe: true },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error.code).toBe('CSRF_DENIED');
+    expect(permissionSnapshot()).toEqual(before);
+  });
+
+  it('grants observe → GET 403 becomes 200; execute stays false', async () => {
     await setup({});
     expect((await get('/api/v1/hearth')).status).toBe(403);
     const res = await put({ observe: true });
@@ -195,20 +221,56 @@ describe('PUT /api/v1/hearth/permissions', () => {
     expect((await get('/api/v1/hearth')).status).toBe(403);
   });
 
+  it('preserves existing research and model values while granting and revoking observe', async () => {
+    await setup({});
+    store.setSetting('hearth.permissions', { observe: false, research: true, model: true });
+    for (const observe of [true, false]) {
+      const res = await put({ observe });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().permissions).toEqual({ observe, research: true, model: true, execute: false });
+      expect(store.getSetting('hearth.permissions')).toEqual({ observe, research: true, model: true });
+    }
+  });
+
   it('rejects extra fields and execute attempts with 400', async () => {
     await setup({});
+    store.setSetting('hearth.permissions', { observe: false, research: true, model: true });
+    const before = permissionSnapshot();
     expect((await put({ observe: true, execute: true })).statusCode).toBe(400);
     expect((await put({ observe: true, research: true })).statusCode).toBe(400);
+    expect((await put({ observe: true, model: false })).statusCode).toBe(400);
     expect((await put({})).statusCode).toBe(400);
+    expect(permissionSnapshot()).toEqual(before);
   });
 
   it('rejects foreign origin with origin_rejected', async () => {
     await setup({});
+    store.setSetting('hearth.permissions', { observe: false, research: true, model: true });
+    store.audit('synthetic.test', 'test', 'permission-snapshot');
+    const before = permissionSnapshot();
     // 全局 onRequest 先拦；允许名单外 Origin 进不到路由
     const res = await put({ observe: true }, { origin: 'http://evil.example' });
     expect(res.statusCode).toBe(403);
     const code = (res.json() as { error: { code: string } }).error.code;
     expect(['origin_rejected', 'ORIGIN_DENIED']).toContain(code);
+    expect(permissionSnapshot()).toEqual(before);
+  });
+
+  it('rejects missing Origin and invalid session without changing persisted data', async () => {
+    await setup({});
+    store.setSetting('hearth.permissions', { observe: false, research: true, model: true });
+    const before = permissionSnapshot();
+    const missingOrigin = await app.inject({
+      method: 'PUT', url: '/api/v1/hearth/permissions',
+      headers: { cookie, 'x-csrf-token': csrf, 'content-type': 'application/json' },
+      payload: { observe: true },
+    });
+    expect(missingOrigin.statusCode).toBe(403);
+    expect(missingOrigin.json().error.code).toBe('ORIGIN_REQUIRED');
+    const invalidSession = await put({ observe: true }, { cookie: 'hearth_session=invalid-synthetic-session' });
+    expect(invalidSession.statusCode).toBe(401);
+    expect(invalidSession.json().error.code).toBe('UNAUTHORIZED');
+    expect(permissionSnapshot()).toEqual(before);
   });
 
   it('persists across app rebuild (DB wins over env default)', async () => {

@@ -69,15 +69,10 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'missing or invalid session' } });
     }
     if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') {
-      // M2 授权写接口只校验同源 Origin，不做 CSRF（见总工裁定）
-      const pathOnly = req.url.split('?')[0];
-      const skipCsrf = req.method === 'PUT' && pathOnly === '/api/v1/hearth/permissions';
-      if (!skipCsrf) {
-        const csrf = req.headers['x-csrf-token'];
-        const expected = sessions.csrfFor(token);
-        if (!expected || String(csrf) !== expected) {
-          return reply.status(403).send({ error: { code: 'CSRF_DENIED', message: 'missing or mismatched csrf token' } });
-        }
+      const csrf = req.headers['x-csrf-token'];
+      const expected = sessions.csrfFor(token);
+      if (!expected || String(csrf) !== expected) {
+        return reply.status(403).send({ error: { code: 'CSRF_DENIED', message: 'missing or mismatched csrf token' } });
       }
       // 浏览器 fetch 发起 POST 时必带 Origin；无 Origin 的外部写入不是正规 UI 发起
       if (req.headers['origin'] === undefined) {
