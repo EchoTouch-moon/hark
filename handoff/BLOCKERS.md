@@ -1,5 +1,9 @@
 # Blockers
 
+## 2026-11-02 · restricted 脱敏独立验收
+
+PR #29 已获单独授权并合并 G0；其合并后 CI run `41379450079` success。restricted 事件脱敏修复已本地验证，独立 PR 尚待对应提交的 CI 和安全复核，不得自动合并。Demo reset 可信归属及 API/前端语义仍待单独设计与验证。
+
 ## 2026-11-02 · D-01 剩余验证
 
 PR #29 追加提交后，以 [PR checks](https://github.com/EchoTouch-moon/hark/pull/29/checks) 核对对应 head 的 Linux E2E、Windows 检查和 ci-gate，并等待最终人工安全复审；旧 head 的绿灯不能替代新 head。现有来源不明数据下 reset 会拒绝，纯 Demo 种子数据同样不能重置。

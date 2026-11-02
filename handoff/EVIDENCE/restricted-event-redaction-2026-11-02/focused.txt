@@ -1,0 +1,20 @@
+
+ RUN  v3.2.7 /private/tmp/hark-restricted-redaction
+
+(node:55576) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55578) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55577) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ apps/server/src/http/restricted-events.test.ts (3 tests) 151ms
+ ✓ apps/server/src/http/g1a-security.test.ts (21 tests) 469ms
+ ✓ apps/server/src/http/app.test.ts (20 tests) 4280ms
+   ✓ M1-T02: seed, discovery, suppression > repeat discover is idempotent (no duplicate cards)  1631ms
+   ✓ M1-T02: seed, discovery, suppression > dismiss persists and is respected by later discovery (E2E-06)  1642ms
+   ✓ M1-T03: execute / runs / approvals / SSE-readiness > cancel of queued run yields cancelled terminal state  619ms
+
+ Test Files  3 passed (3)
+      Tests  44 passed (44)
+   Start at  10:49:01
+   Duration  5.23s (transform 492ms, setup 0ms, collect 1.78s, tests 4.90s, environment 0ms, prepare 255ms)

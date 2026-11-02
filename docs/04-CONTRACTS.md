@@ -102,12 +102,12 @@ stateDiagram-v2
 |---|---|---|---|
 | GET | `/health` | DB、provider、demo mode 状态 | 不返回密钥 |
 | GET | `/projects` | 仅授权项目 | server ACL |
-| GET | `/projects/:id` | 项目快照 | server ACL |
-| GET | `/events?projectId=&limit=` | 事件投影 | default limit 30，上限 100 |
+| GET | `/projects/:id` | 项目快照 | server ACL；restricted 事件不返回 `payloadRef` |
+| GET | `/events?projectId=&limit=` | 事件投影 | default limit 30，上限 100；restricted 事件不返回 `payloadRef` |
 | POST | `/demo/seed` | 初始化合成数据 | 只允许 DEMO_MODE，保护既有实际数据 |
 | POST | `/discover` | 触发一次规则扫描 | 同源幂等、频控 |
 | GET | `/cards?status=&projectId=` | 分页 Card | 权限和时效过滤 |
-| GET | `/cards/:id` | Card 和 Evidence | 不显示 restricted payload |
+| GET | `/cards/:id` | Card 和 Evidence | 不显示 restricted payload；restricted 事件不返回 `payloadRef` |
 | POST | `/cards/:id/dismiss` | 忽略 | 记录反馈、抑制 |
 | POST | `/cards/:id/snooze` | 稍后提醒 | 合法时间窗 |
 | POST | `/cards/:id/execute` | 创建或查询 Run | 策略在后端；幂等/审批 |
