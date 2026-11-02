@@ -6,10 +6,11 @@
 
 ## 先读什么
 
-1. [01-PRODUCT-CONTRACT.md](./01-PRODUCT-CONTRACT.md)：用户确认的产品意图、价值、行为边界、叙事。
-2. [02-MIND-LIFE-ARCHITECTURE.md](./02-MIND-LIFE-ARCHITECTURE.md)：项目生命模型、观点生命周期、研究与授权状态、数据契约与投影。
-3. [03-ACCEPTANCE-SCENARIOS.md](./03-ACCEPTANCE-SCENARIOS.md)：可重复的正反例、体验验收与证据标准。
-4. [../../tasks/HEARTH-MVP-REBOOT.md](../../tasks/HEARTH-MVP-REBOOT.md)：编码 Agent 任务、实施顺序、完成定义、停机边界。
+1. [04-PRODUCT-POSITIONING.md](./04-PRODUCT-POSITIONING.md)：产品定位、与 TRAE 宝等助理的差异化取舍、可复现的价值验收；**不代表竞品没有类似能力或我们已经实现**。
+2. [01-PRODUCT-CONTRACT.md](./01-PRODUCT-CONTRACT.md)：用户确认的产品意图、价值、行为边界、叙事。
+3. [02-MIND-LIFE-ARCHITECTURE.md](./02-MIND-LIFE-ARCHITECTURE.md)：项目生命模型、观点生命周期、研究与授权状态、数据契约与投影。
+4. [03-ACCEPTANCE-SCENARIOS.md](./03-ACCEPTANCE-SCENARIOS.md)：可重复的正反例、体验验收与证据标准。
+5. [../../tasks/HEARTH-MVP-REBOOT.md](../../tasks/HEARTH-MVP-REBOOT.md)：编码 Agent 任务、实施顺序、完成定义、停机边界。
 
 ## 一句话
 
