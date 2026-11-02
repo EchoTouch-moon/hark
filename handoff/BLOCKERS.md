@@ -1,5 +1,10 @@
 # Blockers
 
+## 2026-11-02 · G1-A 项目绑定合同
+
+目前存在经过合成测试证明的 projectId 与 thread 绑定不一致仍写入现象；全局访问、项目焦点、多对多绑定与旧记录兼容合同待审后实施。恢复测试未覆盖运行中执行器崩溃或 completed→evidence 窗口；reset 可信归属未建立。见 `docs/verification/g1a-project-scope-recovery-2026-11-02.md`。
+
+
 ## 2026-11-02 · A-01 复审及 PATCH 后续
 
 PR #32 冷启动跟进需以新 head 的 Linux Mock E2E、Windows 与 ci-gate 为准，再等待独立安全复审；本批未授权自动合并。服务端目前的 CSRF/Origin 写入门禁未覆盖 PATCH，当前未确认存在 PATCH 业务路由；新增 PATCH 写路由前须单独统一防护并补负例，本批未修改。

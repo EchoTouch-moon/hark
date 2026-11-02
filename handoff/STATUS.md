@@ -1,5 +1,10 @@
 # Task Status — Hearth 夜间自动开发
 
+## 2026-11-02 · G1-A 项目作用域及恢复基线
+
+PR #32 已 squash 合并至 G0 `6ef6fe0`，合并后 CI run `41414610654` 通过。双项目合成表征发现线程与声明项目不一致仍可写入；已在 macOS 对预置 executing/verifying 状态做真实进程终止及重启局部验证，均进入 pending_verification 且 Fake Executor 0。项目绑定合同、完整恢复及 reset 可信归属仍未验收；详见 `docs/verification/g1a-project-scope-recovery-2026-11-02.md`。G1-A NOT_PASSED。
+
+
 ## 2026-11-02 · A-01 独立复审冷启动跟进
 
 针对 PR #32 第一轮独立复审，在无浏览器存储、服务端 session 为空的隔离环境中复现首个 Hearth GET 401 后页面无法授权，并修复为仅对明确的 `401 UNAUTHORIZED` 建立会话后重读一次。保留 403/503 ViewModel、取消和无 Mock 回退语义；相关证据见 `handoff/EVIDENCE/a01-cold-start-2026-11-02/`。新的 PR head 及跨平台 CI 以 GitHub 实际检查为准，仍须最终独立安全复审；G1-A 未整体通过。

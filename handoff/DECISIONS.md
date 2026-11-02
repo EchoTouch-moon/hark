@@ -1,5 +1,10 @@
 # Actual implementation decisions
 
+## 2026-11-02 · 项目上下文与历史数据
+
+项目隔离不等于多租户身份；拟议设计允许全局线程与多项目显式绑定，不能将单个客户端 projectId 直接视为授权或对历史数据自动归属。先审阅 threads/chat 的 global、project-scoped、legacy-unbound 语义及持久绑定/迁移影响，再进入独立修复批次。恢复和 reset 继续 fail-closed。
+
+
 ## 2026-11-02 · A-01 冷启动会话
 
 Hearth GET 保留原始响应解析以呈现合法的 403 permission-denied 和 503 错误 ViewModel；仅精确的 401 UNAUTHORIZED 复用统一会话初始化并最多重读一次，取消后不继续。测试使用空浏览器与独立空服务端数据库，并暂缓 session 初始化至首次 Hearth 401，以稳定覆盖竞态。

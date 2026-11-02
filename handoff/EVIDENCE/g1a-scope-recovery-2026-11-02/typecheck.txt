@@ -1,0 +1,4 @@
+$ tsc -p tsconfig.json --noEmit && pnpm --filter @hearth/web typecheck
+$ tsc -p tsconfig.json --noEmit
+
+EXIT_CODE=0

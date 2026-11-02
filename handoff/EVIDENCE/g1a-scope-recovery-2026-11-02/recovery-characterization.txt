@@ -1,0 +1,18 @@
+RUN  v3.2.7 <isolated-worktree>
+
+stdout | tests/unit/g1a-recovery-characterization.test.ts > synthetic SIGKILL and restart preserves uncertainty for executing
+{"initialState":"executing","killed":"SIGKILL","recoveredState":"pending_verification","verdict":null,"executorCalls":0,"evidenceBefore":0,"evidenceAfter":0,"auditDelta":1,"recoveryReason":"legacy-disabled","secondRecoveryCount":0,"artifactFiles":0}
+
+stdout | tests/unit/g1a-recovery-characterization.test.ts > synthetic SIGKILL and restart preserves uncertainty for verifying
+{"initialState":"verifying","killed":"SIGKILL","recoveredState":"pending_verification","verdict":null,"executorCalls":0,"evidenceBefore":0,"evidenceAfter":0,"auditDelta":1,"recoveryReason":"legacy-disabled","secondRecoveryCount":0,"artifactFiles":0}
+
+ ✓ tests/unit/g1a-recovery-characterization.test.ts (2 tests) 579ms
+   ✓ synthetic SIGKILL and restart preserves uncertainty for executing  372ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:42:22
+   Duration  905ms (transform 24ms, setup 0ms, collect 21ms, tests 579ms, environment 0ms, prepare 52ms)
+
+
+EXIT_CODE=0
