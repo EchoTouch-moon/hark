@@ -83,7 +83,7 @@
 
 - [ ] S0-01 审计单与 G1-A 范围评审。
 - [ ] G0 02/03/05 冲突和 2026-11-02 当前事实写入差异表。
-- [ ] G0 / master 合并策略、branch ruleset 现状和历史 PR 保留/拆分决定。
+- [ ] G0 / master 合并策略和历史 PR 保留/拆分决定；当前两条 branch rulesets 已确认 active，开发过程遵循 strict ci-gate。
 - [ ] G1-A 的独立 PR 路径、Mock 测试与回滚方案得到具体审批。
 - [ ] 记下尚未批准的 ResearchPolicy/Provider/预算/H1 真实样本，不能从计划推断许可。
 
