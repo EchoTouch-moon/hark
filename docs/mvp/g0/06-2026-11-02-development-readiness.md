@@ -14,7 +14,7 @@
 | PR #15 | 开放的 draft，仅离线合成呈现资格 PoC，19 个用例 | 未接 API、UI、存储、模型；不是实际呈现质量或 H1 验收 |
 | PR #6 / #5 / #4 | 旧前端/产品重定向 PR 仍开放，存在不同 base 和潜在重叠 | 不得整包合并、重复实现或覆盖 G0 已有组件 |
 | G0 需求/计划文件 | 02/03 明文仍为 CONDITIONAL_PASS / revised pending review；旧进度表可能落后于 #29/#30 | 不以文档旧状态覆盖最新实际证据，也不把新修复抬为整阶段 PASS |
-| 分支保护 | master 上有 2026-11-01 配置单，文档标记 NOT APPLIED；本轮未独立读取实时 rulesets | 不假定保护现状；启用/调整须单独确认 |
+| 分支保护 | 本轮实时读到 protect-master / protect-g0 两条 active rulesets；均强制 PR、strict ci-gate，并禁止强推和删除；历史 11/01 文档的 NOT APPLIED 已过时 | 不修改现有规则；未来调整仍须单独确认 |
 
 权威产品合同优先阅读：docs/mvp/g0/02-contract-and-decisions.md、03-plan-threats-traceability.md、05-dual-track-and-viewmodel.md、根目录 NARRATIVE.md。安全事实以固定代码 SHA、直接 API 负例与对应 CI 为准。文档中前后冲突的地方必须列差异，不允许编码 Agent 隐式选一个版本。
 
@@ -23,7 +23,7 @@
 - [ ] G0-01：冻结 MVP 体验与行为 Must：证据三类（观察/公开研究/用户决定）；项目-观点-会话分域；无自主真实执行；公开研究、模型、观察、执行四种授权各自独立；火焰与 Story 同源，事实未知不能猜测活跃。
 - [ ] G0-02：按 #29/#30 合并后的真实 G0 重新做 G1-A 缺口矩阵：全部旧执行入口和间接调度、真实/未知模式、Demo 隔离、GET 零写入、双项目串线、恢复语义、Origin/CSRF、受限 payload 引用。每行标 NOT_RUN / PASS / FAIL / BLOCKED，附路径、命令、SHA。
 - [ ] G0-03：单独处理 Demo reset：当前未知来源时 fail-closed；验证 API 与 UI 行为一致。可信数据归属没有建成前，不可解锁清理按钮，不得删除私人数据。
-- [ ] G0-04：明确 master 与 G0 的最终集成策略：开发线以 G0 为基础；历史 UI PR 按文件级 cherry-pick / 重做或关闭重叠；每条线 PR + ci-gate；先确认 branch ruleset 实际状态再讨论改动。不得 force push。
+- [ ] G0-04：明确 master 与 G0 的最终集成策略：开发线以 G0 为基础；历史 UI PR 按文件级 cherry-pick / 重做或关闭重叠；两条 active rulesets 均要求 PR + strict ci-gate、禁止强推/删除（见 07 静态核对）。不变更保护规则。
 - [ ] G0-05：对 #12 仅提炼可迁移机制和明确勘误，对 #15 独立验收和标识模拟范围；不把研究分支直接合并进产品。
 - [ ] G0-06：冻结 G1-B/C 最小 schema / API / migration / 删除 journal，落入编码任务包；逐项保留测试断言和返回语义。
 - [ ] G0-07：明确真实公开研究的 provider/域名/预算/频率/授权界面，以及 H1 样本与人工评分方案。这些是 G2/H1 的前置决策，不阻碍无网络的 G1-B/C 和 Mock UI 编码，但阻碍任何真实外发。
