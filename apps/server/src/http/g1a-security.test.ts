@@ -113,16 +113,21 @@ describe('G1-A legacy endpoints fail closed', () => {
   it.each([false, true] as const)('demo seed/reset only in explicit demo mode (mode %s)', async mode => {
     const { app, headers } = await createClient(mode);
     const seed = await app.inject({ method: 'POST', url: '/api/v1/demo/seed', headers });
+    const beforeReset = snapshot();
     const reset = await app.inject({ method: 'POST', url: '/api/v1/demo/reset', headers });
     if (mode === true) {
       expect(seed.statusCode).toBe(200);
-      expect(reset.statusCode).toBe(200);
+      // Seeded fixtures share a database with existing unclassified threads/chat:
+      // reset must fail closed and preserve every table, including audit/settings.
+      expect(reset.statusCode).toBe(409);
+      expect(reset.json().error.code).toBe('RESET_REFUSED');
     } else {
       expect(seed.statusCode).toBe(409);
       expect(seed.json().error.code).toBe('NOT_DEMO');
       expect(reset.statusCode).toBe(409);
       expect(reset.json().error.code).toBe('NOT_DEMO');
     }
+    expect(snapshot()).toEqual(beforeReset);
   });
 
   it.each([false, true, 'unknown'] as const)('rejects forged simulated actions and legacy execution in mode %s', async mode => {

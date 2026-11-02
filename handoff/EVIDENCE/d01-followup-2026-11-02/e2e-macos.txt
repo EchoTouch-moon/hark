@@ -1,0 +1,45 @@
+$ playwright test -c tests/e2e/playwright.config.ts
+[WebServer] (node:43658) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node:43730) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer]
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 25 tests using 1 worker
+
+(node:43785) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+R2_BROWSER_PASS: Pi UI identity simulated only; cancel+ESC zero runs; exclusions persisted and re-previewed; exact consent fingerprint sent once; actual Mock result; feedback persists and failure is visible. No real model was called.
+  ✓   1 tests/e2e/analysis-privacy.spec.ts:8:1 › R2: explicit privacy confirmation, exclusions and persisted feedback (4.7s)
+R1_BROWSER_PASS: watched report -> one evidence-backed Insight; repeated notification deduped; zero manual scan/consume and zero analysis runs.
+  ✓   2 tests/e2e/coordinator.spec.ts:8:1 › R1: watched JUnit automatically becomes one Insight without a model run (11.3s)
+  ✓   3 tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1024px (3.5s)
+  ✓   4 tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1440px (2.6s)
+  ✓   5 tests/e2e/experience-fixtures.spec.ts:5:3 › mocked ok has no horizontal overflow at 1920px (2.6s)
+  ✓   6 tests/e2e/experience-fixtures.spec.ts:13:1 › timeline nodes render from the ok story; hollow uses inset ring (2.9s)
+  ✓   7 tests/e2e/experience-fixtures.spec.ts:28:1 › permission_denied: 重新扫描 disabled; 去授权 PUT+refetch; inline error+retry (4.0s)
+  ✓   8 tests/e2e/experience-fixtures.spec.ts:74:1 › I-14 /observations redirects home (no ObservationsPage) (2.6s)
+  ✓   9 tests/e2e/experience-fixtures.spec.ts:81:1 › I-19 milestoneGold paints data attr and gold edge; false clears it (11.1s)
+  ✓  10 tests/e2e/experience-fixtures.spec.ts:100:1 › I-9..I-12 reason caption clamps to 2 lines with title+aria-label (2.0s)
+  ✓  11 tests/e2e/hearth.spec.ts:31:1 › E2E-11: 首次运行是真实空态，不制造假任务 (1.9s)
+  ✓  12 tests/e2e/hearth.spec.ts:36:1 › E2E-01: 初始化 Demo → 3 张卡片含 whyNow/来源/风险 (2.2s)
+  ✓  13 tests/e2e/hearth.spec.ts:48:1 › E2E-02: 查看证据 → 执行被拒绝 → 不伪造 completed/artifact (2.6s)
+  ✓  14 tests/e2e/hearth.spec.ts:64:1 › E2E-03: 刷新后执行拒绝状态不消失、不伪造完成 (3.4s)
+  ✓  15 tests/e2e/hearth.spec.ts:75:1 › E2E-04: 快速双击执行被拒且不产生任何 run (2.1s)
+  ✓  16 tests/e2e/hearth.spec.ts:85:1 › E2E-06: 忽略后卡片不再出现在主动建议（刷新也不重现） (3.2s)
+  ✓  17 tests/e2e/hearth.spec.ts:97:1 › E2E-07: 项目隔离由服务端保证 (4.4s)
+  ✓  18 tests/e2e/hearth.spec.ts:107:1 › E2E-08: composer on mocked hearth — input, send gating, Demo badge (2.8s)
+  ✓  19 tests/e2e/hearth.spec.ts:121:1 › Settings 保存可持久化 (3.6s)
+  ✓  20 tests/e2e/hearth.spec.ts:135:1 › 视口 1280×800 无水平滚动 (1.4s)
+  ✓  21 tests/e2e/hearth.spec.ts:144:1 › Activity 页无伪造 run 时间线（执行被拒后为空态） (1.8s)
+  ✓  22 tests/e2e/insights.spec.ts:3:1 › insights empty feed is not a fake-success wall (1.6s)
+  ✓  23 tests/e2e/insights.spec.ts:12:1 › insight detail missing id is an error, not a fake card (1.7s)
+  ✓  24 tests/e2e/runtime-mode.spec.ts:4:1 › mocked ok paints demo badge from ViewModel mode and skips Demo init on canvas (2.1s)
+  ✓  25 tests/e2e/runtime-mode.spec.ts:11:1 › mocked error fails closed: 火候未知 + 重新读取 only (2.0s)
+
+  25 passed (1.5m)

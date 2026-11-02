@@ -1,5 +1,9 @@
 # Morning Report — 2026-10-28 夜间运行（主交付 HEAD: f076cb4，前序 145213c）
 
+## 2026-11-02 · D-01 复审问题跟进
+
+修复 Demo 首次播种条件，添加真实 startServer 测试；reset 在存在来源不明数据时拒绝并保留审计。两份安全审查文档已更新并将旧结论标为历史。本机合成测试、typecheck、lint、build 和 macOS Mock E2E 已通过，具体数字和日志见 `handoff/EVIDENCE/d01-followup-2026-11-02/`。Linux/Windows CI 与最终复审以 PR #29 的新 head 为准；未合并或修改 G2。
+
 **状态**：M0 ✅ GREEN · M1 ✅ GREEN · M2 ✅ GREEN（P1 范围；precision@3 诚实标注 NOT_MEASURED）
 
 ## 1. 真实环境

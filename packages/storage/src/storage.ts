@@ -72,7 +72,7 @@ function mapThread(r: Row): ThreadRow {
  *    - upsertCandidate: 按 suppression_key 去重
  *    - createRun: 按 idempotency_key 保证单一执行记录
  * 4. 纯追加审计日志（Append-only Audit Log）：只提供插入与查询，不暴露任何 UPDATE/DELETE 接口
- * 5. 安全护栏：resetDemoData 仅在全部项目均为 demo 属性时才允许执行
+ * 5. 安全护栏：resetDemoData 在无法证明数据归属时拒绝，审计日志始终保留
  */
 export class Storage {
   readonly db: DatabaseSync;
@@ -673,15 +673,22 @@ export class Storage {
   }
 
   /**
-   * 重置演示环境数据（安全护栏：若检测到任何非 demo 属性的项目，坚决拒绝重置）
+   * Without trusted per-record demo provenance, only an empty reset is safe.
+   * Existing user and demo records may coexist even when every project is demo.
+   * Keep the audit log append-only, and hold the write lock during every check.
    */
   resetDemoData(): void {
-    const nonDemo = this.db.prepare("SELECT COUNT(*) AS n FROM projects WHERE visibility != 'demo'").get() as Row;
-    if (Number(nonDemo['n']) > 0) throw new Error('refusing reset: non-demo projects present');
-    this.db.exec('BEGIN');
+    this.db.exec('BEGIN IMMEDIATE');
     try {
-      for (const t of ['audit_log', 'feedback', 'chat_messages', 'threads', 'evidence', 'run_steps', 'runs', 'approvals', 'cards', 'candidates', 'events', 'sources', 'settings']) {
-        this.db.exec(`DELETE FROM ${t}`);
+      const nonDemo = this.db.prepare("SELECT 1 FROM projects WHERE visibility != 'demo' LIMIT 1").get();
+      if (nonDemo) throw new Error('refusing reset: non-demo projects present');
+
+      // None of these tables has a trustworthy ownership marker. In particular,
+      // a project marked demo cannot prove that independent chat or settings are demo.
+      for (const table of ['feedback', 'chat_messages', 'threads', 'evidence', 'run_steps', 'runs', 'approvals', 'cards', 'candidates', 'events', 'sources', 'settings']) {
+        if (this.db.prepare(`SELECT 1 FROM ${table} LIMIT 1`).get()) {
+          throw new Error('refusing reset: data cannot be safely classified as demo');
+        }
       }
       this.db.exec('COMMIT');
     } catch (err) {

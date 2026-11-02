@@ -127,6 +127,8 @@ test('Settings 保存可持久化', async ({ page }) => {
   await expect(page.getByText(/已保存|保存成功/).first()).toBeVisible({ timeout: 10_000 });
   await page.reload();
   await expect(page.locator('input[type="number"]').first()).toHaveValue('2');
+  await expect(page.getByRole('button', { name: '重置 Demo 数据' })).toBeDisabled();
+  await expect(page.getByText(/无法可靠区分演示数据和真实数据/)).toBeVisible();
   await page.screenshot({ path: `${SHOT_DIR}/ui-settings.png`, fullPage: true });
 });
 
