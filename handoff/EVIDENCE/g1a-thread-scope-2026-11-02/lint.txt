@@ -2,7 +2,7 @@ $ eslint .
 
 <isolated-worktree>/apps/web/src/app/AppShell.tsx
   217:10  warning  'emberTick' is assigned a value but never used  @typescript-eslint/no-unused-vars
-  277:10  warning  'nowMs' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  282:10  warning  'nowMs' is assigned a value but never used      @typescript-eslint/no-unused-vars
 
 <isolated-worktree>/apps/web/src/pages/ChatPage.tsx
   273:11  warning  'contextSafe' is assigned a value but never used  @typescript-eslint/no-unused-vars

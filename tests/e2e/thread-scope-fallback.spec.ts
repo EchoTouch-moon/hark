@@ -59,6 +59,32 @@ test('列表上限外的全局线程须经服务端确认后才能打开', async
   expect(detailCalls).toBeGreaterThan(0);
 });
 
+test('含中文空格和百分号的全局深链只编码一次', async ({ page }) => {
+  const id = '全局 100%';
+  await mockHearth(page, 'ok');
+  await page.route('**/api/v1/threads', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify({ threads: [] }),
+  }));
+  const detailPaths: string[] = [];
+  await page.route('**/api/v1/threads/**', route => {
+    const pathname = new URL(route.request().url()).pathname;
+    detailPaths.push(pathname);
+    if (pathname !== `/api/v1/threads/${encodeURIComponent(id)}`) return route.fulfill({ status: 404, body: '{}' });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      thread: { id, title: 'Synthetic global', projectId: null, updatedAt: '2026-11-01' },
+    }) });
+  });
+  const historyIds: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname === '/api/v1/chat/history') historyIds.push(url.searchParams.get('threadId') ?? '');
+  });
+  await page.goto(`/t/${encodeURIComponent(id)}`);
+  await dismissWelcome(page);
+  await expect.poll(() => detailPaths).toContain(`/api/v1/threads/${encodeURIComponent(id)}`);
+  await expect.poll(() => historyIds).toContain(id);
+});
+
 test('服务端拒绝旧项目线程时显示错误且不读取其历史', async ({ page }) => {
   await mockHearth(page, 'ok');
   await page.route('**/api/v1/threads', route => route.fulfill({

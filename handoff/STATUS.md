@@ -2,7 +2,7 @@
 
 ## 2026-11-02 · G1-A 线程/chat 临时作用域保护
 
-用户明确选择在可信项目绑定完成前暂关项目内聊天、保留全局对话。已按临时合同 fail-closed；旧项目线程、孤儿消息和本地未知缓存保留不自动绑定。合成红绿、621 单元测试和本机 32 项 Mock E2E 等证据见 `handoff/EVIDENCE/g1a-thread-scope-2026-11-02/`。当前仅本机验证，Linux/Windows/ci-gate 与独立安全复审以该批 PR 的实际 head 为准；G1-A NOT_PASSED。
+用户明确选择在可信项目绑定完成前暂关项目内聊天、保留全局对话。已按临时合同 fail-closed；旧项目线程、孤儿消息和本地未知缓存保留不自动绑定。合成红绿、621 单元测试和本机 33 项 Mock E2E 等证据见 `handoff/EVIDENCE/g1a-thread-scope-2026-11-02/`。当前仅本机验证，Linux/Windows/ci-gate 与独立安全复审以该批 PR 的实际 head 为准；G1-A NOT_PASSED。
 
 
 ## 2026-11-02 · G1-A 项目作用域及恢复基线

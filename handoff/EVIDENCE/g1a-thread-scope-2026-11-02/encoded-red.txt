@@ -1,0 +1,47 @@
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer]
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 1 test using 1 worker
+
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/e2e/thread-scope-fallback.spec.ts:62:1 › 含中文空格和百分号的全局深链只编码一次 (11.6s)
+
+
+  1) tests/e2e/thread-scope-fallback.spec.ts:62:1 › 含中文空格和百分号的全局深链只编码一次 ────────────────────────────
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: "/api/v1/threads/%E5%85%A8%E5%B1%80%20100%25"
+    Received array: ["/api/v1/threads/%25E5%2585%25A8%25E5%25B1%2580%2520100%2525", "/api/v1/threads/thread-global-073744b8-4a9e-4c82-85b2-ba3c594786b8/proactive"]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+      82 |   await page.goto(`/t/${encodeURIComponent(id)}`);
+      83 |   await dismissWelcome(page);
+    > 84 |   await expect.poll(() => detailPaths).toContain(`/api/v1/threads/${encodeURIComponent(id)}`);
+         |                                        ^
+      85 |   await expect.poll(() => historyIds).toContain(id);
+      86 | });
+      87 |
+        at <isolated-worktree>/tests/e2e/thread-scope-fallback.spec.ts:84:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/thread-scope-fallback-含中文空格和百分号的全局深链只编码一次/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/thread-scope-fallback-含中文空格和百分号的全局深链只编码一次/error-context.md
+
+  1 failed
+    tests/e2e/thread-scope-fallback.spec.ts:62:1 › 含中文空格和百分号的全局深链只编码一次 ─────────────────────────────
+
+EXIT_CODE=1

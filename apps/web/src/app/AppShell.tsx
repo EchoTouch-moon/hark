@@ -227,9 +227,14 @@ export function AppShell() {
       const listed = await listThreads(controller.signal);
       if (controller.signal.aborted || generation !== threadRefreshGeneration.current) return;
       const fromQuery = searchParams.get('thread');
-      const fromPath = location.pathname.startsWith('/t/')
+      const encodedPathId = location.pathname.startsWith('/t/')
         ? location.pathname.slice(3).split('/')[0]
-        : null;
+        : undefined;
+      let fromPath: string | null = null;
+      if (encodedPathId) {
+        try { fromPath = decodeURIComponent(encodedPathId); }
+        catch { /* Invalid links cannot select an unverified thread. */ }
+      }
       const requested = fromQuery || fromPath || getActiveThreadId();
       const nextThreads = [...listed.threads];
       let selectionError: string | null = null;

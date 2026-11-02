@@ -8,17 +8,17 @@ computing gzip size...
 dist/index.html                           0.59 kB │ gzip:   0.41 kB
 dist/assets/living-fire-6zKj2j0K.png  1,956.62 kB
 dist/assets/index-CyAxZBT2.css           93.38 kB │ gzip:  16.80 kB
-dist/assets/index-DQooWGaL.js           533.40 kB │ gzip: 168.06 kB
+dist/assets/index-Cq3-Qffj.js           533.46 kB │ gzip: 168.06 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 2.52s
+✓ built in 1.66s
 $ esbuild src/main.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs --external:fsevents --external:chokidar
 
   dist/server.mjs  2.0mb ⚠️
 
-⚡ Done in 91ms
+⚡ Done in 87ms
 
 EXIT_CODE=0
