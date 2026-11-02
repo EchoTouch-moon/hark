@@ -40,6 +40,13 @@ export class ConflictError extends Error {
   }
 }
 
+/** Legacy executors are unavailable unless explicitly enabled by an isolated harness. */
+export class LegacyActionsDisabledError extends Error {
+  code = 'LEGACY_ACTIONS_DISABLED';
+  statusCode = 403;
+  constructor() { super('Legacy execution is disabled'); }
+}
+
 /** 编排器依赖接口 */
 export interface OrchestratorDeps {
   storage: Storage;
@@ -47,6 +54,8 @@ export interface OrchestratorDeps {
   clock: () => string;
   stepDelayMs?: number;
   onRunUpdate?: (run: TaskRun) => void;
+  /** Test-only opt-in for independently isolated synthetic data and artifacts. */
+  allowLegacyExecution?: boolean;
 }
 
 const CARD_TERMINAL = new Set(['completed', 'failed', 'dismissed', 'expired', 'cancelled']);
@@ -65,12 +74,17 @@ export class Orchestrator {
     this.verifier = new IndependentVerifier(deps.artifactRoot);
   }
 
+  get legacyExecutionEnabled(): boolean {
+    return this.deps.allowLegacyExecution === true;
+  }
+
   /** Entry point for POST /cards/:id/execute. Returns the (possibly existing) run. */
   async executeCard(
     cardId: string,
     principal: string,
     opts: { awaitCompletion?: boolean } = {},
   ): Promise<{ run: TaskRun; alreadyRunning: boolean; card: ActionCard }> {
+    if (!this.legacyExecutionEnabled) throw new LegacyActionsDisabledError();
     const { storage } = this.deps;
     const card = storage.getCard(cardId);
     if (!card) throw new NotFoundError(`card ${cardId} not found`);
@@ -121,6 +135,7 @@ export class Orchestrator {
 
   /** POST /approvals/:runId — explicit approve/deny for awaiting_approval runs. */
   async decideApproval(runId: string, decision: 'approve' | 'deny', principal: string): Promise<TaskRun> {
+    if (!this.legacyExecutionEnabled) throw new LegacyActionsDisabledError();
     const { storage } = this.deps;
     const run = storage.getRun(runId);
     if (!run) throw new NotFoundError(`run ${runId} not found`);
@@ -167,6 +182,14 @@ export class Orchestrator {
     if (!run) throw new NotFoundError(`run ${runId} not found`);
     if (['completed', 'failed', 'cancelled'].includes(run.state)) return run;
     if (run.state === 'blocked') return run;
+    if (run.state === 'pending_verification') return run;
+    if (run.state === 'verifying') {
+      // A previous effect may already have happened; do not claim it was undone.
+      const updated = storage.transitionRun(runId, 'pending_verification', { failureClass: 'unknown' }, { actor: principal, details: { cancellation: 'verification-interrupted' } });
+      storage.audit('run.cancel_requested', principal, runId, { result: 'pending_verification' });
+      this.emit(updated);
+      return updated;
+    }
     const updated = storage.transitionRun(runId, 'cancelled', { endedAt: this.deps.clock() }, { actor: principal });
     // contract has no `cancelled` card status: a cancelled run returns the card to proposal
     storage.updateCard(run.cardId, { status: 'proposed' });
@@ -181,6 +204,14 @@ export class Orchestrator {
     const interrupted = [...storage.listRunsInStates(['executing']), ...storage.listRunsInStates(['verifying'])];
     const recovered: TaskRun[] = [];
     for (const run of interrupted) {
+      // Outside an explicitly isolated test harness, never turn legacy runs
+      // into new completion claims during startup recovery.
+      if (!this.legacyExecutionEnabled) {
+        const updated = storage.transitionRun(run.id, 'pending_verification', { failureClass: 'unknown' }, { actor: principal, details: { recovery: 'legacy-disabled' } });
+        recovered.push(updated);
+        this.emit(updated);
+        continue;
+      }
       const spec = storage.getRunActionSnapshot(run.id);
       if (!spec) {
         const updated = storage.transitionRun(run.id, 'pending_verification', { failureClass: 'unknown' }, { actor: principal, details: { recovery: 'snapshot-missing' } });

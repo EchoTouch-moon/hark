@@ -1,5 +1,9 @@
 # Task Status — Hearth 夜间自动开发
 
+## 2026-11-02 · D-01 独立安全复审跟进
+
+在 PR #29 的 `daf03e14` 基础上修复首次 Demo 初始化与 legacy 执行开关耦合；缺少可信归属时 reset 拒绝而非删除数据，审计记录保留。含种子数据的纯 Demo 库同样无法 reset。合成数据本机定向 49、全量 522 和 macOS Mock E2E 25 项通过，typecheck、lint、build 退出码均为 0；完整输出见 `handoff/EVIDENCE/d01-followup-2026-11-02/`。新提交的 Linux/Windows 与 ci-gate 以 PR checks 为准，最终安全复审未完成；未合并、未修改 G2。
+
 > 由 Coding Agent 维护；每项附真实证据路径。所有命令输出见 `handoff/EVIDENCE/`。
 
 ## 最终状态（2026-10-28 夜间运行）

@@ -26,17 +26,6 @@ async function seedViaUi(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: '查看证据' }).first()).toBeVisible({ timeout: 20_000 });
 }
 
-/** 展开折叠的历史区（completed 卡在「查看全部」后面）；等待数据加载后再点 */
-async function expandHistory(page: Page): Promise<void> {
-  await page.getByText('需要你决定').first().waitFor({ state: 'visible', timeout: 15_000 });
-  const expand = page.getByRole('button', { name: /查看全部/ });
-  await expand.first().waitFor({ state: 'visible' });
-  if ((await expand.count()) > 0) {
-    await expand.first().click();
-    await page.getByText(/其它建议与历史/).first().waitFor({ state: 'visible', timeout: 5_000 }).catch(() => undefined);
-  }
-}
-
 test.describe.configure({ mode: 'serial' });
 
 test('E2E-11: 首次运行是真实空态，不制造假任务', async ({ page }) => {
@@ -56,54 +45,41 @@ test('E2E-01: 初始化 Demo → 3 张卡片含 whyNow/来源/风险', async ({ 
   await page.screenshot({ path: `${SHOT_DIR}/ui-home.png`, fullPage: true });
 });
 
-test('E2E-02: 查看证据 → 执行 → completed + 真实 artifact + sha256', async ({ page }) => {
+test('E2E-02: 查看证据 → 执行被拒绝 → 不伪造 completed/artifact', async ({ page }) => {
   await page.goto('/cards');
   const ciCard = cardByTitle(page, '项目构建未通过');
   await ciCard.getByRole('button', { name: /查看证据/ }).click();
   await expect(page.getByText(/fixture:\/\//).first()).toBeVisible();
   await ciCard.getByRole('button', { name: /开始处理|开始诊断/ }).click();
-  // 等待 run 到终态（UI 轮询）
-  await expect(ciCard.getByText(/已完成|completed/i).first()).toBeVisible({ timeout: 30_000 });
-  // 服务端核实：run completed + evidence sha256 + 磁盘文件
+  // 执行被拒绝：卡上出现拒绝说明，且不出现已完成
+  await expect(ciCard.getByText(/旧演示操作当前不可用/).first()).toBeVisible({ timeout: 15_000 });
+  await expect(ciCard.getByText(/已完成|completed/i)).toHaveCount(0);
+  // 服务端核实：无 completed run、无伪造 artifact
   const runs = await page.request.get('/api/v1/runs');
   const { runs: runList } = (await runs.json()) as { runs: Array<{ id: string; state: string }> };
-  const done = runList.find((r) => r.state === 'completed');
-  expect(done).toBeDefined();
-  const detail = (await (await page.request.get(`/api/v1/runs/${done!.id}`)).json()) as {
-    run: { verificationVerdict: string; resultArtifactRefs: string[] };
-    evidence: Array<{ sha256: string; artifactPath?: string }>;
-    steps: Array<{ name: string; status: string }>;
-  };
-  expect(detail.run.verificationVerdict).toBe('pass');
-  expect(detail.evidence[0]!.sha256).toMatch(/^[a-f0-9]{64}$/);
-  expect(detail.steps.length).toBeGreaterThanOrEqual(3);
+  expect(runList.filter((r) => r.state === 'completed')).toHaveLength(0);
+  expect(runList).toHaveLength(0);
 });
 
-test('E2E-03: 刷新后状态保持一致（服务端持久化）', async ({ page }) => {
+test('E2E-03: 刷新后执行拒绝状态不消失、不伪造完成', async ({ page }) => {
   await page.goto('/cards');
-  await expandHistory(page);
-  await expect(cardByTitle(page, '项目构建未通过').getByText(/已完成|completed/i).first()).toBeVisible({ timeout: 20_000 });
+  const ciCard = cardByTitle(page, '项目构建未通过');
+  await expect(ciCard.getByText(/已完成|completed/i)).toHaveCount(0);
+  await expect(ciCard.getByRole('button', { name: /开始处理|开始诊断/ }).first()).toBeVisible();
   await page.reload();
-  // 完成的卡收进「查看全部」历史区：展开后再断言状态仍在
-  await expandHistory(page);
-  await expect(cardByTitle(page, '项目构建未通过').getByText(/已完成|completed/i).first()).toBeVisible({ timeout: 15_000 });
+  const ciCard2 = cardByTitle(page, '项目构建未通过');
+  await expect(ciCard2.getByText(/已完成|completed/i)).toHaveCount(0);
+  await expect(ciCard2.getByRole('button', { name: /开始处理|开始诊断/ }).first()).toBeVisible();
 });
 
-test('E2E-04: 快速双击不产生双副作用（幂等）', async ({ page }) => {
+test('E2E-04: 快速双击执行被拒且不产生任何 run', async ({ page }) => {
   await page.goto('/cards');
   const card = cardByTitle(page, '可以继续上次的研究');
   const btn = card.getByRole('button', { name: /开始处理/ }).first();
   await btn.click({ clickCount: 2, delay: 30 });
-  await expect(card.getByText(/已完成|completed/i).first()).toBeVisible({ timeout: 30_000 });
-  const runs = (await (await page.request.get('/api/v1/runs')).json()) as { runs: Array<{ cardId: string }> };
-  const forCard = runs.runs.filter((r) => r.cardId.includes('beacon') || r.cardId !== '');
-  // 只有一条 run 针对该卡（幂等键合并）
-  const runsResp = await page.request.get('/api/v1/cards');
-  expect(runsResp.ok()).toBe(true);
-  expect(forCard.length).toBeGreaterThanOrEqual(0); // run count asserted via API detail below
-  const { runs: all } = (await (await page.request.get('/api/v1/runs')).json()) as { runs: Array<{ id: string; cardId: string; state: string }> };
-  const target = all.filter((r) => r.state === 'completed');
-  expect(target.length).toBeLessThanOrEqual(3);
+  await expect(card.getByText(/旧演示操作当前不可用/).first()).toBeVisible({ timeout: 15_000 });
+  const { runs: all } = (await (await page.request.get('/api/v1/runs')).json()) as { runs: Array<{ id: string; state: string }> };
+  expect(all).toHaveLength(0);
 });
 
 test('E2E-06: 忽略后卡片不再出现在主动建议（刷新也不重现）', async ({ page }) => {
@@ -151,6 +127,8 @@ test('Settings 保存可持久化', async ({ page }) => {
   await expect(page.getByText(/已保存|保存成功/).first()).toBeVisible({ timeout: 10_000 });
   await page.reload();
   await expect(page.locator('input[type="number"]').first()).toHaveValue('2');
+  await expect(page.getByRole('button', { name: '重置 Demo 数据' })).toBeDisabled();
+  await expect(page.getByText(/无法可靠区分演示数据和真实数据/)).toBeVisible();
   await page.screenshot({ path: `${SHOT_DIR}/ui-settings.png`, fullPage: true });
 });
 
@@ -163,12 +141,8 @@ test('视口 1280×800 无水平滚动', async ({ page }) => {
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test('Activity 页可见 run 时间线与验证证据', async ({ page }) => {
-  await page.goto('/cards');
-  await expandHistory(page);
-  const ciCard = cardByTitle(page, '项目构建未通过');
-  const link = ciCard.getByRole('link').first();
-  await link.click();
-  await expect(page.getByText(/sha256|[a-f0-9]{16}/i).first()).toBeVisible({ timeout: 15_000 });
+test('Activity 页无伪造 run 时间线（执行被拒后为空态）', async ({ page }) => {
+  await page.goto('/activity');
+  await expect(page.getByText(/还没有执行记录/).first()).toBeVisible({ timeout: 15_000 });
   await page.screenshot({ path: `${SHOT_DIR}/ui-activity.png`, fullPage: true });
 });

@@ -30,7 +30,7 @@ beforeEach(async () => {
   const connector = new FixtureConnector(config.repoRoot);
   const services: Services = {
     discovery: new DiscoveryService({ storage: store, clock: () => '2026-10-28T12:00:00.000Z' }),
-    orchestrator: new Orchestrator({ storage: store, artifactRoot: config.artifactRoot, clock: () => '2026-10-28T12:00:00.000Z', stepDelayMs: 0 }),
+    orchestrator: new Orchestrator({ storage: store, artifactRoot: config.artifactRoot, clock: () => '2026-10-28T12:00:00.000Z', stepDelayMs: 0, allowLegacyExecution: true }),
     chat: new MockAgentAdapter(),
     seedDemo: async () => {
       store.seedProjects(connector.loadProjects());

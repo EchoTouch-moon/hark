@@ -1,5 +1,9 @@
 # Blockers
 
+## 2026-11-02 · D-01 剩余验证
+
+PR #29 追加提交后，以 [PR checks](https://github.com/EchoTouch-moon/hark/pull/29/checks) 核对对应 head 的 Linux E2E、Windows 检查和 ci-gate，并等待最终人工安全复审；旧 head 的绿灯不能替代新 head。现有来源不明数据下 reset 会拒绝，纯 Demo 种子数据同样不能重置。
+
 > 每条记录复现命令、真实退出码、最小修复建议、是否需要人类操作。
 
 | id | task | severity | reproduction | attempts | next action |

@@ -4,6 +4,7 @@ import { FixtureConnector } from '@hearth/connectors';
 import { DEFAULT_SETTINGS, SettingsDtoSchema, type SettingsDto } from '../services.js';
 import type { AppDeps } from '../app.js';
 import type { SessionManager } from '../session.js';
+import { legacyDemoAllowed } from '../legacy-demo.js';
 
 const SETTINGS_KEY = 'settings';
 
@@ -19,6 +20,7 @@ export function registerCoreRoutes(app: FastifyInstance, deps: AppDeps, sessions
       status: 'ok',
       db,
       demoMode: deps.config.demoMode,
+      legacyDemoAvailable: legacyDemoAllowed(deps),
       provider: 'mock', // Legacy chat identity, retained for compatibility.
       chatProvider: 'mock',
       analysisProvider: deps.analysis?.identity() ?? null,

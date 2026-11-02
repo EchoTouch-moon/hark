@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useState } from 'react';
-import { ConfirmDialog, ErrorState, PageHeader } from '../components';
+import { ErrorState, PageHeader } from '../components';
 import { apiFetch } from '../features/api/client';
 import './SettingsPage.css';
 
@@ -63,7 +63,7 @@ async function fetchHealth(signal?: AbortSignal): Promise<HealthPayload> {
 
 /**
  * U05 Settings（M1-T08）：
- * 环境状态 / 数据源 / 安静时段 / 每日卡片预算 / 清空 Demo DB（二次确认）。
+ * 环境状态 / 数据源 / 安静时段 / 每日卡片预算 / Demo 数据保护状态。
  */
 export function SettingsPage() {
   const settingsFormId = useId();
@@ -82,11 +82,6 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
-
-  const [resetOpen, setResetOpen] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [resetNotice, setResetNotice] = useState<string | null>(null);
-  const [resetError, setResetError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -134,8 +129,6 @@ export function SettingsPage() {
   const retry = useCallback(() => {
     setSettingsError(null);
     setHealthError(null);
-    setResetNotice(null);
-    setResetError(null);
     setReloadKey((key) => key + 1);
   }, []);
 
@@ -190,21 +183,6 @@ export function SettingsPage() {
     }
   }, [settings, form]);
 
-  const handleResetConfirmed = useCallback(async (): Promise<void> => {
-    setResetOpen(false);
-    setResetting(true);
-    setResetError(null);
-    setResetNotice(null);
-    try {
-      await apiFetch<{ ok: boolean }>('/api/v1/demo/reset', { method: 'POST', json: {} });
-      setResetNotice('Demo 数据已清空。重新初始化演示数据需要再次执行 demo seed。');
-    } catch (cause) {
-      setResetError(cause instanceof Error ? cause.message : '重置 Demo 数据失败');
-    } finally {
-      setResetting(false);
-    }
-  }, []);
-
   /* ---------- 渲染 ---------- */
 
   if (settings === null || settingsError !== null) {
@@ -230,17 +208,6 @@ export function SettingsPage() {
   return (
     <section className="page">
       <PageHeader title="设置" subtitle="运行环境、数据源与打扰边界" />
-
-      {resetNotice !== null ? (
-        <p className="set-notice" role="status">
-          {resetNotice}
-        </p>
-      ) : null}
-      {resetError !== null ? (
-        <p className="set-inline-error" role="alert">
-          {resetError}
-        </p>
-      ) : null}
 
       <div className="page-section" aria-label="运行环境">
         <p className="page-section-title">运行环境</p>
@@ -406,35 +373,15 @@ export function SettingsPage() {
           <div className="set-danger-text">
             <h2 className="set-danger-title">重置 Demo 数据</h2>
             <p className="set-danger-desc">
-              只会清空本机专用的演示数据库（Demo
-              DB），不会触碰任何真实文件、个人库或外部账号。此操作不可撤销。
+              暂时无法可靠区分演示数据和真实数据，为保护已有数据，重置功能暂不可用。
             </p>
-            {!settings.demoMode ? (
-              <p className="set-danger-blocked">当前不是 Demo 模式，重置不可用。</p>
-            ) : null}
           </div>
-          <button
-            type="button"
-            className="btn btn-danger"
-            disabled={!settings.demoMode || resetting}
-            title={!settings.demoMode ? '仅 Demo 模式下可用' : undefined}
-            onClick={() => setResetOpen(true)}
-          >
-            {resetting ? '重置中…' : '重置 Demo 数据'}
+          <button type="button" className="btn btn-danger" disabled>
+            重置 Demo 数据
           </button>
         </div>
       </div>
 
-      <ConfirmDialog
-        open={resetOpen}
-        title="确认重置 Demo 数据？"
-        description="只会清空本机专用的演示数据库（Demo DB），不会碰任何真实文件、个人库或外部账号；此操作不可撤销。"
-        confirmText="清空 Demo DB"
-        cancelText="先不清空"
-        danger
-        onCancel={() => setResetOpen(false)}
-        onConfirm={() => void handleResetConfirmed()}
-      />
     </section>
   );
 }

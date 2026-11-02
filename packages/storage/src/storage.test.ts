@@ -222,11 +222,58 @@ describe('approvals & settings & audit', () => {
     expect(store.listAudit('obj-1')[0]!.eventType === 'tampered').toBe(true);
   });
 
-  it('resetDemoData wipes demo tables and refuses nothing in pure-demo DB', () => {
+  it('refuses reset and preserves mixed demo events, independent user chat, settings and audit', () => {
     store.ingestEvent(ev('e9'));
-    store.setSetting('x', 1);
-    store.resetDemoData();
-    expect(store.listEvents({ limit: 100 })).toHaveLength(0);
-    expect(store.getSetting('x')).toBe(null);
+    store.appendChat({ id: 'real-message', sessionId: 'independent-real-chat', role: 'user', content: 'private synthetic message', adapter: 'mock', createdAt: NOW });
+    store.setSetting('user-preferences', { theme: 'dark' });
+    store.audit('settings.updated', 'user', 'user-preferences', { theme: 'dark' });
+    const tables = ['projects', 'events', 'chat_messages', 'threads', 'settings', 'audit_log'] as const;
+    const snapshot = () => Object.fromEntries(tables.map(t => [t, store.db.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()]));
+    const before = snapshot();
+    expect(() => store.resetDemoData()).toThrow(/refusing reset/i);
+    expect(snapshot()).toEqual(before);
+    expect(store.listChat('independent-real-chat')[0]?.content).toBe('private synthetic message');
+    expect(store.getSetting('user-preferences')).toEqual({ theme: 'dark' });
+  });
+
+  it('allows an empty reset without deleting audit records', () => {
+    store.audit('test.event', 'tester', 'obj-1');
+    const before = store.listAudit();
+    expect(() => store.resetDemoData()).not.toThrow();
+    expect(store.listAudit()).toEqual(before);
+  });
+
+  it.each(['event', 'setting', 'chat', 'thread', 'source'] as const)('refuses unclassified %s data even if all projects are demo', kind => {
+    if (kind === 'event') store.ingestEvent(ev('e9'));
+    if (kind === 'setting') store.setSetting('user-preferences', { theme: 'dark' });
+    if (kind === 'chat') store.appendChat({ id: 'm1', sessionId: 'unbound', role: 'user', content: 'message', adapter: 'mock', createdAt: NOW });
+    if (kind === 'thread') store.insertThread({ id: 'thread-real', title: 'Real chat', preview: '', projectId: null, proactiveStatus: 'idle', proactiveMessageId: null, updatedAt: NOW, createdAt: NOW });
+    if (kind === 'source') store.db.prepare("INSERT INTO sources (id, scope, type) VALUES ('source-real', 'private', 'local')").run();
+    expect(() => store.resetDemoData()).toThrow(/refusing reset/i);
+    if (kind === 'event') expect(store.listEvents({ limit: 100 })).toHaveLength(1);
+    if (kind === 'setting') expect(store.getSetting('user-preferences')).toEqual({ theme: 'dark' });
+    if (kind === 'chat') expect(store.listChat('unbound')).toHaveLength(1);
+    if (kind === 'thread') expect(store.getThread('thread-real')).not.toBeNull();
+    if (kind === 'source') expect(store.db.prepare("SELECT id FROM sources WHERE id = 'source-real'").get()).toBeDefined();
+  });
+
+  it('acquires the write lock before checking reset eligibility', () => {
+    const other = openDatabase(path.join(dir, 'test.sqlite'));
+    other.exec('BEGIN IMMEDIATE');
+    store.db.exec('PRAGMA busy_timeout = 0');
+    try {
+      expect(() => store.resetDemoData()).toThrow(/locked/i);
+    } finally {
+      other.exec('ROLLBACK');
+      other.close();
+      store.db.exec('PRAGMA busy_timeout = 5000');
+    }
+    expect(() => store.resetDemoData()).not.toThrow();
+  });
+
+  it('refuses reset when a non-demo project exists', () => {
+    store.seedProjects([{ id: 'user-project', name: 'User', description: '', visibility: 'private' }]);
+    expect(() => store.resetDemoData()).toThrow(/non-demo/i);
+    expect(store.listProjects().find(p => p.id === 'user-project')).toBeDefined();
   });
 });

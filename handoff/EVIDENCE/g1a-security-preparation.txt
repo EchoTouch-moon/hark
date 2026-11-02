@@ -1,0 +1,53 @@
+===== D-01 preparation: legacy execution paths closed (NOT PUSHED) =====
+branch: ops/security-g1a-legacy-execute-disabled  base: bot/hearth-g0-contract @ 4fd0480b
+source commit: 5c0a9101 (from codex/project-first-conversation), cherry-picked, not pushed
+prepared: 2026-11-01T10:43:31Z  host=MINGW64_NT-10.0-22621  node=v22.22.2
+
+--- why this commit exists ---
+  master                       : route not registered at all
+  bot/hearth-g0-contract 4fd0480: POST /api/v1/threads/:id/actions/:actionId/execute
+                                 registered with a LIVE handler (threads.ts:239)
+  codex/project-first-conversation: same route -> hard 403 LEGACY_ACTIONS_DISABLED
+  git merge-base --is-ancestor 5c0a9101 origin/bot/hearth-g0-contract -> NO (on neither mainline)
+
+--- the handlers after the change ---
+      // Client-supplied demo labels cannot establish mode, scope or completion.
+      app.post('/api/v1/threads/:id/actions/:actionId/execute', async (_req, reply) =>
+        reply.status(403).send({ error: { code: 'LEGACY_ACTIONS_DISABLED', message: '旧模拟操作当前不可用。' } }),
+      );
+
+--- dynamic assertions that exist in the cherry-picked test ---
+        const before = snapshot();
+        for (const demo of [false, true]) {
+          const result = await app.inject({ method: 'POST', url: '/api/v1/threads/thread-a/actions/forged/execute', headers, payload: { action: { id: 'forged', label: '执行', needsConfirm: false, demo } } });
+          expect(result.statusCode).toBe(403);
+          expect(JSON.stringify(result.json())).not.toContain('已完成');
+        }
+        const [run, grant] = await Promise.all([
+          app.inject({ method: 'POST', url: `/api/v1/cards/${card.id}/execute?sync=1`, headers }),
+          app.inject({ method: 'POST', url: '/api/v1/approvals/forged-run', headers, payload: { decision: 'approve' } }),
+        ]);
+        expect(run.statusCode).toBe(403);
+        expect(grant.statusCode).toBe(403);
+        expect(execute).not.toHaveBeenCalled();
+
+--- verification actually run ---
+  pnpm exec vitest run apps/server/src/http/g1a-security.test.ts : 20 passed (20)
+  pnpm typecheck : 0 errors
+  pnpm lint      : 0 errors, 11 warnings, all pre-existing, none from new files
+  pnpm test      : 59 files passed / 485 passed / 1 skipped / 0 failed
+
+--- conflicts and how they were resolved ---
+  Only two files conflicted, both living status documents:
+    handoff/MORNING-REPORT.md  -> kept the G0 line's current content (--ours)
+    handoff/STATUS.md          -> kept the G0 line's current content (--ours)
+  Rationale: these are status logs. Overwriting the G0 line's current status with
+  the stale state of a 53-commit-old side branch would destroy newer record keeping.
+
+--- still missing before this could be merged ---
+  1. a human security review, because this changes an action execution surface
+  2. confirmation that nothing in current use still depends on that endpoint being live
+  3. note: reverting this RESTORES the live endpoint, so rollback is not free
+  4. the same decision must then be made for master before S8 brings the route there
+
+===== not pushed. awaiting approval. =====

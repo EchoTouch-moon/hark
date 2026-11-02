@@ -1,5 +1,9 @@
 # Actual implementation decisions
 
+## 2026-11-02 · D-01 reset 安全取舍
+
+旧表没有可信的逐条 Demo 归属。为保护独立聊天、设置及审计，reset 在写锁内遇到任何来源不明的待清理数据即拒绝，不删除任何表；因此纯 Demo 种子数据亦暂无法 reset。要恢复有数据时的 reset，需另行设计可验证的隔离或数据归属；不在本次扩大存储重构。设置页禁用此入口并说明原因，避免误导。
+
 > Agent 修改技术决策时，记录时间、任务、原计划、变更原因、对 Gate 的影响、引用测试/日志。规划合同不能静默更改。
 
 | timestamp | task | decision | reason | consequence | evidence |
