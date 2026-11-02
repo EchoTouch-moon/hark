@@ -2,6 +2,7 @@
 
 > 文档状态：PROPOSED / REVIEW REQUIRED。**以阶段验收驱动开发，不设置预定开工日、截止日或时间盒；日期仅标记审计快照。**
 > 适用基线：bot/hearth-g0-contract。此文件只规划和归档，不改代码、不变更授权、不合并任何 PR、不发起真实研究或模型调用。
+> 最新事实核查：`bot/hearth-g0-contract@6ef6fe0`；本阶段可认领任务与 L/M/H 模型分类见 `tasks/HEARTH-GATE-CLAIMABLE-BACKLOG.md`。旧文档中的静态门禁结论不得覆盖后续实际 PR 合并和 CI。
 > 产品北极星：项目有经历、有观点；公开研究在授权范围内主动发生；重要发现轻敲、平时安静；用户审阅具体方案后才可发起任何真实执行。主界面仍是炉心与对话，而非卡片工作台。
 
 ## 1. 证据快照（2026-11-02，按各 PR 独立范围解释）
@@ -10,10 +11,11 @@
 |---|---|---|
 | PR #29 | 已合并到 G0，旧 execute / approval fail-closed 及相关 Demo 修复有合成测试和 CI 证据 | 不等同完整 G1-A 安全通过；真实执行仍不开放 |
 | PR #30 | 已合并到 G0，三个事件响应入口统一 restricted payloadRef 脱敏，525 单测和 CI 属该 PR 证据 | 不等同跨项目、恢复和全部隐私面已核验 |
+| PR #32 | **已合并到 G0**（squash `6ef6fe0`）；权限 PUT CSRF 拒绝及真实空会话冷启动、重试保护已有独立技术复审；原 PR head `1715ea0` CI 555 单测 / 28 E2E；合并后 G0 push CI `41414610654` success | **仅 A-01-CSRF 单批 PASS**，不等于 G1-A 其他负例已通过 |
 | PR #12 | 开放的 research-only PR，R11–R13 是源码比较和合同/规格研究 | 不可整包当成产品正式实现；勘误和实验必须分开看 |
 | PR #15 | 开放的 draft，仅离线合成呈现资格 PoC，19 个用例 | 未接 API、UI、存储、模型；不是实际呈现质量或 H1 验收 |
 | PR #6 / #5 / #4 | 旧前端/产品重定向 PR 仍开放，存在不同 base 和潜在重叠 | 不得整包合并、重复实现或覆盖 G0 已有组件 |
-| G0 需求/计划文件 | 02/03 明文仍为 CONDITIONAL_PASS / revised pending review；旧进度表可能落后于 #29/#30 | 不以文档旧状态覆盖最新实际证据，也不把新修复抬为整阶段 PASS |
+| G0 需求/计划文件 | 02/03 明文仍为 CONDITIONAL_PASS / revised pending review；旧进度表可能落后于 #29/#30/#32 | 不以文档旧状态覆盖最新实际证据，也不把新修复抬为整阶段 PASS |
 | 分支保护 | 本轮实时读到 protect-master / protect-g0 两条 active rulesets；均强制 PR、strict ci-gate，并禁止强推和删除；历史 11/01 文档的 NOT APPLIED 已过时 | 不修改现有规则；未来调整仍须单独确认 |
 
 权威产品合同优先阅读：docs/mvp/g0/02-contract-and-decisions.md、03-plan-threats-traceability.md、05-dual-track-and-viewmodel.md、根目录 NARRATIVE.md。安全事实以固定代码 SHA、直接 API 负例与对应 CI 为准。文档中前后冲突的地方必须列差异，不允许编码 Agent 隐式选一个版本。
@@ -21,7 +23,7 @@
 ## 2. G0 收口队列（逐条按证据销项；完成即进入下一门禁审查）
 
 - [ ] G0-01：冻结 MVP 体验与行为 Must：证据三类（观察/公开研究/用户决定）；项目-观点-会话分域；无自主真实执行；公开研究、模型、观察、执行四种授权各自独立；火焰与 Story 同源，事实未知不能猜测活跃。
-- [ ] G0-02：按 #29/#30 合并后的真实 G0 重新做 G1-A 缺口矩阵：全部旧执行入口和间接调度、真实/未知模式、Demo 隔离、GET 零写入、双项目串线、恢复语义、Origin/CSRF、受限 payload 引用。每行标 NOT_RUN / PASS / FAIL / BLOCKED，附路径、命令、SHA。
+- [ ] G0-02：按 #29/#30/#32 合并后的真实 G0 重新做 G1-A 缺口矩阵：全部旧执行入口和间接调度、真实/未知模式、Demo 隔离、GET 零写入、双项目串线、恢复语义、Origin/CSRF、受限 payload 引用。每行标 NOT_RUN / PASS / FAIL / BLOCKED，附路径、命令、SHA。
 - [ ] G0-03：单独处理 Demo reset：当前未知来源时 fail-closed；验证 API 与 UI 行为一致。可信数据归属没有建成前，不可解锁清理按钮，不得删除私人数据。
 - [ ] G0-04：明确 master 与 G0 的最终集成策略：开发线以 G0 为基础；历史 UI PR 按文件级 cherry-pick / 重做或关闭重叠；两条 active rulesets 均要求 PR + strict ci-gate、禁止强推/删除（见 07 静态核对）。不变更保护规则。
 - [ ] G0-05：对 #12 仅提炼可迁移机制和明确勘误，对 #15 独立验收和标识模拟范围；不把研究分支直接合并进产品。
@@ -36,10 +38,10 @@
 | 门禁 | 进入依据与可执行任务 | 达成成果 / 出闸证据 | 当前状态 |
 |---|---|---|---|
 | G0 · 合同与基线 | 核对 #29/#30、审阅 #12/#15、冻结 G0-02/03/05 冲突、旧 PR 分流、划清权限 | 合同与任务包审阅完成；S0-01 缺口矩阵经复核；G1-A 具体编码范围获得授权 | REVIEW_REQUIRED |
-| G1-A · 安全基线 | G0 准入；隔离合成数据执行 A-01 的直接 API / 执行 / 跨项目 / 恢复负例 | executor=0（真实/未知违规路径）、存储/审计/来源隔离、GET 零写、恢复不重执行、CI 与独立安全审阅 | NOT_PASSED |
+| G1-A · 安全基线 | G0 准入；已完成 #29/#30/#32 局部安全修复，继续直接 API / 跨项目 / 恢复负例 | executor=0（真实/未知违规路径）、存储/审计/来源隔离、GET 零写、恢复不重执行、CI 与独立安全审阅 | **PARTIAL_PASS（#32 A-01-CSRF 已合并）；GATE NOT_PASSED** |
 | G1-B · Project Chronicle | G1-A PASS 后执行 B-01 → B-02 | 项目身份与线程绑定、证据分型、迁移、重启、删除 journal、双项目隔离均通过 | WAITING_FOR_G1-A |
 | G1-C · Opinion Memory | G1-B PASS 后执行 C-01 | 不可变 Revision、CAS、用户反馈、引用失效、幂等与恢复验收通过 | WAITING_FOR_G1-B |
-| E1 · Experience（独立前端） | G1-A PASS 且 HearthViewModel 版本稳定，执行 fixture-only UI；可提前开展只读设计与测试方案 | 对话/火焰/错误/权限/无障碍/双视口体验证据齐备，Mock 始终明示 | UI_REVIEW_CAN_PROCEED |
+| E1 · Experience（独立前端） | 现有 E1/M1/M2/I1 基础组件已合并；G1-A 完整 PASS 后开展新的真实集成；当前可做仅 fixture/测试补强 | 对话/火焰/错误/权限/无障碍/双视口体验证据齐备，Mock 始终明示 | **BASE_IMPLEMENTED；后续 QA/真实集成待依赖** |
 | G2 · 公开研究 | G1-A/B/C 均 PASS；明确公开来源、权限、范围、预算；先离线再受控真实验证 | 外发与隐私负例、预算账本、取消/恢复、真实公开来源记录可靠且遵守授权 | WAITING_FOR_G1 |
 | G3 · 观点形成与克制呈现 | Opinion Memory 稳定；资格判定 PoC 先独立评审；真实来源依赖 G2 | 来源、目标、价值门槛、presented/ack 去重/不确定性和反馈实测通过 | WAITING_FOR_DEPENDENCIES |
 | I1 / G4 · 前后端集成与叙事 | Mind 的有界 API、E1 验收通过，单一 HearthViewModel 接入 | 多项目切换、真实错误、Flame/Story 一致、主动观点不抢焦点、Mock/真实不混淆 | WAITING_FOR_DEPENDENCIES |
