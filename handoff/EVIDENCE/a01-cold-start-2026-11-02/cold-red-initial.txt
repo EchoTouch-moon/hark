@@ -1,0 +1,54 @@
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer]
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+  ✘  1 tests/e2e/hearth-permissions-csrf.spec.ts:10:1 › 全新浏览器和空服务端会话可进入授权并重新读取真实火候 (11.8s)
+
+
+  1) tests/e2e/hearth-permissions-csrf.spec.ts:10:1 › 全新浏览器和空服务端会话可进入授权并重新读取真实火候 ───────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('button', { name: '去授权' })
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('button', { name: '去授权' }) with timeout 10000ms
+      - waiting for getByRole('button', { name: '去授权' })
+
+
+      53 |     await page.goto(origin);
+      54 |     await dismissWelcome(page);
+    > 55 |     await expect(page.getByRole('button', { name: '去授权' })).toBeVisible();
+         |                                                             ^
+      56 |     const firstGet = calls.find(call => call.path === '/api/v1/hearth');
+      57 |     expect(firstGet).toMatchObject({ method: 'GET', status: 401 });
+      58 |     const authIndex = calls.findIndex(call => call.path === '/api/v1/auth/session' && call.status === 200);
+        at <isolated-worktree>/tests/e2e/hearth-permissions-csrf.spec.ts:55:61
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/hearth-permissions-csrf-全新浏览器和空服务端会话可进入授权并重新读取真实火候/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/hearth-permissions-csrf-全新浏览器和空服务端会话可进入授权并重新读取真实火候/error-context.md
+
+  1 failed
+    tests/e2e/hearth-permissions-csrf.spec.ts:10:1 › 全新浏览器和空服务端会话可进入授权并重新读取真实火候 ────────────────────
+
+EXIT_CODE=1

@@ -1,5 +1,10 @@
 # Actual implementation decisions
 
+## 2026-11-02 · A-01 冷启动会话
+
+Hearth GET 保留原始响应解析以呈现合法的 403 permission-denied 和 503 错误 ViewModel；仅精确的 401 UNAUTHORIZED 复用统一会话初始化并最多重读一次，取消后不继续。测试使用空浏览器与独立空服务端数据库，并暂缓 session 初始化至首次 Hearth 401，以稳定覆盖竞态。
+
+
 ## 2026-11-02 · A-01 重试安全边界
 
 仅针对同源 API、可重放空或字符串 body，在服务端处理器前门禁明确返回 `401 UNAUTHORIZED` 或 `403 CSRF_DENIED` 时刷新会话并最多重试一次；取消、网络失败及普通业务拒绝不重放。PATCH 不按 CSRF 错误重试，因为当前服务端 CSRF 门禁不覆盖 PATCH。保留 observe-only、严格请求体验证和 `execute=false`；详见 `handoff/EVIDENCE/a01-csrf-2026-11-02/`。

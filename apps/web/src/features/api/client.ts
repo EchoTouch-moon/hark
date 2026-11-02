@@ -105,7 +105,7 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 /** 向服务器请求新的会话 CSRF token 并保存 */
-async function fetchSessionToken(signal?: AbortSignal | null): Promise<string> {
+export async function fetchSessionToken(signal?: AbortSignal | null): Promise<string> {
   let response: Response;
   try {
     response = await window.fetch(SESSION_PATH, {

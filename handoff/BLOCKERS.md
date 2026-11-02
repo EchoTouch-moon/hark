@@ -1,5 +1,10 @@
 # Blockers
 
+## 2026-11-02 · A-01 复审及 PATCH 后续
+
+PR #32 冷启动跟进需以新 head 的 Linux Mock E2E、Windows 与 ci-gate 为准，再等待独立安全复审；本批未授权自动合并。服务端目前的 CSRF/Origin 写入门禁未覆盖 PATCH，当前未确认存在 PATCH 业务路由；新增 PATCH 写路由前须单独统一防护并补负例，本批未修改。
+
+
 ## 2026-11-02 · A-01 独立复审与跨平台结果
 
 本批本机检查通过；Linux Mock E2E、Windows 和 `ci-gate` 以独立 PR 当前 head 对应结果为准。最终独立安全复审及合并未授权，不能视为完整 G1-A PASS。Demo reset 和其他 G1-A 缺口仍按各自计划处理。

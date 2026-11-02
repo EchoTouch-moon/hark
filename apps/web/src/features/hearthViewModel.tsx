@@ -1,4 +1,4 @@
-import { ApiError, apiFetch } from './api/client';
+import { ApiError, apiFetch, fetchSessionToken } from './api/client';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { HearthViewModel, Permissions, type Permissions as PermissionsT } from '@hearth/hearth-contract';
 import ok from '@hearth/hearth-contract/fixtures/ok.json';
@@ -41,17 +41,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** GET /api/v1/hearth — accept 200/403/503 bodies that are valid ViewModels; never fixture-fallback. */
 export async function fetchHearthViewModel(signal?: AbortSignal): Promise<ViewModelSource> {
   let response: Response;
+  const getHearth = () => window.fetch('/api/v1/hearth', {
+    method: 'GET',
+    credentials: 'same-origin',
+    headers: { accept: 'application/json' },
+    signal,
+  });
   try {
-    response = await window.fetch('/api/v1/hearth', {
-      method: 'GET',
-      credentials: 'same-origin',
-      headers: { accept: 'application/json' },
-      signal,
-    });
+    response = await getHearth();
+    if (response.status === 401 && !signal?.aborted) {
+      const raw: unknown = await response.clone().json().catch(() => null);
+      if (isRecord(raw) && isRecord(raw.error) && raw.error.code === 'UNAUTHORIZED' && !signal?.aborted) {
+        // Bootstrap using the same session/token mechanism as the API client.
+        // A 403/503 Hearth ViewModel must remain available to the caller.
+        await fetchSessionToken(signal);
+        if (signal?.aborted) return { kind: 'network_error', code: 'network_error', message: '请求已取消' };
+        response = await getHearth();
+      }
+    }
   } catch (cause) {
     return {
       kind: 'network_error',
-      code: 'network_error',
+      code: cause instanceof ApiError ? cause.code : 'network_error',
       message: cause instanceof Error ? cause.message : '网络错误',
     };
   }
