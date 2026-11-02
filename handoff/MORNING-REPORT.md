@@ -1,5 +1,9 @@
 # Morning Report — 2026-10-28 夜间运行（主交付 HEAD: f076cb4，前序 145213c）
 
+## 2026-11-02 · G0 合并及事件脱敏跟进
+
+PR #29 经用户单独授权合并到 G0（`de31607`），合并后 CI 已通过。其后的独立修复统一 `/events`、`/projects/:id`、`/cards/:id` 的 restricted 事件 `payloadRef` 脱敏；旧泄露已用合成数据复现，本地定向和全量测试及工程检查通过。独立 PR 仍待实际 CI 和复核；Demo reset 继续保守拒绝并留待后续。证据见 `handoff/EVIDENCE/restricted-event-redaction-2026-11-02/`。
+
 ## 2026-11-02 · D-01 复审问题跟进
 
 修复 Demo 首次播种条件，添加真实 startServer 测试；reset 在存在来源不明数据时拒绝并保留审计。两份安全审查文档已更新并将旧结论标为历史。本机合成测试、typecheck、lint、build 和 macOS Mock E2E 已通过，具体数字和日志见 `handoff/EVIDENCE/d01-followup-2026-11-02/`。Linux/Windows CI 与最终复审以 PR #29 的新 head 为准；未合并或修改 G2。

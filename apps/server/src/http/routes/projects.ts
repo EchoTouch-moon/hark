@@ -1,10 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../app.js';
+import { projectEventForResponse } from '../event-projection.js';
 
 function projectSnapshot(deps: AppDeps, projectId: string) {
   return {
     project: deps.storage.listProjects().find((p) => p.id === projectId) ?? null,
-    events: deps.storage.listEvents({ projectId, limit: 30 }),
+    events: deps.storage.listEvents({ projectId, limit: 30 }).map(projectEventForResponse),
     cards: deps.storage.listCards({ projectId, limit: 50 }),
     runs: deps.storage.listRuns({ projectId, limit: 50 }),
   };
@@ -28,8 +29,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: AppDeps): void
     const limit = Math.min(Number(q.limit ?? 30) || 30, 100);
     const events = deps.storage
       .listEvents({ projectId: q.projectId, limit })
-      // projection: restricted payloads never leave the server (R-10)
-      .map((e) => ({ ...e, payloadRef: e.sensitivity === 'restricted' ? undefined : e.payloadRef }));
+      .map(projectEventForResponse);
     return reply.send({ events });
   });
 }

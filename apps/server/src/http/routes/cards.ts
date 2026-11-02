@@ -6,6 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
+import { projectEventForResponse } from '../event-projection.js';
 
 const SnoozeBodySchema = z
   .object({ until: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/) })
@@ -33,7 +34,7 @@ export function registerCardRoutes(app: FastifyInstance, deps: AppDeps): void {
     if (!card) return reply.status(404).send({ error: { code: 'CARD_NOT_FOUND', message: `card ${id} not found` } });
     const candidate = deps.storage.getCandidate(card.candidateId);
     const events = candidate
-      ? candidate.eventIds.map((eid) => deps.storage.getEvent(eid)).filter((e) => e !== null)
+      ? candidate.eventIds.map((eid) => deps.storage.getEvent(eid)).filter((e) => e !== null).map(projectEventForResponse)
       : [];
     const run = deps.storage.getRunByCard(id);
     return reply.send({ card, events, run });

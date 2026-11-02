@@ -1,5 +1,9 @@
 # Task Status — Hearth 夜间自动开发
 
+## 2026-11-02 · restricted 事件响应脱敏
+
+PR #29 已经用户单独授权后合并到 G0，合并提交 `de31607`；G0 合并后 Actions run `41379450079` 全绿。基于该版本独立修复三个事件 API 的 restricted `payloadRef`：旧代码的项目详情和卡片详情泄露已在合成测试中复现，修复后的 44 项定向、525 项全量测试、typecheck、lint、build 均通过。详见 `handoff/EVIDENCE/restricted-event-redaction-2026-11-02/`。独立 PR 的 CI 与安全验收以对应提交实际结果为准，尚未合并；Demo reset 后续项未实施。
+
 ## 2026-11-02 · D-01 独立安全复审跟进
 
 在 PR #29 的 `daf03e14` 基础上修复首次 Demo 初始化与 legacy 执行开关耦合；缺少可信归属时 reset 拒绝而非删除数据，审计记录保留。含种子数据的纯 Demo 库同样无法 reset。合成数据本机定向 49、全量 522 和 macOS Mock E2E 25 项通过，typecheck、lint、build 退出码均为 0；完整输出见 `handoff/EVIDENCE/d01-followup-2026-11-02/`。新提交的 Linux/Windows 与 ci-gate 以 PR checks 为准，最终安全复审未完成；未合并、未修改 G2。
