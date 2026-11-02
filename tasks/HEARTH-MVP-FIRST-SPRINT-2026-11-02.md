@@ -1,9 +1,9 @@
-# Hearth 正式开发首批任务包｜Sprint 0 / G1-A / G1-B / G1-C / Experience（2026-11-02）
+# Hearth 正式开发阶段任务池｜G0 / G1-A / G1-B / G1-C / Experience（版本记录：2026-11-02）
 
-> 状态：TASKS PROPOSED · NOT AUTHORIZED FOR CODE EXECUTION。开工目标：2026-11-05。
+> 状态：TASKS PROPOSED · NOT AUTHORIZED FOR CODE EXECUTION。**不设置开工日期、任务截止日或时间盒。由前置 Gate PASS、具体授权与验收状态决定何时执行。**
 > 初始编码基线：bot/hearth-g0-contract（每轮开始前重新拉取固定 SHA）；开发分支各自隔离，所有改动通过 PR，不直推 master 或 G0。
 > 配套开工门禁：docs/mvp/g0/06-2026-11-02-development-readiness.md。原始合同：docs/mvp/g0/02-contract-and-decisions.md、03-plan-threats-traceability.md、05-dual-track-and-viewmodel.md。
-> 此任务包为可供用户逐批授权的执行规格，不是总包授权。模型、公开检索、真实私人项目均默认关闭。
+> 此任务包为可供用户逐批授权的执行规格，不是总包授权。模型、公开检索、真实私人项目均默认关闭。文件名保留首次建立时的历史版本标记，不表示固定 Sprint 周期或完成期限。
 
 ## 一、开发策略与分工
 
@@ -12,7 +12,22 @@
 - **共享契约**：packages/hearth-contract 的版本化 Zod + fixtures、packages/contracts 既有内容及服务器响应投影；新增或改变公共 schema 必须单独经过 G0 小闸审查，双方不在各自分支偷改。
 - **成果判断**：Hearth 不是自主做工的 Agent，核心成果是有来源、有反证和记忆的项目观点，克制呈现，并能听懂用户的反驳和新决定。所有 Plan 为不可执行草案。
 
-## 二、任务清单（按门禁顺序）
+### 任务领取与转阶段规则
+
+**不是一次性把以下所有任务并行发给编码 Agent。** 当前只释放已满足前置的任务；每批任务必须具备可观察产物、负例与退出标准。每完成一批，先提交审阅和证据，再由 Gate 结果解锁下一批。若出现 FAIL / BLOCKED，不按日期升级阶段。
+
+| 工作项 | 所需前置 | 当前任务判断 | 下一道闸 |
+|---|---|---|---|
+| S0-01 · 基线及静态安全核对 | 已有 G0 分支及合同 | 第一轮静态报告已产出（07 文档），仍需评审并补充动态测试计划 | 审阅结果 + G1-A 具体编码授权 |
+| A-01 · G1-A 动态负例和最小修复 | S0-01 审阅、用户明确授权 | WAITING_FOR_APPROVAL / DYNAMIC_NOT_RUN | 全部关键安全负例与 CI 实测 PASS |
+| B-01 / B-02 · Chronicle | G1-A PASS | BLOCKED_BY_G1-A | 迁移/绑定/隔离/恢复和只读接口 PASS |
+| C-01 · Opinion Memory | G1-B PASS | BLOCKED_BY_G1-B | 版本 CAS、来源、用户反馈及恢复 PASS |
+| E-01 · 纯 fixture UI | G1-A PASS，ViewModel 冻结；设计和 QA 可先行 | DESIGN_ONLY | UI/键盘/状态/错误行为 PASS |
+| I-01 · Mind/Experience 对接 | G1-B/C、E-01 PASS | BLOCKED_BY_DEPENDENCIES | HVM 有界真实投影集成 PASS |
+
+任务状态建议使用 NOT_STARTED、IN_PROGRESS、READY_FOR_REVIEW、PASS、FAIL、BLOCKED；每次状态变化必须附对应 PR、测试 SHA 与验收记录，不允许将“已写代码”直接当成 PASS。优先级按安全阻塞、用户价值与当前依赖实时调整。
+
+## 二、任务清单（按验收依赖顺序，可动态调整优先级）
 
 ### S0-01｜正式开发代码基线与安全差距审计（P0，先做）
 
@@ -79,10 +94,10 @@
 5. PR 描述必须注明：head SHA、变更范围、测试命令和结果、红→绿证据、权限/网络调用计数、已知缺口、回滚步骤、与 G0 条款及 Nxx 用例映射。
 6. 合并、启用分支规则、调度真实公开搜索、付费模型调用、用户私有项目访问及真正执行动作要新的明确授权；本任务包不提供这些权限。
 
-## 四、11 月 5 日开工前最小交接表
+## 四、从 G0 审查状态进入 G1-A 代码开发的最小准入清单
 
 - [ ] S0-01 审计单与 G1-A 范围评审。
-- [ ] G0 02/03/05 冲突和 2026-11-02 当前事实写入差异表。
+- [ ] G0 02/03/05 的冲突和本轮证据快照形成差异表；日期仅用于记录事实，不作阶段时限。
 - [ ] G0 / master 合并策略和历史 PR 保留/拆分决定；当前两条 branch rulesets 已确认 active，开发过程遵循 strict ci-gate。
 - [ ] G1-A 的独立 PR 路径、Mock 测试与回滚方案得到具体审批。
 - [ ] 记下尚未批准的 ResearchPolicy/Provider/预算/H1 真实样本，不能从计划推断许可。
