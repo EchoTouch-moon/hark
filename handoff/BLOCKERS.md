@@ -1,5 +1,10 @@
 # Blockers
 
+## 2026-11-02 · 项目聊天临时关闭与最终复审
+
+线程/chat 临时保护已实现，等待独立 PR 最新 head 的 Linux/Windows、ci-gate 和安全复审；不自动合并。可信项目身份/来源与多对多绑定、旧记录明确恢复路径仍需后续设计；cards/runs/SSE、Demo reset 和完整恢复另行验收。下方“项目绑定合同待审”为历史基线，当前临时合同以 `docs/verification/g1a-thread-scope-contract-2026-11-02.md` 为准。
+
+
 ## 2026-11-02 · G1-A 项目绑定合同
 
 目前存在经过合成测试证明的 projectId 与 thread 绑定不一致仍写入现象；全局访问、项目焦点、多对多绑定与旧记录兼容合同待审后实施。恢复测试未覆盖运行中执行器崩溃或 completed→evidence 窗口；reset 可信归属未建立。见 `docs/verification/g1a-project-scope-recovery-2026-11-02.md`。

@@ -1,6 +1,6 @@
 # G1-A 项目作用域与恢复：合并 A-01 后的安全基线
 
-状态：**基线与局部表征完成；项目作用域合同待审；G1-A NOT_PASSED**。代码基线 `bot/hearth-g0-contract@6ef6fe00c90545749f8beef25ac5753e13ccc8e9`，PR #32 squash merge；G0 [Actions run 41414610654](https://github.com/EchoTouch-moon/hark/actions/runs/41414610654) 的 Linux、Windows 和 `ci-gate` 均成功。CI 不等于完整 G1-A 安全验收。
+状态：**基线与局部表征完成；本批临时关闭项目聊天合同已按用户选择实施，等待独立复审；G1-A NOT_PASSED**。代码基线 `bot/hearth-g0-contract@6ef6fe00c90545749f8beef25ac5753e13ccc8e9`，PR #32 squash merge；G0 [Actions run 41414610654](https://github.com/EchoTouch-moon/hark/actions/runs/41414610654) 的 Linux、Windows 和 `ci-gate` 均成功。CI 不等于完整 G1-A 安全验收。
 
 ## 已证实的项目上下文行为
 
@@ -18,7 +18,9 @@
 - `Storage.resetDemoData()` 在写锁内遇到来源不明的待清理数据即拒绝并回滚，审计保留；混合数据等既有测试包含于本轮 50 项局部回归。当前没有可信逐条 Demo 归属，纯 Demo 数据也可能拒绝；API 与禁用的前端入口、错误文本的一致性以及可信隔离模型需独立处理，不能放宽以换取可重置。
 - 本轮 50 项相关已有测试和 typecheck 通过。此前 CSRF / restricted 事件 / 执行禁用只按各自已验收范围计算，不能外推到 scope、全量恢复或真实数据安全。
 
-## 下一独立批次：项目作用域合同与最小修复方案（待审）
+## 项目作用域方案背景（历史草案）
+
+用户已选择在可信绑定完成前暂时关闭项目内聊天并保留全局对话；现行临时合同见 `g1a-thread-scope-contract-2026-11-02.md`。以下原方案为审阅时的历史设计输入，不能解读为当前已经开放项目绑定。
 
 PR #31 的 ADR-01 是**待审设计**，提出全局线程、线程与项目的多对多绑定以及显式 focusedProjectId；不应悄然替换成“一线程唯一项目”。同一 session 在本地可能有全局访问；项目焦点的隔离保护上下文一致性，不能假装客户端的 projectId 就是独立身份或授权凭证。
 

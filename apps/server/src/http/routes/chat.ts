@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import { isUnsafeLegacyMessage } from './legacy-chat.js';
+import { globalThreadDenial, PROJECT_CHAT_UNAVAILABLE } from './thread-scope.js';
 
 const ChatBodySchema = z
   .object({
@@ -13,12 +14,28 @@ const ChatBodySchema = z
   .strict()
   .refine((b) => Boolean(b.sessionId || b.threadId), {
     message: 'sessionId or threadId required',
+  })
+  .refine((b) => !b.sessionId || !b.threadId || b.sessionId === b.threadId, {
+    message: 'sessionId and threadId must match',
   });
+
+const HistoryQuerySchema = z.object({
+  sessionId: z.string().min(1).max(128).optional(),
+  threadId: z.string().min(1).max(128).optional(),
+  projectId: z.string().min(1).max(128).optional(),
+}).strict().refine((q) => !q.sessionId || !q.threadId || q.sessionId === q.threadId, {
+  message: 'sessionId and threadId must match',
+});
 
 export function registerChatRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.post('/api/v1/chat', async (req, reply) => {
     const body = ChatBodySchema.parse(req.body);
+    if (body.projectId != null) {
+      return reply.status(PROJECT_CHAT_UNAVAILABLE.status).send({ error: { code: PROJECT_CHAT_UNAVAILABLE.code, message: PROJECT_CHAT_UNAVAILABLE.message } });
+    }
     const threadId = body.threadId ?? body.sessionId!;
+    const denial = globalThreadDenial(deps.storage, threadId);
+    if (denial) return reply.status(denial.status).send({ error: { code: denial.code, message: denial.message } });
     deps.storage.ensureThread(threadId);
     const now = new Date().toISOString();
     deps.storage.appendChat({
@@ -72,8 +89,13 @@ export function registerChatRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   app.get('/api/v1/chat/history', async (req, reply) => {
-    const q = req.query as { sessionId?: string; threadId?: string };
+    const q = HistoryQuerySchema.parse(req.query);
+    if (q.projectId !== undefined) {
+      return reply.status(PROJECT_CHAT_UNAVAILABLE.status).send({ error: { code: PROJECT_CHAT_UNAVAILABLE.code, message: PROJECT_CHAT_UNAVAILABLE.message } });
+    }
     const threadId = q.threadId ?? q.sessionId ?? 'thread-default';
+    const denial = globalThreadDenial(deps.storage, threadId);
+    if (denial) return reply.status(denial.status).send({ error: { code: denial.code, message: denial.message } });
     const stored = deps.storage.listChat(threadId);
     const messages = stored.filter((m) => !isUnsafeLegacyMessage(m)).map((m) => ({
       id: m.id,

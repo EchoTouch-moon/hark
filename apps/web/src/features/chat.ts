@@ -302,9 +302,7 @@ export async function fetchProactive(
     }
     return { suggestion: data.suggestion ?? null, mock: false };
   } catch (err) {
-    if (err instanceof ApiError && err.status !== 404 && err.status !== 501 && err.status !== 0) {
-      // continue to mock
-    }
+    if (signal?.aborted || !(err instanceof ApiError) || (err.status !== 0 && err.status !== 404 && err.status !== 501)) throw err;
   }
 
   // 真 API 已可用但本拍 proactive 失败：安静，绝不回灌旧 Mock 盖住

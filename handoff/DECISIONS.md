@@ -1,5 +1,10 @@
 # Actual implementation decisions
 
+## 2026-11-02 · 可信绑定前关闭项目聊天
+
+经用户明确选择，显式项目聊天及旧非空项目线程暂不可用；旧 null 线程按未绑定全局兼容，不证明项目归属。孤儿消息不可自动归入全局，仍保留待处理；现有全局对话可用。前端不把服务端拒绝包装成 Mock 成功，也不覆盖无法解析的旧本地缓存。未增加 migration 或可信绑定，详见 `docs/verification/g1a-thread-scope-contract-2026-11-02.md`。
+
+
 ## 2026-11-02 · 项目上下文与历史数据
 
 项目隔离不等于多租户身份；拟议设计允许全局线程与多项目显式绑定，不能将单个客户端 projectId 直接视为授权或对历史数据自动归属。先审阅 threads/chat 的 global、project-scoped、legacy-unbound 语义及持久绑定/迁移影响，再进入独立修复批次。恢复和 reset 继续 fail-closed。

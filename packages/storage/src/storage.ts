@@ -602,6 +602,14 @@ export class Storage {
     return rows.map(mapThread);
   }
 
+  /** Project-bound legacy threads are not trusted global conversations. */
+  listGlobalThreads(limit = 100): ThreadRow[] {
+    const rows = this.db
+      .prepare('SELECT * FROM threads WHERE project_id IS NULL ORDER BY updated_at DESC LIMIT ?')
+      .all(Math.min(Math.max(limit, 1), 200)) as Row[];
+    return rows.map(mapThread);
+  }
+
   touchThread(id: string, preview?: string): void {
     const cur = this.getThread(id);
     if (!cur) return;

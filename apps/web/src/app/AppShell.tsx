@@ -16,10 +16,12 @@ import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-r
 import {
   createThread,
   getActiveThreadId,
+  getGlobalThread,
   listThreads,
   setActiveThreadId,
   type ThreadSummary,
 } from '../features/threads';
+import { ApiError } from '../features/api/client';
 import { preferLiveApi } from '../features/chat';
 import type { FlameLevel } from '@hearth/hearth-contract';
 import { EMBER_EASE, EMBER_EASE_CSS, flameTransitionSeconds, shellFlame, type FlameVisual } from '../features/flameVisual';
@@ -180,6 +182,9 @@ export function AppShell() {
   const [searchParams] = useSearchParams();
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [threadsMock, setThreadsMock] = useState(true);
+  const [threadError, setThreadError] = useState<string | null>(null);
+  const threadRefreshGeneration = useRef(0);
+  const threadRefreshController = useRef<AbortController | null>(null);
   const [activeThreadId, setActiveId] = useState<string | null>(null);
   const [shellMode, setShellMode] = useState<ShellMode>('chat');
   const [motionPaused, setMotionPaused] = useState(isEmberMotionPaused);
@@ -214,28 +219,59 @@ export function AppShell() {
   const [railCollapsed, setRailCollapsed] = useState(true);
 
   const refreshThreads = useCallback(async () => {
-    const listed = await listThreads();
-    setThreads(listed.threads);
-    setThreadsMock(listed.mock);
-    if (!listed.mock) preferLiveApi();
-    const fromQuery = searchParams.get('thread');
-    const fromPath = location.pathname.startsWith('/t/')
-      ? location.pathname.slice(3).split('/')[0]
-      : null;
-    const preferred =
-      fromQuery ||
-      fromPath ||
-      getActiveThreadId() ||
-      listed.threads[0]?.id ||
-      null;
-    if (preferred) {
+    const generation = ++threadRefreshGeneration.current;
+    threadRefreshController.current?.abort();
+    const controller = new AbortController();
+    threadRefreshController.current = controller;
+    try {
+      const listed = await listThreads(controller.signal);
+      if (controller.signal.aborted || generation !== threadRefreshGeneration.current) return;
+      const fromQuery = searchParams.get('thread');
+      const fromPath = location.pathname.startsWith('/t/')
+        ? location.pathname.slice(3).split('/')[0]
+        : null;
+      const requested = fromQuery || fromPath || getActiveThreadId();
+      const nextThreads = [...listed.threads];
+      let selectionError: string | null = null;
+      let preferred = requested && nextThreads.some((thread) => thread.id === requested) ? requested : null;
+      // The list is paginated. Only the real server can prove an omitted ID is
+      // global; an offline fallback may select its explicit local list only.
+      if (requested && !preferred && !listed.mock) {
+        try {
+          const thread = await getGlobalThread(requested, controller.signal);
+          if (controller.signal.aborted || generation !== threadRefreshGeneration.current) return;
+          nextThreads.push(thread);
+          preferred = thread.id;
+        } catch (error) {
+          if (controller.signal.aborted || generation !== threadRefreshGeneration.current) return;
+          if (error instanceof ApiError && ['PROJECT_CHAT_UNAVAILABLE', 'UNBOUND_THREAD_HISTORY'].includes(error.code)) {
+            selectionError = error.message;
+          } else if (!(error instanceof ApiError) || error.status !== 404) {
+            throw error;
+          }
+        }
+      }
+      preferred ??= nextThreads[0]?.id ?? null;
+      setThreads(nextThreads);
+      setThreadsMock(listed.mock);
+      setThreadError(selectionError);
+      if (!listed.mock) preferLiveApi();
       setActiveId(preferred);
-      setActiveThreadId(preferred);
+      if (preferred) setActiveThreadId(preferred);
+    } catch (error) {
+      if (controller.signal.aborted || generation !== threadRefreshGeneration.current) return;
+      setThreads([]);
+      setActiveId(null);
+      setThreadError(error instanceof Error ? error.message : '无法读取对话');
     }
   }, [location.pathname, searchParams]);
 
   useEffect(() => {
     void refreshThreads();
+    return () => {
+      threadRefreshGeneration.current += 1;
+      threadRefreshController.current?.abort();
+    };
   }, [refreshThreads]);
 
   const [nowMs, setNowMs] = useState(Date.now);
@@ -297,6 +333,7 @@ export function AppShell() {
     (id: string) => {
       setActiveId(id);
       setActiveThreadId(id);
+      setThreadError(null);
       setShellMode('chat');
       setRailCollapsed(true);
       const target = `/t/${encodeURIComponent(id)}`;
@@ -306,9 +343,13 @@ export function AppShell() {
   );
 
   const addThread = useCallback(async () => {
-    const { thread } = await createThread({ title: '新线程' });
-    await refreshThreads();
-    selectThread(thread.id);
+    try {
+      const { thread } = await createThread({ title: '新线程' });
+      await refreshThreads();
+      selectThread(thread.id);
+    } catch (error) {
+      setThreadError(error instanceof Error ? error.message : '无法创建对话');
+    }
   }, [refreshThreads, selectThread]);
 
   const isPaused = motionPaused || reducedMotion || isEmberMotionPaused();
@@ -414,6 +455,7 @@ export function AppShell() {
             onCreate={() => void addThread()}
           />
           <div className="canvas-body">
+            {threadError ? <p role="alert">{threadError}</p> : null}
             {canvas ? (
               <header className="canvas-chrome">
                 <button type="button" className="hearth-wordmark" onClick={() => { setShellMode('chat'); setRailCollapsed(true); }} aria-label="Hearth 返回对话">Hearth<span aria-hidden="true">.</span></button>

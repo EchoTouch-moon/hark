@@ -1,5 +1,10 @@
 # Task Status — Hearth 夜间自动开发
 
+## 2026-11-02 · G1-A 线程/chat 临时作用域保护
+
+用户明确选择在可信项目绑定完成前暂关项目内聊天、保留全局对话。已按临时合同 fail-closed；旧项目线程、孤儿消息和本地未知缓存保留不自动绑定。合成红绿、621 单元测试和本机 32 项 Mock E2E 等证据见 `handoff/EVIDENCE/g1a-thread-scope-2026-11-02/`。当前仅本机验证，Linux/Windows/ci-gate 与独立安全复审以该批 PR 的实际 head 为准；G1-A NOT_PASSED。
+
+
 ## 2026-11-02 · G1-A 项目作用域及恢复基线
 
 PR #32 已 squash 合并至 G0 `6ef6fe0`，合并后 CI run `41414610654` 通过。双项目合成表征发现线程与声明项目不一致仍可写入；已在 macOS 对预置 executing/verifying 状态做真实进程终止及重启局部验证，均进入 pending_verification 且 Fake Executor 0。项目绑定合同、完整恢复及 reset 可信归属仍未验收；详见 `docs/verification/g1a-project-scope-recovery-2026-11-02.md`。G1-A NOT_PASSED。
