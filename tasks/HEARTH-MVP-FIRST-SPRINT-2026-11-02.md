@@ -2,7 +2,7 @@
 
 > 状态：TASKS PROPOSED · NOT AUTHORIZED FOR CODE EXECUTION。**不设置开工日期、任务截止日或时间盒。由前置 Gate PASS、具体授权与验收状态决定何时执行。**
 > 初始编码基线：bot/hearth-g0-contract（每轮开始前重新拉取固定 SHA）；开发分支各自隔离，所有改动通过 PR，不直推 master 或 G0。
-> 配套开工门禁：docs/mvp/g0/06-2026-11-02-development-readiness.md。原始合同：docs/mvp/g0/02-contract-and-decisions.md、03-plan-threats-traceability.md、05-dual-track-and-viewmodel.md。
+> 细粒度可认领任务/低成本模型适配：`tasks/HEARTH-GATE-CLAIMABLE-BACKLOG.md`（以后续实证状态为准）。配套门禁：docs/mvp/g0/06-2026-11-02-development-readiness.md。原始合同：docs/mvp/g0/02-contract-and-decisions.md、03-plan-threats-traceability.md、05-dual-track-and-viewmodel.md。
 > 此任务包为可供用户逐批授权的执行规格，不是总包授权。模型、公开检索、真实私人项目均默认关闭。文件名保留首次建立时的历史版本标记，不表示固定 Sprint 周期或完成期限。
 
 ## 一、开发策略与分工
@@ -19,10 +19,11 @@
 | 工作项 | 所需前置 | 当前任务判断 | 下一道闸 |
 |---|---|---|---|
 | S0-01 · 基线及静态安全核对 | 已有 G0 分支及合同 | 第一轮静态报告已产出（07 文档），仍需评审并补充动态测试计划 | 审阅结果 + G1-A 具体编码授权 |
-| A-01 · G1-A 动态负例和最小修复 | S0-01 审阅、用户明确授权 | WAITING_FOR_APPROVAL / DYNAMIC_NOT_RUN | 全部关键安全负例与 CI 实测 PASS |
+| A-01-CSRF · 权限 PUT CSRF + 冷启动 | 独立 PR #32，固定 head `1715ea0` 已复审 | **PASS / MERGED** 到 G0 `6ef6fe0`；合并后 CI success | 仅该子批验收，不外推为 G1-A Gate PASS |
+| G1-A 剩余负例（A-02..A-07） | 参见可认领任务池 | **PENDING / 依赖具体合同** | 跨项目、恢复、Demo reset、PATCH、Mock 真伪完整通过 |
 | B-01 / B-02 · Chronicle | G1-A PASS | BLOCKED_BY_G1-A | 迁移/绑定/隔离/恢复和只读接口 PASS |
 | C-01 · Opinion Memory | G1-B PASS | BLOCKED_BY_G1-B | 版本 CAS、来源、用户反馈及恢复 PASS |
-| E-01 · 纯 fixture UI | G1-A PASS，ViewModel 冻结；设计和 QA 可先行 | DESIGN_ONLY | UI/键盘/状态/错误行为 PASS |
+| E-01 · fixture-only 体验增量 | 既有 E1 / I1 基础已合并；新增代码须遵守 Gate | **BASE_IMPLEMENTED / QA_GAPS** | 仅补缺口；勿重造前端 |
 | I-01 · Mind/Experience 对接 | G1-B/C、E-01 PASS | BLOCKED_BY_DEPENDENCIES | HVM 有界真实投影集成 PASS |
 
 任务状态建议使用 NOT_STARTED、IN_PROGRESS、READY_FOR_REVIEW、PASS、FAIL、BLOCKED；每次状态变化必须附对应 PR、测试 SHA 与验收记录，不允许将“已写代码”直接当成 PASS。优先级按安全阻塞、用户价值与当前依赖实时调整。
@@ -36,10 +37,10 @@
 **交付**：一页 G1-A fail-closed matrix；一份文件级受影响清单；单独列出 #29/#30 已覆盖与未覆盖；一个最小 G1-A 编码 PR 方案。
 **验收**：不把 CI 总绿当成安全总绿；至少核对真实/未知/Demo 三种模式、双项目切换和并发、恢复、旧间接入口；无业务代码或数据库修改。用户审阅后另行进入 G1-A 编码。
 
-### A-01｜安全基线动态负例（P0，G1-A，需单独授权）
+### G1-A｜综合安全负例任务包（P0，分批授权；A-01-CSRF 已完成）
 
 **前置**：S0-01 审核 + 用户明确授权本批代码；隔离 SQLite 合成数据库和 Fake Executor，禁止真实项目及 Provider。
-**范围**：服务器入口 fail-closed，覆盖 threads / cards / approvals / background orchestration / proactive / reset 的作用域和模式检查；已有 #29/#30 不重复重写。
+**范围**：服务器入口 fail-closed，覆盖 threads / cards / approvals / background orchestration / proactive / reset 的作用域和模式检查；已有 #29/#30/#32 不重复重写。完整小任务编号、难度和可认领文件见 `HEARTH-GATE-CLAIMABLE-BACKLOG.md`。
 **最小负例**：
 1. real / unknown + execute/approve → 拒绝；executorCallCount=0；无 run/card/evidence 变更；审计只记脱敏拒绝。
 2. Demo + 允许路径 → 只能命中 Demo 合成存储和 Mock；其他项目/真实数据零接触。
@@ -99,7 +100,8 @@
 - [ ] S0-01 审计单与 G1-A 范围评审。
 - [ ] G0 02/03/05 的冲突和本轮证据快照形成差异表；日期仅用于记录事实，不作阶段时限。
 - [ ] G0 / master 合并策略和历史 PR 保留/拆分决定；当前两条 branch rulesets 已确认 active，开发过程遵循 strict ci-gate。
-- [ ] G1-A 的独立 PR 路径、Mock 测试与回滚方案得到具体审批。
+- [x] A-01-CSRF 子批 PR #32 已复审、合并到 G0；新 HEAD `6ef6fe0`，合并后 CI 通过。
+- [ ] 对剩余 G1-A（A-02..A-07）分别确定独立 PR 路径、Mock/动态负例与回滚方案，逐批审批；不得用已通过的 CSRF 结果替代整个 Gate。
 - [ ] 记下尚未批准的 ResearchPolicy/Provider/预算/H1 真实样本，不能从计划推断许可。
 
 ## 五、明确不做
