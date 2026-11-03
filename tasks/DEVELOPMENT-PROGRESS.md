@@ -2,7 +2,7 @@
 
 此文件是重建工作的本地协作入口。认领任务时写明负责人；完成一项后立即标记 `[x]`，附可复核的文件或证据；未实现、未验证或仅有计划一律不标完成。核心合同和数据库迁移串行处理；并行任务不得修改同一文件。门槛状态以实际证据为准。
 
-## M0：底层合同与验证基础 [进行中]
+## M0：底层合同与验证基础 [Gate PASS·基础合同，残余项转 M1]
 
 - [ ] M0-C 合成观点与反馈持久化基础（主 Agent，串行迁移）。
   - [x] 在事务中追加合成观点版本、修订原因和不可执行计划，以期望版本防止旧版本覆盖（`src/fixture-opinion-store.ts`）。
@@ -64,14 +64,15 @@
   - [x] 本地 CI 配置加入 Mac/Windows 分支触发和两平台测试任务；YAML 及触发分支解析检查见 `handoff/EVIDENCE/m0-ci-workflow-static-2026-11-03.txt`。
   - [x] 添加编译器规则级 `pnpm lint` 并配置 CI；规则和本机输出见 `handoff/EVIDENCE/m0-lint-check-2026-11-03.txt`。
   - [x] 补齐 QA 标准证据索引，逐项标明 PASS/PARTIAL/NOT RUN；原始输出为 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。
-  - [x] 增加动作参数合同与执行前二次校验后，115 项本地测试、lint、类型检查与构建，见 `handoff/EVIDENCE/m0-action-policy-gate-2026-11-03.txt`。
+  - [x] 增加动作参数合同与执行前二次校验后，115 项本地测试、lint、类型检查与构建，见 `handoff/EVIDENCE/m0-action-policy-gate-2026-11-03.txt`（R2 修复前基线）。
+  - [x] R2 复核修复后（L2 一律拒绝、必需能力、写类来源版本必填），117 项本地测试、lint、类型检查、构建与文档检查绑定提交 `46ab047`，见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`。
   - [ ] 推送后核验远端 CI 实际结果，补齐 Windows 验证。E2E 尚无可运行产品，不伪造通过。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
-- [ ] M0 Gate：独立审查为 NOT PASS，见 `handoff/qa/M0-GATE-REVIEW-2026-11-03.md`；合同和验收设计已复审，动作参数与执行前二次校验已有纯预检但未接入持久化、身份认证和执行器，Gate 本身尚未再次复审；P0 安全与产品 E2E 另行核验。
+- [x] M0 Gate（R2，2026-11-03）：按 `docs/06-QA-BENCHMARK.md` 的基础合同标准独立只读复审 **PASS**，基线 `46ab047`；117 项测试与 lint/类型/构建/文档检查见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`，复核记录见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。PASS 仅覆盖 contracts/状态机/policy 负例/migrations/威胁模型；执行器、身份认证、grant 事务占用、真实来源与 Windows/远端 CI 仍未完成，属 M1 及以后。
 
 ## M1：合成数据纵切 [未开始]
 
-- [ ] M1-REBUILD-01：仅在 M0 Gate 通过后进行。
+- [ ] M1-REBUILD-01：M0 Gate 已于 2026-11-03 R2 通过（基础合同范围），尚未启动。启动前先补：执行前校验的受信任 store 适配器与身份认证设计、grant 事务内一次性占用、结构化 verifier verdict。
 
 ## M2：受控研究与真实体验 [未开始]
 

@@ -3,7 +3,7 @@
   "project": "Hearth",
   "preparedAt": "2026-11-03",
   "timezone": "Asia/Shanghai",
-  "note": "重建入口；旧首夜任务清单归档于 tasks/archive/manifest-initial-2026-10-28.json。当前 M0 进行中，必须遵守 M0→M1→M2 门禁和现行安全合同；细项状态见 DEVELOPMENT-PROGRESS.md。",
+  "note": "重建入口；旧首夜任务清单归档于 tasks/archive/manifest-initial-2026-10-28.json。M0 Gate 已于 2026-11-03 R2 通过（仅基础合同范围，见 handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md），M1 尚未开始；必须遵守 M0→M1→M2 门禁和现行安全合同；细项状态见 DEVELOPMENT-PROGRESS.md。",
   "tasks": [
     {
       "id": "M0-REBUILD-01",

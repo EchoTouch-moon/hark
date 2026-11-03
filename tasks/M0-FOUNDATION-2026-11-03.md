@@ -42,7 +42,7 @@
 
 ## 后续阶段门槛
 
-- M0→M1：遵循 `docs/06-QA-BENCHMARK.md` 的合同、状态机、policy 负例和 migration 测试要求；当前 NOT PASSED。
+- M0→M1：遵循 `docs/06-QA-BENCHMARK.md` 的合同、状态机、policy 负例和 migration 测试要求；2026-11-03 R2 复审 PASS（基础合同范围，基线 `46ab047`），见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。执行链、身份认证与真实来源仍未验收。
 - M1→M2：合成闭环、适用 E2E、`pnpm test` 和 `build` 按 QA 合同检查；未运行或不适用必须逐项写明；当前 NOT STARTED。
 - M2 及真实体验：真实目录、研究外发、模型和费用各自需要相应授权；真实用户价值未评估。真实 connector 还须满足安全合同的 P0 Gate。
 

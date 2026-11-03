@@ -30,7 +30,7 @@
 
 | 阶段 | 现行进入下一阶段的条件 | 当前状态与证据限制 |
 | --- | --- | --- |
-| M0 → M1 | `docs/06-QA-BENCHMARK.md` 要求 contracts schema、状态机、policy 负例和 migrations 测试通过，并存在 `AGENTS.md` 和威胁模型；重建清单还要求合同冲突裁决、合成场景、失败反例和明确证据。`tasks/M0-FOUNDATION-2026-11-03.md` 要求按确切提交汇总可复验证据并独立复核。 | **NOT PASSED**。已有局部测试输出，但来源/授权/epoch 的完整可信链、真实路径读取边界、S01～S12 适用断言与合同复核未全部完成。当前 fixture 记录不能替代完整合成目录闭环或独立门禁结论。 |
+| M0 → M1 | `docs/06-QA-BENCHMARK.md` 要求 contracts schema、状态机、policy 负例和 migrations 测试通过，并存在 `AGENTS.md` 和威胁模型；重建清单还要求合同冲突裁决、合成场景、失败反例和明确证据。`tasks/M0-FOUNDATION-2026-11-03.md` 要求按确切提交汇总可复验证据并独立复核。 | **PASS（R2，2026-11-03，基线 `46ab047`，仅基础合同范围）**：四项字面标准与威胁模型经独立只读复核成立，117 项测试与证据绑定提交，见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。真实路径读取边界、S01～S12、真实来源与执行链仍 NOT RUN，属 P0/M1 范围；fixture 记录不能替代真实闭环。 |
 | M1 → M2 | M0 通过后完成 `tasks/manifest.json` 的 M1 合成数据纵切；`docs/06-QA-BENCHMARK.md` 要求 E2E-01～12 的适用项可复现，无法运行者准确标注，`pnpm test` 与 `build` 不红，mock 闭环独立可见。 | **NOT STARTED / NOT PASSED**。当前没有真实 UI/E2E 可运行闭环；合成记录基础不等于门槛通过。`lint`、浏览器 E2E 及 Windows 检查的状态应按实际脚本与运行证据记录。 |
 | M2 → M3 | `docs/06-QA-BENCHMARK.md` 要求真实 connector 数据保护测试通过、错报与重复率可测；没有真实授权不进入 M3。`tasks/manifest.json` 同时要求 M1 通过后，分别取得真实目录、模型与外发授权，缺证据须标注受阻或未测。 | **NOT STARTED / NOT PASSED**。此前用户表达可授权工作目录的意愿，但本仓库的安全 P0 Gate 仍禁止启用真实 connector；具体目录、范围和用途尚需明确。真实研究、真实用户价值、费用与错报/重复率均未测。 |
 

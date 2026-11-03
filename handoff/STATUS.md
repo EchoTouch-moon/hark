@@ -1,8 +1,9 @@
 # 当前状态（2026-11-03）
 
-- 动作参数合同与执行前二次校验已有纯预检：四类动作的可选严格参数、风险下限、效果、能力与零成本上限已冻结；执行前按 25 项顺序核验 run/card/candidate/action/project 绑定、卡片与 run 状态、期限、风险、效果、能力、预算、grant 主体/卡片/消费/时效/能力、动作与目标摘要及来源版本，任何不符即拒绝，全部通过仍停在 `action_disabled`。115 项本地测试与 lint/类型/构建见 `handoff/EVIDENCE/m0-action-policy-gate-2026-11-03.txt`。未接身份认证、grant 事务占用、执行器与 verifier，M0 Gate 仍未通过。
-- M0-REBUILD-01 合同复核与 M0-REBUILD-02 合成验收**设计**已通过独立只读复核，见 `handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`。这不是 M0 Gate 通过，M1 仍未开始。
-- 独立 M0 复审结论为 NOT PASS；已补全禁用动作提案注册表及 QA 证据索引。最新 97 项本地测试和 lint/构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。合同及验收设计任务已复核，动作启用合同、产品/API E2E、真实来源和 Windows 等仍未完成。
+- **M0 Gate R2 独立只读复审为 PASS（仅限"基础合同门禁"）**：按 `docs/06-QA-BENCHMARK.md` 的标准，contracts schema、状态机、policy 负例、migrations 与 `AGENTS.md`/威胁模型均通过；117 项本地测试与 lint/类型/构建/文档检查绑定提交 `46ab047`，见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`，复核记录见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。M1 尚未开始：执行器、身份认证、grant 事务占用、真实来源、Windows 与远端 CI 均未实现。
+- 动作参数合同与执行前二次校验为**纯预检**：四类动作的可选严格参数、风险下限、效果、必需能力、零成本上限与写类来源版本要求已冻结；执行前按固定顺序核验绑定、状态、期限、风险、效果、能力、预算、grant 与摘要，任何不符即拒绝，全部通过仍停在 `action_disabled`；L2 在可验证在线审批记录存在前一律拒绝。预检不证明 grant 已签发，不能当授权边界。
+- M0-REBUILD-01 合同复核与 M0-REBUILD-02 合成验收**设计**已通过独立只读复核，见 `handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`。
+- 独立 M0 复审（R2 前）结论为 NOT PASS；已补全禁用动作提案注册表及 QA 证据索引。R2 前的 97 项本地测试和 lint/构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。合同及验收设计任务已复核，动作启用合同、产品/API E2E、真实来源和 Windows 等在 R2 时仍未完成。
 - 审批 run/card 绑定保守合同和 E2E-01～12 逐项映射见 `docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md`；相关执行链及 E2E 均未实现/未运行。
 - 已添加并运行 `pnpm lint`：仅覆盖 TypeScript 未使用变量/参数和 switch 贯穿检查，见 `handoff/EVIDENCE/m0-lint-check-2026-11-03.txt`；不是完整静态安全分析。
 - fixture feedback v2 明确支持拒绝并兼容 v1，保留观点和反馈历史；91 项本地测试及类型检查/构建见 `handoff/EVIDENCE/m0-feedback-v2-check-2026-11-03.txt`。真实用户界面与认证未实现。

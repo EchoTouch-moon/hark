@@ -1,10 +1,12 @@
 # 重建交接（2026-11-03）
 
-M0-REBUILD-01 合同复核和 M0-REBUILD-02 合成验收设计经独立只读复核完成；M0 Gate 未通过，真实 connector 和 M1 仍不能启动。复核见 `handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`。
+**M0 Gate R2 独立只读复审 PASS（仅限基础合同门禁）**：117 项测试、lint、类型检查、构建与文档检查绑定提交 `46ab047`，见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`；复核记录见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。M1 未启动：执行器、身份认证、grant 事务占用、真实来源、Windows 与远端 CI 仍未实现。
 
-最新：动作参数合同与执行前二次校验已实现为纯预检（`src/action-policy.ts`）。四类动作的可选严格参数、风险下限、效果、能力与零成本上限已冻结；执行前按固定顺序核验 25 项绑定、状态、时效、风险、能力与摘要，任何不符即拒绝，全部通过仍停在 `action_disabled`。115 项本地测试、lint、类型检查和构建见 `handoff/EVIDENCE/m0-action-policy-gate-2026-11-03.txt`；身份认证、grant 事务占用、执行器与 verifier 未实现，Gate 未通过。
+M0-REBUILD-01 合同复核和 M0-REBUILD-02 合成验收设计经独立只读复核完成，见 `handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`；两项任务的完成不等于 Gate 通过，Gate 判定以 R2 记录为准。
 
-最新：独立 M0 Gate 审查为 NOT PASS；新增全禁用动作提案注册表和标准证据索引，97 项本地测试、lint、类型检查和构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。执行、真实 connector、M1 产品纵切和远端/Windows 验证均未通过。
+最新（R2 前）：动作参数合同与执行前二次校验已实现为纯预检（`src/action-policy.ts`）。四类动作的可选严格参数、风险下限、效果、能力与零成本上限已冻结；执行前按固定顺序核验 25 项绑定、状态、时效、风险、能力与摘要，任何不符即拒绝，全部通过仍停在 `action_disabled`。R2 前 115 项本地测试、lint、类型检查和构建见 `handoff/EVIDENCE/m0-action-policy-gate-2026-11-03.txt`；身份认证、grant 事务占用、执行器与 verifier 未实现。
+
+最新（R2 前）：独立 M0 Gate 审查为 NOT PASS；新增全禁用动作提案注册表和标准证据索引，97 项本地测试、lint、类型检查和构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。执行、真实 connector、M1 产品纵切和远端/Windows 验证均未通过。
 
 审批绑定和旧 E2E 的逐项映射已写入 `docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md`；这不是执行器实现或 E2E 通过记录。
 
