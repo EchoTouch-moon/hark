@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- M0-C 的合成观点版本、不可执行方案、修订原因与反馈已实现并局部复核；64 项本地测试与类型检查/构建见 `handoff/EVIDENCE/m0c-fixture-opinion-check-2026-11-03.txt`，边界见 `docs/architecture/M0-C-FIXTURE-OPINION-MEMORY.md`。未实现真实来源、身份认证、研究或产品闭环。
 - M0-B 合成来源及不可变观察的 v2 迁移、授权重检、epoch 和幂等基础已完成局部验证；见 `docs/architecture/M0-B-FIXTURE-CHRONICLE.md` 和 `handoff/EVIDENCE/m0b-fixture-chronicle-check-2026-11-03.txt`。真实来源及观点持久化未完成。
 - M0-A 首版结构合同已落地：项目、类型化来源、观点版本、计划、反馈和版本对，见 `docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`；36 项本地测试及构建、类型检查、文档检查见 `handoff/EVIDENCE/m0a-project-contract-check-2026-11-03.txt`。可信来源核验、持久化和 Gate 均未完成。
 - 官方原型已隔离克隆并按固定提交进行源码对照；本轮新增合成路径预检和中断恢复，26 项本地测试通过，见 `handoff/EVIDENCE/m0-path-recovery-check-2026-11-03.txt`。预检不能抵御检查后替换，真实目录读取、执行与外发仍未接通。

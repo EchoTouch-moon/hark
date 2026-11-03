@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { migrate, openDatabase } from '../src/storage.js';
-import { advanceFixtureEpoch, appendFixtureFact, readFixtureFact, registerFixtureSource } from '../src/fixture-chronicle.js';
+import { advanceFixtureEpoch, appendFixtureFact, readFixtureFact, registerFixtureSource, withFixtureAccess } from '../src/fixture-chronicle.js';
 
 // These fixture records are deliberately fabricated and never read a user project.
 const scopeA = { principalId: 'user', projectId: 'A', grantId: 'gA', rootId: 'rootA' };
@@ -36,12 +36,14 @@ describe('synthetic project observation persistence', () => {
     const fixtureDb = fixture();
     let db = fixtureDb.db;
     db.exec(`INSERT INTO audit_log VALUES ('audit-1','2026-11-03','synthetic','user','A','{}');
+      DROP TABLE fixture_opinion_feedback; DROP TABLE fixture_opinion_plans; DROP TABLE fixture_opinion_revisions;
+      DROP TABLE fixture_opinions; DROP TABLE fixture_project_profiles;
       DROP TABLE fixture_facts; DROP TABLE fixture_sources; DROP INDEX observation_grants_scope;
-      DELETE FROM schema_migrations WHERE version=2;`);
+      DELETE FROM schema_migrations WHERE version>=2;`);
     db.close();
     db = openDatabase(fixtureDb.path);
     migrate(db);
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }]);
     expect(db.prepare("SELECT name FROM projects WHERE id='A'").get()?.name).toBe('Synthetic A');
     expect(db.prepare("SELECT object_id FROM audit_log WHERE id='audit-1'").get()?.object_id).toBe('A');
     expect(db.prepare("SELECT principal_id FROM observation_grants WHERE id='gA'").get()?.principal_id).toBe('user');
@@ -62,6 +64,19 @@ describe('synthetic project observation persistence', () => {
     expect(readFixtureFact(db, scopeB, 'source-b', 'fact-b')).toEqual(factB);
     expect(readFixtureFact(db, scopeA, 'source-b', 'fact-b')).toBeNull();
     expect(readFixtureFact(db, scopeB, 'source-a', 'fact-a')).toBeNull();
+    db.close();
+  });
+
+  it('does not let a transactional source lookup escape the grant check', () => {
+    const { db } = fixture();
+    appendFixtureFact(db, scopeA, factA);
+    const escaped = withFixtureAccess(db, scopeA, (scope, findFact) => {
+      expect(() => Object.assign(scope, scopeB)).toThrow();
+      expect(findFact('source-a', 'fact-a')).toEqual(factA);
+      return findFact;
+    });
+    expect(escaped('source-a', 'fact-a')).toBeNull();
+    expect(() => withFixtureAccess(db, scopeA, async () => 'not synchronous')).toThrow('synchronous');
     db.close();
   });
 

@@ -35,6 +35,38 @@ const migrations = [
    );
    CREATE TRIGGER fixture_facts_no_update BEFORE UPDATE ON fixture_facts BEGIN SELECT RAISE(ABORT,'fixture facts are append-only'); END;
    CREATE TRIGGER fixture_facts_no_delete BEFORE DELETE ON fixture_facts BEGIN SELECT RAISE(ABORT,'fixture facts are append-only'); END;`,
+  `CREATE TABLE fixture_project_profiles (
+     project_id TEXT PRIMARY KEY REFERENCES projects(id),
+     state TEXT NOT NULL CHECK(state IN ('active','deleting','deleted')), created_at TEXT NOT NULL
+   );
+   CREATE TABLE fixture_opinions (
+     id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES fixture_project_profiles(project_id),
+     topic_key TEXT NOT NULL, current_revision INTEGER NOT NULL CHECK(current_revision >= 0),
+     UNIQUE(project_id, topic_key), UNIQUE(id, project_id)
+   );
+   CREATE TABLE fixture_opinion_revisions (
+     id TEXT PRIMARY KEY, project_id TEXT NOT NULL, opinion_id TEXT NOT NULL, version INTEGER NOT NULL CHECK(version > 0),
+     data_json TEXT NOT NULL, previous_revision_id TEXT, change_reason TEXT,
+     UNIQUE(opinion_id, version), UNIQUE(id, project_id), UNIQUE(id, project_id, opinion_id),
+     CHECK((version = 1 AND previous_revision_id IS NULL AND change_reason IS NULL) OR (version > 1 AND previous_revision_id IS NOT NULL AND change_reason IS NOT NULL AND length(trim(change_reason)) > 0)),
+     FOREIGN KEY(opinion_id, project_id) REFERENCES fixture_opinions(id, project_id),
+     FOREIGN KEY(previous_revision_id, project_id, opinion_id) REFERENCES fixture_opinion_revisions(id, project_id, opinion_id)
+   );
+   CREATE TABLE fixture_opinion_plans (
+     id TEXT PRIMARY KEY, project_id TEXT NOT NULL, revision_id TEXT NOT NULL UNIQUE,
+     data_json TEXT NOT NULL CHECK(json_valid(data_json) AND json_type(data_json,'$.executable') IS 'false'),
+     FOREIGN KEY(revision_id, project_id) REFERENCES fixture_opinion_revisions(id, project_id)
+   );
+   CREATE TABLE fixture_opinion_feedback (
+     id TEXT PRIMARY KEY, project_id TEXT NOT NULL, revision_id TEXT NOT NULL, dedupe_key TEXT NOT NULL, data_json TEXT NOT NULL,
+     UNIQUE(project_id, dedupe_key), FOREIGN KEY(revision_id, project_id) REFERENCES fixture_opinion_revisions(id, project_id)
+   );
+   CREATE TRIGGER fixture_revision_no_update BEFORE UPDATE ON fixture_opinion_revisions BEGIN SELECT RAISE(ABORT,'fixture revisions are append-only'); END;
+   CREATE TRIGGER fixture_revision_no_delete BEFORE DELETE ON fixture_opinion_revisions BEGIN SELECT RAISE(ABORT,'fixture revisions are append-only'); END;
+   CREATE TRIGGER fixture_plan_no_update BEFORE UPDATE ON fixture_opinion_plans BEGIN SELECT RAISE(ABORT,'fixture plans are append-only'); END;
+   CREATE TRIGGER fixture_plan_no_delete BEFORE DELETE ON fixture_opinion_plans BEGIN SELECT RAISE(ABORT,'fixture plans are append-only'); END;
+   CREATE TRIGGER fixture_feedback_no_update BEFORE UPDATE ON fixture_opinion_feedback BEGIN SELECT RAISE(ABORT,'fixture feedback is append-only'); END;
+   CREATE TRIGGER fixture_feedback_no_delete BEFORE DELETE ON fixture_opinion_feedback BEGIN SELECT RAISE(ABORT,'fixture feedback is append-only'); END;`,
 ] as const;
 
 export function openDatabase(path: string): DatabaseSync {

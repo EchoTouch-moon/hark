@@ -1,0 +1,26 @@
+$ vitest run --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:58003) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:58002) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:58001) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/path-check.test.ts (4 tests) 21ms
+ ✓ tests/domain-contracts.test.ts (9 tests) 12ms
+ ✓ tests/contracts-state.test.ts (14 tests) 8ms
+ ✓ tests/digests.test.ts (2 tests) 10ms
+ ✓ tests/policy-storage.test.ts (7 tests) 41ms
+ ✓ tests/fixture-chronicle.test.ts (13 tests) 105ms
+ ✓ tests/fixture-opinion-store.test.ts (15 tests) 168ms
+
+ Test Files  7 passed (7)
+      Tests  64 passed (64)
+   Start at  21:16:19
+   Duration  640ms (transform 279ms, setup 0ms, collect 692ms, tests 365ms, environment 1ms, prepare 710ms)
+
+$ tsc --noEmit -p tsconfig.json
+$ tsc -p tsconfig.build.json
+Documentation entry links, required references and task ordering: PASS

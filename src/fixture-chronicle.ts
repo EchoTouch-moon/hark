@@ -34,6 +34,33 @@ function transaction<T>(db: DatabaseSync, work: () => T): T {
   catch (error) { db.exec('ROLLBACK'); throw error; }
 }
 
+function readWithinTransaction(db: DatabaseSync, scope: Scope, sourceId: string, factId: string): FixtureFact | null {
+  const current = source(db, scope, sourceId);
+  if (!current || current.enabled !== 1) return null;
+  const row = db.prepare('SELECT dedupe_key, data_json FROM fixture_facts WHERE id = ? AND project_id = ? AND source_id = ? AND epoch = ?')
+    .get(factId, scope.projectId, sourceId, current.epoch as number);
+  if (!row || typeof row.data_json !== 'string') return null;
+  try {
+    const fact = FixtureFact.parse(JSON.parse(row.data_json));
+    if (fact.id !== factId || fact.projectId !== scope.projectId || fact.sourceId !== sourceId || fact.epoch !== Number(current.epoch) || fact.dedupeKey !== row.dedupe_key) return null;
+    return fact;
+  } catch { return null; }
+}
+
+/** Internal synchronous composition: scope must be server-authenticated, never from a client. */
+export function withFixtureAccess<T>(db: DatabaseSync, rawScope: unknown, work: (scope: Readonly<Scope>, findFact: (sourceId: string, factId: string) => FixtureFact | null) => T): T {
+  const scope = Object.freeze(Scope.parse(rawScope));
+  return transaction(db, () => {
+    if (!authorized(db, scope)) throw new Error('Fixture unavailable');
+    let active = true;
+    try {
+      const result = work(scope, (sourceId, factId) => active ? readWithinTransaction(db, scope, Id.parse(sourceId), Id.parse(factId)) : null);
+      if (result !== null && (typeof result === 'object' || typeof result === 'function') && 'then' in result) throw new Error('Fixture transactions require synchronous work');
+      return result;
+    } finally { active = false; }
+  });
+}
+
 export function registerFixtureSource(db: DatabaseSync, rawScope: unknown, rawSourceId: unknown): void {
   const scope = Scope.parse(rawScope);
   const sourceId = Id.parse(rawSourceId);
@@ -70,16 +97,7 @@ export function readFixtureFact(db: DatabaseSync, rawScope: unknown, rawSourceId
   const scope = parsedScope.data;
   return transaction(db, () => {
     if (!authorized(db, scope)) return null;
-    const current = source(db, scope, parsedSource.data);
-    if (!current || current.enabled !== 1) return null;
-    const row = db.prepare('SELECT dedupe_key, data_json FROM fixture_facts WHERE id = ? AND project_id = ? AND source_id = ? AND epoch = ?')
-      .get(parsedId.data, scope.projectId, parsedSource.data, current.epoch as number);
-    if (!row || typeof row.data_json !== 'string') return null;
-    try {
-      const fact = FixtureFact.parse(JSON.parse(row.data_json));
-      if (fact.id !== parsedId.data || fact.projectId !== scope.projectId || fact.sourceId !== parsedSource.data || fact.epoch !== Number(current.epoch) || fact.dedupeKey !== row.dedupe_key) return null;
-      return fact;
-    } catch { return null; }
+    return readWithinTransaction(db, scope, parsedSource.data, parsedId.data);
   });
 }
 
