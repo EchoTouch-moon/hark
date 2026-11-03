@@ -1,0 +1,3 @@
+$ tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch
+Documentation entry links, required references and task ordering: PASS
+Workflow YAML and branch triggers: PASS

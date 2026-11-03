@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- 已添加并运行 `pnpm lint`：仅覆盖 TypeScript 未使用变量/参数和 switch 贯穿检查，见 `handoff/EVIDENCE/m0-lint-check-2026-11-03.txt`；不是完整静态安全分析。
 - fixture feedback v2 明确支持拒绝并兼容 v1，保留观点和反馈历史；91 项本地测试及类型检查/构建见 `handoff/EVIDENCE/m0-feedback-v2-check-2026-11-03.txt`。真实用户界面与认证未实现。
 - Event 时效纯预检已按缺期限失败关闭，模型推断不当作观察事实；有效时间只意味着需要继续核验来源。82 项本地测试见 `handoff/EVIDENCE/m0-event-freshness-check-2026-11-03.txt`，未接入真实消费路径。
 - 新增 `tasks/M0-SYNTHETIC-ACCEPTANCE.md`，逐项区分 fixture 已验证机制、目录纵切及 S01–S12 的未运行部分；不是 M0 Gate 通过证据。

@@ -58,7 +58,8 @@
   - [x] 增加 Event 时效与推断负例后，82 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-event-freshness-check-2026-11-03.txt`。
   - [x] 增加反馈 v2 后，91 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-feedback-v2-check-2026-11-03.txt`。
   - [x] 本地 CI 配置加入 Mac/Windows 分支触发和两平台测试任务；YAML 及触发分支解析检查见 `handoff/EVIDENCE/m0-ci-workflow-static-2026-11-03.txt`。
-  - [ ] 推送后核验远端 CI 实际结果，补齐适用的 lint 与 Windows 验证。E2E 尚无可运行产品，不伪造通过。
+  - [x] 添加编译器规则级 `pnpm lint` 并配置 CI；规则和本机输出见 `handoff/EVIDENCE/m0-lint-check-2026-11-03.txt`。
+  - [ ] 推送后核验远端 CI 实际结果，补齐 Windows 验证。E2E 尚无可运行产品，不伪造通过。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
 - [ ] M0 Gate：完成所有既定门槛和独立审核（未通过）。
 
