@@ -1,3 +1,5 @@
+> **历史资料 / 非当前开发入口（2026-11-03）**：本文描述 2026-10-27 的夜间初版规划与 Mock Demo。已被后续 Hearth MVP 方向调整，不再作为当前编码 Agent 的权威合同或自动执行授权。请先读 [当前仓库治理入口](docs/engineering/REPOSITORY-GOVERNANCE-2026-11-03.md) 与 [当前 MVP 规划入口](docs/mvp/00-START-HERE.md)。下文只为保留项目历史与复盘证据。
+
 # START HERE — 今晚交给 Coding Agent 的起点
 
 > **先读产品核心叙事：** [`NARRATIVE.md`](./NARRATIVE.md)（炉心 Ember）。交互必须服从叙事，不要做成普通工作台。
