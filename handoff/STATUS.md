@@ -1,5 +1,40 @@
 # Task Status — Hearth 夜间自动开发
 
+## 2026-11-03 · PR #34 合并（G1-A 线程/chat 临时隔离切片）
+
+[PR #34](https://github.com/EchoTouch-Moon/hark/pull/34) 已经项目 owner 明确授权后，以 merge commit `e62f57d` 合并到 `bot/hearth-g0-contract`（base `6ef6fe00`；8 个提交，未 squash；源分支 `codex/g1a-thread-scope@b1f1b19` 保留）。合并后 push CI [run 41585596367](https://github.com/EchoTouch-Moon/hark/actions/runs/41585596367) 四项 success；合并前 head 的 [run 41567581799](https://github.com/EchoTouch-Moon/hark/actions/runs/41567581799) 亦为 success。
+
+### 已验收范围（仅此切片）
+
+- **threads/chat 临时项目隔离**：非空 `projectId` 在消息持久化、`ensureThread`、审计与 adapter 调用之前返回 `403 PROJECT_CHAT_UNAVAILABLE`；旧 `project_id != null` 线程在全局列表、详情、proactive、聊天与历史入口 fail-closed；孤儿消息返回 `409 UNBOUND_THREAD_HISTORY`；全局列表先按 `project_id IS NULL` 过滤再分页。
+- **旧 Action 拒绝语义**：401/403/404/409/500 与 2xx 空响应不降级为 Mock；失败不生成进度/完成消息、不写本地记录；非 Seed 布局统一错误出口；只有显式 `demo === true` 可进入离线演示，且结果文案恒标注演示。
+- **合同与证据**：`docs/verification/g1a-thread-scope-contract-2026-11-02.md`；`handoff/EVIDENCE/g1a-thread-scope-2026-11-02/README.md`、`handoff/EVIDENCE/g1a-action-rejection-2026-11-03/README.md`、`handoff/EVIDENCE/g1a-action-rejection-followup-2026-11-03/README.md`。
+
+### 状态口径
+
+| 项目 | 状态 |
+|---|---|
+| PR #34 | **MERGED**（`e62f57d`） |
+| G1-A 线程/chat 临时隔离切片 | **PASS** |
+| 完整 G1-A | **NOT_PASSED** |
+| G1-B / G1-C | 按各自门禁独立验收 |
+| H1 真实项目观点价值 | **NOT_MEASURED** |
+
+技术复审结论 `TARGETED_P1_PASS` 只覆盖上述切片；GitHub 没有 `APPROVED` review，本次合并依据 owner 的明确授权。该结论不改变完整 G1-A、G1-B/G1-C 与 H1 的门禁状态，也不代表已开放真实执行、研究或模型能力。
+
+### 验证与基线
+
+- 本机全量验证在 `8f029d0`（`b1f1b19` 仅追加证据文档）：`pnpm test` 68 文件 / **636 项**；Mock E2E **39 项**；`typecheck`、`lint`（0 errors / 10 条既有 warnings）、`build` 均 exit 0。原始输出见两份证据目录的 `unit*.txt`、`e2e-mock.txt`、`typecheck.txt`、`lint.txt`、`build.txt`。
+- 本次文档收口只修改本文件，未重跑全量测试；引用路径、CI 链接与 Markdown 表格已逐一核对。
+
+### 已登记 P2（不阻断本切片，留给后续独立 Gate）
+
+1. 本地 700ms 演示延时内若 `AbortSignal` 触发，仍可能保存 progress/result（ChatPage 目前不传该 signal）。
+2. `2xx + result.ok=false` 的业务失败合同未定义；当前旧执行路由恒拒绝，不能据此认为真实执行已开放。
+3. 真执行成功后 Action 消费仅在页面内存，刷新可能重现；跨线程迟到请求没有服务端幂等键或 Run 查询。
+4. `demo: true` 是前端演示选择标志，不是服务端执行权限，未来不得据此授予真实效果。
+5. 完整 G1-A 未覆盖：ProjectSource/ThreadProjectBinding、多对多绑定、旧数据迁移、cards/runs/SSE、Demo reset 可信归属、PATCH CSRF、跨进程 E2E 隔离、真实执行器恢复。
+
 ## 2026-11-02 · G1-A 线程/chat 临时作用域保护
 
 用户明确选择在可信项目绑定完成前暂关项目内聊天、保留全局对话。已按临时合同 fail-closed；旧项目线程、孤儿消息和本地未知缓存保留不自动绑定。合成红绿、621 单元测试和本机 33 项 Mock E2E 等证据见 `handoff/EVIDENCE/g1a-thread-scope-2026-11-02/`。当前仅本机验证，Linux/Windows/ci-gate 与独立安全复审以该批 PR 的实际 head 为准；G1-A NOT_PASSED。
