@@ -60,7 +60,7 @@ Pi 继续使用 `--no-tools --no-extensions --no-mcp --no-context-files --no-ses
 
 ## 多端代码同步
 
-GitHub 私有仓库：`EchoTouch-moon/hark`，默认开发分支 `master`。
+GitHub **公开**仓库：`EchoTouch-moon/hark`，默认分支 `master`；近期 G1 安全集成线为受保护的 `bot/hearth-g0-contract`。两条分支已分叉，不能盲目从 `master` 开始新 G1 代码，也不能擅自将 G0 合入 `master`；先核实 [当前工程入口](docs/engineering/REPOSITORY-GOVERNANCE-2026-11-03.md) 和任务授权。
 
 首次在另一台设备运行：
 
