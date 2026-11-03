@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {"title":"Hearth 底层基础：当前实现", "locale":"zh-CN", "quality_profile":"showcase", "viewBox":[1280,780]},
+  "components": [
+    {"id":"contracts","type":"backend","label":"数据合同","sublabel":"Zod 输入结构与来源", "pos":[80,210],"size":[220,90]},
+    {"id":"policy","type":"security","label":"权限判断","sublabel":"观察授权 · 默认拒绝", "pos":[420,110],"size":[220,90]},
+    {"id":"states","type":"backend","label":"运行状态机","sublabel":"合法转换 · 完成须验证", "pos":[420,350],"size":[220,90]},
+    {"id":"storage","type":"database","label":"SQLite 本地存储","sublabel":"版本迁移 · 审计 · 幂等", "pos":[800,350],"size":[240,90]},
+    {"id":"closed","type":"external","label":"真实副作用","sublabel":"执行与外发尚未接通", "pos":[800,110],"size":[240,90]}
+  ],
+  "connections": [
+    {"from":"contracts","to":"policy","label":"校验授权", "variant":"security"},
+    {"from":"contracts","to":"states","label":"定义状态"},
+    {"from":"states","to":"storage","label":"事务检查"},
+    {"from":"policy","to":"closed","label":"默认拒绝", "variant":"dashed"}
+  ],
+  "cards": [
+    {"dot":"emerald","title":"已具备的基础", "items":["严格数据结构与观察授权判断", "事务内状态转换与版本迁移"]},
+    {"dot":"amber","title":"尚待连接", "items":["真实目录路径约束与扫描器", "执行审批、验证器与真实外发"]},
+    {"dot":"rose","title":"安全边界", "items":["未实现的执行和完成路径保持关闭", "图中不代表产品闭环已运行"]}
+  ]
+}
