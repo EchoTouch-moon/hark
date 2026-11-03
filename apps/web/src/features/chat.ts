@@ -378,29 +378,44 @@ export interface ExecuteActionResult {
   mock: boolean;
 }
 
+/** 只有网络失败或接口尚未实现才算“离线”；任何明确 HTTP 拒绝都不降级。 */
+function isOfflineOnlyFailure(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 0 || error.status === 501);
+}
+
+/** 只有本地演示行动可以离线模拟；服务端真实行动不得伪造完成。 */
+function isLocalDemoAction(action: MessageAction): boolean {
+  return action.demo === true || action.id.startsWith('mock-') || action.id.startsWith('demo-');
+}
+
 /** G4：执行行动后在同线程回写 ProgressBlock + 结果（Mock 本地模拟）。 */
 export async function executeMessageAction(
   threadId: string,
   action: MessageAction,
   signal?: AbortSignal,
 ): Promise<ExecuteActionResult> {
+  let failure: unknown;
   try {
-    const data = await apiFetch<{ message: CanvasMessage }>(
+    const data = await apiFetch<{ message?: CanvasMessage }>(
       `/api/v1/threads/${encodeURIComponent(threadId)}/actions/${encodeURIComponent(action.id)}/execute`,
       { method: 'POST', json: { action }, signal },
     );
-    if (data.message) {
+    if (data?.message) {
       preferLiveApi();
       return { message: data.message, mock: false };
     }
-  } catch {
-    // mock path
+    // 2xx 却没有结果：服务端在场却没确认执行，不能当成功。
+    failure = new ApiError(502, 'execute_empty_response', '行动执行接口没有返回结果');
+  } catch (err) {
+    failure = err;
   }
 
-  // 真 API 会话下 execute 失败：抛给调用方，不伪造本地 Progress
-  if (liveApi) {
-    throw new ApiError(0, 'execute_unavailable', '行动执行接口不可用');
-  }
+  // 取消、真 API 会话、或服务端明确拒绝（401/403/404/409/500 等）：
+  // 原样抛给调用方，绝不生成模拟进度或“已完成”结果。
+  if (signal?.aborted || liveApi || !isOfflineOnlyFailure(failure)) throw failure;
+
+  // 离线时也只保留本地演示；服务端真实行动失败关闭，原样抛出真实原因。
+  if (!isLocalDemoAction(action)) throw failure;
 
   if (action.id === 'mock-ignore' || action.id === 'demo-ignore' || action.label === '忽略') {
     const message: CanvasMessage = {
