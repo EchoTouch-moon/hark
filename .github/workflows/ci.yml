@@ -1,4 +1,4 @@
-name: Documentation checks
+name: Foundation checks
 
 on:
   push:
@@ -19,3 +19,16 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Validate documentation and scope
         run: python3 .github/check_docs.py
+      - name: Configure Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Install pnpm
+        run: npm install --global pnpm@11.9.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck, test and build
+        run: |
+          pnpm typecheck
+          pnpm test
+          pnpm build
