@@ -1,5 +1,7 @@
 # 重建交接（2026-11-03）
 
+审批绑定和旧 E2E 的逐项映射已写入 `docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md`；这不是执行器实现或 E2E 通过记录。
+
 已添加基础 TypeScript 编译器规则级 lint 并加入本地 CI 配置，证据见 `handoff/EVIDENCE/m0-lint-check-2026-11-03.txt`；远端 CI 和 Windows 尚未执行。
 
 最新：反馈 v2 新增独立拒绝选项，保持 v1 历史兼容且不改变观点；91 项本地测试见 `handoff/EVIDENCE/m0-feedback-v2-check-2026-11-03.txt`。真实认证、真实项目和用户交互仍未实现。

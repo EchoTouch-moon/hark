@@ -27,7 +27,8 @@
 - [ ] M0-REBUILD-01：产品、安全合同逐条复核与冲突裁决（主 Agent）。
   - [x] 首轮产品/安全合同与门槛映射，保留未决冲突（`docs/architecture/M0-CONTRACT-REVIEW.md`）。
   - [x] Event TTL 的兼容裁决及纯预检：无期限/过期/未来时间/模型推断 withheld，通过时仍须核验来源（`src/event-freshness.ts`）。
-  - [ ] 审批绑定、旧 E2E 适用性及剩余字段的裁决并独立复审；不能因首轮矩阵标记任务完成。
+  - [x] 形成审批绑定和 E2E-01～12 的逐项合同映射（`docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md`）；全部相关产品 E2E 尚未运行。
+  - [ ] 完成剩余字段裁决及独立复审；不能因矩阵标记任务完成。
 - [ ] M0-REBUILD-02：合成目录闭环与完整失败验收（主 Agent）。
   - [x] 建立 A/B 合成场景、失败用例和现有证据矩阵（`tasks/M0-SYNTHETIC-ACCEPTANCE.md`）；未实现的目录发现与真实读取明确标为 NOT RUN。
   - [ ] 在 M0-REBUILD-01 完成后审查并冻结完整验收映射；M1 纵切与 P0 安全验证未通过前不启用真实 connector。
