@@ -1,5 +1,7 @@
 # 重建交接（2026-11-03）
 
+最新：两个真实 worker 同时竞争同一合成观点版本，只有一个成功、无孤儿记录；79 项本地测试见 `handoff/EVIDENCE/m0-concurrent-revision-check-2026-11-03.txt`。这是 macOS 单场景，不是并发压力测试或 Windows 验证。
+
 最新：v4 合成用户决定可版本化、撤回，并作为观点的独立来源；替代或撤回后旧观点 withheld。fixture 项目状态控制覆盖来源、观点和决定。78 项本地测试、类型检查和构建见 `handoff/EVIDENCE/m0d-fixture-decisions-check-2026-11-03.txt`；真实身份、项目、研究与 M0 Gate 仍未完成。
 
 最新：增加 v3 合成观点草稿、版本原因、方案和反馈存储；本地 64 项测试、类型检查及构建通过，证据见 `handoff/EVIDENCE/m0c-fixture-opinion-check-2026-11-03.txt`。仅支持合成观察证据；正式身份、生命周期、真实来源和 M0 Gate 未完成。

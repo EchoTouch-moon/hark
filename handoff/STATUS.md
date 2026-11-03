@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- 实际双 worker 同时竞争观点版本的合成场景已验证，只有一方成功且无孤儿记录；全量 79 项本地测试见 `handoff/EVIDENCE/m0-concurrent-revision-check-2026-11-03.txt`，Windows 和压力测试未运行。
 - M0 合成用户决定 v4 迁移已实现；修订或撤回后引用旧决定的观点不可用，历史保留；fixture 项目删除中时观察与观点也停止使用。78 项本地测试及类型检查/构建见 `handoff/EVIDENCE/m0d-fixture-decisions-check-2026-11-03.txt`；真实用户决定与正式生命周期未实现。
 - M0-C 的合成观点版本、不可执行方案、修订原因与反馈已实现并局部复核；64 项本地测试与类型检查/构建见 `handoff/EVIDENCE/m0c-fixture-opinion-check-2026-11-03.txt`，边界见 `docs/architecture/M0-C-FIXTURE-OPINION-MEMORY.md`。未实现真实来源、身份认证、研究或产品闭环。
 - M0-B 合成来源及不可变观察的 v2 迁移、授权重检、epoch 和幂等基础已完成局部验证；见 `docs/architecture/M0-B-FIXTURE-CHRONICLE.md` 和 `handoff/EVIDENCE/m0b-fixture-chronicle-check-2026-11-03.txt`。真实来源及观点持久化未完成。
