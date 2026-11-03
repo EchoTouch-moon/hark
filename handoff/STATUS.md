@@ -1,6 +1,7 @@
 # 当前状态（2026-11-03）
 
-- 独立 M0 复审结论为 NOT PASS；已补全禁用动作提案注册表及 QA 证据索引。最新 97 项本地测试和 lint/构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。正式任务、动作启用合同、产品/API E2E、真实来源和 Windows 等仍未完成。
+- M0-REBUILD-01 合同复核与 M0-REBUILD-02 合成验收**设计**已通过独立只读复核，见 `handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`。这不是 M0 Gate 通过，M1 仍未开始。
+- 独立 M0 复审结论为 NOT PASS；已补全禁用动作提案注册表及 QA 证据索引。最新 97 项本地测试和 lint/构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。合同及验收设计任务已复核，动作启用合同、产品/API E2E、真实来源和 Windows 等仍未完成。
 - 审批 run/card 绑定保守合同和 E2E-01～12 逐项映射见 `docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md`；相关执行链及 E2E 均未实现/未运行。
 - 已添加并运行 `pnpm lint`：仅覆盖 TypeScript 未使用变量/参数和 switch 贯穿检查，见 `handoff/EVIDENCE/m0-lint-check-2026-11-03.txt`；不是完整静态安全分析。
 - fixture feedback v2 明确支持拒绝并兼容 v1，保留观点和反馈历史；91 项本地测试及类型检查/构建见 `handoff/EVIDENCE/m0-feedback-v2-check-2026-11-03.txt`。真实用户界面与认证未实现。
@@ -13,7 +14,7 @@
 - M0-B 合成来源及不可变观察的 v2 迁移、授权重检、epoch 和幂等基础已完成局部验证；见 `docs/architecture/M0-B-FIXTURE-CHRONICLE.md` 和 `handoff/EVIDENCE/m0b-fixture-chronicle-check-2026-11-03.txt`。真实来源及观点持久化未完成。
 - M0-A 首版结构合同已落地：项目、类型化来源、观点版本、计划、反馈和版本对，见 `docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`；36 项本地测试及构建、类型检查、文档检查见 `handoff/EVIDENCE/m0a-project-contract-check-2026-11-03.txt`。可信来源核验、持久化和 Gate 均未完成。
 - 官方原型已隔离克隆并按固定提交进行源码对照；本轮新增合成路径预检和中断恢复，26 项本地测试通过，见 `handoff/EVIDENCE/m0-path-recovery-check-2026-11-03.txt`。预检不能抵御检查后替换，真实目录读取、执行与外发仍未接通。
-- M0 近期工作见 `tasks/DEVELOPMENT-PROGRESS.md`。已实现合同、摘要、观察权限判断、状态机和 SQLite 迁移的首批基础，验证见 `handoff/EVIDENCE/m0-foundation-check-2026-11-03.txt`。M0-REBUILD-01/02 和 M0 Gate 均未完成；真实目录和执行通道未接入。
+- M0 近期工作见 `tasks/DEVELOPMENT-PROGRESS.md`。合同、摘要、观察权限判断、状态机和 SQLite 迁移已有基础；M0-REBUILD-01/02 仅合同及验收设计已完成，M0 Gate 仍未完成；真实目录和执行通道未接入。
 - 文档优先的重建版本：已整理，入口为 `README.md` 和 `tasks/REBUILD-PLAN.md`。
 - 产品目标与既有 MVP 产品合同、验收和安全文件已保留；原先位于其他分支的产品定位、开发计划和 DeepSeek 研究资料已复制为历史参考。
 - 旧前后端、实现测试和构建文件已从此版本移除；本轮新增基础模块、构建及测试配置，尚无可运行完整产品。CI 定义已更新，远端执行未验证。

@@ -24,15 +24,15 @@
   - [x] 验证自包含对象的项目绑定、证据类型、反馈和版本跨字段负例（`tests/domain-contracts.test.ts`、`tests/contracts-state.test.ts`）。
   - [x] 记录合同适用范围、尚未实现的来源核实、存储与权限检查（`docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`）。
   - [ ] 完成现行合同逐字段冲突裁决、可信来源存在/授权/epoch 复核与独立验收；结构有效不等于来源可信。
-- [ ] M0-REBUILD-01：产品、安全合同逐条复核与冲突裁决（主 Agent）。
+- [x] M0-REBUILD-01：产品、安全合同逐条复核与保守冲突裁决；仅文档合同任务完成，见 `handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`。
   - [x] 首轮产品/安全合同与门槛映射，保留未决冲突（`docs/architecture/M0-CONTRACT-REVIEW.md`）。
   - [x] Event TTL 的兼容裁决及纯预检：无期限/过期/未来时间/模型推断 withheld，通过时仍须核验来源（`src/event-freshness.ts`）。
   - [x] 形成审批绑定和 E2E-01～12 的逐项合同映射（`docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md`）；全部相关产品 E2E 尚未运行。
   - [x] 形成旧接口和新项目理解合同的字段对照（`docs/architecture/M0-CONTRACT-FIELD-MAP.md`）。
-  - [ ] 对字段裁决及合成验收映射进行独立复审；不能因矩阵标记任务完成。
-- [ ] M0-REBUILD-02：合成目录闭环与完整失败验收（主 Agent）。
+  - [x] 字段裁决及合成验收映射经独立只读复审；不代表安全或实现 Gate 通过。
+- [x] M0-REBUILD-02：合成目录闭环与失败验收**设计**完成，见 `handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`；实际目录纵切属于 M1。
   - [x] 建立 A/B 合成场景、失败用例和现有证据矩阵（`tasks/M0-SYNTHETIC-ACCEPTANCE.md`）；未实现的目录发现与真实读取明确标为 NOT RUN。
-  - [ ] 在 M0-REBUILD-01 完成后审查并冻结完整验收映射；M1 纵切与 P0 安全验证未通过前不启用真实 connector。
+  - [x] 在 M0-REBUILD-01 完成复核基础上审查验收映射；M1 纵切与 P0 安全验证未通过前不启用真实 connector。
 - [ ] 核心合同：输入校验和基础领域结构（主 Agent）。
   - [x] 主要数据结构的 Zod 严格校验首版，见 `src/contracts.ts` 和 `tests/contracts-state.test.ts`。
   - [x] 动作与目标摘要、稳定幂等键的计算及负例，见 `src/digests.ts` 和 `tests/digests.test.ts`。
@@ -65,7 +65,7 @@
   - [x] 补齐 QA 标准证据索引，逐项标明 PASS/PARTIAL/NOT RUN；原始输出为 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。
   - [ ] 推送后核验远端 CI 实际结果，补齐 Windows 验证。E2E 尚无可运行产品，不伪造通过。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
-- [ ] M0 Gate：独立审查为 NOT PASS，见 `handoff/qa/M0-GATE-REVIEW-2026-11-03.md`；动作仍未配置真实准入、正式任务及其后续独立复审未完成，P0 安全与产品 E2E 另行核验。
+- [ ] M0 Gate：独立审查为 NOT PASS，见 `handoff/qa/M0-GATE-REVIEW-2026-11-03.md`；合同和验收设计已复审，但动作仍未配置真实准入，Gate 本身尚未再次复审；P0 安全与产品 E2E 另行核验。
 
 ## M1：合成数据纵切 [未开始]
 

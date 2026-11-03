@@ -1,6 +1,6 @@
 # M0-REBUILD-01：产品、安全与阶段门槛对照
 
-状态：合同对照与首轮裁决；**不表示 M0-REBUILD-01、任何 Gate 或真实产品已通过**。本文件依据当前仓库的 `AGENTS.md`、`docs/05-SECURITY.md`、`docs/04-CONTRACTS.md`、`docs/01-PRD.md`、`docs/06-QA-BENCHMARK.md`、`docs/mvp/01-PRODUCT-CONTRACT.md` 和 `tasks/REBUILD-PLAN.md` 编写。实现与测试当前状态以 `tasks/DEVELOPMENT-PROGRESS.md` 和相应证据文件为准，未提交中的工作不得当作最终验收证据。
+状态：合同对照与保守裁决已完成独立只读复核；**不表示任何 Gate 或真实产品已通过**。本文件依据当前仓库的 `AGENTS.md`、`docs/05-SECURITY.md`、`docs/04-CONTRACTS.md`、`docs/01-PRD.md`、`docs/06-QA-BENCHMARK.md`、`docs/mvp/01-PRODUCT-CONTRACT.md` 和 `tasks/REBUILD-PLAN.md` 编写。实现与测试当前状态以 `tasks/DEVELOPMENT-PROGRESS.md` 和相应证据文件为准，未提交中的工作不得当作最终验收证据。
 
 合同优先级遵循 `AGENTS.md`：安全红线 → 安全合同 → 接口合同 → PRD → QA → 任务清单 → 其他研究；用户对具体开发工作的明确要求及宿主权限仍适用。不可因历史设计、模型输出或某个已通过的局部测试放宽高优先级安全约束。
 
@@ -38,4 +38,4 @@
 
 ## 复核结果与下一步
 
-上述矩阵为 M0-REBUILD-01 提供核心对照；TTL、审批 run/card、旧 E2E 和接口字段已有保守映射，见 `M0-CONTRACT-FIELD-MAP.md`。该映射尚待独立复核，因此任务暂保持 **IN_PROGRESS**。后续按本机实际执行的 schema、状态机、policy、migration 和安全检查记录证据、进行独立 Gate 复核；缺项不得写 PASS。
+上述矩阵为 M0-REBUILD-01 提供核心对照；TTL、审批 run/card、旧 E2E 和接口字段已有保守映射，见 `M0-CONTRACT-FIELD-MAP.md`。该文档任务经独立只读复核标为 DONE，记录见 `../../handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`。后续仍须按本机实际执行的 schema、状态机、policy、migration 和安全检查记录证据、进行独立 Gate 复核；缺项不得写 PASS。

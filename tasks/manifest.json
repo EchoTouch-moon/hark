@@ -12,7 +12,7 @@
       "priority": "P0",
       "deliverables": ["当前核心需求、权限边界与冲突裁决", "M0/M1/M2 验收和门禁映射"],
       "acceptance_tests": ["覆盖目录授权、多项目隔离、非 Git 项目、研究外发许可、暂停撤权和执行审批", "安全合同不得降级"],
-      "status": "IN_PROGRESS"
+      "status": "DONE"
     },
     {
       "id": "M0-REBUILD-02",
@@ -21,7 +21,7 @@
       "priority": "P0",
       "deliverables": ["合成多项目场景", "来源、记忆、反馈和修订合同", "安全反例与验证计划"],
       "acceptance_tests": ["覆盖越权路径、跨项目隔离、缺失来源、撤权与失败恢复", "明确 M0 Gate 的通过证据"],
-      "status": "TODO"
+      "status": "DONE"
     },
     {
       "id": "M1-REBUILD-01",

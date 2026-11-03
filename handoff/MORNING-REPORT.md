@@ -1,5 +1,7 @@
 # 重建交接（2026-11-03）
 
+M0-REBUILD-01 合同复核和 M0-REBUILD-02 合成验收设计经独立只读复核完成；M0 Gate 未通过，真实 connector 和 M1 仍不能启动。复核见 `handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`。
+
 最新：独立 M0 Gate 审查为 NOT PASS；新增全禁用动作提案注册表和标准证据索引，97 项本地测试、lint、类型检查和构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。执行、真实 connector、M1 产品纵切和远端/Windows 验证均未通过。
 
 审批绑定和旧 E2E 的逐项映射已写入 `docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md`；这不是执行器实现或 E2E 通过记录。
