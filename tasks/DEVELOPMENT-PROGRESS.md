@@ -10,6 +10,7 @@
   - [x] 每次使用合成观点都复核合成观察来源、项目隔离和当前授权；失效来源不可读。
   - [x] 完成迁移、版本、重启、撤权和来源失效的合成测试及独立源码审查，见 `handoff/EVIDENCE/m0c-fixture-opinion-check-2026-11-03.txt`。
   - [ ] 真正并行竞争压测、真实项目生命周期、研究来源与用户决定的可信核验；本轮 CAS 测试仅两连接顺序模拟冲突。
+  - [ ] 合成用户决定：版本身份、持久授权及撤回后禁用其观点引用（主 Agent，进行中）。
 - [ ] M0-B 项目来源与事实持久化基础（主 Agent，串行迁移；仅合成数据）。
   - [x] 新增 v2 迁移，保存项目绑定的合成来源与不可变观察，约束来源 epoch 和重复写入（`src/storage.ts`）。
   - [x] 合成记录每次读写核对持久授权；撤权、暂停、过期或来源 epoch 更新后拒绝使用旧记录（`src/fixture-chronicle.ts`）。
@@ -21,6 +22,8 @@
   - [x] 记录合同适用范围、尚未实现的来源核实、存储与权限检查（`docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`）。
   - [ ] 完成现行合同逐字段冲突裁决、可信来源存在/授权/epoch 复核与独立验收；结构有效不等于来源可信。
 - [ ] M0-REBUILD-01：产品、安全合同逐条复核与冲突裁决（主 Agent）。
+  - [x] 首轮产品/安全合同与门槛映射，保留未决冲突（`docs/architecture/M0-CONTRACT-REVIEW.md`）。
+  - [ ] 逐字段裁决 Event TTL、审批绑定与旧 E2E 适用性并独立复审；不能因首轮矩阵标记任务完成。
 - [ ] M0-REBUILD-02：合成目录闭环与完整失败验收（主 Agent）。
 - [ ] 核心合同：输入校验和基础领域结构（主 Agent）。
   - [x] 主要数据结构的 Zod 严格校验首版，见 `src/contracts.ts` 和 `tests/contracts-state.test.ts`。
