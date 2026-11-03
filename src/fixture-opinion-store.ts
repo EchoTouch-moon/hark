@@ -1,11 +1,12 @@
 import { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import { Feedback, OpinionBundle, OpinionRevision, Project, ProposedPlan } from './domain-contracts.js';
-import { withFixtureAccess, type FixtureFact } from './fixture-chronicle.js';
+import { withFixtureAccess, type FixtureDecision, type FixtureFact } from './fixture-chronicle.js';
 
 // Synthetic drafts only: no source connector, model, presentation or executor.
 type Revision = z.infer<typeof OpinionRevision>;
 type FindFact = (sourceId: string, factId: string) => FixtureFact | null;
+type FindDecision = (id: string, revision: number) => FixtureDecision | null;
 const Id = z.string().trim().min(1).max(256);
 const Version = z.number().int().nonnegative().safe();
 const ChangeReason = z.string().trim().min(1).max(4000);
@@ -14,16 +15,28 @@ function projectActive(db: DatabaseSync, projectId: string): boolean {
   return db.prepare("SELECT 1 AS ok FROM fixture_project_profiles WHERE project_id = ? AND state = 'active'").get(projectId) !== undefined;
 }
 
-function evidenceMatches(revision: Revision, findFact: FindFact): boolean {
-  function find(ref: Revision['counterEvidence'][number]): FixtureFact | null {
-    if (ref.kind !== 'observer' || ref.quality !== 'observed') return null;
-    const fact = findFact(ref.observerSourceId, ref.eventId);
-    if (!fact || fact.projectId !== ref.projectId || fact.epoch !== ref.epoch || fact.observedAt !== ref.observedAt) return null;
-    return fact;
+function evidenceMatches(revision: Revision, findFact: FindFact, findDecision: FindDecision): boolean {
+  function find(ref: Revision['counterEvidence'][number]): FixtureFact | FixtureDecision | null {
+    if (ref.kind === 'observer') {
+      if (ref.quality !== 'observed') return null;
+      const fact = findFact(ref.observerSourceId, ref.eventId);
+      if (!fact || fact.projectId !== ref.projectId || fact.epoch !== ref.epoch || fact.observedAt !== ref.observedAt) return null;
+      return fact;
+    }
+    if (ref.kind === 'decision') {
+      if (ref.status !== 'active') return null;
+      const decision = findDecision(ref.decisionId, ref.revision);
+      if (!decision || decision.projectId !== ref.projectId || decision.recordedAt !== ref.recordedAt) return null;
+      return decision;
+    }
+    return null;
   }
   for (const item of revision.facts) {
-    const fact = find(item.source);
-    if (!fact || item.subject !== 'project' || item.statement !== fact.summary) return false;
+    const source = find(item.source);
+    if (!source) return false;
+    if (item.subject === 'project' && 'summary' in source && item.statement === source.summary) continue;
+    if (item.subject === 'user_decision' && 'statement' in source && item.statement === source.statement) continue;
+    return false;
   }
   return revision.counterEvidence.every(ref => find(ref) !== null);
 }
@@ -41,10 +54,10 @@ export function saveFixtureOpinion(db: DatabaseSync, rawScope: unknown, rawBundl
   const bundle = OpinionBundle.parse(rawBundle), expected = Version.parse(rawExpectedRevision);
   if (expected === 0 && rawChangeReason !== undefined) throw new Error('Initial revision has no predecessor');
   const changeReason = expected > 0 ? ChangeReason.parse(rawChangeReason) : null;
-  return withFixtureAccess(db, rawScope, (scope, findFact) => {
+  return withFixtureAccess(db, rawScope, (scope, findFact, findDecision) => {
     const { project, opinion, revision, plan } = bundle;
     const stored = db.prepare('SELECT p.name, p.description, f.state, f.created_at FROM projects p JOIN fixture_project_profiles f ON f.project_id = p.id WHERE p.id = ?').get(scope.projectId);
-    if (!stored || stored.state !== 'active' || project.id !== scope.projectId || project.state !== 'active' || project.name !== stored.name || project.description !== stored.description || project.createdAt !== stored.created_at || opinion.status !== 'draft' || bundle.feedback.length !== 0 || revision.version !== expected + 1 || !evidenceMatches(revision, findFact)) throw new Error('Fixture unavailable');
+    if (!stored || stored.state !== 'active' || project.id !== scope.projectId || project.state !== 'active' || project.name !== stored.name || project.description !== stored.description || project.createdAt !== stored.created_at || opinion.status !== 'draft' || bundle.feedback.length !== 0 || revision.version !== expected + 1 || !evidenceMatches(revision, findFact, findDecision)) throw new Error('Fixture unavailable');
     let previousRevisionId: string | null = null;
     if (expected === 0) {
       db.prepare('INSERT INTO fixture_opinions(id, project_id, topic_key, current_revision) VALUES (?, ?, ?, 0)').run(opinion.id, scope.projectId, opinion.topicKey);
@@ -66,7 +79,7 @@ export function saveFixtureOpinion(db: DatabaseSync, rawScope: unknown, rawBundl
   });
 }
 
-function loadRevision(db: DatabaseSync, projectId: string, opinionId: string, version: number, findFact: FindFact) {
+function loadRevision(db: DatabaseSync, projectId: string, opinionId: string, version: number, findFact: FindFact, findDecision: FindDecision) {
   if (!projectActive(db, projectId)) return null;
   const row = db.prepare(`SELECT r.id, r.data_json AS revision_json, r.previous_revision_id, r.change_reason, p.id AS plan_id, p.data_json AS plan_json
     FROM fixture_opinion_revisions r JOIN fixture_opinion_plans p ON p.revision_id = r.id AND p.project_id = r.project_id
@@ -75,7 +88,7 @@ function loadRevision(db: DatabaseSync, projectId: string, opinionId: string, ve
   try {
     const revision = OpinionRevision.parse(JSON.parse(row.revision_json));
     const plan = ProposedPlan.parse(JSON.parse(row.plan_json));
-    if (revision.id !== row.id || revision.projectId !== projectId || revision.opinionId !== opinionId || revision.version !== version || revision.proposedPlanId !== row.plan_id || plan.id !== row.plan_id || plan.revisionId !== revision.id || plan.projectId !== projectId || !evidenceMatches(revision, findFact)) return null;
+    if (revision.id !== row.id || revision.projectId !== projectId || revision.opinionId !== opinionId || revision.version !== version || revision.proposedPlanId !== row.plan_id || plan.id !== row.plan_id || plan.revisionId !== revision.id || plan.projectId !== projectId || !evidenceMatches(revision, findFact, findDecision)) return null;
     let change: { previousRevisionId: string; reason: string } | null = null;
     if (version === 1) {
       if (row.previous_revision_id !== null || row.change_reason !== null) return null;
@@ -93,8 +106,8 @@ export function readFixtureOpinion(db: DatabaseSync, rawScope: unknown, rawOpini
   const opinionId = Id.safeParse(rawOpinionId), version = Version.safeParse(rawVersion);
   if (!opinionId.success || !version.success || version.data === 0) return null;
   try {
-    return withFixtureAccess(db, rawScope, (scope, findFact) => {
-      const result = loadRevision(db, scope.projectId, opinionId.data, version.data, findFact);
+    return withFixtureAccess(db, rawScope, (scope, findFact, findDecision) => {
+      const result = loadRevision(db, scope.projectId, opinionId.data, version.data, findFact, findDecision);
       if (!result) return null;
       const rows = db.prepare('SELECT id, dedupe_key, data_json FROM fixture_opinion_feedback WHERE project_id = ? AND revision_id = ? ORDER BY rowid').all(scope.projectId, result.revision.id);
       try {
@@ -112,10 +125,10 @@ export function readFixtureOpinion(db: DatabaseSync, rawScope: unknown, rawOpini
 
 export function appendFixtureFeedback(db: DatabaseSync, rawScope: unknown, rawFeedback: unknown, rawDedupeKey: unknown) {
   const feedback = Feedback.parse(rawFeedback), dedupeKey = Id.parse(rawDedupeKey);
-  return withFixtureAccess(db, rawScope, (scope, findFact) => {
+  return withFixtureAccess(db, rawScope, (scope, findFact, findDecision) => {
     if (feedback.projectId !== scope.projectId || !projectActive(db, scope.projectId)) throw new Error('Fixture unavailable');
     const ref = db.prepare('SELECT opinion_id, version FROM fixture_opinion_revisions WHERE id = ? AND project_id = ?').get(feedback.revisionId, scope.projectId);
-    if (!ref || typeof ref.opinion_id !== 'string' || !loadRevision(db, scope.projectId, ref.opinion_id, Number(ref.version), findFact)) throw new Error('Fixture unavailable');
+    if (!ref || typeof ref.opinion_id !== 'string' || !loadRevision(db, scope.projectId, ref.opinion_id, Number(ref.version), findFact, findDecision)) throw new Error('Fixture unavailable');
     const data = JSON.stringify(feedback);
     const existing = db.prepare('SELECT id, revision_id, data_json FROM fixture_opinion_feedback WHERE project_id = ? AND dedupe_key = ?').get(scope.projectId, dedupeKey);
     if (existing) {

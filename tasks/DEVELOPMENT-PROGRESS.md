@@ -10,7 +10,8 @@
   - [x] 每次使用合成观点都复核合成观察来源、项目隔离和当前授权；失效来源不可读。
   - [x] 完成迁移、版本、重启、撤权和来源失效的合成测试及独立源码审查，见 `handoff/EVIDENCE/m0c-fixture-opinion-check-2026-11-03.txt`。
   - [ ] 真正并行竞争压测、真实项目生命周期、研究来源与用户决定的可信核验；本轮 CAS 测试仅两连接顺序模拟冲突。
-  - [ ] 合成用户决定：版本身份、持久授权及撤回后禁用其观点引用（主 Agent，进行中）。
+  - [x] 合成用户决定：版本身份、持久授权及撤回/替代后禁用其观点引用（`src/fixture-decision.ts`、`tests/fixture-decision.test.ts`、`tests/fixture-opinion-store.test.ts`）。
+  - [x] 合成项目状态为删除中或已删除时，来源记录、观点及用户决定均不可用（fixture 测试；不代表正式项目生命周期已实现）。
 - [ ] M0-B 项目来源与事实持久化基础（主 Agent，串行迁移；仅合成数据）。
   - [x] 新增 v2 迁移，保存项目绑定的合成来源与不可变观察，约束来源 epoch 和重复写入（`src/storage.ts`）。
   - [x] 合成记录每次读写核对持久授权；撤权、暂停、过期或来源 epoch 更新后拒绝使用旧记录（`src/fixture-chronicle.ts`）。
@@ -47,6 +48,7 @@
   - [x] 路径预检和恢复后共 26 项本地测试、类型检查、构建、文档检查及测试收集范围，见 `handoff/EVIDENCE/m0-path-recovery-check-2026-11-03.txt`。
   - [x] 项目理解合同与旧动作跨项目负例后，共 36 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0a-project-contract-check-2026-11-03.txt`。
   - [x] 合成来源、观点、修订和反馈后，共 64 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0c-fixture-opinion-check-2026-11-03.txt`。
+  - [x] 合成用户决定和生命周期约束后，共 78 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0d-fixture-decisions-check-2026-11-03.txt`。
   - [ ] 为 Mac 分支建立远端 CI 验证；补齐适用的 lint 与 Windows 检查。E2E 尚无可运行产品，不伪造通过。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
 - [ ] M0 Gate：完成所有既定门槛和独立审核（未通过）。

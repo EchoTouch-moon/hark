@@ -26,7 +26,9 @@ describe('synthetic project observation persistence', () => {
     db.exec(`INSERT INTO projects VALUES ('A','Synthetic A',''), ('B','Synthetic B','');
       INSERT INTO observation_grants VALUES
         ('gA','user','A','rootA',1,0,'2099-01-01T00:00:00Z',NULL),
-        ('gB','user','B','rootB',1,0,'2099-01-01T00:00:00Z',NULL);`);
+        ('gB','user','B','rootB',1,0,'2099-01-01T00:00:00Z',NULL);
+      INSERT INTO fixture_project_profiles VALUES
+        ('A','active','2026-11-03T12:00:00Z'), ('B','active','2026-11-03T12:00:00Z');`);
     registerFixtureSource(db, scopeA, 'source-a');
     registerFixtureSource(db, scopeB, 'source-b');
     return { db, path };
@@ -36,17 +38,18 @@ describe('synthetic project observation persistence', () => {
     const fixtureDb = fixture();
     let db = fixtureDb.db;
     db.exec(`INSERT INTO audit_log VALUES ('audit-1','2026-11-03','synthetic','user','A','{}');
-      DROP TABLE fixture_opinion_feedback; DROP TABLE fixture_opinion_plans; DROP TABLE fixture_opinion_revisions;
+      DROP TABLE fixture_decisions; DROP TABLE fixture_opinion_feedback; DROP TABLE fixture_opinion_plans; DROP TABLE fixture_opinion_revisions;
       DROP TABLE fixture_opinions; DROP TABLE fixture_project_profiles;
       DROP TABLE fixture_facts; DROP TABLE fixture_sources; DROP INDEX observation_grants_scope;
       DELETE FROM schema_migrations WHERE version>=2;`);
     db.close();
     db = openDatabase(fixtureDb.path);
     migrate(db);
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
     expect(db.prepare("SELECT name FROM projects WHERE id='A'").get()?.name).toBe('Synthetic A');
     expect(db.prepare("SELECT object_id FROM audit_log WHERE id='audit-1'").get()?.object_id).toBe('A');
     expect(db.prepare("SELECT principal_id FROM observation_grants WHERE id='gA'").get()?.principal_id).toBe('user');
+    db.exec("INSERT INTO fixture_project_profiles VALUES ('A','active','2026-11-03T12:00:00Z')");
     registerFixtureSource(db, scopeA, 'source-after-upgrade');
     const upgradedFact = { ...factA, sourceId: 'source-after-upgrade' };
     expect(appendFixtureFact(db, scopeA, upgradedFact)).toEqual(upgradedFact);
@@ -77,6 +80,17 @@ describe('synthetic project observation persistence', () => {
     });
     expect(escaped('source-a', 'fact-a')).toBeNull();
     expect(() => withFixtureAccess(db, scopeA, async () => 'not synchronous')).toThrow('synchronous');
+    db.close();
+  });
+
+  it('withholds fixture facts and stops operations while a project is deleting', () => {
+    const { db } = fixture();
+    appendFixtureFact(db, scopeA, factA);
+    db.exec("UPDATE fixture_project_profiles SET state='deleting' WHERE project_id='A'");
+    expect(readFixtureFact(db, scopeA, 'source-a', 'fact-a')).toBeNull();
+    expect(() => registerFixtureSource(db, scopeA, 'other-source')).toThrow();
+    expect(() => appendFixtureFact(db, scopeA, { ...factA, id: 'next', dedupeKey: 'next' })).toThrow();
+    expect(() => advanceFixtureEpoch(db, scopeA, 'source-a')).toThrow();
     db.close();
   });
 

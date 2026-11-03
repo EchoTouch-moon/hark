@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { openDatabase } from '../src/storage.js';
 import { advanceFixtureEpoch, appendFixtureFact, registerFixtureSource } from '../src/fixture-chronicle.js';
 import { appendFixtureFeedback, readFixtureOpinion, registerFixtureProject, saveFixtureOpinion } from '../src/fixture-opinion-store.js';
+import { recordFixtureDecision, withdrawFixtureDecision } from '../src/fixture-decision.js';
 
 // Entirely synthetic; no filesystem project or external source is inspected.
 const time = '2026-11-03T12:00:00.000Z';
@@ -46,27 +47,27 @@ describe('fixture opinion memory', () => {
       INSERT INTO observation_grants VALUES
         ('gA','user','A','rootA',1,0,'2099-01-01T00:00:00Z',NULL),
         ('gB','user','B','rootB',1,0,'2099-01-01T00:00:00Z',NULL);`);
+    registerFixtureProject(db, scopeA, projectA);
+    registerFixtureProject(db, scopeB, projectB);
     registerFixtureSource(db, scopeA, 'source-a');
     registerFixtureSource(db, scopeB, 'source-b');
     appendFixtureFact(db, scopeA, factA);
     appendFixtureFact(db, scopeB, factB);
-    registerFixtureProject(db, scopeA, projectA);
-    registerFixtureProject(db, scopeB, projectB);
     return { db, path };
   }
 
   it('upgrades an existing v2 database without losing fixture sources and observations', () => {
     const setup = fixture();
     let db = setup.db;
-    db.exec(`DROP TABLE fixture_opinion_feedback; DROP TABLE fixture_opinion_plans;
+    db.exec(`DROP TABLE fixture_decisions; DROP TABLE fixture_opinion_feedback; DROP TABLE fixture_opinion_plans;
       DROP TABLE fixture_opinion_revisions; DROP TABLE fixture_opinions; DROP TABLE fixture_project_profiles;
-      DELETE FROM schema_migrations WHERE version=3;`);
+      DELETE FROM schema_migrations WHERE version>=3;`);
     db.close();
     db = openDatabase(setup.path);
     registerFixtureProject(db, scopeA, projectA);
     expect(saveFixtureOpinion(db, scopeA, bundleFor(projectA, 1), 0)).toBe(1);
     expect(readFixtureOpinion(db, scopeA, 'opinion-a', 1)?.revision.facts[0]?.statement).toBe('synthetic');
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
     db.close();
   });
 
@@ -82,6 +83,32 @@ describe('fixture opinion memory', () => {
     expect(readFixtureOpinion(db, scopeA, 'opinion-a', 1)).toEqual({ revision: first.revision, plan: first.plan, feedback: [feedback], change: null });
     expect(readFixtureOpinion(db, scopeA, 'opinion-a', 2)).toEqual({ revision: second.revision, plan: second.plan, feedback: [], change: { previousRevisionId: first.revision.id, reason: 'User challenged the first version' } });
     expect(db.prepare("SELECT current_revision FROM fixture_opinions WHERE id='opinion-a'").get()?.current_revision).toBe(2);
+    db.close();
+  });
+
+  it('withholds a user decision after it is superseded or withdrawn, without deleting opinion history', () => {
+    const setup = fixture();
+    let db = setup.db;
+    const decision = { id: 'decision-a', projectId: 'A', revision: 1, statement: 'A synthetic choice', recordedAt: time };
+    recordFixtureDecision(db, scopeA, decision);
+    const decisionRef = { kind: 'decision', projectId: 'A', decisionId: decision.id, revision: 1, recordedAt: time, status: 'active' };
+    const first = bundleFor(projectA, 1);
+    const firstWithDecision = { ...first, revision: { ...first.revision, facts: [...first.revision.facts, { statement: decision.statement, subject: 'user_decision', source: decisionRef }] } };
+    const fabricated = { ...firstWithDecision, revision: { ...firstWithDecision.revision, facts: [...first.revision.facts, { statement: 'Invented choice', subject: 'user_decision', source: decisionRef }] } };
+    expect(() => saveFixtureOpinion(db, scopeA, fabricated, 0)).toThrow();
+    expect(saveFixtureOpinion(db, scopeA, firstWithDecision, 0)).toBe(1);
+    expect(readFixtureOpinion(db, scopeA, 'opinion-a', 1)).not.toBeNull();
+    recordFixtureDecision(db, scopeA, { ...decision, revision: 2, statement: 'A revised choice' });
+    expect(readFixtureOpinion(db, scopeA, 'opinion-a', 1)).toBeNull();
+    const second = bundleFor(projectA, 2);
+    const secondWithDecision = { ...second, revision: { ...second.revision, facts: [...second.revision.facts, { statement: 'A revised choice', subject: 'user_decision', source: { ...decisionRef, revision: 2 } }] } };
+    expect(saveFixtureOpinion(db, scopeA, secondWithDecision, 1, 'User revised the choice')).toBe(2);
+    expect(readFixtureOpinion(db, scopeA, 'opinion-a', 2)).not.toBeNull();
+    withdrawFixtureDecision(db, scopeA, decision.id, 2);
+    db.close();
+    db = openDatabase(setup.path);
+    expect(readFixtureOpinion(db, scopeA, 'opinion-a', 2)).toBeNull();
+    expect(db.prepare('SELECT count(*) AS n FROM fixture_opinion_revisions').get()?.n).toBe(2);
     db.close();
   });
 

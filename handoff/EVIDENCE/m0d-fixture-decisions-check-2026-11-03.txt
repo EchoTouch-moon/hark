@@ -1,0 +1,15 @@
+Working tree: M0-D fixture decision changes before commit (2026-11-03).
+Commands run in /Users/v/new-idea/hark-reboot-docs:
+  pnpm test
+  pnpm typecheck
+  pnpm build
+  python3 .github/check_docs.py
+
+Result: PASS, 8 test files and 78 tests passed. Breakdown:
+  domain-contracts: 9; digests: 2; path-check: 4; policy-storage: 7;
+  fixture-chronicle: 14; fixture-decision: 12; fixture-opinion-store: 16;
+  contracts-state: 14.
+Typecheck, TypeScript build, and documentation entry/task-order checks passed.
+Node 22 emitted its experimental SQLite warning. Only synthetic fixture data was used.
+This is local mechanism evidence, not real-project access, provenance verification,
+Windows testing, concurrent pressure testing, or M0 Gate approval.

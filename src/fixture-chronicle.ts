@@ -15,6 +15,11 @@ export const FixtureFact = z.object({
   sensitivity: z.enum(['public', 'personal', 'restricted']), provenance: z.literal('tool_observed'), dedupeKey: Id,
 }).strict();
 export type FixtureFact = z.infer<typeof FixtureFact>;
+export const FixtureDecision = z.object({
+  id: Id, projectId: Id, revision: z.number().int().positive().safe(),
+  statement: z.string().trim().min(1).max(4000), recordedAt: z.string().datetime({ offset: true }),
+}).strict();
+export type FixtureDecision = z.infer<typeof FixtureDecision>;
 
 function authorized(db: DatabaseSync, scope: Scope): boolean {
   return checkStoredObservation(db, scope.grantId, {
@@ -23,7 +28,7 @@ function authorized(db: DatabaseSync, scope: Scope): boolean {
 }
 
 function source(db: DatabaseSync, scope: Scope, sourceId: string) {
-  return db.prepare('SELECT epoch, enabled FROM fixture_sources WHERE id = ? AND project_id = ? AND root_id = ? AND grant_id = ?')
+  return db.prepare("SELECT s.epoch, s.enabled FROM fixture_sources s JOIN fixture_project_profiles p ON p.project_id = s.project_id WHERE s.id = ? AND s.project_id = ? AND s.root_id = ? AND s.grant_id = ? AND p.state = 'active'")
     .get(sourceId, scope.projectId, scope.rootId, scope.grantId);
 }
 
@@ -47,14 +52,26 @@ function readWithinTransaction(db: DatabaseSync, scope: Scope, sourceId: string,
   } catch { return null; }
 }
 
+function decisionWithinTransaction(db: DatabaseSync, scope: Scope, decisionId: string, revision: number): FixtureDecision | null {
+  const row = db.prepare(`SELECT d.id, d.project_id, d.revision, d.statement, d.recorded_at
+    FROM fixture_decisions d JOIN fixture_project_profiles p ON p.project_id = d.project_id
+    WHERE d.id = ? AND d.project_id = ? AND d.root_id = ? AND d.grant_id = ? AND d.revision = ? AND d.status = 'active' AND p.state = 'active'`)
+    .get(decisionId, scope.projectId, scope.rootId, scope.grantId, revision);
+  if (!row) return null;
+  const parsed = FixtureDecision.safeParse({ id: row.id, projectId: row.project_id, revision: row.revision, statement: row.statement, recordedAt: row.recorded_at });
+  return parsed.success ? parsed.data : null;
+}
+
 /** Internal synchronous composition: scope must be server-authenticated, never from a client. */
-export function withFixtureAccess<T>(db: DatabaseSync, rawScope: unknown, work: (scope: Readonly<Scope>, findFact: (sourceId: string, factId: string) => FixtureFact | null) => T): T {
+export function withFixtureAccess<T>(db: DatabaseSync, rawScope: unknown, work: (scope: Readonly<Scope>, findFact: (sourceId: string, factId: string) => FixtureFact | null, findDecision: (id: string, revision: number) => FixtureDecision | null) => T): T {
   const scope = Object.freeze(Scope.parse(rawScope));
   return transaction(db, () => {
     if (!authorized(db, scope)) throw new Error('Fixture unavailable');
     let active = true;
     try {
-      const result = work(scope, (sourceId, factId) => active ? readWithinTransaction(db, scope, Id.parse(sourceId), Id.parse(factId)) : null);
+      const result = work(scope,
+        (sourceId, factId) => active ? readWithinTransaction(db, scope, Id.parse(sourceId), Id.parse(factId)) : null,
+        (id, revision) => active ? decisionWithinTransaction(db, scope, Id.parse(id), z.number().int().positive().safe().parse(revision)) : null);
       if (result !== null && (typeof result === 'object' || typeof result === 'function') && 'then' in result) throw new Error('Fixture transactions require synchronous work');
       return result;
     } finally { active = false; }
@@ -65,7 +82,8 @@ export function registerFixtureSource(db: DatabaseSync, rawScope: unknown, rawSo
   const scope = Scope.parse(rawScope);
   const sourceId = Id.parse(rawSourceId);
   transaction(db, () => {
-    if (!authorized(db, scope)) throw new Error('Fixture unavailable');
+    const project = db.prepare("SELECT 1 AS ok FROM fixture_project_profiles WHERE project_id = ? AND state = 'active'").get(scope.projectId);
+    if (!project || !authorized(db, scope)) throw new Error('Fixture unavailable');
     db.prepare('INSERT INTO fixture_sources(id, project_id, root_id, grant_id) VALUES (?, ?, ?, ?)')
       .run(sourceId, scope.projectId, scope.rootId, scope.grantId);
   });

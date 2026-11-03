@@ -30,7 +30,7 @@ describe('database migration and integrity', () => {
     const path = database();
     let db = openDatabase(path);
     migrate(db);
-    expect(db.prepare('SELECT version FROM schema_migrations').all()).toHaveLength(3);
+    expect(db.prepare('SELECT version FROM schema_migrations').all()).toHaveLength(4);
     expect(db.prepare('PRAGMA foreign_keys').get()?.foreign_keys).toBe(1);
     expect(db.prepare('PRAGMA journal_mode').get()?.journal_mode).toBe('wal');
     expect(() => db.prepare("INSERT INTO sources VALUES ('s','missing','fixture','fixture',1)").run()).toThrow();
@@ -56,9 +56,9 @@ describe('database migration and integrity', () => {
   it('fails closed on an unknown migration and preserves database state', () => {
     const path = database();
     const db = openDatabase(path);
-    db.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run(4, 'future');
+    db.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run(5, 'future');
     expect(() => migrate(db)).toThrow('Unknown or non-contiguous');
-    expect(db.prepare('SELECT version FROM schema_migrations').all()).toHaveLength(4);
+    expect(db.prepare('SELECT version FROM schema_migrations').all()).toHaveLength(5);
     db.close();
     expect(() => openDatabase(path)).toThrow('Unknown or non-contiguous');
   });

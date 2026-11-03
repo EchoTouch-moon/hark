@@ -67,6 +67,19 @@ const migrations = [
    CREATE TRIGGER fixture_plan_no_delete BEFORE DELETE ON fixture_opinion_plans BEGIN SELECT RAISE(ABORT,'fixture plans are append-only'); END;
    CREATE TRIGGER fixture_feedback_no_update BEFORE UPDATE ON fixture_opinion_feedback BEGIN SELECT RAISE(ABORT,'fixture feedback is append-only'); END;
    CREATE TRIGGER fixture_feedback_no_delete BEFORE DELETE ON fixture_opinion_feedback BEGIN SELECT RAISE(ABORT,'fixture feedback is append-only'); END;`,
+  `CREATE TABLE fixture_decisions (
+     id TEXT NOT NULL, project_id TEXT NOT NULL REFERENCES fixture_project_profiles(project_id),
+     root_id TEXT NOT NULL, grant_id TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0),
+     statement TEXT NOT NULL, recorded_at TEXT NOT NULL,
+     status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','superseded','withdrawn')),
+     PRIMARY KEY(id, project_id, revision),
+     FOREIGN KEY(grant_id, project_id, root_id) REFERENCES observation_grants(id, project_id, root_id)
+   );
+   CREATE UNIQUE INDEX fixture_decisions_single_active ON fixture_decisions(id, project_id) WHERE status = 'active';
+   CREATE TRIGGER fixture_decisions_no_delete BEFORE DELETE ON fixture_decisions BEGIN SELECT RAISE(ABORT,'fixture decisions are append-only'); END;
+   CREATE TRIGGER fixture_decisions_status_only BEFORE UPDATE ON fixture_decisions
+   WHEN NEW.id IS NOT OLD.id OR NEW.project_id IS NOT OLD.project_id OR NEW.root_id IS NOT OLD.root_id OR NEW.grant_id IS NOT OLD.grant_id OR NEW.revision IS NOT OLD.revision OR NEW.statement IS NOT OLD.statement OR NEW.recorded_at IS NOT OLD.recorded_at OR OLD.status IS NOT 'active' OR NEW.status NOT IN ('superseded','withdrawn')
+   BEGIN SELECT RAISE(ABORT,'fixture decision content is immutable'); END;`,
 ] as const;
 
 export function openDatabase(path: string): DatabaseSync {

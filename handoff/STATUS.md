@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- M0 合成用户决定 v4 迁移已实现；修订或撤回后引用旧决定的观点不可用，历史保留；fixture 项目删除中时观察与观点也停止使用。78 项本地测试及类型检查/构建见 `handoff/EVIDENCE/m0d-fixture-decisions-check-2026-11-03.txt`；真实用户决定与正式生命周期未实现。
 - M0-C 的合成观点版本、不可执行方案、修订原因与反馈已实现并局部复核；64 项本地测试与类型检查/构建见 `handoff/EVIDENCE/m0c-fixture-opinion-check-2026-11-03.txt`，边界见 `docs/architecture/M0-C-FIXTURE-OPINION-MEMORY.md`。未实现真实来源、身份认证、研究或产品闭环。
 - M0-B 合成来源及不可变观察的 v2 迁移、授权重检、epoch 和幂等基础已完成局部验证；见 `docs/architecture/M0-B-FIXTURE-CHRONICLE.md` 和 `handoff/EVIDENCE/m0b-fixture-chronicle-check-2026-11-03.txt`。真实来源及观点持久化未完成。
 - M0-A 首版结构合同已落地：项目、类型化来源、观点版本、计划、反馈和版本对，见 `docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`；36 项本地测试及构建、类型检查、文档检查见 `handoff/EVIDENCE/m0a-project-contract-check-2026-11-03.txt`。可信来源核验、持久化和 Gate 均未完成。
