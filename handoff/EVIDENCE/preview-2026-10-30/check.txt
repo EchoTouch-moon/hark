@@ -1,0 +1,4 @@
+PASS WebGL flame loaded and frames advance
+PASS manual pause stops flame frames
+PASS resume restarts flame frames
+PASS no browser page errors

@@ -1,0 +1,279 @@
+diff --git a/docs/mvp/00-START-HERE.md b/docs/mvp/00-START-HERE.md
+index 3e554e6..86ea1a6 100644
+--- a/docs/mvp/00-START-HERE.md
++++ b/docs/mvp/00-START-HERE.md
+@@ -57,0 +58,2 @@ Hark 是启发来源：持续对话、主动提供有用见解和低打扰体验
++
++用户对原 G0 的审查结论为 **CONDITIONAL_PASS**；修订版待再次审阅。旧接口及 11 项 CI 失败逐项分类见 [旧接口与 CI 审查](./g0/04-ci-and-legacy-route-review.md)。本次审阅未独立验证本地提交或测试日志，不作为实现通过证据。
+diff --git a/docs/mvp/g0/01-architecture-audit.md b/docs/mvp/g0/01-architecture-audit.md
+index a4031b0..fe31f03 100644
+--- a/docs/mvp/g0/01-architecture-audit.md
++++ b/docs/mvp/g0/01-architecture-audit.md
+@@ -3 +3 @@
+-> 审查基线：PR #6 `4d08d465239f4157bf920eb82903bc2a7726d553`，其父基线 PR #5 `fe5464e4e2cb4cfb0b6cb8dffbc4db16bf664b23`。本文件是 G0 的工程方案，未实现项不是现有能力；合同尚待用户审阅。
++> 审查基线：PR #6 `4d08d465239f4157bf920eb82903bc2a7726d553`，其父基线 PR #5 `fe5464e4e2cb4cfb0b6cb8dffbc4db16bf664b23`。用户对原三份文档给出 CONDITIONAL_PASS；本修订版需再次审阅，未实现项不是现有能力。本次不启动 G1–G5。
+@@ -11,4 +11,5 @@
+-1. **跨项目候选暴露风险**：`apps/server/src/http/routes/threads.ts` 的 `GET /api/v1/threads/:id/proactive` 调用 `listCards({ status: 'proposed', limit: 3 })`，未传项目过滤；随后将卡标题及 `whyNow` 写入线程。该路径由 `apps/server/src/http/app.ts` 注册。代码审查足以确认无项目过滤，但跨项目实际利用及影响范围尚未动态验证；新真实模式必须 fail closed，并覆盖直接 API 和线程重放。
+-2. **演示结果误认真实完成**：同一文件的 action execute 采用请求体 `action.demo` 决定文案；`demo: false` 分支仍是本地 Mock，却返回“已完成”和 `ok: true`，并非独立执行回执。真实模式需禁用/隔离该路径，保留清晰 Demo 标识；不得将伪完成迁入新观点流。
+-3. **项目生命语义错误**：`apps/web/src/features/projectEmber.ts` 将 3 条消息视为繁盛、所有卡完成视为金火、观察关闭/陈旧视为休眠；`AppShell.tsx` 等仍呈现活力百分比与添柴。这违反新合同，需先写 N17–N19 负例再替换。项目缺失、未观察、停用、数据间隙不能推导休眠。
+-4. **真实验收阻断**：PR #5 和 PR #6 的 GitHub Actions 均失败。PR #6 运行 [40998662240](https://github.com/EchoTouch-moon/hark/actions/runs/40998662240) 中单元/集成 438 项通过，但浏览器 E2E 为 11 通过、11 失败、3 未运行；例子包括旧首页标题、主导航、模式错误和主题控件未找到。部分可能是旧 UI 测试与新界面不匹配，但不能据此推定所有失败都是过时测试，必须逐项分类并保留安全断言。PR #5 的 [40994397259](https://github.com/EchoTouch-moon/hark/actions/runs/40994397259) 同样为 11/11/3。两次分别测试 GitHub 的合并结果，不能等同于本地当前 HEAD 的新一轮验证。
++1. **跨项目候选暴露风险**：`apps/server/src/http/routes/threads.ts` 的 `GET /api/v1/threads/:id/proactive` 调用 `listCards({ status: 'proposed', limit: 3 })`，未传项目过滤；随后将卡标题及 `whyNow` 写入线程。该 GET 还可能通过 `ensureThread`、`appendChat`、`updateThreadProactive`、`touchThread` 写入线程及状态，违反新合同 GET 只读约束；该路径由 `apps/server/src/http/app.ts` 注册。代码审查足以确认无项目过滤和这些写入路径，但跨项目实际利用及影响范围尚未动态验证；新真实模式必须 fail closed，并覆盖直接 API 和线程重放。
++2. **演示结果误认真实完成**：同一文件的 action execute 采用请求体 `action.demo` 决定文案；`demo: false` 分支仍是本地 Mock，却返回“已完成”和 `ok: true`，并非独立执行回执。真实模式需在服务端直接拒绝该旧路径、保留隔离 Demo 标识；不得将伪完成迁入新观点流。
++3. **旧 Orchestrator 入口待隔离**：`apps/server/src/http/routes/runs.ts` 的 `/cards/:id/execute` 和 `/approvals/:runId` 直接调用 Orchestrator；后者可创建或恢复执行流水线。不能以隐藏界面代替服务端保护；还需审计启动恢复、取消与其他可达调用。详细矩阵见 `04-ci-and-legacy-route-review.md`。
++4. **项目生命语义错误**：`apps/web/src/features/projectEmber.ts` 将 3 条消息视为繁盛、所有卡完成视为金火、观察关闭/陈旧视为休眠；`AppShell.tsx` 等仍呈现活力百分比与添柴。这违反新合同，需先写 N17–N19 负例再替换。项目缺失、未观察、停用、数据间隙不能推导休眠。
++5. **真实验收阻断**：PR #5 和 PR #6 的 GitHub Actions 均失败。PR #6 运行 [40998662240](https://github.com/EchoTouch-moon/hark/actions/runs/40998662240) 中单元/集成 438 项通过，但浏览器 E2E 为 11 通过、11 失败、3 未运行；例子包括旧首页标题、主导航、模式错误和主题控件未找到。部分可能是旧 UI 测试与新界面不匹配，但不能据此推定所有失败都是过时测试，必须逐项分类并保留安全断言。PR #5 的 [40994397259](https://github.com/EchoTouch-moon/hark/actions/runs/40994397259) 同样为 11/11/3。两次分别测试 GitHub 的合并结果，不能等同于本地当前 HEAD 的新一轮验证。
+@@ -29,2 +30,2 @@
+-| 公开研究/观点/反馈修订 | MISSING | 现有 Insight 与 Analysis 分别是规则结果和单次推荐，未见所需 research job/source ledger/opinion revision | 新建受限端口及持久合同；独立证据链、预算、引用校验、版本、反馈、去重，初始关闭。 |
+-| 主动提示 | MOCK / PARTIAL | `routes/threads.ts` 线程级固定状态、演示建议或最多 3 张卡 | 不作为新主动观点；重建基于可证明价值、权限、去重、冷却/搁置的一条主提示，未就绪返回空。 |
++| 公开研究/观点/反馈修订 | MISSING | 现有 Insight 与 Analysis 分别是规则结果和单次推荐，未见所需 research job/source ledger/opinion revision | 新建受限端口及持久合同；独立证据链、预算、引用校验、版本、反馈、去重，初始关闭。公开主题可持久授权并按周期发现，不依赖 Git 变化；模型与私有数据外发须独立授权。 |
++| 主动提示 | MOCK / PARTIAL | `routes/threads.ts` 线程级固定状态、演示建议或最多 3 张卡 | 不作为新主动观点；重建基于可证明价值、权限、去重、冷却/搁置的一条主提示；GET 只读、claim 与实际呈现确认独立幂等，未就绪返回空。 |
+diff --git a/docs/mvp/g0/02-contract-and-decisions.md b/docs/mvp/g0/02-contract-and-decisions.md
+index e3ec5b0..e4c252e 100644
+--- a/docs/mvp/g0/02-contract-and-decisions.md
++++ b/docs/mvp/g0/02-contract-and-decisions.md
+@@ -3 +3 @@
+-> 提案 v0.1，供用户审阅；不是已上线 API、迁移、授权或执行许可。严格 Zod、项目隔离、最小权限和旧安全合同不可降低。
++> 审查后修订提案 v0.2；G0 审查结论为 CONDITIONAL_PASS，修订版尚待再次审阅。不是已上线 API、迁移、授权或执行许可。严格 Zod、项目隔离、最小权限和旧安全合同不可降低。
+@@ -10,2 +10,2 @@
+-| R2 | 事实保留来源/时间/epoch；未知与暂停不可伪装成安静或健康 | Observer read port + 新 Evidence Ledger | 真实只读观察及 N07/N08/N17 |
+-| R3 | 与目标有关的研究问题，独立于模型生成质量门禁 | Insight + 新候选选择器 | 相关性规则可解释、无新信息静默，N09/N15/N24 |
++| R2 | 事实保留类型化来源和时间；仅观察流使用 epoch；未知与暂停不可伪装成安静或健康 | Observer read port + 新 Evidence Ledger | 真实只读观察及 N07/N08/N17 |
++| R3 | 与目标有关的事件驱动候选，以及授权主题下独立于项目变动的定期公开发现；独立于模型质量门禁 | Insight + 新候选选择器 | 相关性规则可解释、无新信息静默，N09/N15/N24 |
+@@ -14 +14 @@
+-| R6 | 主界面最多一条非打扰主观点，用户可读证据及搁置/反驳 | 新 ProactivePolicy + 对话页面 | N09/N10/N23/N24，用户输入焦点不被抢 |
++| R6 | 主界面最多一条非打扰主观点；读取、展示确认和反馈分开，用户可查证及搁置/反驳 | 新 ProactivePolicy + 对话页面 | N09/N10/N23/N24，用户输入焦点不被抢 |
+@@ -23 +23 @@
+-**ADR-02 事实与来源。** 来源引用是类型化复合键 `(projectId, sourceId, epoch, sourceRecordId)`，带 observedAt/sourceTime、hash、quality 和访问授权；不跨独立 SQLite 使用假外键。读取时验证 source 未删除/未重置、epoch 一致且当前有权限；过期来源保留历史引用但标 invalid/unavailable，不冒充事实。外部 URL 及访问时间只证明获取记录，不证明与用户项目事实直接等价。事实不可原地覆盖。
++**ADR-02 类型化证据与来源。** `EvidenceRef` 是带 `kind` 的判别联合：`ObserverEvidenceRef` 绑定 `(projectId, observerSourceId, epoch, eventId)`、观察时间与质量；仅观察流有 epoch、watermark 和 source reset。`ResearchSourceRef` 绑定 `(projectId, researchSourceId)`，记录规范 URL、访问时间、内容哈希及版本/发表时间（如有）、可用性与授权；URL 不属于 Observer、不可伪造 epoch。`UserDecisionRef` 绑定 `(projectId, decisionId, revision)` 与记录时间及撤回状态，由用户决定版本控制。三者均检验当前项目范围、来源存在和适用的权限/可信度，但不能互换其身份或语义。公开引用只能证明获取记录，不能证明私人项目事实；用户决定是用户选择，不是对外部命题的客观证明。来源失效时保留历史引用并明确标记 unavailable/withdrawn/stale，严禁跨项目借用，不跨库虚构外键。若引用无法解析或权限不再有效则 withheld；类型校验不等于内容事实正确。
+@@ -25 +25 @@
+-**ADR-03 观点。** Opinion 为 `(projectId, topicKey)` 身份和当前版本指针；OpinionRevision 单调递增、不可变，事务内 CAS `expectedRevision` 防丢更新；用户反馈单独 append，拒绝计划不是事实证伪。revision 需要事实/推断、可追溯证据、反例或明确缺失、局限、建议、可证伪条件和不可执行 Plan 草案。引用缺失/跨项目/旧 epoch 时 withheld；Schema 校验只能验证结构和引用合法性，不证明结论真实或有用。
++**ADR-03 观点。** Opinion 为 `(projectId, topicKey)` 身份和当前版本指针；OpinionRevision 单调递增、不可变，事务内 CAS `expectedRevision` 防丢更新；用户反馈单独 append，拒绝计划不是事实证伪。revision 需要事实/推断、可追溯证据、反例或明确缺失、局限、建议、可证伪条件和不可执行 Plan 草案。引用缺失/跨项目、观察流旧 epoch 或研究来源不可用、决定已撤回时 withheld；Schema 校验只能验证结构和引用合法性，不证明结论真实或有用。
+@@ -27 +27 @@
+-**ADR-04 双授权与网络。** 观察授权、公开研究授权、模型使用授权、执行授权彼此独立；默认全关闭（新能力），不继承 UI 偏好、旧 Analysis 单次批准或 Demo 权限。授权含项目/source、provider/recipient、用途、允许域、预算/次数/时间窗、可撤销与版本。模型必须有单独授权；不得为了自动研究绕过已有逐次外发预览合同，若需预授权必须先单独评审数据范围与授权方式。研究仅接收公开可表述的用户批准主题；自动过滤不证明绝对安全，无法保证时 BLOCKED 并要求用户提供安全概括。服务端在每次出站前重新校验持久授权、预算、取消、源状态与 policyVersion；配额在事务内预留并记账，重启时未知结果为 unknown，不自动重复付费或计为成功。拦截 localhost/private/link-local/metadata IP、非 HTTPS、重定向越域、DNS 重绑定和超大响应；最终解析及每跳都需验证，有界超时/大小/次数；不接个人账号、不执行网页脚本。研究来源/网页/README/模型输出均不可信，绝不当指令或调用工具；日志不存秘密、绝对路径、源码或原始敏感文本。
++**ADR-04 双授权与网络。** 观察授权、公开研究授权、模型使用授权、执行授权彼此独立；默认全关闭（新能力），不继承 UI 偏好、旧 Analysis 单次批准或 Demo 权限。授权含项目/source、provider/recipient、用途、允许域、预算/次数/时间窗、可撤销与版本。模型必须有单独授权；不得为了自动研究绕过已有逐次外发预览合同，若需预授权必须先单独评审数据范围与授权方式。用户可一次持久批准项目的公开研究主题、边界、允许来源、频率、预算、期限与撤销方式；Hearth 可在范围内自行提出问题、构造脱敏查询并检索，无需逐词再批准。仅公开可表达的主题可外发；无法证明搜索词属于授权范围、无法安全概括或超范围时 BLOCKED 并请求新的范围确认。自动过滤不证明绝对安全。公开研究授权不包含自动模型调用或私有项目数据外发；这些须有独立明确授权，且既有 Pi 的逐次上下文确认不得被静默取消。服务端在每次出站前重新校验持久授权、预算、取消、源状态与 policyVersion；配额在事务内预留并记账，重启时未知结果为 unknown，不自动重复付费或计为成功。拦截 localhost/private/link-local/metadata IP、非 HTTPS、重定向越域、DNS 重绑定和超大响应；最终解析及每跳都需验证，有界超时/大小/次数；不接个人账号、不执行网页脚本。研究来源/网页/README/模型输出均不可信，绝不当指令或调用工具；日志不存秘密、绝对路径、源码或原始敏感文本。
+@@ -29 +29,3 @@
+-**ADR-05 调度与恢复。** 在既有进程增设持久 bounded scheduler；基于新的相关事实/目标变更和显式策略触发，空闲无事件不调用模型。每项目有限并发，job 有唯一幂等键/租约/版本、取消和中断状态；重启将未确认外发标记 `outcome_unknown` 需人工恢复，不能自动重试产生重复外发或费用。撤销/暂停在下一外发前强制生效，已发出请求尽力中止并如实记录不能撤回。观察状态与动画暂停无关。
++**ADR-05 调度与恢复。** 在既有进程增设持久 bounded scheduler，区分 `(a) event`：可信项目事实、目标或决定改变；`(b) topic`：项目的持久授权研究主题到达所选周期，**即使本地无 Git 变动也可检查**。主题扫描默认关闭，仅在明确授权的领域、provider/来源、频率、额度和有效期内运行；先限额查询公开元数据并按规范 URL/版本/哈希去重，只有出现新且可能相关的资料才进入深入研究候选；无变化不调用模型或生成观点，按 quiet policy 静默。主题和 query 必须先做范围及隐私检查；不把敏感本地事件或资料塞入查询。周期、最低间隔、来源与上限均配置化并需实际成本验证，不能假定免费。
++
++两条触发线使用各自稳定 idempotency key、扫描 watermark 和有限并发/预算；跨事件和主题产生同一来源时去重关联，不重复研究/打扰。任务持久租约，重启后未确认外发为 `outcome_unknown`、不得盲重试或伪称零费用。授权到期/撤销、网络失败、配额耗尽和取消均停止后续调用并记录原因；断线不能凭空推进 watermark。观察状态与动画暂停无关。
+@@ -33 +35 @@
+-**ADR-07 执行。** MVP 无真实执行入口，计划默认 `executable=false`；旧 Demo 动作只在合成模式中存在。将来扩展必须另审每个方案版本、目标、作用域、风险/预算、失效与发起人，持久化一次性授权并在执行前重验；既有 `ApprovalGrant` 不是后台研究令牌。批准“保存计划”不等于发起执行。
++**ADR-07 执行。** MVP 的真实模式无真实执行入口，计划默认 `executable=false`；旧 Demo 动作只在服务端确认的隔离合成模式中存在。G1-A 须审查并保护线程模拟执行、`/cards/:id/execute`、`/approvals/:runId` 以及 Orchestrator 直接调用、恢复和所有可能副作用路径；真实、未知/失效模式对不允许动作服务端拒绝，不能仅隐藏 UI 或信任客户端 demo/risk。对取消及只读诊断等非执行动作按最小权限逐项审查，不一概关闭造成无法停止已有工作。将来扩展必须另审每个方案版本、目标、作用域、风险/预算、失效与发起人，持久化一次性授权并在执行前重验；既有 `ApprovalGrant` 不是后台研究令牌。批准“保存计划”不等于发起执行。
+@@ -40 +42,4 @@
+-type SourceKey = { projectId: Id; sourceId: Id; epoch: number; recordId: Id };
++type ObserverEvidenceRef = { kind: 'observer'; projectId: Id; observerSourceId: Id; epoch: number; eventId: Id; observedAt: ISODate; quality: 'observed'|'stale'|'unknown' };
++type ResearchSourceRef = { kind: 'research'; projectId: Id; researchSourceId: Id; accessedAt: ISODate; contentHash: string; availability: 'available'|'stale'|'unavailable' };
++type UserDecisionRef = { kind: 'decision'; projectId: Id; decisionId: Id; revision: number; recordedAt: ISODate; status: 'active'|'withdrawn' };
++type EvidenceRef = ObserverEvidenceRef | ResearchSourceRef | UserDecisionRef;
+@@ -44,4 +49,4 @@ type Decision = { id: Id; projectId: Id; goalRevisionId?: Id; kind: string; user
+-type Source = { id: Id; projectId: Id; kind: 'observer'|'public'; enabled: boolean; epoch: number; lastObservedAt?: ISODate; freshness: 'fresh'|'stale'|'unknown'|'gap'|'disabled'|'unavailable' };
+-type EvidenceRef = { key: SourceKey; kind: 'observed'|'user_confirmed'|'public_source'; observedAt: ISODate; sourceTime?: ISODate; hash?: string; quality: 'observed'|'stale'|'unknown' };
+-type ResearchPolicy = { projectId: Id; version: number; enabled: boolean; providerId: string; allowedDomains: string[]; maxRequests: number; maxCost: number; windowEndsAt: ISODate; revokedAt?: ISODate };
+-type ResearchJob = { id: Id; projectId: Id; policyVersion: number; dedupeKey: string; triggerRefs: EvidenceRef[]; status: 'proposed'|'eligible'|'running'|'completed'|'blocked'|'failed'|'cancelled'|'outcome_unknown'; reservedUnits: number; usedUnits: number; startedAt?: ISODate; endedAt?: ISODate };
++type ObserverSource = { id: Id; projectId: Id; enabled: boolean; epoch: number; lastObservedAt?: ISODate; freshness: 'fresh'|'stale'|'unknown'|'gap'|'disabled'|'unavailable' };
++type TopicScope = { id: Id; projectId: Id; version: number; publicTopic: string; boundaries: string[]; enabled: boolean; intervalSeconds: number; expiresAt: ISODate };
++type ResearchPolicy = { projectId: Id; version: number; enabled: boolean; topicScopeId: Id; providerId: string; allowedDomains: string[]; maxRequests: number; maxCost: number; windowEndsAt: ISODate; revokedAt?: ISODate };
++type ResearchJob = { id: Id; projectId: Id; policyVersion: number; dedupeKey: string; trigger: { kind: 'event'; refs: EvidenceRef[] } | { kind: 'topic'; topicScopeId: Id; scheduledWindow: string }; status: 'proposed'|'eligible'|'running'|'completed'|'blocked'|'failed'|'cancelled'|'outcome_unknown'; reservedUnits: number; usedUnits: number; startedAt?: ISODate; endedAt?: ISODate };
+@@ -53 +58 @@ type Feedback = { id: Id; projectId: Id; revisionId: Id; choice: 'accept'|'modif
+-type Delivery = { projectId: Id; revisionId: Id; dedupeKey: string; status: 'eligible'|'suppressed'|'presented'; reason?: string; deliveredAt?: ISODate };
++type Delivery = { projectId: Id; revisionId: Id; dedupeKey: string; status: 'eligible'|'claimed'|'presented'|'delivery_uncertain'|'suppressed'; claimId?: Id; leaseUntil?: ISODate; presentedAt?: ISODate; reason?: string };
+@@ -56 +61 @@ type Delivery = { projectId: Id; revisionId: Id; dedupeKey: string; status: 'eli
+-约束：`UNIQUE(opinion_id,version)`、`UNIQUE(project_id,topic_key)`、`UNIQUE(project_id,dedupe_key)`；外部请求需使用稳定 idempotency key，不允许无触发事实的默认自动任务。研究结论缺乏已核验来源或无事实-推断区分时不得 ready/presented。`counterEvidence` 可为空，但必须在 `uncertainties` 明确说明未获得；计划始终不可执行。实际费用若无法可靠测量则显示 unknown、阻止继续使用以货币计价的预算，不填 0。
++约束：`UNIQUE(opinion_id,version)`、`UNIQUE(project_id,topic_key)`、`UNIQUE(project_id,dedupe_key)`；外部请求需使用稳定 idempotency key，不允许没有明确授权、无触发来源的默认自动任务；周期主题任务以已授权 TopicScope + 时间窗口为触发，不要求伪造项目事实。研究结论缺乏已核验来源或无事实-推断区分时不得 ready/presented。`counterEvidence` 可为空，但必须在 `uncertainties` 明确说明未获得；计划始终不可执行。实际费用若无法可靠测量则显示 unknown、阻止继续使用以货币计价的预算，不填 0。
+@@ -65,2 +70,2 @@ type Delivery = { projectId: Id; revisionId: Id; dedupeKey: string; status: 'eli
+-| GET | `/opinions?projectId=`、`/opinions/:id` | 分页、当前版本、证据与历史；scope 校验，旧 epoch 明示失效 |
+-| POST | `/opinions/:id/feedback` | 幂等键 + revision/版本并发控制；仅记录反馈/用户决定，不触发执行 |
++| GET | `/opinions?projectId=`、`/opinions/:id` | 分页、当前版本、证据与历史；scope 校验，按证据类型明示失效原因 |
++| POST | `/opinions/:id/feedback` | 幂等键 + revision/版本并发控制；独立于呈现确认；仅记录反馈/用户决定，不触发执行 |
+@@ -69 +74,5 @@ type Delivery = { projectId: Id; revisionId: Id; dedupeKey: string; status: 'eli
+-| GET | `/proactive?projectId=` | 返回最多一条 ready 且符合去重/静默条件的意见；不可证明时空列表 |
++| GET | `/proactive?projectId=` | 仅读取并返回最多一条 eligible；不可证明时为空，不写聊天、delivery 或审计 |
++| POST | `/proactive/:revisionId/claim` | 事务性抢占项目/表面短租约，冲突返回不可展示；需要授权、幂等键、版本校验 |
++| POST | `/proactive/:revisionId/presented` | 可见后客户端确认，幂等键绑定 claim/revision，成功只写一次 presented；不是用户已读证明 |
++
++`ResearchJob`: proposed → eligible → running → completed/blocked/failed/cancelled/outcome_unknown；每一步有触发、授权、预算和原因。`Opinion`: draft → ready → presented → acknowledged/deferred，新增证据创建 revision 或 withdrawn；`presented` 仅在实际展示确认成功后以事务或确定性投影更新，不由 GET 改写。允许保存反馈但不暗示已执行。所有状态持久化，非法转换拒绝。
+@@ -71 +80 @@ type Delivery = { projectId: Id; revisionId: Id; dedupeKey: string; status: 'eli
+-`ResearchJob`: proposed → eligible → running → completed/blocked/failed/cancelled/outcome_unknown；每一步有来源、授权、预算和原因。`Opinion`: draft → ready → presented → acknowledged/deferred，新增证据创建 revision 或 withdrawn；允许保存反馈但不暗示已执行。所有状态持久化，非法转换拒绝。是否增加显式用户研究触发 API 在 G2 合同细化，不创建自动执行 API。
++**投递语义。** GET 返回候选仅表示可读取，不代表显示或已读。客户端显示前以 POST 原子 claim；同一 project/surface 同时只能有一个有效租约（跨 revision 也互斥），租约绑定 revision、窗口会话及 idempotency key。DOM 真正可见、文档前台且不遮挡用户输入时，客户端以独立 POST 确认 `presented`（服务端接收的是客户端声明，不证明用户看过）；确认幂等并持久化。服务端验证调用方权限后先查询既有幂等结果，已提交的 ack 即使租约随后到期也可重试并返回原结果；未提交且租约已过期的 ack 不再生效，状态标记未确认；刷新/窗口崩溃后租约到期可重新竞争，其他候选保留在历史中。显示后但确认前崩溃无法严格证明是否显示，恢复可重复一次，记录 `delivery_uncertain`，不承诺跨崩溃绝对恰好一次；去重/冷却与用户反馈独立持久化，避免无限重复、不能丢观点。服务端校验 claim 归属、租约、revision、授权、撤销与反馈；已搁置/已被其他窗口确认则拒绝新的展示。后续需用多标签、取消、ack 丢失及崩溃测试验证，不将此提案写成现有能力。是否增加显式用户研究触发 API 在 G2 合同细化，不创建自动执行 API。
+@@ -77 +86 @@ type Delivery = { projectId: Id; revisionId: Id; dedupeKey: string; status: 'eli
+-- 源重置/epoch 变化时冻结旧引用并标失效，不自动将其重新指向新数据；保留可审计历史但不参与新结论。明确备份/回滚、迁移中断与恢复测试；不读取或删除真实私人目录。
++- 观察源重置/epoch 变化时冻结该观察流旧引用并标失效，不自动将其重新指向新数据；保留可审计历史但不参与新结论。明确备份/回滚、迁移中断与恢复测试；不读取或删除真实私人目录。
+@@ -93 +102,5 @@ sequenceDiagram
+- S->>L: 基于目标和新事实选候选
++ alt 项目事件触发
++  S->>L: 基于目标与新事实选候选
++ else 已授权主题到期
++  S->>L: 读取主题/周期，生成低成本元数据检查任务
++ end
+@@ -103 +116,2 @@ sequenceDiagram
+-  L->>L: 校验引用/项目/epoch/结构；不足则 withheld
++  L->>L: 按类型校验引用、项目、版本及结构；不足则 withheld
++  V->>L: GET 候选（只读）
+@@ -104,0 +119,2 @@ sequenceDiagram
++  V->>L: POST claim，成功后展示
++  V->>L: 确认 presented（幂等）
+@@ -136,3 +152,4 @@ sequenceDiagram
+-const SourceKey = z.object({
+-  projectId: IdSchema, sourceId: IdSchema,
+-  epoch: z.number().int().nonnegative(), recordId: IdSchema,
++const ObserverEvidenceRef = z.object({
++  kind: z.literal('observer'), projectId: IdSchema, observerSourceId: IdSchema,
++  epoch: z.number().int().nonnegative(), eventId: IdSchema,
++  observedAt: IsoDateTimeSchema, quality: z.enum(['observed', 'stale', 'unknown']),
+@@ -140,5 +157,4 @@ const SourceKey = z.object({
+-const EvidenceRef = z.object({
+-  key: SourceKey, kind: z.enum(['observed', 'user_confirmed', 'public_source']),
+-  observedAt: IsoDateTimeSchema, sourceTime: IsoDateTimeSchema.optional(),
+-  hash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+-  quality: z.enum(['observed', 'stale', 'unknown']),
++const ResearchSourceRef = z.object({
++  kind: z.literal('research'), projectId: IdSchema, researchSourceId: IdSchema,
++  accessedAt: IsoDateTimeSchema, contentHash: z.string().regex(/^[a-f0-9]{64}$/),
++  availability: z.enum(['available', 'stale', 'unavailable']),
+@@ -145,0 +162,6 @@ const EvidenceRef = z.object({
++const UserDecisionRef = z.object({
++  kind: z.literal('decision'), projectId: IdSchema, decisionId: IdSchema,
++  revision: z.number().int().positive(), recordedAt: IsoDateTimeSchema,
++  status: z.enum(['active', 'withdrawn']),
++}).strict();
++const EvidenceRef = z.discriminatedUnion('kind', [ObserverEvidenceRef, ResearchSourceRef, UserDecisionRef]);
+@@ -156,0 +179,7 @@ const FeedbackInput = z.object({
++const TopicScopeInput = z.object({
++  projectId: IdSchema, expectedVersion: z.number().int().nonnegative(),
++  publicTopic: z.string().trim().min(1).max(256),
++  boundaries: z.array(z.string().trim().min(1).max(256)).min(1).max(16),
++  enabled: z.boolean(), intervalSeconds: z.number().int().positive(),
++  expiresAt: IsoDateTimeSchema,
++}).strict();
+@@ -159 +188 @@ const ResearchPolicyInput = z.object({
+-  enabled: z.boolean(), providerId: z.string().min(1).max(128),
++  enabled: z.boolean(), topicScopeId: IdSchema, providerId: z.string().min(1).max(128),
+@@ -166 +195 @@ const ResearchPolicyInput = z.object({
+-以上只是结构下限：实现必须额外校验 ID 实际所属 scope、来源存在/可访问及 epoch、domain 精确规范化和最终连接地址、预算单位/上限、有效期、Provider 的独立模型授权、对同一反馈的幂等性与 revision CAS。不能靠 schema、散列或私有词正则单独宣称引用真实或外发安全。`maxCost` 缺少可靠成本计量时不允许绕过限制；Provider 不可用就 BLOCKED。模型输出的全部数组、字符串与 URL 同样需有界的严格 schema，前述 OpinionRevision 字段及跨引用校验必须作为实现必测合同。
++以上只是结构下限：实现必须额外校验 ID 实际所属 scope、来源存在/可访问及按类型适用的 epoch/版本、domain 精确规范化和最终连接地址、主题范围与最小周期、预算单位/上限、有效期、Provider 的独立模型授权、对同一反馈的幂等性与 revision CAS。不能靠 schema、散列或私有词正则单独宣称引用真实或外发安全。`maxCost` 缺少可靠成本计量时不允许绕过限制；Provider 不可用就 BLOCKED。模型输出的全部数组、字符串与 URL 同样需有界的严格 schema，前述 OpinionRevision 字段及跨引用校验必须作为实现必测合同。
+diff --git a/docs/mvp/g0/03-plan-threats-traceability.md b/docs/mvp/g0/03-plan-threats-traceability.md
+index 63f9d07..bd14764 100644
+--- a/docs/mvp/g0/03-plan-threats-traceability.md
++++ b/docs/mvp/g0/03-plan-threats-traceability.md
+@@ -3 +3 @@
+-> 计划以 PR #6 `4d08d465` 为基线；本次只做审计及合同，不改业务/UI。G0 文档完成不等于用户已审阅或批准编码；G1–G5 均未实施。
++> 计划以 PR #6 `4d08d465` 为基线；用户对原方案的文档审查结论为 **CONDITIONAL_PASS**，本修订版尚待再次审阅。本次只做文档整改，不改业务/UI；G1–G5 均未实施。
+@@ -9,3 +9,5 @@
+-| G0 | 审计、复用矩阵、ADR、需求/API/数据合同、威胁与 N01–N24 映射；标清基线红灯 | 文档可追溯到代码、测试、来源和每项 Must；具体方案需用户审阅。现有跨项目/虚假完成风险和 CI 红灯须排入后续首要修复 | **审查材料完成；合同未获用户审阅，G0 Gate 待审，后续编码 BLOCKED** |
+-| G1 | 先用失败测试证明旧主动路径项目隔离及伪完成问题；真实模式关闭/隔离旧路径；修复仍适用的模式/访问安全 E2E。添加项目身份绑定、目标/决定、EvidenceRef 和 Opinion/Revision/Feedback 最小持久化 | 两项目攻击、直接 API、并发版本、重启、source reset/删除、旧 Demo 隔离和 schema migration；每条有脱敏日志；CI 的旧 UI 测试逐项分类重写并保留安全语义 | NOT STARTED |
+-| G2 | 独立 ResearchPolicy、Job、预算账本、public-only adapter、敏感数据阻断、取消/恢复，默认关闭；先接一种可靠公开入口 | 离线负例 N01/N03–N05/N12/N13 及网络出站间谍为零；单次真实公开检索需用户分别开启授权、范围、预算且留真实 URL/访问时间；不可用时 BLOCKED | NOT STARTED |
++| G0 | 审计、复用矩阵、ADR、需求/API/数据合同、威胁与全部验收映射 | 审查反馈有条件通过；七项文档整改完成后等待再次审阅，不能推导编码授权 | CONDITIONAL_PASS；修订待审 |
++| G1-A · 安全基线 | 先写两个项目隔离、GET 无写入、伪完成和旧执行/审批入口负例；服务端真实模式拒绝不允许执行，恢复适用的 Runtime Mode 等安全 E2E | 真实/未知模式直接 API 拒绝；无执行器调用/伪完成/跨项目串线；Demo 独立且标识；逐项 CI 分类和回归证据 | NOT STARTED |
++| G1-B · Project Chronicle | 新稳定 ProjectId、项目与线程绑定、目标/决定、类型化证据、删除/来源重置与版本迁移；不接模型/网络 | 两项目隔离、来源特定有效性、并发、重启与崩溃恢复、无伪造 epoch | NOT STARTED |
++| G1-C · Opinion Memory | 不可变观点版本、并发 CAS、用户反馈、持久去重；不接模型/网络 | 保存、修订、反驳、搁置和完整历史；并发/重启不覆盖和不重复 | NOT STARTED |
++| G2 | 独立 ResearchPolicy、Job、预算账本、public-only adapter；事实驱动及授权主题周期性元数据扫描、敏感数据阻断、取消/恢复，默认关闭；先接一种可靠公开入口 | 离线负例 N01/N03–N05/N12/N13 及网络出站间谍为零；单次真实公开检索需用户分别开启授权、范围、预算且留真实 URL/访问时间；不可用时 BLOCKED | NOT STARTED |
+@@ -16 +18 @@
+-G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前置，并不借本 G0 抢先改业务。每个阶段采用隔离合成数据、明确 schema/migration、局部测试+typecheck，然后覆盖相关集成；G5 才要求全量 `pnpm typecheck`、`pnpm lint`、`pnpm test`、`pnpm build`、`pnpm test:e2e` 和远端 CI。维护历史 `M0/M1` 门禁，不把 G0–G5 命名成旧 gate 已通过。人工价值与性能没有实测前分别 NOT_MEASURED。
++G1-A 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前置，并不借本 G0 抢先改业务。每个阶段采用隔离合成数据、明确 schema/migration、局部测试+typecheck，然后覆盖相关集成；G5 才要求全量 `pnpm typecheck`、`pnpm lint`、`pnpm test`、`pnpm build`、`pnpm test:e2e` 和远端 CI。维护历史 `M0/M1` 门禁，不把 G0–G5 命名成旧 gate 已通过。人工价值与性能没有实测前分别 NOT_MEASURED。
+@@ -22,2 +24,2 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
+-| 跨项目/线程串线（现有无过滤路径） | 服务端 project/source 授权和绑定，禁止全局 listCards 混入线程；切换时取消并隔离响应 | 两个隔离项目独特标记，直接 API、切换、重启后均不泄露（N07/N16） |
+-| Demo 假完成进入真实模式 | 服务端真实模式关闭旧模拟 action；旧 Demo 明示模拟，不以客户端 `demo` 判安全 | 伪造 action/demo/风险字段、重复提交，不调用 executor、不显示真实完成（N11/N12/N22） |
++| 跨项目/线程串线（现有无过滤路径） | 服务端 project/source 授权和绑定，禁止全局 listCards 混入线程；切换时取消并隔离响应 | 两个隔离项目独特标记，直接 API、切换、重启后均不泄露（N07/N16/N25） |
++| Demo 假完成进入真实模式 | 服务端真实模式关闭旧模拟 action；旧 Demo 明示模拟，不以客户端 `demo` 判安全 | 伪造 action/demo/风险字段、重复提交，覆盖线程、卡片、审批及间接调度，未知/真实模式不调用 executor、不显示真实完成（N11/N12/N22/N30） |
+@@ -29,3 +31,5 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
+-| 模型幻觉/过期或伪造引用 | 不可信输出独立 schema/source/project/epoch/可用性检查，事实/推断拆分，质量仍由人评 | 未知 URL、跨项目和旧 epoch withheld，不因格式合格宣称真实（N05–N08） |
+-| 项目删除/重建、崩溃造成悬空引用 | deletion journal、tombstone、幂等分步恢复；source epoch 失效 | 每个中断点重启，删除期间拒绝读写；历史引用不自动重绑定 |
+-| 高频主动打扰 | 持久 dedupe、冷却、反馈、每焦点最多一条、用户编辑不抢焦点 | 多新观点、延后/拒绝、同事件重放（N09/N10/N15/N23/N24） |
++| 模型幻觉/过期或伪造引用 | 不可信输出独立 schema/project 和按类型的来源版本/可用性检查，事实/推断拆分，质量仍由人评 | 未知 URL、跨项目和旧 epoch withheld，不因格式合格宣称真实（N05–N08） |
++| 项目删除/重建、崩溃造成悬空引用 | deletion journal、tombstone、幂等分步恢复；按来源类型标记 epoch 或版本失效 | 每个中断点重启，删除期间拒绝读写；历史引用不自动重绑定 |
++| 高频主动打扰/投递丢失 | GET 只读，独立幂等 claim/presented 与反馈，持久 dedupe、冷却，用户编辑不抢焦点 | 并发多页/超时/ack 丢失/崩溃可恢复，用户搁置后不重发；承认显示后 ack 前崩溃可能重复（N09/N10/N15/N23/N24/N28） |
++| 周期扫描越权或空耗 | 主题持久授权、范围/频率/额度/有效期和版本逐次核验；公开元数据优先，内容不变不调用模型 | 无 Git 变化可在授权周期内发现新公开来源；撤销/过期/超预算无请求，无新资料无模型调用（N26/N27） |
++| 不同来源错误复用身份 | Observer epoch、公开资料 URL/哈希及用户决定版本分别校验，不互相伪造 | 一类失效不会无故冻结其他类型；跨项目引用拒绝，无法解析 withheld（N07/N29） |
+@@ -37 +41 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
+-所有 N 项当前对**新合同**均 NOT RUN；旧测试与本次局部测试不可替代下列新断言。每行的最终状态、测试文件/命令、实际输出、SHA 与截图必须随对应阶段填入。
++所有 N01–N32 项当前对**新合同**均 NOT RUN；旧测试与本次局部测试不可替代下列新断言。每行的最终状态、测试文件/命令、实际输出、SHA 与截图必须随对应阶段填入。
+@@ -54 +58 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
+-| N07 | 项目/epoch 不一致引用被拒，直接 API 覆盖 | G1/G3 |
++| N07 | 类型化引用 project 不一致、观察流 epoch 不匹配或其他来源身份失效均拒绝；直接 API 覆盖 | G1-B/G3 |
+@@ -56 +60 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
+-| N09 | 同一事件重放仅一个研究和提示；重启仍去重 | G2/G3 |
++| N09 | 同一事件或同一主题扫描结果重放仅一个研究和提示；重启仍去重 | G2/G3 |
+@@ -58,3 +62,3 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
+-| N11 | 保存计划只能写内部草案；executor/仓库写入 spy=0 | G1/G3 |
+-| N12 | 研究授权无法调用真实执行入口或外部写 | G1/G2 |
+-| N13 | 断网、重启、取消后无孤儿和重复计费；未知不自动重试 | G2 |
++| N11 | 保存计划只能写内部草案；直接请求线程、卡片、审批等旧入口，executor/仓库写入 spy=0 | G1-A/G3 |
++| N12 | 研究授权无法调用线程、卡片、审批与间接执行入口或外部写 | G1-A/G2 |
++| N13 | 断网、重启、取消后无孤儿和重复计费；扫描 watermark 不虚假推进，未知不自动重试 | G2 |
+@@ -69,2 +73,2 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
+-| N22 | 旧 Demo 的副作用入口仅隔离合成；真实模式直接请求拒绝 | G1 |
+-| N23 | 多候选只一条主提示、其余可访问且不丢失 | G3/G4 |
++| N22 | 旧线程/卡片/审批及可达间接副作用入口仅隔离合成；真实/未知模式直接请求拒绝，保留取消能力 | G1-A |
++| N23 | 多候选及多页面 claim 同一项目/表面最多一条主提示、其余可访问且不丢失 | G3/G4 |
+@@ -71,0 +76,8 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
++| N25 | GET proactive 前后比对消息、状态、审计无变化；两项目唯一标记不得互相暴露 | G1-A |
++| N26 | 无 Git 变化、主题到期时在授权内做有界元数据扫描；发现新公开资料并持久去重；无变化时模型调用为零 | G2/G3 |
++| N27 | 查询在授权主题内自动构造无需逐词审批；越界/敏感无法安全概括 blocked；暂停、撤销、过期、超额均无新增外发 | G2 |
++| N28 | 两标签 claim、ack 重试、过期租约/崩溃、反馈与 ack 竞态：不丢观点；ack 前崩溃允许有限重复并标 uncertain | G3/G4 |
++| N29 | 三种证据分别验证身份/权限/失效：公开资料和用户决定无需 epoch，观察流重置不污染其他类型 | G1-B/G3 |
++| N30 | 伪造 demo、卡片 ID、run ID、L0/L1、approval 或直接调度；真实/未知模式拒绝执行，已有任务仍可取消 | G1-A |
++| N31 | 旧 CI 11 项逐条迁移；Runtime Mode 未知/真实模式直接 URL 和 API 仍失败关闭；Observer→Insight 有业务断言 | G1-A；相关业务分 G1-B/G4 |
++| N32 | 新公开资料与项目目标的相关性由证据/用户人工评审，不能因模型打分或资料新增就自动提示 | G3/G5 |
+@@ -78 +90 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
+-1. 先修复旧主动接口隔离与伪完成，再做 G1 观点存储；旧安全 E2E 必须保留语义。历史 UI 布局用例按新合同调整，不靠删除用例变绿。
++1. 先按 G1-A/G1-B/G1-C 独立验收安全、项目经历、观点记忆；先修复旧主动接口隔离与伪完成，再做 G1 观点存储；旧安全 E2E 必须保留语义。历史 UI 布局用例按新合同调整，不靠删除用例变绿。
+@@ -80 +92 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
+-3. MVP 暂不开放真实执行；单独设计研究/模型授权，原有 Pi 的每次内容确认不因自动化被削弱。第一真实公共入口和具体模型、每次/每日预算未决定，不预填或私自开户。
++3. MVP 暂不开放真实执行；单独设计研究/模型授权，原有 Pi 的每次内容确认不因自动化被削弱。首个真实公共入口、允许的持久主题范围与周期、具体模型、每次/每日预算未决定，不预填或私自开户。
+@@ -83 +95 @@ G1 的首要安全修复与 CI 分类是进入真实项目/网络之前的硬前
+-请审阅上述具体方案。G0 结论与此审阅不自动授权 G1 开发、远端推送、合并、付费或真实数据外发；具体阶段需由用户明确发起。G1 通过前不能开始 G2，之后同样遵守阶段门禁。
++请审阅上述具体方案。G0 结论与此审阅不自动授权 G1 开发、远端推送、合并、付费或真实数据外发；具体阶段需由用户明确发起。G1-A → G1-B → G1-C 依次通过、整个 G1 通过前不能开始 G2，之后同样遵守阶段门禁。
+diff --git a/docs/mvp/g0/04-ci-and-legacy-route-review.md b/docs/mvp/g0/04-ci-and-legacy-route-review.md
+new file mode 100644
+index 0000000..dadccc8
+--- /dev/null
++++ b/docs/mvp/g0/04-ci-and-legacy-route-review.md
+@@ -0,0 +1,48 @@
++# G0 修订 · 旧接口边界与 CI 逐项分类
++
++> 用户审阅结论 **CONDITIONAL_PASS**；这是代码和既有 CI 日志的静态审查，不是已完成的修复或动态安全验证。本修订只涉及文档，G1-A/B/C 尚未启动。CI 基线为 PR #6 head `4d08d465` 的 [run 40998662240](https://github.com/EchoTouch-moon/hark/actions/runs/40998662240)，其实际 checkout 是 GitHub 合并结果；本地提交尚未经用户独立验收。
++
++## 一、旧服务端路径及 G1-A 处理合同
++
++以下“要求”是待实现设计，不宣称现有代码已有该保护。代码按 `apps/server/src/http/routes/`、`apps/server/src/http/app.ts`、`apps/server/src/main.ts` 与 `packages/core/src/orchestration/` 审查；所有 `POST/PUT/DELETE` 仍需 session、Origin、CSRF、schema 及项目权限。
++
++| 路由/入口 | 静态证据和可能副作用 | G1-A 服务端处置 / 必须断言 |
++|---|---|---|
++| `GET /api/v1/threads/:id/proactive` | `threads.ts` 使用未指定 projectId 的 proposed cards；`ensureThread`、`appendChat`、`updateThreadProactive`、`touchThread` 可写数据 | 改为只读且授权绑定/项目隔离；不存在的线程不能由 GET 创建。两项目、无绑定、跨项目猜测 ID、GET 前后各表及审计无变化；未动态证明此前利用范围。 |
++| `POST /api/v1/threads/:id/actions/:actionId/execute` | `threads.ts` 接收客户端 action/demo，演示分支写线程与审计；`demo:false` 返回看似真实的“已完成”及 `ok:true` | 真实/未知模式在任何写入之前拒绝旧模拟执行；Demo 必须由服务端确认隔离数据和模式，不能信任客户端标签；绝不伪造真实完成。伪造 demo/risk、重复请求、并发和直接 URL 均不触发副作用。 |
++| `POST /api/v1/cards/:id/execute` | `runs.ts` 无显式模式判断，调用 `orchestrator.executeCard`；`orchestrator.ts` 可创建 run 并执行 pipeline | MVP 真实/未知模式服务端拒绝旧执行；Demo 仅隔离合成 card/action/数据/产物根，且服务端独立校验。测试 L0/L1/L2、卡片伪造、幂等、race、恢复与 executor spy=0，不因“低风险”放行。 |
++| `POST /api/v1/approvals/:runId` | `runs.ts` 调用 `decideApproval`，批准后持久化 grant 并进入 pipeline | 真实/未知模式拒绝以旧批准恢复/发起不允许动作，既有 run 和伪造 grant 不能绕过；Demo 限隔离合成数据，验证无 grant、无执行调用。允许只读查看历史。 |
++| `POST /api/v1/runs/:id/cancel` 与重启恢复 | cancel 调用 orchestrator；`main.ts` 启动执行 `recoverInterrupted()`，源码注释说明不盲目重执行 | 必须审计恢复的每条分支和直接 service 调用；保留安全取消既有任务的能力但不能借 cancel/recovery 新启动工作。模拟执行中重启、撤销和注入旧 pending run，断言 executor=0；实际新合同尚未测试。 |
++| `/api/v1/demo/seed`、`/api/v1/demo/reset`、`/api/v1/discover`、card dismiss/snooze | seed/reset 在 `core.ts` 有 demoMode 守卫；discover/卡片反馈在 `cards.ts` 可写本地状态 | 区分内部受控本地写与外部行动。测试真实/未知模式直接请求、持久库不混种或误删；discover 不得绕开新项目权限或触发执行。seed/reset 守卫存在不等同已验收。 |
++| `/api/v1/observer/projects` 注册/扫描/启停/报告/删除 | `observer.ts` 这些路由改变观察配置/本地记录；观察扫描预期只读仓库 | 允许明确用户发起的登记、只读扫描、暂停和受控删除；不得执行用户仓库测试/脚本。检查 scope、路径、取消、删除 journal，保留权限和真实数据保护。 |
++| `/api/v1/analysis/preview`、`/analysis/runs`、取消、反馈、privacy | `analysis.ts` 可发起当前 Pi Analysis，`engine/service.ts` 对非 Mock 要求匹配预览指纹和本地持久确认；不是自动开发执行器 | 不能将 ResearchPolicy 冒充该同意。现有显式、已预览的数据外发路径保留且不削弱；将来自动模型请求需另审接收方、数据范围和预算；无授权/不匹配 provider spy=0，取消可用。 |
++| `POST /api/v1/chat`、`/threads`、`/insights/:id/*`、`PUT /settings` | 分别写内部消息/线程/反馈/设置；现有 chat 为 Mock | 只允许受控内部状态写入，不能伪装真实模型、改变授权或越过项目范围；验证持久化、CSRF、权限与 Mock 标识。 |
++
++**入口审查完成条件**：所有注册路由和可从启动/后台触发的 orchestrator、provider、连接器调用构造调用图，对每条声明 data/effect、模式、项目、鉴权与取消方式，并用集成测试逐一验证。不能只列出以上三个典型端点就宣称所有绕行已关闭；不支持的或用途不明的能力默认禁用。未来确有人工发起真实执行的需求须独立方案、具体授权和安全验收，本 MVP 不提供该路径。
++
++## 二、PR #6 的 11 项失败逐条分类
++
++日志显示 unit/integration **438 passed**；浏览器 **11 passed、11 failed、3 did not run**。表内“首次失败”仅指出日志停在哪个断言；不能由首次定位失败反推出之后的安全/业务断言仍然正确。所有行当前为 **NOT FIXED / NOT RE-RUN**，三项未运行用例亦需查清并实际运行。
++
++| # | CI 用例 | 首次失败及分类 | 后续处理与不可丢失的断言 |
++|---|---|---|---|
++| 1 | `hearth.spec.ts:130` Chat Mock | 未找到“离线演示/不连接模型”文字 | 处理欢迎及对话新入口；验证真实模式能力标识、Mock 回复、持久化和重启恢复，不得只改 locator 掩盖伪真。 |
++| 2 | `insights.spec.ts:18` 项目/观察导航 | 未找到“发现与建议”链接 | 适配新导航；仍需从真实模式到项目、观察及真实数据读取并返回，不用 Demo 代替。 |
++| 3 | `responsive-layout.spec.ts:4` 导航折叠 | 未找到“主导航” | 废弃具体旧侧栏宽度假设；保留键盘、可访问名称及桌面无横向溢出。本轮不新增手机设计。 |
++| 4 | `responsive-layout.spec.ts:36` 导航尺寸 | 等待旧主导航超时 | 不再要求固定 200px 工作台；以新桌面布局验证 1280×800/1440×900 可读及可操作。 |
++| 5 | `responsive-layout.spec.ts:74` 抽屉 | 未找到旧工作区详情按钮 | 定位新的按需详情入口；保留打开、关闭、Esc 与焦点恢复，不能删无障碍语义。 |
++| 6 | `runtime-mode.spec.ts:3` unknown/real | 未找到“正在确认运行模式…” | 保留未知模式和真实模式对 Demo 的失败关闭；覆盖直达 URL **及服务端 API**、未获取到 health 时不可执行。现状未验证。 |
++| 7 | `runtime-mode.spec.ts:34` invalid mode | 未找到“无法确认服务端运行模式，请重试。” | 用新错误 UI 验证非法/不可用模式不启用 Demo、明确重试后才能恢复；覆盖 API 和持久状态，无静默默认成功。 |
++| 8 | `theme.spec.ts:3` 主题 | 旧“显示主题”组合框等待超时 | 以实际新设置入口测试主题选择、系统模式及重启持久；焦点与无空白抽屉检查不得移除。昼夜表达与用户工作状态无关。 |
++| 9 | `workbench.spec.ts:64` 首页过滤 | 未找到“今日概览”标题 | 以对话焦点/项目绑定替代四区布局；保留项目过滤、刷新后恢复和其他项目不泄漏。 |
++| 10 | `workbench.spec.ts:115` 观察时间线 | 旧导航“观察记录”超时 | 迁移到新项目/依据入口；仍验证真实观察事件、项目筛选、分页与来源。 |
++| 11 | `workbench.spec.ts:142` Observer→Insight | 未找到旧首页“今日概览” | 保留由合成 JUnit 引发 Observer→Insight 的业务链、自动协调和不调用模型断言；将结果落点迁移到新界面，不称其真实 H1。 |
++
++G1-A 优先修复模式隔离、项目边界、虚假完成及相应 E2E；依赖新项目绑定/新 UI 的其余断言分别纳入 G1-B/G4，迁移状态须逐项列明，不能把删除或 skip 计为通过。相关完整 CI 必须在允许的后续阶段重新运行并记录 commit、日志及未运行项。
++
++## 三、审阅状态与未决问题
++
++- G0：原版架构方向获 CONDITIONAL_PASS；本次修订完成后需再次审阅。用户审阅的是此前提供的文档及远端基线，并未独立复验本地 `94a8575`、本次新提交或局部测试日志。
++- G1-A 及之后：**未启动**，需用户另行明确发起；本次不推送、不合并、不进行真实研究/模型调用。
++- 需要后续具体决策：真实项目及授权范围；允许主题/边界、公开来源、检索周期和预算；模型接收方及私有数据范围；投递 claim 租约时长与可见性标准；G1-A 旧 action 子类型/历史 run 的具体冻结及数据保留；重启后的不确定状态恢复策略。
++- 价值门禁：G2/G3 尽早用获授权的真实项目验证“用户未主动提出、但有价值的问题及独立研究”，但须真实获取来源、用户人工评估；目前 **NOT_MEASURED**，不能用 LLM 打分代替。

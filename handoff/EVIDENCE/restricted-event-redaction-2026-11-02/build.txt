@@ -1,0 +1,22 @@
+$ pnpm --filter @hearth/web build && pnpm --filter @hearth/server build
+$ tsc -p tsconfig.json --noEmit && vite build
+vite v6.4.5 building for production...
+transforming...
+✓ 129 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           0.59 kB │ gzip:   0.41 kB
+dist/assets/living-fire-6zKj2j0K.png  1,956.62 kB
+dist/assets/index-CyAxZBT2.css           93.38 kB │ gzip:  16.80 kB
+dist/assets/index-DoZnJDTn.js           530.82 kB │ gzip: 167.05 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.04s
+$ esbuild src/main.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs --external:fsevents --external:chokidar
+
+  dist/server.mjs  2.0mb ⚠️
+
+⚡ Done in 89ms

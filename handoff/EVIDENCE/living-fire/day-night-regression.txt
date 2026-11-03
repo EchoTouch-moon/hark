@@ -1,0 +1,8 @@
+PASS daytime welcome and empty room, continuously rendered fire
+PASS real pending request, paused waiting, confirmed message and no stale waiting on resume
+PASS failed request preserves its draft and does not warm the room
+PASS day-to-night preserves conversation, draft, focus and warmth; night welcome is operable
+PASS switching rooms ends pending feedback and restores interrupted draft with delivery uncertainty
+PASS reduced motion is still, 1280 desktop fits, project return preserves the draft
+PASS night settings labels contrast against their card (>= 4.5:1)
+PASS no browser page errors

@@ -1,0 +1,19 @@
+RUN  v3.2.7 <isolated-worktree>
+
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/storage/src/storage.test.ts (21 tests) 187ms
+ ✓ packages/core/src/orchestration/orchestrator.test.ts (8 tests) 279ms
+ ✓ apps/server/src/http/g1a-security.test.ts (21 tests) 449ms
+
+ Test Files  3 passed (3)
+      Tests  50 passed (50)
+   Start at  16:41:01
+   Duration  1.80s (transform 743ms, setup 0ms, collect 1.52s, tests 914ms, environment 0ms, prepare 261ms)
+
+
+EXIT_CODE=0

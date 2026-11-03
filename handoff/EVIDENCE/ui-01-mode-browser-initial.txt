@@ -1,0 +1,65 @@
+[WebServer] (node:41628) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node:41689) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 16 tests using 1 worker
+
+(node:41732) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/e2e/hearth.spec.ts:41:1 › E2E-11: 首次运行是真实空态，不制造假任务 (448ms)
+  ✓   2 tests/e2e/hearth.spec.ts:46:1 › E2E-01: 初始化 Demo → 3 张卡片含 whyNow/来源/风险 (359ms)
+  ✓   3 tests/e2e/hearth.spec.ts:58:1 › E2E-02: 查看证据 → 执行 → completed + 真实 artifact + sha256 (1.6s)
+  ✓   4 tests/e2e/hearth.spec.ts:81:1 › E2E-03: 刷新后状态保持一致（服务端持久化） (274ms)
+  ✓   5 tests/e2e/hearth.spec.ts:91:1 › E2E-04: 快速双击不产生双副作用（幂等） (1.6s)
+  ✓   6 tests/e2e/hearth.spec.ts:108:1 › E2E-06: 忽略后卡片不再出现在主动建议（刷新也不重现） (240ms)
+  ✓   7 tests/e2e/hearth.spec.ts:120:1 › E2E-07: 项目隔离由服务端保证 (223ms)
+  ✘   8 tests/e2e/hearth.spec.ts:130:1 › E2E-08: Chat mock 回复、持久化、明确 Demo 标识 (15.2s)
+  -   9 tests/e2e/hearth.spec.ts:143:1 › Settings 保存可持久化
+  -  10 tests/e2e/hearth.spec.ts:155:1 › 视口 1280×800 无水平滚动
+  -  11 tests/e2e/hearth.spec.ts:164:1 › Activity 页可见 run 时间线与验证证据
+(node:41824) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  12 tests/e2e/insights.spec.ts:3:1 › insights empty feed is not a fake-success wall (255ms)
+  ✓  13 tests/e2e/insights.spec.ts:12:1 › insight detail missing id is an error, not a fake card (216ms)
+  ✓  14 tests/e2e/insights.spec.ts:18:1 › projects and observe navigation still work (255ms)
+  ✓  15 tests/e2e/runtime-mode.spec.ts:3:1 › unknown and real mode never mount Demo actions, including direct URLs (331ms)
+  ✓  16 tests/e2e/runtime-mode.spec.ts:34:1 › invalid mode fails closed and a deliberate retry can recover (212ms)
+
+
+  1) tests/e2e/hearth.spec.ts:130:1 › E2E-08: Chat mock 回复、持久化、明确 Demo 标识 ──────────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator:  getByText(/Mock|Hearth · Mock/).first()
+    Expected: visible
+    Received: hidden
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "toBeVisible" getByText(/Mock|Hearth · Mock/).first() with timeout 15000ms
+      - waiting for getByText(/Mock|Hearth · Mock/).first()
+        33 × locator resolved to <a href="/chat" aria-current="page" class="nav-item active">对话 · Mock 演示</a>
+           - unexpected value "hidden"
+
+
+      134 |   await input.fill('CI 失败了怎么办');
+      135 |   await input.press('Enter');
+    > 136 |   await expect(page.getByText(/Mock|Hearth · Mock/).first()).toBeVisible({ timeout: 15_000 });
+          |                                                              ^
+      137 |   await expect(page.getByText(/离线演示/).first()).toBeVisible();
+      138 |   await page.screenshot({ path: `${SHOT_DIR}/ui-chat.png`, fullPage: true });
+      139 |   await page.reload();
+        at /Users/v/new-idea/hark/tests/e2e/hearth.spec.ts:136:62
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tests/e2e/.artifacts/hearth-E2E-08-Chat-mock-回复、持久化、明确-Demo-标识/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tests/e2e/.artifacts/hearth-E2E-08-Chat-mock-回复、持久化、明确-Demo-标识/error-context.md
+
+  1 failed
+    tests/e2e/hearth.spec.ts:130:1 › E2E-08: Chat mock 回复、持久化、明确 Demo 标识 ───────────────────────────
+  3 did not run
+  12 passed (26.4s)

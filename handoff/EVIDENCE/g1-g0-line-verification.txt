@@ -1,0 +1,23 @@
+===== G0 line: equivalent change verification =====
+branch: ops/g1-ci-gate-g0  base: bot/hearth-g0-contract @ 4fd0480b
+executed: 2026-11-01T09:30:08Z  host=MINGW64_NT-10.0-22621  node=v22.22.2  pnpm=11.9.0
+
+--- equivalence vs the master line change ---
+  (empty diff above = the CI change is byte identical on both lines)
+
+--- dependency note ---
+  G0 adds packages/hearth-contract (zod) and gsap, so its lockfile differs from master.
+  Dependencies were reinstalled from G0's own lockfile before this run:
+  pnpm install --frozen-lockfile  -> 'Packages: +3 -1', 'Done in 20.6s'
+
+--- results ---
+  pnpm typecheck : PASS (0 errors)
+  pnpm lint      : PASS (0 errors, 11 warnings, none from the new files)
+  pnpm test      : 59 test files passed / 485 passed / 1 skipped / 0 failed
+  new unit tests : 21 passed (12 change-detection + 9 gate-decision)
+
+--- not run locally on G0 ---
+  pnpm build and the Mock browser E2E suite. Both are incremental cost with no
+  dependency on this change (no application source was touched); the G0 pull
+  request will cover them in CI.
+===== end =====

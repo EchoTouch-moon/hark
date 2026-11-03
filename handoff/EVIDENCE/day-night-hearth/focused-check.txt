@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /Users/v/new-idea/hark
+
+ ✓ tests/unit/ember-cues.test.ts (4 tests) 13ms
+ ✓ tests/unit/hearth-period.test.ts (1 test) 6ms
+ ✓ tests/unit/hearth-warmth.test.ts (3 tests) 22ms
+
+ Test Files  3 passed (3)
+      Tests  8 passed (8)
+   Start at  01:35:07
+   Duration  938ms (transform 280ms, setup 0ms, collect 302ms, tests 41ms, environment 1ms, prepare 1.09s)

@@ -1,0 +1,89 @@
+
+ RUN  v3.2.7 /private/tmp/hark-g1a-scope
+
+ ❯ tests/unit/chat-execute-action.test.ts (15 tests | 2 failed) 319ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 401 AUTH_REQUIRED 时演示行动不产生本地进度或结果 120ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 403 LEGACY_ACTIONS_DISABLED 时演示行动不产生本地进度或结果 13ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 409 UNBOUND_THREAD_HISTORY 时演示行动不产生本地进度或结果 13ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 500 INTERNAL_ERROR 时演示行动不产生本地进度或结果 13ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 普通行动遇到 403 时不会写出“已完成”结果，且拒绝原因可见 12ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 404 不再被当作离线条件降级为本地演示 13ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 2xx 但没有执行结果时不当作成功 14ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 已确认真 API 后，业务拒绝原样抛出而不是通用“接口不可用” 14ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 真正离线时演示行动仍可本地模拟，并保留演示边界 14ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 真正离线时普通行动失败关闭，不伪造完成 12ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 501（接口未实现）只对演示行动保留本地演示 13ms
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 真 API 会话断线时不会回退到本地演示 13ms
+   × executeMessageAction 只在真正离线时保留本地演示 > 网络失败 时 demo=false 的 mock- 行动不得生成未标注的“已完成” 30ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   × executeMessageAction 只在真正离线时保留本地演示 > 501 未实现 时 demo=false 的 mock- 行动不得生成未标注的“已完成” 14ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 只有 demo:true 可离线模拟，且结果文案必定标注演示 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/chat-execute-action.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 网络失败 时 demo=false 的 mock- 行动不得生成未标注的“已完成”
+ FAIL  tests/unit/chat-execute-action.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 501 未实现 时 demo=false 的 mock- 行动不得生成未标注的“已完成”
+AssertionError: promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "message": {[39m
+[31m+     "adapter": "mock",[39m
+[31m+     "content": "「重新构建」已完成。",[39m
+[31m+     "createdAt": "2026-11-03T02:32:45.597Z",[39m
+[31m+     "id": "mock-progress-1793673165597",[39m
+[31m+     "parts": [[39m
+[31m+       {[39m
+[31m+         "runRef": "mock-run-1793673165597",[39m
+[31m+         "steps": [[39m
+[31m+           {[39m
+[31m+             "detail": "演示步骤",[39m
+[31m+             "name": "确认范围",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "演示完成",[39m
+[31m+             "name": "按批准执行",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "完成",[39m
+[31m+             "name": "汇总结果",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+         ],[39m
+[31m+         "type": "progress",[39m
+[31m+       },[39m
+[31m+       {[39m
+[31m+         "ok": true,[39m
+[31m+         "text": "「重新构建」已完成。",[39m
+[31m+         "type": "result",[39m
+[31m+       },[39m
+[31m+     ],[39m
+[31m+     "role": "assistant",[39m
+[31m+     "threadId": "thread-global-1",[39m
+[31m+   },[39m
+[31m+   "mock": true,[39m
+[2m  }[22m
+
+ ❯ tests/unit/chat-execute-action.test.ts:242:5
+    240|         demo: false,
+    241|       }),
+    242|     ).rejects.toMatchObject({ status, code });
+       |     ^
+    243| 
+    244|     expect(writtenKeys()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 13 passed (15)
+   Start at  10:32:42
+   Duration  3.07s (transform 100ms, setup 0ms, collect 65ms, tests 319ms, environment 0ms, prepare 336ms)
+

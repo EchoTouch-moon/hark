@@ -1,0 +1,21 @@
+
+ RUN  v3.2.7 /Users/v/new-idea/hark
+
+(node:97883) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/hearth-warmth.test.ts (3 tests) 7ms
+ ✓ tests/unit/ember-heat.test.ts (9 tests) 9ms
+ ✓ tests/unit/ember-cues.test.ts (4 tests) 7ms
+ ✓ tests/unit/welcome-preference.test.ts (8 tests) 7ms
+ ✓ packages/storage/src/storage.test.ts (13 tests) 137ms
+(node:97882) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ apps/server/src/http/app.test.ts (20 tests) 4246ms
+   ✓ M1-T02: seed, discovery, suppression > repeat discover is idempotent (no duplicate cards)  1624ms
+   ✓ M1-T02: seed, discovery, suppression > dismiss persists and is respected by later discovery (E2E-06)  1624ms
+   ✓ M1-T03: execute / runs / approvals / SSE-readiness > cancel of queued run yields cancelled terminal state  618ms
+
+ Test Files  6 passed (6)
+      Tests  57 passed (57)
+   Start at  01:02:12
+   Duration  6.04s (transform 1.10s, setup 0ms, collect 2.42s, tests 4.41s, environment 1ms, prepare 929ms)

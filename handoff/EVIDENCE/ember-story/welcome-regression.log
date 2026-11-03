@@ -1,0 +1,8 @@
+PASS arrival / introduction / back retains nickname / enter focuses input without heating
+PASS welcome persists locally, replay and skip work
+PASS failed send retains draft and dim state, confirmed send ignites and keeps focus
+PASS actual GSAP path interpolation is running
+PASS paused GSAP path remains stable
+PASS manual pause and 1280 desktop viewport
+PASS reduced motion welcome remains operable
+PASS blocked preference storage offers temporary entry

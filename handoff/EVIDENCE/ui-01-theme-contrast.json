@@ -1,0 +1,50 @@
+[
+  {
+    "theme": "light",
+    "foreground": "color-ink",
+    "background": "color-bg",
+    "ratio": 14.75
+  },
+  {
+    "theme": "light",
+    "foreground": "color-ink-2",
+    "background": "color-bg",
+    "ratio": 6.88
+  },
+  {
+    "theme": "light",
+    "foreground": "color-ink-3",
+    "background": "color-bg",
+    "ratio": 4.65
+  },
+  {
+    "theme": "light",
+    "foreground": "color-on-accent",
+    "background": "color-accent",
+    "ratio": 6.09
+  },
+  {
+    "theme": "dark",
+    "foreground": "color-ink",
+    "background": "color-bg",
+    "ratio": 15.09
+  },
+  {
+    "theme": "dark",
+    "foreground": "color-ink-2",
+    "background": "color-bg",
+    "ratio": 10.11
+  },
+  {
+    "theme": "dark",
+    "foreground": "color-ink-3",
+    "background": "color-bg",
+    "ratio": 7.97
+  },
+  {
+    "theme": "dark",
+    "foreground": "color-on-accent",
+    "background": "color-accent",
+    "ratio": 7.69
+  }
+]

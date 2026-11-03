@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /Users/v/new-idea/hark
+
+ ✓ tests/unit/ember-heat.test.ts (9 tests) 3ms
+ ✓ tests/unit/welcome-preference.test.ts (8 tests) 3ms
+
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+   Start at  00:19:26
+   Duration  338ms (transform 53ms, setup 0ms, collect 55ms, tests 6ms, environment 0ms, prepare 143ms)
+

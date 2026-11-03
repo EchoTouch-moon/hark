@@ -1,0 +1,25 @@
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer]
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+  ✓  1 tests/e2e/hearth-permissions-csrf.spec.ts:10:1 › 全新浏览器和空服务端会话可进入授权并重新读取真实火候 (2.6s)
+  ✓  2 tests/e2e/hearth-permissions-csrf.spec.ts:100:1 › 首次授权取得 CSRF 会话，写入成功后重新读取真实火候 (1.5s)
+  ✓  3 tests/e2e/hearth-permissions-csrf.spec.ts:123:1 › 业务拒绝会显示错误，且不会自动重复写入 (1.5s)
+
+  3 passed (12.4s)
+
+EXIT_CODE=0

@@ -1,0 +1,48 @@
+import { it, expect } from 'vitest';
+import { spawn } from 'node:child_process';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+
+const fixture = 'tests/unit/g1a-recovery-characterization-fixture.ts';
+function child(mode: string, dir: string, state: string) {
+  return spawn(process.execPath, ['--import', 'tsx', fixture, mode, dir, state], { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] });
+}
+it.each(['executing', 'verifying'])('synthetic SIGKILL and restart preserves uncertainty for %s', async state => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'g1a-recovery-'));
+  let initial: ReturnType<typeof child> | undefined;
+  try {
+    initial = child('setup', dir, state);
+    await new Promise<void>((resolve, reject) => {
+      let output = ''; let errors = '';
+      initial!.stdout!.on('data', chunk => { output += String(chunk); if (output.includes('READY\n')) resolve(); });
+      initial!.stderr!.on('data', chunk => { errors += String(chunk); });
+      initial!.on('error', reject);
+      initial!.on('exit', () => { if (!output.includes('READY\n')) reject(new Error(`setup exited: ${errors}`)); });
+    });
+    const exit = new Promise<{code: number | null; signal: NodeJS.Signals | null}>(resolve => initial!.once('exit', (code, signal) => resolve({code, signal})));
+    initial.kill('SIGKILL');
+    expect(await exit).toEqual({ code: null, signal: 'SIGKILL' });
+    const before = JSON.parse(await readFile(path.join(dir, 'before.json'), 'utf8'));
+    const restarted = child('recover', dir, state);
+    let stderr = '';
+    restarted.stderr!.on('data', chunk => { stderr += String(chunk); });
+    const result = await new Promise<number | null>((resolve, reject) => { restarted.on('error', reject); restarted.on('exit', resolve); });
+    if (result !== 0) throw new Error(`restart exit ${result}: ${stderr}`);
+    const after = JSON.parse(await readFile(path.join(dir, 'after.json'), 'utf8'));
+    expect(before.state).toBe(state);
+    expect(after.state).toBe('pending_verification');
+    expect(after.verdict).toBeNull();
+    expect(after.executorCalls).toBe(0);
+    expect(after.firstCount).toBe(1);
+    expect(after.secondCount).toBe(0);
+    expect(after.evidenceCount).toBe(before.evidenceCount);
+    expect(after.audit.length).toBe(before.auditCount + 1);
+    expect(after.audit[0].details.recovery).toBe('legacy-disabled');
+    expect(await readdir(path.join(dir, 'artifacts'))).toEqual([]);
+    console.log(JSON.stringify({ initialState: before.state, killed: 'SIGKILL', recoveredState: after.state, verdict: after.verdict, executorCalls: after.executorCalls, evidenceBefore: before.evidenceCount, evidenceAfter: after.evidenceCount, auditDelta: after.audit.length - before.auditCount, recoveryReason: after.audit[0].details.recovery, secondRecoveryCount: after.secondCount, artifactFiles: 0 }));
+  } finally {
+    if (initial && initial.exitCode === null && initial.signalCode === null) initial.kill('SIGKILL');
+    await rm(dir, { recursive: true, force: true });
+  }
+}, 20000);
