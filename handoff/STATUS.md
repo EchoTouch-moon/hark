@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- 动作参数合同与执行前二次校验已有纯预检：四类动作的可选严格参数、风险下限、效果、能力与零成本上限已冻结；执行前按 25 项顺序核验 run/card/candidate/action/project 绑定、卡片与 run 状态、期限、风险、效果、能力、预算、grant 主体/卡片/消费/时效/能力、动作与目标摘要及来源版本，任何不符即拒绝，全部通过仍停在 `action_disabled`。115 项本地测试与 lint/类型/构建见 `handoff/EVIDENCE/m0-action-policy-gate-2026-11-03.txt`。未接身份认证、grant 事务占用、执行器与 verifier，M0 Gate 仍未通过。
 - M0-REBUILD-01 合同复核与 M0-REBUILD-02 合成验收**设计**已通过独立只读复核，见 `handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`。这不是 M0 Gate 通过，M1 仍未开始。
 - 独立 M0 复审结论为 NOT PASS；已补全禁用动作提案注册表及 QA 证据索引。最新 97 项本地测试和 lint/构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。合同及验收设计任务已复核，动作启用合同、产品/API E2E、真实来源和 Windows 等仍未完成。
 - 审批 run/card 绑定保守合同和 E2E-01～12 逐项映射见 `docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md`；相关执行链及 E2E 均未实现/未运行。

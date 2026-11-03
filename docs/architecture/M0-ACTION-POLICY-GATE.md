@@ -1,0 +1,74 @@
+# M0 动作参数合同与执行前二次校验
+
+状态：纯预检已实现；**执行器、身份认证、grant 事务占用与独立 verifier 均未实现**，四类动作仍全部禁用。本文件不是 M0 Gate 通过证据。
+
+## 目的与边界
+
+- 冻结每类动作的参数、风险下限、效果、能力与预算上限，不允许用动作名称或客户端提交的 `risk`/`effect`/`status` 推定权限。
+- 在外部副作用之前，按固定顺序重读并核验 run → card → candidate → action → grant → 来源版本的绑定关系。
+- 本模块是纯函数，无 I/O、无执行、无审计写入，返回值恒为 `allowed: false`；`passedChecks` 只用于证明前置检查走到了哪一步。
+
+## 参数合同
+
+所有参数对象均为可选字段加 `.strict()`：未知键、越界值和未评审取值一律拒绝。
+
+| 动作类型 | 参数 | 风险下限 | 效果 | 能力 | 步数/超时/成本上限 |
+| --- | --- | --- | --- | --- | --- |
+| `report.generate` | `format?: 'markdown'`、`title?: 1..200` | L1 | `local_create` | `artifact.write` | 5 / 60s / 0 |
+| `checklist.generate` | `maxItems?: 1..50` | L0 | `local_create` | `artifact.write` | 3 / 30s / 0 |
+| `draft.generate` | `tone?: 'neutral' \| 'concise'` | L1 | `local_create` | `artifact.write` | 3 / 60s / 0 |
+| `repo.read_diagnose` | `depth?: 0..3` | L0 | `read` | `repo.read` | 10 / 120s / 0 |
+
+`enabled` 均为 `false`：参数约束与风险下限只是**约束**，不是许可。`maxCostUsd` 恒为 0，任何计费动作在预算检查即失败。
+
+## 执行前校验顺序
+
+| 顺序 | 检查 | 失败原因 |
+| --- | --- | --- |
+| 1 | `run_identity`：run 的 id、card、action 与请求一致 | `run_identity_mismatch` |
+| 2 | `card_binding`：card 与请求、run 指向同一张卡 | `card_binding_mismatch` |
+| 3 | `candidate_binding`：card 指向该 candidate | `candidate_binding_mismatch` |
+| 4 | `project_binding`：请求、card、candidate、action 同项目 | `project_binding_mismatch` |
+| 5 | `action_identity`：action 与请求、run 一致 | `action_identity_mismatch` |
+| 6 | `idempotency_key`：run 的键等于服务端重算值 | `idempotency_mismatch` |
+| 7 | `card_status`：仅 `ready`/`awaiting_approval` | `card_not_ready` |
+| 8 | `card_expiry` | `card_expired` |
+| 9 | `run_state`：仅 `queued`/`awaiting_approval`，重复执行被拒 | `run_not_startable` |
+| 10 | `parameter_policy`：按类型重校验参数 | `params_not_allowed` |
+| 11 | `risk_floor`：动作风险不低于注册表下限 | `risk_below_floor` |
+| 12 | `risk_ceiling`：L3 永不允许；L2 需在线明确授权 | `risk_l3_forbidden`、`online_approval_required` |
+| 13 | `effect_policy`：效果必须等于注册表声明 | `effect_not_permitted` |
+| 14 | `capability_policy`：能力不得超出注册表 | `capability_not_permitted` |
+| 15 | `budget_policy`：步数、超时、成本上限 | `budget_not_permitted` |
+| 16 | `grant_principal` | `principal_mismatch` |
+| 17 | `grant_card` | `grant_card_mismatch` |
+| 18 | `grant_consumption`：一次性 grant 不得已消费 | `grant_consumed` |
+| 19 | `grant_expiry`：未生效或已过期 | `grant_not_yet_valid`、`grant_expired` |
+| 20 | `grant_risk`：覆盖动作风险，且 L3 grant 一律拒绝 | `grant_risk_insufficient` |
+| 21 | `grant_capabilities`：覆盖动作声明的能力 | `grant_capability_missing` |
+| 22 | `digests`：动作摘要与目标摘要等于服务端重算值 | `digest_mismatch` |
+| 23 | `source_version`：声明期望版本时须与当前版本一致 | `source_version_changed` |
+| 24 | `action_enablement`：类型必须经评审启用 | `action_disabled` |
+| 25 | `execution_channel`：执行通道恒为关闭 | `execution_not_implemented` |
+
+`invalid_request` 表示结构不合法；`invalid_clock` 表示传入时间不可用。两者都在任何检查之前失败。
+
+## 明确未实现
+
+1. **身份认证**：`principalId` 仍由调用方传入，不是可信服务端身份；不得据此声称已认证。
+2. **事务占用**：grant 的一次性消费、并发竞争和崩溃窗口未实现，本函数不预留 grant。
+3. **真实路径边界**：未做文件系统包含检查；`path-check.ts` 只是合成目录的纯预检。
+4. **可信来源版本**：`currentSourceVersion` 由调用方提供，尚未从可信持久层读取。
+5. **执行器与 verifier**：无外部副作用、无回读验证；即使全部前置通过也不会执行。
+6. **审计与用户交互**：不写入 `audit_log`，也没有取消/暂停的 UI 通路。
+
+## 与现有模块的关系
+
+- `src/action-registry.ts` 复用同一份参数 schema 解析不可信提案，但仍返回 `action_disabled`；注册不等于启用。
+- `src/digests.ts` 提供 `actionDigest`、`targetDigest` 与 `idempotencyKey`，本模块只做重算比对。
+- `src/storage.ts` 的 `runs`、`cards`、`approvals` 字段与 `PersistedExecutionBasis` 对应，但尚未接线：没有适配器、没有事务内重读。
+
+## 证据
+
+- 单测：`tests/action-policy.test.ts`（17 项），覆盖 25 个检查的失败分支与"全部前置通过仍被拒绝"。
+- 运行记录：`handoff/EVIDENCE/m0-action-policy-gate-2026-11-03.txt`（115 项测试、lint、类型检查、构建）。

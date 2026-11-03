@@ -22,4 +22,10 @@ describe('untrusted action proposals fail closed', () => {
       { allowedCapabilities: ['write'] }, { approved: true }, { state: 'completed' }, { verifier: 'pass' },
     ]) expect(evaluateActionProposal({ ...proposal, ...extra })).toEqual({ allowed: false, reason: 'invalid_proposal' });
   });
+  it('accepts frozen parameters but still admits nothing', () => {
+    expect(evaluateActionProposal({ actionType: 'repo.read_diagnose', projectId: 'A', target: { resourceId: 'synthetic' }, params: { depth: 2 } }))
+      .toEqual({ allowed: false, reason: 'action_disabled' });
+    expect(evaluateActionProposal({ actionType: 'report.generate', projectId: 'A', target: { resourceId: 'synthetic' }, params: { format: 'pdf' } }))
+      .toEqual({ allowed: false, reason: 'invalid_proposal' });
+  });
 });

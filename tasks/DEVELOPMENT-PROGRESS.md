@@ -36,13 +36,14 @@
 - [ ] 核心合同：输入校验和基础领域结构（主 Agent）。
   - [x] 主要数据结构的 Zod 严格校验首版，见 `src/contracts.ts` 和 `tests/contracts-state.test.ts`。
   - [x] 动作与目标摘要、稳定幂等键的计算及负例，见 `src/digests.ts` 和 `tests/digests.test.ts`。
-  - [ ] 动作类型对应的参数约束和执行时强制校验上述摘要。
+  - [x] 动作类型对应的参数约束已冻结；执行前重算动作/目标摘要并比对 grant，摘要不符即失败关闭（`src/action-policy.ts`、`tests/action-policy.test.ts`）。纯预检，执行通道仍关闭。
 - [x] 动作提案入口采用全禁用的服务端注册表，拒绝客户端注入风险、效果、审批、完成状态与未审参数（`src/action-registry.ts`、`tests/action-registry.test.ts`）。这不等于动作可安全启用。
 - [ ] 权限：默认拒绝、作用域、撤权、暂停与副作用审批边界（主 Agent）。
   - [x] 观察授权纯判断及默认拒绝未实现通道，见 `src/policy.ts` 和 `tests/policy-storage.test.ts`。
   - [x] 持久观察授权按次读取，撤权及重启后仍拒绝，见 `src/storage.ts` 和 `tests/policy-storage.test.ts`。
   - [ ] 真实路径边界、审批执行前二次校验；执行与外发通道保持关闭。
   - [x] M0 合成路径预检：验证越界与符号链接拒绝（`src/path-check.ts`、`tests/path-check.test.ts`）；不能作为安全文件读取的声明。
+  - [x] 执行前二次校验纯预检：按 run→card→candidate→action→grant→来源版本顺序重读绑定、卡片状态与期限、风险、效果、能力、预算与摘要，任何不符即拒绝，全部通过后仍停在 `action_disabled`（`src/action-policy.ts`、`docs/architecture/M0-ACTION-POLICY-GATE.md`）。未接身份认证、事务内 grant 占用与执行器。
 - [x] 官方 Super Agent 原型源码对照：锁定版本并记录可采用机制和安全差异（`docs/architecture/DEEPSEEK-PROTOTYPE-2026-11-03.md`）。
 - [x] 中断恢复：事务内将中断的执行状态转为待核验，禁止自动重放（`src/storage.ts`、`tests/policy-storage.test.ts`）。
 - [x] 测试收集限定到项目自身 `tests/**/*.test.ts`；本次意外收集原型测试的经过见 `handoff/BLOCKERS.md`。
@@ -63,9 +64,10 @@
   - [x] 本地 CI 配置加入 Mac/Windows 分支触发和两平台测试任务；YAML 及触发分支解析检查见 `handoff/EVIDENCE/m0-ci-workflow-static-2026-11-03.txt`。
   - [x] 添加编译器规则级 `pnpm lint` 并配置 CI；规则和本机输出见 `handoff/EVIDENCE/m0-lint-check-2026-11-03.txt`。
   - [x] 补齐 QA 标准证据索引，逐项标明 PASS/PARTIAL/NOT RUN；原始输出为 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。
+  - [x] 增加动作参数合同与执行前二次校验后，115 项本地测试、lint、类型检查与构建，见 `handoff/EVIDENCE/m0-action-policy-gate-2026-11-03.txt`。
   - [ ] 推送后核验远端 CI 实际结果，补齐 Windows 验证。E2E 尚无可运行产品，不伪造通过。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
-- [ ] M0 Gate：独立审查为 NOT PASS，见 `handoff/qa/M0-GATE-REVIEW-2026-11-03.md`；合同和验收设计已复审，但动作仍未配置真实准入，Gate 本身尚未再次复审；P0 安全与产品 E2E 另行核验。
+- [ ] M0 Gate：独立审查为 NOT PASS，见 `handoff/qa/M0-GATE-REVIEW-2026-11-03.md`；合同和验收设计已复审，动作参数与执行前二次校验已有纯预检但未接入持久化、身份认证和执行器，Gate 本身尚未再次复审；P0 安全与产品 E2E 另行核验。
 
 ## M1：合成数据纵切 [未开始]
 
