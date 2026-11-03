@@ -4,6 +4,11 @@
 
 ## M0：底层合同与验证基础 [进行中]
 
+- [ ] M0-B 项目来源与事实持久化基础（主 Agent，串行迁移；仅合成数据）。
+  - [x] 新增 v2 迁移，保存项目绑定的合成来源与不可变观察，约束来源 epoch 和重复写入（`src/storage.ts`）。
+  - [x] 合成记录每次读写核对持久授权；撤权、暂停、过期或来源 epoch 更新后拒绝使用旧记录（`src/fixture-chronicle.ts`）。
+  - [x] 完成合成 A/B 项目的跨项目、幂等、撤权、来源重置、升级和重启测试及独立源码审查，见 `handoff/EVIDENCE/m0b-fixture-chronicle-check-2026-11-03.txt`。
+  - [ ] 完整可信来源、项目生命周期及真实读取权限边界；上述 fixture 不证明真实内容或文件读取安全。
 - [ ] M0-A 项目理解核心合同（主 Agent；合成测试由协作 Agent 编写、主 Agent 审查）。
   - [x] 定义项目、类型化证据、观点版本、计划、反馈与修订关系（`src/domain-contracts.ts`）。
   - [x] 验证自包含对象的项目绑定、证据类型、反馈和版本跨字段负例（`tests/domain-contracts.test.ts`、`tests/contracts-state.test.ts`）。

@@ -20,6 +20,21 @@ const migrations = [
    CREATE TABLE audit_log (id TEXT PRIMARY KEY, at TEXT NOT NULL, event_type TEXT NOT NULL, actor TEXT NOT NULL, object_id TEXT NOT NULL, sanitized_details_json TEXT NOT NULL);
    CREATE TRIGGER audit_no_update BEFORE UPDATE ON audit_log BEGIN SELECT RAISE(ABORT,'audit log is append-only'); END;
    CREATE TRIGGER audit_no_delete BEFORE DELETE ON audit_log BEGIN SELECT RAISE(ABORT,'audit log is append-only'); END;`,
+  `CREATE UNIQUE INDEX observation_grants_scope ON observation_grants(id, project_id, root_id);
+   CREATE TABLE fixture_sources (
+     id TEXT PRIMARY KEY, project_id TEXT NOT NULL, root_id TEXT NOT NULL, grant_id TEXT NOT NULL,
+     epoch INTEGER NOT NULL DEFAULT 0 CHECK(epoch >= 0), enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)),
+     UNIQUE(id, project_id),
+     FOREIGN KEY(grant_id, project_id, root_id) REFERENCES observation_grants(id, project_id, root_id)
+   );
+   CREATE TABLE fixture_facts (
+     id TEXT PRIMARY KEY, project_id TEXT NOT NULL, source_id TEXT NOT NULL, epoch INTEGER NOT NULL CHECK(epoch >= 0),
+     dedupe_key TEXT NOT NULL, data_json TEXT NOT NULL,
+     UNIQUE(project_id, source_id, epoch, dedupe_key),
+     FOREIGN KEY(source_id, project_id) REFERENCES fixture_sources(id, project_id)
+   );
+   CREATE TRIGGER fixture_facts_no_update BEFORE UPDATE ON fixture_facts BEGIN SELECT RAISE(ABORT,'fixture facts are append-only'); END;
+   CREATE TRIGGER fixture_facts_no_delete BEFORE DELETE ON fixture_facts BEGIN SELECT RAISE(ABORT,'fixture facts are append-only'); END;`,
 ] as const;
 
 export function openDatabase(path: string): DatabaseSync {

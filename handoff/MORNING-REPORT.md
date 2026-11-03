@@ -1,5 +1,7 @@
 # 重建交接（2026-11-03）
 
+最新：v2 迁移与合成 Chronicle 已建立来源/项目绑定、授权重检、重置 epoch、不可变和幂等基础；19 项局部测试及类型检查见 `handoff/EVIDENCE/m0b-fixture-chronicle-check-2026-11-03.txt`。真实项目未观察，M0 Gate 仍未通过。
+
 最新：按 Mac 分支审查新增项目理解合同首版和跨项目结构负例，详见 `docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`；36 项本机测试、类型检查与构建见 `handoff/EVIDENCE/m0a-project-contract-check-2026-11-03.txt`。未实现真实来源核验或观点持久化，M0 Gate 未通过。
 
 最新：官方 DeepSeek 原型的参考记录见 `docs/architecture/DEEPSEEK-PROTOTYPE-2026-11-03.md`。新增路径预检和中断恢复；真实读取的竞态安全边界、Windows 验证和安全 Gate 仍未完成。验证见 `handoff/EVIDENCE/m0-path-recovery-check-2026-11-03.txt`。一次测试收集意外及缓解见 `handoff/BLOCKERS.md`。
