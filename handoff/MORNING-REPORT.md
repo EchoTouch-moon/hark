@@ -1,5 +1,7 @@
 # 重建交接（2026-11-03）
 
+合成场景、失败反例及当前证据映射见 `tasks/M0-SYNTHETIC-ACCEPTANCE.md`；发现器、真实目录读取、完整安全矩阵仍未完成，不能把合成存储测试当成 Gate 通过。
+
 CI 工作流已在本地加入 Mac/Windows 分支触发与平台任务，保留原有 `ci-gate`；YAML 解析通过，但尚未推送执行，不能声称远端或 Windows 通过。
 
 最新：两个真实 worker 同时竞争同一合成观点版本，只有一个成功、无孤儿记录；79 项本地测试见 `handoff/EVIDENCE/m0-concurrent-revision-check-2026-11-03.txt`。这是 macOS 单场景，不是并发压力测试或 Windows 验证。

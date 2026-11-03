@@ -27,6 +27,8 @@
   - [x] 首轮产品/安全合同与门槛映射，保留未决冲突（`docs/architecture/M0-CONTRACT-REVIEW.md`）。
   - [ ] 逐字段裁决 Event TTL、审批绑定与旧 E2E 适用性并独立复审；不能因首轮矩阵标记任务完成。
 - [ ] M0-REBUILD-02：合成目录闭环与完整失败验收（主 Agent）。
+  - [x] 建立 A/B 合成场景、失败用例和现有证据矩阵（`tasks/M0-SYNTHETIC-ACCEPTANCE.md`）；未实现的目录发现与真实读取明确标为 NOT RUN。
+  - [ ] 在 M0-REBUILD-01 完成后审查并冻结完整验收映射；M1 纵切与 P0 安全验证未通过前不启用真实 connector。
 - [ ] 核心合同：输入校验和基础领域结构（主 Agent）。
   - [x] 主要数据结构的 Zod 严格校验首版，见 `src/contracts.ts` 和 `tests/contracts-state.test.ts`。
   - [x] 动作与目标摘要、稳定幂等键的计算及负例，见 `src/digests.ts` 和 `tests/digests.test.ts`。
