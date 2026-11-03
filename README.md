@@ -1,5 +1,8 @@
 # Hearth
 
+> **当前工程入口（2026-11-03）**：仓库默认分支为 `master`；近期 G1-A 安全修复集成在受保护的 `bot/hearth-g0-contract`。两条分支存在未合并的双向差异，不能把 `master` 的默认身份当作最新功能基线。开始新任务前先阅读 [当前开发基线、文档优先级与仓库清理边界](docs/engineering/REPOSITORY-GOVERNANCE-2026-11-03.md) 并复核远端 HEAD。G1-A **IN_PROGRESS / NOT_PASSED**；G1-B/C **BLOCKED**；长期观点 MVP 的用户价值仍 **NOT_MEASURED**。历史 PR、CI 绿色不构成 Gate 授权。
+
+
 > **产品核心叙事 → [`NARRATIVE.md`](./NARRATIVE.md)（炉心 Ember）**  
 > 交互与验收围着炉心转：你来火旺，你走火黯；有事轻敲，没事安静陪着。
 
