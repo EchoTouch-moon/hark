@@ -38,4 +38,4 @@
 
 ## 复核结果与下一步
 
-上述矩阵为 M0-REBUILD-01 提供核心对照；TTL、审批 run/card 和旧 E2E 已形成保守映射，但接口旧字段和逐字段差异尚未全部闭合，也尚未独立复核。因此该任务保持 **IN_PROGRESS**。后续先完成剩余裁决及 M0-REBUILD-02 的合成正反例追踪，再按本机实际执行的 schema、状态机、policy、migration 和安全检查记录证据、进行独立复核；缺项不得写 PASS。
+上述矩阵为 M0-REBUILD-01 提供核心对照；TTL、审批 run/card、旧 E2E 和接口字段已有保守映射，见 `M0-CONTRACT-FIELD-MAP.md`。该映射尚待独立复核，因此任务暂保持 **IN_PROGRESS**。后续按本机实际执行的 schema、状态机、policy、migration 和安全检查记录证据、进行独立 Gate 复核；缺项不得写 PASS。
