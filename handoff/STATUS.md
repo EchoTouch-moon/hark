@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- M0-A 首版结构合同已落地：项目、类型化来源、观点版本、计划、反馈和版本对，见 `docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`；36 项本地测试及构建、类型检查、文档检查见 `handoff/EVIDENCE/m0a-project-contract-check-2026-11-03.txt`。可信来源核验、持久化和 Gate 均未完成。
 - 官方原型已隔离克隆并按固定提交进行源码对照；本轮新增合成路径预检和中断恢复，26 项本地测试通过，见 `handoff/EVIDENCE/m0-path-recovery-check-2026-11-03.txt`。预检不能抵御检查后替换，真实目录读取、执行与外发仍未接通。
 - M0 近期工作见 `tasks/DEVELOPMENT-PROGRESS.md`。已实现合同、摘要、观察权限判断、状态机和 SQLite 迁移的首批基础，验证见 `handoff/EVIDENCE/m0-foundation-check-2026-11-03.txt`。M0-REBUILD-01/02 和 M0 Gate 均未完成；真实目录和执行通道未接入。
 - 文档优先的重建版本：已整理，入口为 `README.md` 和 `tasks/REBUILD-PLAN.md`。

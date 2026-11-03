@@ -1,5 +1,7 @@
 # 重建交接（2026-11-03）
 
+最新：按 Mac 分支审查新增项目理解合同首版和跨项目结构负例，详见 `docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`；36 项本机测试、类型检查与构建见 `handoff/EVIDENCE/m0a-project-contract-check-2026-11-03.txt`。未实现真实来源核验或观点持久化，M0 Gate 未通过。
+
 最新：官方 DeepSeek 原型的参考记录见 `docs/architecture/DEEPSEEK-PROTOTYPE-2026-11-03.md`。新增路径预检和中断恢复；真实读取的竞态安全边界、Windows 验证和安全 Gate 仍未完成。验证见 `handoff/EVIDENCE/m0-path-recovery-check-2026-11-03.txt`。一次测试收集意外及缓解见 `handoff/BLOCKERS.md`。
 
 本轮增加本地进度看板、合同/摘要、观察权限、状态转换和数据库迁移的基础实现。`handoff/EVIDENCE/m0-foundation-check-2026-11-03.txt` 记录测试、类型检查、构建和文档检查；架构图见 `docs/architecture/hearth-foundation-v2.html`。当前未通过 M0 Gate；后续任务和未完成项见进度看板。

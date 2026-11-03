@@ -4,6 +4,11 @@
 
 ## M0：底层合同与验证基础 [进行中]
 
+- [ ] M0-A 项目理解核心合同（主 Agent；合成测试由协作 Agent 编写、主 Agent 审查）。
+  - [x] 定义项目、类型化证据、观点版本、计划、反馈与修订关系（`src/domain-contracts.ts`）。
+  - [x] 验证自包含对象的项目绑定、证据类型、反馈和版本跨字段负例（`tests/domain-contracts.test.ts`、`tests/contracts-state.test.ts`）。
+  - [x] 记录合同适用范围、尚未实现的来源核实、存储与权限检查（`docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`）。
+  - [ ] 完成现行合同逐字段冲突裁决、可信来源存在/授权/epoch 复核与独立验收；结构有效不等于来源可信。
 - [ ] M0-REBUILD-01：产品、安全合同逐条复核与冲突裁决（主 Agent）。
 - [ ] M0-REBUILD-02：合成目录闭环与完整失败验收（主 Agent）。
 - [ ] 核心合同：输入校验和基础领域结构（主 Agent）。
@@ -26,6 +31,8 @@
 - [ ] 完成测试、类型检查和全部适用安全反例（主 Agent）。
   - [x] 本轮 21 项局部测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-foundation-check-2026-11-03.txt`；完整安全反例仍待补充。
   - [x] 路径预检和恢复后共 26 项本地测试、类型检查、构建、文档检查及测试收集范围，见 `handoff/EVIDENCE/m0-path-recovery-check-2026-11-03.txt`。
+  - [x] 项目理解合同与旧动作跨项目负例后，共 36 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0a-project-contract-check-2026-11-03.txt`。
+  - [ ] 为 Mac 分支建立远端 CI 验证；补齐适用的 lint 与 Windows 检查。E2E 尚无可运行产品，不伪造通过。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
 - [ ] M0 Gate：完成所有既定门槛和独立审核（未通过）。
 

@@ -18,8 +18,12 @@ export const ActionSpec = z.object({
   timeoutMs: z.number().int().positive(), maxCostUsd: z.number().nonnegative().finite(), idempotencyKey: id,
   expectedSourceVersion: text.optional(), verification: z.object({ kind: z.enum(['artifact_sha256', 'json_schema', 'remote_readback']), artifactPath: text.optional(), expectedHash: digest.optional() }).strict(),
 }).strict();
-export const Candidate = z.object({ id, projectId: id, eventIds: z.array(id), title: text, whyNow: text, evidence: z.array(SourceRef).min(1), suggestedAction: ActionSpec, score: z.number().finite(), confidence: z.number().min(0).max(1), risk: Risk, expiresAt: date, suppressionKey: id, status: z.enum(['candidate', 'suppressed', 'proposed']) }).strict();
-export const ActionCard = z.object({ id, candidateId: id, projectId: id, title: text, whyNow: text, evidence: z.array(SourceRef).min(1), action: ActionSpec, createdAt: date, expiresAt: date, status: z.enum(['proposed', 'dismissed', 'snoozed', 'expired', 'ready', 'awaiting_approval', 'executing', 'verifying', 'completed', 'failed', 'blocked']), snoozedUntil: date.optional(), userFeedback: z.enum(['useful', 'not_useful', 'irrelevant']).optional() }).strict();
+export const Candidate = z.object({ id, projectId: id, eventIds: z.array(id), title: text, whyNow: text, evidence: z.array(SourceRef).min(1), suggestedAction: ActionSpec, score: z.number().finite(), confidence: z.number().min(0).max(1), risk: Risk, expiresAt: date, suppressionKey: id, status: z.enum(['candidate', 'suppressed', 'proposed']) }).strict().superRefine((value, context) => {
+  if (value.projectId !== value.suggestedAction.projectId) context.addIssue({ code: z.ZodIssueCode.custom, path: ['suggestedAction', 'projectId'], message: 'Action project does not match candidate' });
+});
+export const ActionCard = z.object({ id, candidateId: id, projectId: id, title: text, whyNow: text, evidence: z.array(SourceRef).min(1), action: ActionSpec, createdAt: date, expiresAt: date, status: z.enum(['proposed', 'dismissed', 'snoozed', 'expired', 'ready', 'awaiting_approval', 'executing', 'verifying', 'completed', 'failed', 'blocked']), snoozedUntil: date.optional(), userFeedback: z.enum(['useful', 'not_useful', 'irrelevant']).optional() }).strict().superRefine((value, context) => {
+  if (value.projectId !== value.action.projectId) context.addIssue({ code: z.ZodIssueCode.custom, path: ['action', 'projectId'], message: 'Action project does not match card' });
+});
 export const ApprovalGrant = z.object({ id, principalId: id, cardId: id, actionDigest: digest, targetDigest: digest, risk: Risk, authorizedCapabilities: z.array(text), expiresAt: date, grantedAt: date, consumedAt: date.optional() }).strict();
 export const RunState = z.enum(['queued', 'awaiting_approval', 'executing', 'verifying', 'completed', 'pending_verification', 'failed', 'blocked', 'cancelled']);
 export type RunState = z.infer<typeof RunState>;

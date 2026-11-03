@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ActionSpec, Event, ObservationGrant, SourceRef } from '../src/contracts.js';
+import { ActionCard, ActionSpec, Candidate, Event, ObservationGrant, SourceRef } from '../src/contracts.js';
 import { assertRunTransition } from '../src/state-machine.js';
 
 const observedAt = '2026-11-03T12:00:00.000Z';
@@ -49,6 +49,15 @@ describe('external data contracts', () => {
     const grant = { id: 'grant-a', principalId: 'user-a', projectId: 'project-a', rootId: 'root-a', enabled: true, paused: false, expiresAt: '2099-01-01T00:00:00Z', revokedAt: null };
     expect(ObservationGrant.safeParse(grant).success).toBe(true);
     expect(ObservationGrant.safeParse({ ...grant, allowExecution: true }).success).toBe(false);
+  });
+
+  it('rejects candidate and card actions from a different project', () => {
+    const candidate = { id: 'c', projectId: 'project-a', eventIds: ['e'], title: 'title', whyNow: 'why', evidence: [source], suggestedAction: action, score: 0.5, confidence: 0.5, risk: 'L0', expiresAt: observedAt, suppressionKey: 's', status: 'candidate' };
+    const card = { id: 'card', candidateId: 'c', projectId: 'project-a', title: 'title', whyNow: 'why', evidence: [source], action, createdAt: observedAt, expiresAt: observedAt, status: 'proposed' };
+    expect(Candidate.safeParse(candidate).success).toBe(true);
+    expect(ActionCard.safeParse(card).success).toBe(true);
+    expect(Candidate.safeParse({ ...candidate, suggestedAction: { ...action, projectId: 'project-b' } }).success).toBe(false);
+    expect(ActionCard.safeParse({ ...card, action: { ...action, projectId: 'project-b' } }).success).toBe(false);
   });
 });
 
