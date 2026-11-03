@@ -1,0 +1,36 @@
+import { Storage } from '../../packages/storage/src/index.ts';
+import { DiscoveryService, Orchestrator } from '../../packages/core/src/index.ts';
+import { FixtureConnector } from '../../packages/connectors/src/index.ts';
+import path from 'node:path';
+import { writeFileSync } from 'node:fs';
+
+const [mode, dir, target] = process.argv.slice(2);
+if (!dir || !target) throw new Error('missing synthetic test arguments');
+const store = new Storage(path.join(dir, 'recovery.sqlite'));
+const now = () => '2026-10-28T12:00:00.000Z';
+if (mode === 'setup') {
+  const connector = new FixtureConnector(process.cwd());
+  store.seedProjects(connector.loadProjects());
+  for (const { event, meta } of connector.loadEvents()) store.ingestEvent(event, { goldenAction: meta.goldenAction, goldenUseful: meta.goldenUseful });
+  await new DiscoveryService({ storage: store, clock: now }).discover({ userInitiated: true });
+  const card = store.listCards({ limit: 1 })[0];
+  if (!card) throw new Error('synthetic card missing');
+  store.createRun({ id: 'run-synthetic-recovery', cardId: card.id, actionId: card.action.id, idempotencyKey: card.action.idempotencyKey, state: 'queued', createdAt: now(), resultArtifactRefs: [] }, card.action);
+  store.transitionRun('run-synthetic-recovery', 'executing', {}, { actor: 'test' });
+  if (target === 'verifying') store.transitionRun('run-synthetic-recovery', 'verifying', {}, { actor: 'test' });
+  const run = store.getRun('run-synthetic-recovery');
+  const before = { state: run?.state, evidenceCount: store.listEvidence('run-synthetic-recovery').length, auditCount: store.listAudit('run-synthetic-recovery').length, cardStatus: store.getCard(card.id)?.status };
+  writeFileSync(path.join(dir, 'before.json'), JSON.stringify(before));
+  process.stdout.write('READY\n');
+  setInterval(() => {}, 1000);
+} else if (mode === 'recover') {
+  let calls = 0;
+  const runner = new Orchestrator({ storage: store, artifactRoot: path.join(dir, 'artifacts'), clock: now });
+  Object.defineProperty(runner, 'executor', { value: { execute: async () => { calls += 1; throw new Error('executor must not be called'); } } });
+  const first = await runner.recoverInterrupted();
+  const second = await runner.recoverInterrupted();
+  const run = store.getRun('run-synthetic-recovery');
+  const after = { state: run?.state, verdict: run?.verificationVerdict ?? null, evidenceCount: store.listEvidence('run-synthetic-recovery').length, audit: store.listAudit('run-synthetic-recovery'), firstCount: first.length, secondCount: second.length, executorCalls: calls };
+  writeFileSync(path.join(dir, 'after.json'), JSON.stringify(after));
+  store.close();
+} else throw new Error('unknown mode');

@@ -1,0 +1,64 @@
+RUN  v3.2.7 <isolated-worktree>
+
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts (23 tests | 3 failed | 20 skipped) 101ms
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > refuses an explicit mismatched project on chat write without touching either thread
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > refuses an explicit mismatched project on chat history without returning data
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > does not treat a legacy project id as a trusted binding for chat writes
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > does not treat a legacy project id as a trusted binding for chat history
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > does not create a thread or call the adapter for an unknown project-scoped thread
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > refuses creating project-bound threads for project-atlas
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > refuses creating project-bound threads for project-missing
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > does not turn a project-scoped thread request into a global read through /api/v1/threads?projectId=project-atlas 79ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > does not turn a project-scoped thread request into a global read through /api/v1/threads/thread-global?projectId=project-atlas 11ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > does not turn a project-scoped thread request into a global read through /api/v1/threads/thread-global/proactive?projectId=project-atlas 11ms
+     → expected 200 to be 403 // Object.is equality
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > applies the global filter before pagination
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > rejects conflicting thread and session aliases in a chat write
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > rejects conflicting thread and session aliases in chat history
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > rejects unknown chat body fields before any side effects
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > withholds legacy project-bound threads from the global thread list
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/threads/thread-a
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/threads/thread-a/proactive
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/chat/history?threadId=thread-a
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global chat write to an untrusted legacy-bound thread
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > does not promote an orphaned chat history into a global thread by writing
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > does not return orphaned messages as global history
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > retains implicit creation for a fresh global thread with no prior messages
+   ↓ G1-A project-scoped threads and chat fail closed until trusted bindings > retains global chat and history on an unbound thread
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not turn a project-scoped thread request into a global read through /api/v1/threads?projectId=project-atlas
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not turn a project-scoped thread request into a global read through /api/v1/threads/thread-global?projectId=project-atlas
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not turn a project-scoped thread request into a global read through /api/v1/threads/thread-global/proactive?projectId=project-atlas
+AssertionError: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:108:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 20 skipped (23)
+   Start at  16:53:14
+   Duration  940ms (transform 337ms, setup 0ms, collect 596ms, tests 101ms, environment 0ms, prepare 43ms)
+
+
+EXIT_CODE=1

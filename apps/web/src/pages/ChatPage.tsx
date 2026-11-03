@@ -16,7 +16,6 @@ import {
   executeMessageAction,
   fetchChatHistory,
   fetchProactive,
-  isLiveApi,
   sendChatMessage,
   type CanvasMessage,
   type MessageAction,
@@ -263,6 +262,43 @@ function ComposerForm({
   );
 }
 
+/** 成功执行后才收起行动入口；失败时必须保持原始 Action 可见。 */
+function withoutActions(message: CanvasMessage): CanvasMessage {
+  const parts = message.parts;
+  if (!parts?.some((part) => part.type === 'actions')) return message;
+  return { ...message, parts: parts.filter((part) => part.type !== 'actions') };
+}
+
+function messageHasAction(
+  message: CanvasMessage,
+  matches: (action: MessageAction) => boolean,
+): boolean {
+  return message.parts?.some((part) => part.type === 'actions' && part.actions.some(matches)) ?? false;
+}
+
+/** 等待中的占位消息只存在于内存；失败时会被撤掉，绝不落盘。 */
+function pendingActionMessage(id: string, label: string, threadId: string): CanvasMessage {
+  return {
+    id,
+    role: 'assistant',
+    content: `正在处理「${label}」…`,
+    createdAt: new Date().toISOString(),
+    adapter: 'mock',
+    threadId,
+    parts: [
+      {
+        type: 'progress',
+        steps: [
+          { name: '确认范围', status: 'done' },
+          { name: label, status: 'running' },
+          { name: '汇总结果', status: 'pending' },
+        ],
+        runRef: 'pending',
+      },
+    ],
+  };
+}
+
 export function ChatPage() {
   const [welcomePreference] = useState(readWelcomePreference);
   const [welcomeVisible, setWelcomeVisible] = useState(!welcomePreference.completed);
@@ -460,57 +496,43 @@ export function ChatPage() {
   const runAction = useCallback(
     async (action: MessageAction) => {
       if (!activeThreadId || actionBusy) return;
+      const threadId = activeThreadId;
+      const placeholderId = `progress-pending-${Date.now()}`;
+      // 本次点击对应的来源消息：失败时保持原样，成功后才收起行动入口。
+      // 先按对象身份匹配（点击传入的是消息内同一个 action），确认面板重放后再按 id 兜底。
+      const source =
+        messages.find((message) => messageHasAction(message, (candidate) => candidate === action)) ??
+        messages.find((message) => messageHasAction(message, (candidate) => candidate.id === action.id));
       setActionBusy(true);
       setPendingAction(null);
+      setLoadError(null);
+      setMessages((prev) => [...prev, pendingActionMessage(placeholderId, action.label, threadId)]);
       try {
-        setMessages((prev) => {
-          const next = prev.map((m) => {
-            if (!m.parts?.some((p) => p.type === 'actions')) return m;
-            const patched = {
-              ...m,
-              parts: m.parts.filter((p) => p.type !== 'actions'),
-            };
-            if (!isLiveApi()) appendLocalMessage(activeThreadId, patched);
-            return patched;
-          });
-          return next;
-        });
-        const placeholderId = `progress-pending-${Date.now()}`;
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: placeholderId,
-            role: 'assistant',
-            content: `正在处理「${action.label}」…`,
-            createdAt: new Date().toISOString(),
-            adapter: 'mock',
-            threadId: activeThreadId,
-            parts: [
-              {
-                type: 'progress',
-                steps: [
-                  { name: '确认范围', status: 'done' },
-                  { name: action.label, status: 'running' },
-                  { name: '汇总结果', status: 'pending' },
-                ],
-                runRef: 'pending',
-              },
-            ],
-          },
-        ]);
-        const result = await executeMessageAction(activeThreadId, action);
-        setMessages((prev) => prev.map((m) => (m.id === placeholderId ? result.message : m)));
-
+        const result = await executeMessageAction(threadId, action);
+        // 迟到的成功不能改写用户已经切换到的线程。
+        if (currentThread.current !== threadId) return;
+        setMessages((prev) =>
+          prev.map((message) => {
+            if (message.id === placeholderId) return result.message;
+            if (source && message.id === source.id) return withoutActions(message);
+            return message;
+          }),
+        );
+        // 只有明确的离线演示才补写本地记录；真 API 的结果由服务端负责。
+        if (source && result.mock) appendLocalMessage(threadId, withoutActions(source));
         recomputeEmber();
         void refreshThreads();
       } catch (err) {
+        // 迟到的拒绝不能在新线程里弹错，也不能留下任何占位或完成结果。
+        if (currentThread.current !== threadId) return;
+        setMessages((prev) => prev.filter((message) => message.id !== placeholderId));
         emitEmberCue('failed');
         setLoadError(err instanceof ApiError ? err.message : '行动执行失败');
       } finally {
         setActionBusy(false);
       }
     },
-    [activeThreadId, actionBusy, refreshThreads, recomputeEmber],
+    [activeThreadId, actionBusy, messages, refreshThreads, recomputeEmber],
   );
 
   const onAction = useCallback(
@@ -737,7 +759,8 @@ export function ChatPage() {
           </div>
         )}
 
-        {loadError && hasUserMessage ? (
+        {/* 非 Seed 布局的唯一错误出口：与用户消息是否存在无关，避免空用户历史的错误被吞掉。 */}
+        {loadError && !showSeed ? (
           <p className="chat-inline-error" role="alert">
             {loadError}
           </p>

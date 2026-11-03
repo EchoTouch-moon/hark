@@ -1,0 +1,78 @@
+RUN  v3.2.7 <isolated-worktree>
+
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > does not select old project or unclassified local threads when the server has no global threads 3ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > returns server global threads without exposing project threads from an older server 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > never reuses a cached global-looking ID when the server returns an empty list 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > offers a clearly marked offline global thread without deleting old project records 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > preserves every old record when creating an offline global thread and does not display hidden records 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > preserves unparseable or non-array local storage "{bad json" 1ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > preserves unparseable or non-array local storage "" 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > preserves unparseable or non-array local storage "{}" 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > preserves unparseable or non-array local storage "null" 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > updates a global local preview without dropping unknown or project records 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > reports offline thread creation failure when local storage refuses the write 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > does not hide PROJECT_CHAT_UNAVAILABLE while loading threads 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > does not hide UNBOUND_THREAD_HISTORY while loading threads 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 400 from thread listing 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 401 from thread listing 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 403 from thread listing 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 409 from thread listing 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 422 from thread listing 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 500 from thread listing 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > rejects a malformed successful list without reading local Mock data 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > does not create a mock thread for a project request, even while offline 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > preserves the PROJECT_CHAT_UNAVAILABLE error from thread creation 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > preserves the UNBOUND_THREAD_HISTORY error from thread creation 1ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 400 from thread creation 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 401 from thread creation 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 403 from thread creation 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 409 from thread creation 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 422 from thread creation 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 500 from thread creation 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > rejects a malformed successful creation without saving a mock thread 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > keeps a server-created global thread usable 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > resolves an off-page global thread only via the real detail API 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > rejects an off-page thread that the server identifies as project-bound 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > does not generate a mock proactive suggestion for PROJECT_CHAT_UNAVAILABLE 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > does not generate a mock proactive suggestion for UNBOUND_THREAD_HISTORY 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 400 without generating a proactive Mock 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 401 without generating a proactive Mock 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 403 without generating a proactive Mock 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 409 without generating a proactive Mock 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 422 without generating a proactive Mock 0ms
+ ✓ tests/unit/thread-scope-client.test.ts > global thread fallback and project chat denial > propagates HTTP 500 without generating a proactive Mock 0ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses an explicit mismatched project on chat write without touching either thread 86ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses an explicit mismatched project on chat history without returning data 13ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not treat a legacy project id as a trusted binding for chat writes 12ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not treat a legacy project id as a trusted binding for chat history 10ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not create a thread or call the adapter for an unknown project-scoped thread 14ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses creating project-bound threads for project-atlas 10ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses creating project-bound threads for project-missing 11ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not turn a project-scoped thread request into a global read through /api/v1/threads?projectId=project-atlas 8ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not turn a project-scoped thread request into a global read through /api/v1/threads/thread-global?projectId=project-atlas 13ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not turn a project-scoped thread request into a global read through /api/v1/threads/thread-global/proactive?projectId=project-atlas 12ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > applies the global filter before pagination 24ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > rejects conflicting thread and session aliases in a chat write 9ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > rejects conflicting thread and session aliases in chat history 8ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > rejects unknown chat body fields before any side effects 10ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > withholds legacy project-bound threads from the global thread list 8ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/threads/thread-a 9ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/threads/thread-a/proactive 8ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/chat/history?threadId=thread-a 8ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global chat write to an untrusted legacy-bound thread 11ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not promote an orphaned chat history into a global thread by writing 13ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not return orphaned messages as global history 8ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > retains implicit creation for a fresh global thread with no prior messages 8ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > retains global chat and history on an unbound thread 8ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > keeps project requests denied when a global chat is sent concurrently 8ms
+ ✓ apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > continues to withhold legacy project and orphan data after storage restart 12ms
+
+ Test Files  2 passed (2)
+      Tests  66 passed (66)
+   Start at  23:01:43
+   Duration  1.22s (transform 430ms, setup 0ms, collect 718ms, tests 354ms, environment 0ms, prepare 102ms)
+
+
+EXIT_CODE=0

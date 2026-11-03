@@ -1,0 +1,93 @@
+// Behavior characterization only, not a security PASS or multi-tenant claim.
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import type { FastifyInstance } from 'fastify';
+import { Storage } from '@hearth/storage';
+import { DiscoveryService, Orchestrator } from '@hearth/core';
+import { FixtureConnector } from '@hearth/connectors';
+import { MockAgentAdapter } from '@hearth/agent-adapters';
+import { buildApp } from './app.js';
+import { loadConfig } from '../config.js';
+
+const origin = 'http://127.0.0.1:4317';
+let dir: string;
+let store: Storage;
+let app: FastifyInstance;
+let headers: Record<string, string>;
+
+beforeEach(async () => {
+  dir = await mkdtemp(path.join(tmpdir(), 'hearth-scope-characterize-'));
+  store = new Storage(path.join(dir, 'synthetic.sqlite'));
+  const config = loadConfig({ dbPath: path.join(dir, 'synthetic.sqlite'), artifactRoot: path.join(dir, 'artifacts'), staticDir: null, demoMode: false });
+  const connector = new FixtureConnector(config.repoRoot);
+  store.seedProjects(connector.loadProjects());
+  const now = '2026-10-28T12:00:00.000Z';
+  for (const [id, projectId] of [['thread-a', 'project-atlas'], ['thread-b', 'project-beacon']] as const) {
+    store.insertThread({ id, title: id, preview: '', projectId, proactiveStatus: 'idle', proactiveMessageId: null, createdAt: now, updatedAt: now });
+    store.appendChat({ id: `initial-${id}`, sessionId: id, role: 'user', content: `SYNTHETIC-${id}`, adapter: 'mock', createdAt: now });
+  }
+  const orchestrator = new Orchestrator({ storage: store, artifactRoot: path.join(dir, 'artifacts'), clock: () => now, stepDelayMs: 0 });
+  const discovery = new DiscoveryService({ storage: store, clock: () => now });
+  app = buildApp({ config, storage: store, services: { orchestrator, discovery, chat: new MockAgentAdapter(), seedDemo: async () => ({ eventsIngested: 0 }) } });
+  const session = await app.inject({ method: 'GET', url: '/api/v1/auth/session' });
+  const raw = session.headers['set-cookie'];
+  const cookie = (Array.isArray(raw) ? raw[0]! : String(raw)).split(';')[0]!;
+  headers = { cookie, 'x-csrf-token': (session.json() as { csrfToken: string }).csrfToken, origin };
+});
+
+afterEach(async () => { await app.close(); store.close(); await rm(dir, { recursive: true, force: true }); });
+
+function state() {
+  return {
+    aProject: store.getThread('thread-a')?.projectId,
+    bProject: store.getThread('thread-b')?.projectId,
+    aCount: store.listChat('thread-a').length,
+    bCount: store.listChat('thread-b').length,
+    auditCount: Number((store.db.prepare('SELECT COUNT(*) AS n FROM audit_log').get() as { n: number }).n),
+  };
+}
+
+describe('G0 project scope behavior characterization (not security acceptance)', () => {
+  it('characterizes a chat write whose projectId disagrees with the existing thread', async () => {
+    const before = state();
+    const response = await app.inject({ method: 'POST', url: '/api/v1/chat', headers, payload: { threadId: 'thread-a', projectId: 'project-beacon', message: 'SYNTHETIC mismatched project' } });
+    const after = state();
+    expect(response.statusCode).toBe(200);
+    expect(after.aProject).toBe('project-atlas');
+    expect(after.bProject).toBe('project-beacon');
+    expect(after.aCount).toBe(before.aCount + 2);
+    expect(after.bCount).toBe(before.bCount);
+    expect(after.auditCount).toBe(before.auditCount);
+    const read = await app.inject({ method: 'GET', url: '/api/v1/chat/history?threadId=thread-a&projectId=project-beacon', headers });
+    expect(read.statusCode).toBe(200);
+    expect(JSON.stringify(read.json())).toContain('SYNTHETIC mismatched project');
+    console.log(JSON.stringify({ case: 'mismatched-thread-project', postStatus: response.statusCode, historyStatus: read.statusCode, before, after, returnedSyntheticMarker: true }));
+  });
+
+  it('characterizes a chat write with an unknown thread', async () => {
+    const before = state();
+    const response = await app.inject({ method: 'POST', url: '/api/v1/chat', headers, payload: { threadId: 'thread-unknown', projectId: 'project-atlas', message: 'SYNTHETIC unknown thread' } });
+    const after = state();
+    const thread = store.getThread('thread-unknown');
+    expect(response.statusCode).toBe(200);
+    expect(thread?.projectId).toBeNull();
+    expect(store.listChat('thread-unknown')).toHaveLength(2);
+    expect(after).toEqual(before);
+    console.log(JSON.stringify({ case: 'unknown-thread', postStatus: response.statusCode, createdThreadProject: thread?.projectId, createdMessages: store.listChat('thread-unknown').length, before, after }));
+  });
+
+  it('characterizes creation of a thread with an unknown project', async () => {
+    const before = state();
+    const response = await app.inject({ method: 'POST', url: '/api/v1/threads', headers, payload: { projectId: 'project-does-not-exist', title: 'SYNTHETIC' } });
+    const after = state();
+    expect(response.statusCode).toBe(201);
+    const id = (response.json() as { thread: { id: string } }).thread.id;
+    expect(store.getThread(id)?.projectId).toBe('project-does-not-exist');
+    expect(after.auditCount).toBe(before.auditCount + 1);
+    expect(after.aCount).toBe(before.aCount);
+    expect(after.bCount).toBe(before.bCount);
+    console.log(JSON.stringify({ case: 'unknown-project', postStatus: response.statusCode, storedProject: store.getThread(id)?.projectId, before, after }));
+  });
+});

@@ -302,9 +302,7 @@ export async function fetchProactive(
     }
     return { suggestion: data.suggestion ?? null, mock: false };
   } catch (err) {
-    if (err instanceof ApiError && err.status !== 404 && err.status !== 501 && err.status !== 0) {
-      // continue to mock
-    }
+    if (signal?.aborted || !(err instanceof ApiError) || (err.status !== 0 && err.status !== 404 && err.status !== 501)) throw err;
   }
 
   // 真 API 已可用但本拍 proactive 失败：安静，绝不回灌旧 Mock 盖住
@@ -380,29 +378,44 @@ export interface ExecuteActionResult {
   mock: boolean;
 }
 
+/** 只有网络失败或接口尚未实现才算“离线”；任何明确 HTTP 拒绝都不降级。 */
+function isOfflineOnlyFailure(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 0 || error.status === 501);
+}
+
+/** 离线演示的唯一资格是显式 demo 标记；ID 前缀不构成授权。 */
+function isLocalDemoAction(action: MessageAction): boolean {
+  return action.demo === true;
+}
+
 /** G4：执行行动后在同线程回写 ProgressBlock + 结果（Mock 本地模拟）。 */
 export async function executeMessageAction(
   threadId: string,
   action: MessageAction,
   signal?: AbortSignal,
 ): Promise<ExecuteActionResult> {
+  let failure: unknown;
   try {
-    const data = await apiFetch<{ message: CanvasMessage }>(
+    const data = await apiFetch<{ message?: CanvasMessage }>(
       `/api/v1/threads/${encodeURIComponent(threadId)}/actions/${encodeURIComponent(action.id)}/execute`,
       { method: 'POST', json: { action }, signal },
     );
-    if (data.message) {
+    if (data?.message) {
       preferLiveApi();
       return { message: data.message, mock: false };
     }
-  } catch {
-    // mock path
+    // 2xx 却没有结果：服务端在场却没确认执行，不能当成功。
+    failure = new ApiError(502, 'execute_empty_response', '行动执行接口没有返回结果');
+  } catch (err) {
+    failure = err;
   }
 
-  // 真 API 会话下 execute 失败：抛给调用方，不伪造本地 Progress
-  if (liveApi) {
-    throw new ApiError(0, 'execute_unavailable', '行动执行接口不可用');
-  }
+  // 取消、真 API 会话、或服务端明确拒绝（401/403/404/409/500 等）：
+  // 原样抛给调用方，绝不生成模拟进度或“已完成”结果。
+  if (signal?.aborted || liveApi || !isOfflineOnlyFailure(failure)) throw failure;
+
+  // 离线时只保留显式 demo 标记的本地演示；ID 前缀不构成授权，真实行动失败关闭。
+  if (!isLocalDemoAction(action)) throw failure;
 
   if (action.id === 'mock-ignore' || action.id === 'demo-ignore' || action.label === '忽略') {
     const message: CanvasMessage = {
@@ -456,12 +469,11 @@ export async function executeMessageAction(
     {
       name: '汇总结果',
       status: 'done',
-      detail: action.demo ? '假结果 · 未接真洞察/真构建' : '完成',
+      detail: '假结果 · 未接真洞察/真构建',
     },
   ];
-  const resultText = action.demo
-    ? `「${action.label}」演示跑通了：进度与结果留在本线程。这不是真实洞察或真实构建。`
-    : `「${action.label}」已完成。`;
+  // 走到这里一定是显式 demo 行动；文案不再依赖未经确认的 action.demo。
+  const resultText = `「${action.label}」演示跑通了：进度与结果留在本线程。这不是真实洞察或真实构建。`;
   const message: CanvasMessage = {
     id: progressId,
     role: 'assistant',

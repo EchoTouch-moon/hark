@@ -1,0 +1,310 @@
+RUN  v3.2.7 <isolated-worktree>
+
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts (19 tests | 16 failed) 467ms
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > refuses an explicit mismatched project on chat write without touching either thread 223ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > refuses an explicit mismatched project on chat history without returning data 16ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > does not treat a legacy project id as a trusted binding for chat writes 20ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > does not treat a legacy project id as a trusted binding for chat history 13ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > does not create a thread or call the adapter for an unknown project-scoped thread 18ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > refuses creating project-bound threads for project-atlas 14ms
+     → expected 201 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > refuses creating project-bound threads for project-missing 12ms
+     → expected 201 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > rejects conflicting thread and session aliases in a chat write 11ms
+     → expected 200 to be 400 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > rejects conflicting thread and session aliases in chat history 19ms
+     → expected 200 to be 400 // Object.is equality
+   ✓ G1-A project-scoped threads and chat fail closed until trusted bindings > rejects unknown chat body fields before any side effects 15ms
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > withholds legacy project-bound threads from the global thread list 12ms
+     → expected '{"threads":[{"id":"thread-a","title":…' not to contain 'thread-a'
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/threads/thread-a 13ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/threads/thread-a/proactive 11ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/chat/history?threadId=thread-a 13ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global chat write to an untrusted legacy-bound thread 12ms
+     → expected 200 to be 403 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > does not promote an orphaned chat history into a global thread by writing 13ms
+     → expected 200 to be 409 // Object.is equality
+   × G1-A project-scoped threads and chat fail closed until trusted bindings > does not return orphaned messages as global history 9ms
+     → expected 200 to be 409 // Object.is equality
+   ✓ G1-A project-scoped threads and chat fail closed until trusted bindings > retains implicit creation for a fresh global thread with no prior messages 10ms
+   ✓ G1-A project-scoped threads and chat fail closed until trusted bindings > retains global chat and history on an unbound thread 14ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses an explicit mismatched project on chat write without touching either thread
+AssertionError: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:80:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses an explicit mismatched project on chat history without returning data
+AssertionError: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:84:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not treat a legacy project id as a trusted binding for chat writes
+AssertionError: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:88:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not treat a legacy project id as a trusted binding for chat history
+AssertionError: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:92:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not create a thread or call the adapter for an unknown project-scoped thread
+AssertionError: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:96:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses creating project-bound threads for project-atlas
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses creating project-bound threads for project-missing
+AssertionError: expected 201 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 201
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:100:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > rejects conflicting thread and session aliases in a chat write
+AssertionError: expected 200 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:104:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > rejects conflicting thread and session aliases in chat history
+AssertionError: expected 200 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:108:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > withholds legacy project-bound threads from the global thread list
+AssertionError: expected '{"threads":[{"id":"thread-a","title":…' not to contain 'thread-a'
+
+Expected: "thread-a"
+Received: "{"threads":[{"id":"thread-a","title":"thread-a","preview":"SYNTHETIC_ATLAS_MARKER","projectId":"project-atlas","updatedAt":"2026-10-28T12:00:00.000Z"},{"id":"thread-b","title":"thread-b","preview":"SYNTHETIC_BEACON_MARKER","projectId":"project-beacon","updatedAt":"2026-10-28T12:00:00.000Z"},{"id":"thread-global","title":"thread-global","preview":"SYNTHETIC_GLOBAL_MARKER","projectId":null,"updatedAt":"2026-10-28T12:00:00.000Z"}]}"
+
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:119:26
+    117|     const res = await app.inject({ method: 'GET', url: '/api/v1/thread…
+    118|     expect(res.statusCode).toBe(200);
+    119|     expect(res.body).not.toContain('thread-a');
+       |                          ^
+    120|     expect(res.body).not.toContain('thread-b');
+    121|     expect(res.body).not.toContain('SYNTHETIC_ATLAS_MARKER');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/threads/thread-a
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/threads/thread-a/proactive
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global access to untrusted legacy-bound thread through /api/v1/chat/history?threadId=thread-a
+AssertionError: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:133:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > refuses global chat write to an untrusted legacy-bound thread
+AssertionError: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:137:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not promote an orphaned chat history into a global thread by writing
+AssertionError: expected 200 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:141:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/16]⎯
+
+ FAIL  apps/server/src/http/g1a-thread-scope.test.ts > G1-A project-scoped threads and chat fail closed until trusted bindings > does not return orphaned messages as global history
+AssertionError: expected 200 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 200
+
+ ❯ expectDeniedWithoutEffects apps/server/src/http/g1a-thread-scope.test.ts:71:26
+     69|   const res = await app.inject(request);
+     70|   const after = databaseDigest();
+     71|   expect(res.statusCode).toBe(expected.status ?? 403);
+       |                          ^
+     72|   expect(res.json().error.code).toBe(expected.code ?? 'PROJECT_CHAT_UN…
+     73|   expect(res.body).not.toContain(expected.forbidden ?? 'SYNTHETIC_ATLA…
+ ❯ apps/server/src/http/g1a-thread-scope.test.ts:145:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/16]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  16 failed | 3 passed (19)
+   Start at  16:50:43
+   Duration  1.24s (transform 308ms, setup 0ms, collect 542ms, tests 467ms, environment 0ms, prepare 51ms)
+
+
+EXIT_CODE=1

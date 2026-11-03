@@ -58,12 +58,17 @@ function snapshot() {
 describe('G1-A legacy endpoints fail closed', () => {
   it.each([false, true, 'unknown'] as const)('proactive GET is read-only and never crosses projects in mode %s', async mode => {
     const { app, headers } = await createClient(mode as boolean);
+    const now = '2026-10-28T12:00:00.000Z';
+    store.insertThread({ id: 'thread-global', title: 'global', preview: '', projectId: null, proactiveStatus: 'idle', proactiveMessageId: null, updatedAt: now, createdAt: now });
     const before = snapshot();
     for (const id of ['thread-a', 'thread-b']) {
       const result = await app.inject({ method: 'GET', url: `/api/v1/threads/${id}/proactive`, headers });
-      expect(result.statusCode).toBe(200);
-      expect(result.json()).toEqual({ suggestion: null });
+      expect(result.statusCode).toBe(403);
+      expect(result.json().error.code).toBe('PROJECT_CHAT_UNAVAILABLE');
     }
+    const global = await app.inject({ method: 'GET', url: '/api/v1/threads/thread-global/proactive', headers });
+    expect(global.statusCode).toBe(200);
+    expect(global.json()).toEqual({ suggestion: null });
     const absent = await app.inject({ method: 'GET', url: '/api/v1/threads/not-created/proactive', headers });
     expect(absent.statusCode).toBe(404);
     expect(snapshot()).toEqual(before);
@@ -212,13 +217,15 @@ describe('G1-A legacy endpoints fail closed', () => {
   it('withholds known unsafe legacy suggestions and simulated completion from history and previews without deleting them', async () => {
     const { app, headers } = await createClient(false);
     const now = '2026-10-28T12:00:00.000Z';
-    store.appendChat({ id: 'proactive-cards-thread-a', sessionId: 'thread-a', role: 'assistant', content: 'PROJECT_B_SECRET_SYNTHETIC', adapter: 'mock', createdAt: now });
-    store.appendChat({ id: 'progress-123', sessionId: 'thread-a', role: 'assistant', content: '伪造任务已完成', runId: 'demo-run-123', adapter: 'mock', createdAt: now });
-    store.touchThread('thread-a', '伪造任务已完成');
+    store.insertThread({ id: 'thread-safe', title: 'global', preview: '', projectId: null, proactiveStatus: 'idle', proactiveMessageId: null, updatedAt: now, createdAt: now });
+    store.appendChat({ id: 'message-thread-safe', sessionId: 'thread-safe', role: 'user', content: '合成消息', adapter: 'mock', createdAt: now });
+    store.appendChat({ id: 'proactive-cards-thread-safe', sessionId: 'thread-safe', role: 'assistant', content: 'PROJECT_B_SECRET_SYNTHETIC', adapter: 'mock', createdAt: now });
+    store.appendChat({ id: 'progress-123', sessionId: 'thread-safe', role: 'assistant', content: '伪造任务已完成', runId: 'demo-run-123', adapter: 'mock', createdAt: now });
+    store.touchThread('thread-safe', '伪造任务已完成');
     const before = snapshot();
     const [history, thread, list] = await Promise.all([
-      app.inject({ method: 'GET', url: '/api/v1/chat/history?threadId=thread-a', headers }),
-      app.inject({ method: 'GET', url: '/api/v1/threads/thread-a', headers }),
+      app.inject({ method: 'GET', url: '/api/v1/chat/history?threadId=thread-safe', headers }),
+      app.inject({ method: 'GET', url: '/api/v1/threads/thread-safe', headers }),
       app.inject({ method: 'GET', url: '/api/v1/threads', headers }),
     ]);
     for (const result of [history, thread, list]) {
@@ -226,7 +233,7 @@ describe('G1-A legacy endpoints fail closed', () => {
       expect(result.body).not.toContain('PROJECT_B_SECRET_SYNTHETIC');
       expect(result.body).not.toContain('伪造任务已完成');
     }
-    expect(history.json().messages.some((message: { id: string }) => message.id === 'message-thread-a')).toBe(true);
+    expect(history.json().messages.some((message: { id: string }) => message.id === 'message-thread-safe')).toBe(true);
     expect(snapshot()).toEqual(before);
   });
 

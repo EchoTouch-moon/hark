@@ -1,0 +1,438 @@
+
+ RUN  v3.2.7 /private/tmp/hark-g1a-scope
+
+ ❯ tests/unit/chat-execute-action.prefix-old.test.ts (12 tests | 11 failed) 302ms
+   × executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 401 AUTH_REQUIRED 时演示行动不产生本地进度或结果 131ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   × executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 403 LEGACY_ACTIONS_DISABLED 时演示行动不产生本地进度或结果 19ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   × executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 409 UNBOUND_THREAD_HISTORY 时演示行动不产生本地进度或结果 15ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   × executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 500 INTERNAL_ERROR 时演示行动不产生本地进度或结果 19ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   × executeMessageAction 只在真正离线时保留本地演示 > 普通行动遇到 403 时不会写出“已完成”结果，且拒绝原因可见 14ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   × executeMessageAction 只在真正离线时保留本地演示 > 404 不再被当作离线条件降级为本地演示 14ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   × executeMessageAction 只在真正离线时保留本地演示 > 2xx 但没有执行结果时不当作成功 14ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   × executeMessageAction 只在真正离线时保留本地演示 > 已确认真 API 后，业务拒绝原样抛出而不是通用“接口不可用” 17ms
+     → expected ApiError: 行动执行接口不可用 { status: +0, …(1) } to match object { status: 403, …(1) }
+(1 matching property omitted from actual)
+   ✓ executeMessageAction 只在真正离线时保留本地演示 > 真正离线时演示行动仍可本地模拟，并保留演示边界 14ms
+   × executeMessageAction 只在真正离线时保留本地演示 > 真正离线时普通行动失败关闭，不伪造完成 13ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   × executeMessageAction 只在真正离线时保留本地演示 > 501（接口未实现）只对演示行动保留本地演示 16ms
+     → promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+   × executeMessageAction 只在真正离线时保留本地演示 > 真 API 会话断线时不会回退到本地演示 14ms
+     → expected ApiError: 行动执行接口不可用 { status: +0, …(1) } to match object { status: +0, code: 'network_error' }
+(1 matching property omitted from actual)
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 401 AUTH_REQUIRED 时演示行动不产生本地进度或结果
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 403 LEGACY_ACTIONS_DISABLED 时演示行动不产生本地进度或结果
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 409 UNBOUND_THREAD_HISTORY 时演示行动不产生本地进度或结果
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 服务器返回 500 INTERNAL_ERROR 时演示行动不产生本地进度或结果
+AssertionError: promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "message": {[39m
+[31m+     "adapter": "mock",[39m
+[31m+     "content": "「诊断」演示跑通了：进度与结果留在本线程。这不是真实洞察或真实构建。",[39m
+[31m+     "createdAt": "2026-11-03T02:03:08.030Z",[39m
+[31m+     "id": "mock-progress-1793671388030",[39m
+[31m+     "parts": [[39m
+[31m+       {[39m
+[31m+         "runRef": "mock-run-1793671388030",[39m
+[31m+         "steps": [[39m
+[31m+           {[39m
+[31m+             "detail": "演示步骤",[39m
+[31m+             "name": "确认范围",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "演示完成",[39m
+[31m+             "name": "只读诊断",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "假结果 · 未接真洞察/真构建",[39m
+[31m+             "name": "汇总结果",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+         ],[39m
+[31m+         "type": "progress",[39m
+[31m+       },[39m
+[31m+       {[39m
+[31m+         "ok": true,[39m
+[31m+         "text": "「诊断」演示跑通了：进度与结果留在本线程。这不是真实洞察或真实构建。",[39m
+[31m+         "type": "result",[39m
+[31m+       },[39m
+[31m+     ],[39m
+[31m+     "role": "assistant",[39m
+[31m+     "threadId": "thread-global-1",[39m
+[31m+   },[39m
+[31m+   "mock": true,[39m
+[2m  }[22m
+
+ ❯ tests/unit/chat-execute-action.prefix-old.test.ts:88:5
+     86|     await expect(
+     87|       chat.executeMessageAction('thread-global-1', { ...DEMO_ACTION }),
+     88|     ).rejects.toMatchObject({ status, code });
+       |     ^
+     89| 
+     90|     expect(writtenKeys()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 普通行动遇到 403 时不会写出“已完成”结果，且拒绝原因可见
+AssertionError: promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "message": {[39m
+[31m+     "adapter": "mock",[39m
+[31m+     "content": "「重新构建」已完成。",[39m
+[31m+     "createdAt": "2026-11-03T02:03:08.116Z",[39m
+[31m+     "id": "mock-progress-1793671388116",[39m
+[31m+     "parts": [[39m
+[31m+       {[39m
+[31m+         "runRef": "mock-run-1793671388116",[39m
+[31m+         "steps": [[39m
+[31m+           {[39m
+[31m+             "detail": "演示步骤",[39m
+[31m+             "name": "确认范围",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "演示完成",[39m
+[31m+             "name": "按批准执行",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "完成",[39m
+[31m+             "name": "汇总结果",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+         ],[39m
+[31m+         "type": "progress",[39m
+[31m+       },[39m
+[31m+       {[39m
+[31m+         "ok": true,[39m
+[31m+         "text": "「重新构建」已完成。",[39m
+[31m+         "type": "result",[39m
+[31m+       },[39m
+[31m+     ],[39m
+[31m+     "role": "assistant",[39m
+[31m+     "threadId": "thread-global-1",[39m
+[31m+   },[39m
+[31m+   "mock": true,[39m
+[2m  }[22m
+
+ ❯ tests/unit/chat-execute-action.prefix-old.test.ts:103:5
+    101|     await expect(
+    102|       chat.executeMessageAction('thread-global-1', { ...REAL_ACTION }),
+    103|     ).rejects.toMatchObject({
+       |     ^
+    104|       status: 403,
+    105|       code: 'LEGACY_ACTIONS_DISABLED',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 404 不再被当作离线条件降级为本地演示
+AssertionError: promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "message": {[39m
+[31m+     "adapter": "mock",[39m
+[31m+     "content": "「诊断」演示跑通了：进度与结果留在本线程。这不是真实洞察或真实构建。",[39m
+[31m+     "createdAt": "2026-11-03T02:03:08.130Z",[39m
+[31m+     "id": "mock-progress-1793671388130",[39m
+[31m+     "parts": [[39m
+[31m+       {[39m
+[31m+         "runRef": "mock-run-1793671388130",[39m
+[31m+         "steps": [[39m
+[31m+           {[39m
+[31m+             "detail": "演示步骤",[39m
+[31m+             "name": "确认范围",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "演示完成",[39m
+[31m+             "name": "只读诊断",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "假结果 · 未接真洞察/真构建",[39m
+[31m+             "name": "汇总结果",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+         ],[39m
+[31m+         "type": "progress",[39m
+[31m+       },[39m
+[31m+       {[39m
+[31m+         "ok": true,[39m
+[31m+         "text": "「诊断」演示跑通了：进度与结果留在本线程。这不是真实洞察或真实构建。",[39m
+[31m+         "type": "result",[39m
+[31m+       },[39m
+[31m+     ],[39m
+[31m+     "role": "assistant",[39m
+[31m+     "threadId": "thread-global-1",[39m
+[31m+   },[39m
+[31m+   "mock": true,[39m
+[2m  }[22m
+
+ ❯ tests/unit/chat-execute-action.prefix-old.test.ts:119:5
+    117|     await expect(
+    118|       chat.executeMessageAction('thread-global-1', { ...DEMO_ACTION }),
+    119|     ).rejects.toMatchObject({ status: 404, code: 'NOT_FOUND' });
+       |     ^
+    120| 
+    121|     expect(writtenKeys()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 2xx 但没有执行结果时不当作成功
+AssertionError: promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "message": {[39m
+[31m+     "adapter": "mock",[39m
+[31m+     "content": "「重新构建」已完成。",[39m
+[31m+     "createdAt": "2026-11-03T02:03:08.144Z",[39m
+[31m+     "id": "mock-progress-1793671388144",[39m
+[31m+     "parts": [[39m
+[31m+       {[39m
+[31m+         "runRef": "mock-run-1793671388144",[39m
+[31m+         "steps": [[39m
+[31m+           {[39m
+[31m+             "detail": "演示步骤",[39m
+[31m+             "name": "确认范围",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "演示完成",[39m
+[31m+             "name": "按批准执行",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "完成",[39m
+[31m+             "name": "汇总结果",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+         ],[39m
+[31m+         "type": "progress",[39m
+[31m+       },[39m
+[31m+       {[39m
+[31m+         "ok": true,[39m
+[31m+         "text": "「重新构建」已完成。",[39m
+[31m+         "type": "result",[39m
+[31m+       },[39m
+[31m+     ],[39m
+[31m+     "role": "assistant",[39m
+[31m+     "threadId": "thread-global-1",[39m
+[31m+   },[39m
+[31m+   "mock": true,[39m
+[2m  }[22m
+
+ ❯ tests/unit/chat-execute-action.prefix-old.test.ts:130:5
+    128|     await expect(
+    129|       chat.executeMessageAction('thread-global-1', { ...REAL_ACTION }),
+    130|     ).rejects.toMatchObject({ code: 'execute_empty_response' });
+       |     ^
+    131| 
+    132|     expect(writtenKeys()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 已确认真 API 后，业务拒绝原样抛出而不是通用“接口不可用”
+AssertionError: expected ApiError: 行动执行接口不可用 { status: +0, …(1) } to match object { status: 403, …(1) }
+(1 matching property omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- {[39m
+[32m-   "code": "LEGACY_ACTIONS_DISABLED",[39m
+[32m-   "status": 403,[39m
+[31m+ ApiError {[39m
+[31m+   "code": "execute_unavailable",[39m
+[31m+   "status": 0,[39m
+[2m  }[22m
+
+ ❯ tests/unit/chat-execute-action.prefix-old.test.ts:155:5
+    153|       rejection(403, 'LEGACY_ACTIONS_DISABLED', '旧模拟操作当前不可用。'),
+    154|     );
+    155|     await expect(
+       |     ^
+    156|       chat.executeMessageAction('thread-global-1', { ...REAL_ACTION }),
+    157|     ).rejects.toMatchObject({ status: 403, code: 'LEGACY_ACTIONS_DISAB…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 真正离线时普通行动失败关闭，不伪造完成
+AssertionError: promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "message": {[39m
+[31m+     "adapter": "mock",[39m
+[31m+     "content": "「重新构建」已完成。",[39m
+[31m+     "createdAt": "2026-11-03T02:03:08.188Z",[39m
+[31m+     "id": "mock-progress-1793671388188",[39m
+[31m+     "parts": [[39m
+[31m+       {[39m
+[31m+         "runRef": "mock-run-1793671388188",[39m
+[31m+         "steps": [[39m
+[31m+           {[39m
+[31m+             "detail": "演示步骤",[39m
+[31m+             "name": "确认范围",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "演示完成",[39m
+[31m+             "name": "按批准执行",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "完成",[39m
+[31m+             "name": "汇总结果",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+         ],[39m
+[31m+         "type": "progress",[39m
+[31m+       },[39m
+[31m+       {[39m
+[31m+         "ok": true,[39m
+[31m+         "text": "「重新构建」已完成。",[39m
+[31m+         "type": "result",[39m
+[31m+       },[39m
+[31m+     ],[39m
+[31m+     "role": "assistant",[39m
+[31m+     "threadId": "thread-global-1",[39m
+[31m+   },[39m
+[31m+   "mock": true,[39m
+[2m  }[22m
+
+ ❯ tests/unit/chat-execute-action.prefix-old.test.ts:181:5
+    179|     await expect(
+    180|       chat.executeMessageAction('thread-global-1', { ...REAL_ACTION }),
+    181|     ).rejects.toMatchObject({ status: 0, code: 'network_error' });
+       |     ^
+    182| 
+    183|     expect(writtenKeys()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 501（接口未实现）只对演示行动保留本地演示
+AssertionError: promise resolved "{ message: { …(7) }, mock: true }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "message": {[39m
+[31m+     "adapter": "mock",[39m
+[31m+     "content": "「重新构建」已完成。",[39m
+[31m+     "createdAt": "2026-11-03T02:03:08.205Z",[39m
+[31m+     "id": "mock-progress-1793671388205",[39m
+[31m+     "parts": [[39m
+[31m+       {[39m
+[31m+         "runRef": "mock-run-1793671388205",[39m
+[31m+         "steps": [[39m
+[31m+           {[39m
+[31m+             "detail": "演示步骤",[39m
+[31m+             "name": "确认范围",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "演示完成",[39m
+[31m+             "name": "按批准执行",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+           {[39m
+[31m+             "detail": "完成",[39m
+[31m+             "name": "汇总结果",[39m
+[31m+             "status": "done",[39m
+[31m+           },[39m
+[31m+         ],[39m
+[31m+         "type": "progress",[39m
+[31m+       },[39m
+[31m+       {[39m
+[31m+         "ok": true,[39m
+[31m+         "text": "「重新构建」已完成。",[39m
+[31m+         "type": "result",[39m
+[31m+       },[39m
+[31m+     ],[39m
+[31m+     "role": "assistant",[39m
+[31m+     "threadId": "thread-global-1",[39m
+[31m+   },[39m
+[31m+   "mock": true,[39m
+[2m  }[22m
+
+ ❯ tests/unit/chat-execute-action.prefix-old.test.ts:196:5
+    194|     await expect(
+    195|       chat.executeMessageAction('thread-global-1', { ...REAL_ACTION }),
+    196|     ).rejects.toMatchObject({ status: 501 });
+       |     ^
+    197|   });
+    198| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  tests/unit/chat-execute-action.prefix-old.test.ts > executeMessageAction 只在真正离线时保留本地演示 > 真 API 会话断线时不会回退到本地演示
+AssertionError: expected ApiError: 行动执行接口不可用 { status: +0, …(1) } to match object { status: +0, code: 'network_error' }
+(1 matching property omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- {[39m
+[32m-   "code": "network_error",[39m
+[31m+ ApiError {[39m
+[31m+   "code": "execute_unavailable",[39m
+[2m    "status": 0,[22m
+[2m  }[22m
+
+ ❯ tests/unit/chat-execute-action.prefix-old.test.ts:216:5
+    214| 
+    215|     fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
+    216|     await expect(
+       |     ^
+    217|       chat.executeMessageAction('thread-global-1', { ...DEMO_ACTION }),
+    218|     ).rejects.toMatchObject({ status: 0, code: 'network_error' });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  11 failed | 1 passed (12)
+   Start at  10:03:05
+   Duration  2.89s (transform 90ms, setup 0ms, collect 62ms, tests 302ms, environment 0ms, prepare 291ms)
+
