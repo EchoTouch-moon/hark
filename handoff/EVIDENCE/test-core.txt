@@ -1,0 +1,9 @@
+Status: PASS for listed synthetic local mechanisms only; not M1 PASS.
+Command: pnpm test (2026-11-03, macOS, Node 22).
+Full output: handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt
+Relevant suites: fixture-chronicle (14), fixture-decision (12),
+fixture-opinion-store (16), fixture-feedback-v2 (9),
+fixture-opinion-concurrency (1).
+Scope: synthetic projects, current grant checks, source epochs, decisions,
+draft revisions, feedback, and one concurrent CAS scenario.
+Not proven: real project discovery, real observations, or product value.

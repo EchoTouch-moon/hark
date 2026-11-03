@@ -28,7 +28,7 @@
 | D09 | `../`、绝对路径、符号链接越根 | 不打开或读取根外内容；不能因预检通过绕过真正读取边界 | **PARTIAL**：`tests/path-check.test.ts` 只验证预检拒绝；竞态安全打开、在途替换及 Windows junction **NOT RUN**。 |
 | D10 | 中断写入/迁移，重启；重复请求 | 事务回滚无半条记录；迁移可重复且保留旧数据；相同键相同内容幂等，冲突拒绝 | **FIXTURE PASS**：迁移、重启、幂等及并发测试；真实进程崩溃注入和所有提交窗口 **NOT RUN**。 |
 | D11 | 空来源、损坏 JSON、跨项目引用、旧 epoch、缺少期限/过期 Event | 失败关闭，不伪造结论；历史不得因一次失败覆盖 | **PARTIAL**：合成存储、合同与 `tests/event-freshness.test.ts` 时效预检通过；真实来源与 API 边界 **NOT RUN**。 |
-| D12 | 未启用研究/模型/执行，输入伪造 approved/completed | provider、网络和执行器均不被调用；服务端不可直接写完成 | **PARTIAL**：`tests/policy-storage.test.ts` 验证当前入口拒绝；完整服务/API 副作用计数 **NOT RUN**。 |
+| D12 | 未启用研究/模型/执行，输入伪造 approved/completed | provider、网络和执行器均不被调用；服务端不可直接写完成 | **PARTIAL**：`tests/policy-storage.test.ts` 与 `tests/action-registry.test.ts` 验证当前策略/提案拒绝；完整服务/API 副作用计数 **NOT RUN**。 |
 | D13 | 全局查看 A/B 并深入一个项目 | 仅展示已授权项目、数据覆盖与缺口，项目切换不串线 | **NOT RUN**：全局盘点和对话接口未实现。 |
 
 ## 安全合同 S01–S12 的当前映射
@@ -50,4 +50,4 @@
 
 ## 当前可复核结果和门槛
 
-`handoff/EVIDENCE/m0-concurrent-revision-check-2026-11-03.txt` 记录 79 项本地测试、类型检查和构建；仅证明其所运行的合成机制。上述目录、实际 API 和未运行安全用例不是 M0 PASS。M0→M1 仍须按 `docs/06-QA-BENCHMARK.md` 完成合同 schema、状态机、policy 负例、migrations 和独立审查，并完成 `tasks/manifest.json` 中合同与失败验收工作。M1 之前不得启动产品纵切；真实 connector 还需单独通过安全 P0 Gate。
+`handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt` 记录 97 项本地测试、lint、类型检查和构建；仅证明其所运行的合成机制。上述目录、实际 API 和未运行安全用例不是 M0 PASS。M0→M1 仍须按 `docs/06-QA-BENCHMARK.md` 完成合同 schema、状态机、policy 负例、migrations 和独立审查，并完成 `tasks/manifest.json` 中合同与失败验收工作。M1 之前不得启动产品纵切；真实 connector 还需单独通过安全 P0 Gate。

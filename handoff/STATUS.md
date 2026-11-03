@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- 独立 M0 复审结论为 NOT PASS；已补全禁用动作提案注册表及 QA 证据索引。最新 97 项本地测试和 lint/构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。正式任务、动作启用合同、产品/API E2E、真实来源和 Windows 等仍未完成。
 - 审批 run/card 绑定保守合同和 E2E-01～12 逐项映射见 `docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md`；相关执行链及 E2E 均未实现/未运行。
 - 已添加并运行 `pnpm lint`：仅覆盖 TypeScript 未使用变量/参数和 switch 贯穿检查，见 `handoff/EVIDENCE/m0-lint-check-2026-11-03.txt`；不是完整静态安全分析。
 - fixture feedback v2 明确支持拒绝并兼容 v1，保留观点和反馈历史；91 项本地测试及类型检查/构建见 `handoff/EVIDENCE/m0-feedback-v2-check-2026-11-03.txt`。真实用户界面与认证未实现。

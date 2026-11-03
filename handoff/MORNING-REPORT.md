@@ -1,5 +1,7 @@
 # 重建交接（2026-11-03）
 
+最新：独立 M0 Gate 审查为 NOT PASS；新增全禁用动作提案注册表和标准证据索引，97 项本地测试、lint、类型检查和构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。执行、真实 connector、M1 产品纵切和远端/Windows 验证均未通过。
+
 审批绑定和旧 E2E 的逐项映射已写入 `docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md`；这不是执行器实现或 E2E 通过记录。
 
 已添加基础 TypeScript 编译器规则级 lint 并加入本地 CI 配置，证据见 `handoff/EVIDENCE/m0-lint-check-2026-11-03.txt`；远端 CI 和 Windows 尚未执行。
