@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /private/tmp/hark-g1a-scope
+
+ ✓ tests/unit/chat-execute-action.test.ts (12 tests) 263ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  10:03:15
+   Duration  2.81s (transform 96ms, setup 0ms, collect 64ms, tests 263ms, environment 0ms, prepare 301ms)
+

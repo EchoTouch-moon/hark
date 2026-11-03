@@ -1,0 +1,16 @@
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] 
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 5 tests using 1 worker
+
+  ✓  1 tests/e2e/action-rejection.spec.ts:65:1 › 离线演示收到 403：不生成假进度、不提前持久化、保留 Action 与错误 (1.8s)
+  ✓  2 tests/e2e/action-rejection.spec.ts:99:1 › 真实 API 会话里的 403：不写本地记录，撤掉占位并保留错误 (1.8s)
+  ✓  3 tests/e2e/action-rejection.spec.ts:131:1 › 501 仍保留明确标注的离线演示 (2.3s)
+  ✓  4 tests/e2e/action-rejection.spec.ts:146:1 › 网络失败仍保留明确标注的离线演示 (2.3s)
+  ✓  5 tests/e2e/action-rejection.spec.ts:159:1 › 切换线程后到达的迟到拒绝不得污染新线程 (3.1s)
+
+  5 passed (24.2s)
