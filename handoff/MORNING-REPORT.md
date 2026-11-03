@@ -1,5 +1,7 @@
 # 重建交接（2026-11-03）
 
+最新：反馈 v2 新增独立拒绝选项，保持 v1 历史兼容且不改变观点；91 项本地测试见 `handoff/EVIDENCE/m0-feedback-v2-check-2026-11-03.txt`。真实认证、真实项目和用户交互仍未实现。
+
 最新：Event 时效预检及模型推断负例已完成，82 项本地测试见 `handoff/EVIDENCE/m0-event-freshness-check-2026-11-03.txt`。该预检尚未接入可信来源/权限消费路径，不代表 M0 Gate 通过。
 
 合成场景、失败反例及当前证据映射见 `tasks/M0-SYNTHETIC-ACCEPTANCE.md`；发现器、真实目录读取、完整安全矩阵仍未完成，不能把合成存储测试当成 Gate 通过。

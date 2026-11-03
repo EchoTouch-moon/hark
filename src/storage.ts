@@ -80,6 +80,11 @@ const migrations = [
    CREATE TRIGGER fixture_decisions_status_only BEFORE UPDATE ON fixture_decisions
    WHEN NEW.id IS NOT OLD.id OR NEW.project_id IS NOT OLD.project_id OR NEW.root_id IS NOT OLD.root_id OR NEW.grant_id IS NOT OLD.grant_id OR NEW.revision IS NOT OLD.revision OR NEW.statement IS NOT OLD.statement OR NEW.recorded_at IS NOT OLD.recorded_at OR OLD.status IS NOT 'active' OR NEW.status NOT IN ('superseded','withdrawn')
    BEGIN SELECT RAISE(ABORT,'fixture decision content is immutable'); END;`,
+  `CREATE TABLE fixture_feedback_versions (
+     feedback_id TEXT PRIMARY KEY REFERENCES fixture_opinion_feedback(id), version TEXT NOT NULL CHECK(version = '2')
+   );
+   CREATE TRIGGER fixture_feedback_version_no_update BEFORE UPDATE ON fixture_feedback_versions BEGIN SELECT RAISE(ABORT,'fixture feedback versions are append-only'); END;
+   CREATE TRIGGER fixture_feedback_version_no_delete BEFORE DELETE ON fixture_feedback_versions BEGIN SELECT RAISE(ABORT,'fixture feedback versions are append-only'); END;`,
 ] as const;
 
 export function openDatabase(path: string): DatabaseSync {

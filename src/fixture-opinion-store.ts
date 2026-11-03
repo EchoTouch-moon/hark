@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
-import { Feedback, OpinionBundle, OpinionRevision, Project, ProposedPlan } from './domain-contracts.js';
+import { Feedback, FeedbackV2, OpinionBundle, OpinionRevision, Project, ProposedPlan } from './domain-contracts.js';
 import { withFixtureAccess, type FixtureDecision, type FixtureFact } from './fixture-chronicle.js';
 
 // Synthetic drafts only: no source connector, model, presentation or executor.
@@ -10,6 +10,7 @@ type FindDecision = (id: string, revision: number) => FixtureDecision | null;
 const Id = z.string().trim().min(1).max(256);
 const Version = z.number().int().nonnegative().safe();
 const ChangeReason = z.string().trim().min(1).max(4000);
+const FixtureFeedbackRecord = z.union([Feedback, FeedbackV2]);
 
 function projectActive(db: DatabaseSync, projectId: string): boolean {
   return db.prepare("SELECT 1 AS ok FROM fixture_project_profiles WHERE project_id = ? AND state = 'active'").get(projectId) !== undefined;
@@ -109,11 +110,15 @@ export function readFixtureOpinion(db: DatabaseSync, rawScope: unknown, rawOpini
     return withFixtureAccess(db, rawScope, (scope, findFact, findDecision) => {
       const result = loadRevision(db, scope.projectId, opinionId.data, version.data, findFact, findDecision);
       if (!result) return null;
-      const rows = db.prepare('SELECT id, dedupe_key, data_json FROM fixture_opinion_feedback WHERE project_id = ? AND revision_id = ? ORDER BY rowid').all(scope.projectId, result.revision.id);
+      const rows = db.prepare(`SELECT f.id, f.dedupe_key, f.data_json, v.version AS contract_version
+        FROM fixture_opinion_feedback f LEFT JOIN fixture_feedback_versions v ON v.feedback_id = f.id
+        WHERE f.project_id = ? AND f.revision_id = ? ORDER BY f.rowid`).all(scope.projectId, result.revision.id);
       try {
         const feedback = rows.map(row => {
           if (typeof row.data_json !== 'string') throw new Error('Invalid fixture');
-          const item = Feedback.parse(JSON.parse(row.data_json));
+          const raw = JSON.parse(row.data_json);
+          const item = row.contract_version === null ? Feedback.parse(raw) : row.contract_version === '2' ? FeedbackV2.parse(raw) : null;
+          if (!item) throw new Error('Invalid fixture');
           if (item.id !== row.id || item.projectId !== scope.projectId || item.revisionId !== result.revision.id || typeof row.dedupe_key !== 'string' || !Id.safeParse(row.dedupe_key).success) throw new Error('Invalid fixture');
           return item;
         });
@@ -124,19 +129,23 @@ export function readFixtureOpinion(db: DatabaseSync, rawScope: unknown, rawOpini
 }
 
 export function appendFixtureFeedback(db: DatabaseSync, rawScope: unknown, rawFeedback: unknown, rawDedupeKey: unknown) {
-  const feedback = Feedback.parse(rawFeedback), dedupeKey = Id.parse(rawDedupeKey);
+  const feedback = FixtureFeedbackRecord.parse(rawFeedback), dedupeKey = Id.parse(rawDedupeKey);
+  const version = 'contractVersion' in feedback ? feedback.contractVersion : null;
   return withFixtureAccess(db, rawScope, (scope, findFact, findDecision) => {
     if (feedback.projectId !== scope.projectId || !projectActive(db, scope.projectId)) throw new Error('Fixture unavailable');
     const ref = db.prepare('SELECT opinion_id, version FROM fixture_opinion_revisions WHERE id = ? AND project_id = ?').get(feedback.revisionId, scope.projectId);
     if (!ref || typeof ref.opinion_id !== 'string' || !loadRevision(db, scope.projectId, ref.opinion_id, Number(ref.version), findFact, findDecision)) throw new Error('Fixture unavailable');
     const data = JSON.stringify(feedback);
-    const existing = db.prepare('SELECT id, revision_id, data_json FROM fixture_opinion_feedback WHERE project_id = ? AND dedupe_key = ?').get(scope.projectId, dedupeKey);
+    const existing = db.prepare(`SELECT f.id, f.revision_id, f.data_json, v.version AS contract_version
+      FROM fixture_opinion_feedback f LEFT JOIN fixture_feedback_versions v ON v.feedback_id = f.id
+      WHERE f.project_id = ? AND f.dedupe_key = ?`).get(scope.projectId, dedupeKey);
     if (existing) {
-      if (existing.id !== feedback.id || existing.revision_id !== feedback.revisionId || existing.data_json !== data) throw new Error('Fixture idempotency conflict');
+      if (existing.id !== feedback.id || existing.revision_id !== feedback.revisionId || existing.data_json !== data || existing.contract_version !== version) throw new Error('Fixture idempotency conflict');
       return feedback;
     }
     db.prepare('INSERT INTO fixture_opinion_feedback(id, project_id, revision_id, dedupe_key, data_json) VALUES (?, ?, ?, ?, ?)')
       .run(feedback.id, scope.projectId, feedback.revisionId, dedupeKey, data);
+    if (version === '2') db.prepare('INSERT INTO fixture_feedback_versions(feedback_id, version) VALUES (?, ?)').run(feedback.id, version);
     return feedback;
   });
 }

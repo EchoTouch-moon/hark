@@ -13,6 +13,7 @@
   - [ ] 并发压力测试、真实项目生命周期、真实研究来源与用户决定的可信核验。
   - [x] 合成用户决定：版本身份、持久授权及撤回/替代后禁用其观点引用（`src/fixture-decision.ts`、`tests/fixture-decision.test.ts`、`tests/fixture-opinion-store.test.ts`）。
   - [x] 合成项目状态为删除中或已删除时，来源记录、观点及用户决定均不可用（fixture 测试；不代表正式项目生命周期已实现）。
+  - [x] 版本化反馈支持用户明确拒绝，保留旧记录兼容且不改变观点或视为事实证伪（`src/domain-contracts.ts`、`tests/fixture-feedback-v2.test.ts`）。
 - [ ] M0-B 项目来源与事实持久化基础（主 Agent，串行迁移；仅合成数据）。
   - [x] 新增 v2 迁移，保存项目绑定的合成来源与不可变观察，约束来源 epoch 和重复写入（`src/storage.ts`）。
   - [x] 合成记录每次读写核对持久授权；撤权、暂停、过期或来源 epoch 更新后拒绝使用旧记录（`src/fixture-chronicle.ts`）。
@@ -55,6 +56,7 @@
   - [x] 合成用户决定和生命周期约束后，共 78 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0d-fixture-decisions-check-2026-11-03.txt`。
   - [x] 增加双 worker 实际竞争后，79 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-concurrent-revision-check-2026-11-03.txt`。
   - [x] 增加 Event 时效与推断负例后，82 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-event-freshness-check-2026-11-03.txt`。
+  - [x] 增加反馈 v2 后，91 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-feedback-v2-check-2026-11-03.txt`。
   - [x] 本地 CI 配置加入 Mac/Windows 分支触发和两平台测试任务；YAML 及触发分支解析检查见 `handoff/EVIDENCE/m0-ci-workflow-static-2026-11-03.txt`。
   - [ ] 推送后核验远端 CI 实际结果，补齐适用的 lint 与 Windows 验证。E2E 尚无可运行产品，不伪造通过。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。

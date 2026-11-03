@@ -169,10 +169,10 @@ describe('fixture user decisions', () => {
   it('upgrades a populated v3 database to v4 without losing existing project records', () => {
     const setup = fixture();
     let db = setup.db;
-    db.exec('DROP TABLE fixture_decisions; DELETE FROM schema_migrations WHERE version=4;');
+    db.exec('DROP TABLE fixture_feedback_versions; DROP TABLE fixture_decisions; DELETE FROM schema_migrations WHERE version>=4;');
     close(db);
     db = open(setup.path);
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }]);
     expect(db.prepare("SELECT name FROM projects WHERE id='A'").get()?.name).toBe('Synthetic A');
     recordFixtureDecision(db, scopeA, first);
     expect(readFixtureDecision(db, scopeA, first.id, 1)).toEqual(first);

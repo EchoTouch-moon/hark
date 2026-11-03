@@ -2,13 +2,15 @@
 
 本合同围绕项目理解、来源、观点、用户反馈及后续修订。结构由 `src/domain-contracts.ts` 定义，`OpinionBundle.contractVersion` 为 `"1"`；修改已有版本的含义或字段属于破坏性变更，需新增版本及迁移/兼容测试。旧 Action/Run 合同继续保留在受控执行层，不是当前开发中心。
 
+`OpinionBundle` v1 的反馈数组仍只接受 v1；`FeedbackV2` 是独立版本的反馈记录，fixture 存储按其显式版本读写。未来若要在单一 bundle 中返回 v2，须定义新的 bundle 合同，不更改 v1 的含义。
+
 ## 结构与语义
 
 - `Project` 为持久项目身份。名字或目录不是身份；`GoalRevision` 是用户的目标记录，不假定系统已知目标。未发现描述时可为空。
 - `EvidenceRef` 区分观察事件、公开研究来源、用户决定三种引用。只有观察引用有 epoch；公开研究与用户决定不能伪装成对用户项目的直接观察。
 - `GroundedFact` 把陈述与引用及其主题类型绑定；它的名称和合法结构**不证明陈述被来源支持**。推断另列在 `OpinionRevision.inferences`。候选观点仍需可信数据层核验及人工价值评审。
 - `Opinion` 表示项目内一个话题及当前版本号；`OpinionRevision` 把事实陈述、推断、反证、限制、看法、备选和可改变判断的条件分开。没有反证时必须说明缺口。
-- `ProposedPlan` 与版本相连，固定 `executable: false`。`Feedback` 记录用户采纳、修改、搁置或反驳；反驳须有理由，搁置须有恢复时间；用户不采纳不等于事实被证伪。
+- `ProposedPlan` 与版本相连，固定 `executable: false`。`Feedback` v1 记录用户采纳、修改、搁置或反驳；显式 `contractVersion: "2"` 的 `FeedbackV2` 增加独立的拒绝。反驳须有理由，搁置须有恢复时间；用户不采纳或拒绝不等于事实被证伪，也不自动覆盖观点。
 - `OpinionBundle` 检查提供的项目、观点、版本、计划、反馈及其中证据的项目与身份引用一致。`RevisionPair` 检查同一项目和观点的相邻版本编号及不同版本 ID；原因单独记录。
 
 ## 已覆盖的边界

@@ -72,6 +72,16 @@ export const Feedback = z.object({
   if ((value.choice === 'defer') !== Boolean(value.deferUntil)) context.addIssue({ code: z.ZodIssueCode.custom, path: ['deferUntil'], message: 'Only a deferral requires a deferral time' });
 });
 
+// Version 1 remains unchanged; rejection is a user choice, not factual refutation.
+export const FeedbackV2 = z.object({
+  contractVersion: z.literal('2'), id: Id, projectId: Id, revisionId: Id,
+  choice: z.enum(['accept', 'modify', 'defer', 'challenge', 'reject']),
+  reason: Text.optional(), deferUntil: DateTime.optional(), createdAt: DateTime,
+}).strict().superRefine((value, context) => {
+  if (value.choice === 'challenge' && !value.reason) context.addIssue({ code: z.ZodIssueCode.custom, path: ['reason'], message: 'A challenge requires a reason' });
+  if ((value.choice === 'defer') !== Boolean(value.deferUntil)) context.addIssue({ code: z.ZodIssueCode.custom, path: ['deferUntil'], message: 'Only a deferral requires a deferral time' });
+});
+
 /** Checks consistency of the supplied records, not their existence or authorization. */
 export const OpinionBundle = z.object({
   contractVersion: z.literal('1'), project: Project, opinion: Opinion, revision: OpinionRevision, plan: ProposedPlan, feedback: z.array(Feedback).max(100),

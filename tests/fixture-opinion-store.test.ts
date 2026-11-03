@@ -59,7 +59,7 @@ describe('fixture opinion memory', () => {
   it('upgrades an existing v2 database without losing fixture sources and observations', () => {
     const setup = fixture();
     let db = setup.db;
-    db.exec(`DROP TABLE fixture_decisions; DROP TABLE fixture_opinion_feedback; DROP TABLE fixture_opinion_plans;
+    db.exec(`DROP TABLE fixture_feedback_versions; DROP TABLE fixture_decisions; DROP TABLE fixture_opinion_feedback; DROP TABLE fixture_opinion_plans;
       DROP TABLE fixture_opinion_revisions; DROP TABLE fixture_opinions; DROP TABLE fixture_project_profiles;
       DELETE FROM schema_migrations WHERE version>=3;`);
     db.close();
@@ -67,7 +67,7 @@ describe('fixture opinion memory', () => {
     registerFixtureProject(db, scopeA, projectA);
     expect(saveFixtureOpinion(db, scopeA, bundleFor(projectA, 1), 0)).toBe(1);
     expect(readFixtureOpinion(db, scopeA, 'opinion-a', 1)?.revision.facts[0]?.statement).toBe('synthetic');
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }]);
     db.close();
   });
 
