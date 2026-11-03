@@ -25,7 +25,8 @@
   - [ ] 完成现行合同逐字段冲突裁决、可信来源存在/授权/epoch 复核与独立验收；结构有效不等于来源可信。
 - [ ] M0-REBUILD-01：产品、安全合同逐条复核与冲突裁决（主 Agent）。
   - [x] 首轮产品/安全合同与门槛映射，保留未决冲突（`docs/architecture/M0-CONTRACT-REVIEW.md`）。
-  - [ ] 逐字段裁决 Event TTL、审批绑定与旧 E2E 适用性并独立复审；不能因首轮矩阵标记任务完成。
+  - [x] Event TTL 的兼容裁决及纯预检：无期限/过期/未来时间/模型推断 withheld，通过时仍须核验来源（`src/event-freshness.ts`）。
+  - [ ] 审批绑定、旧 E2E 适用性及剩余字段的裁决并独立复审；不能因首轮矩阵标记任务完成。
 - [ ] M0-REBUILD-02：合成目录闭环与完整失败验收（主 Agent）。
   - [x] 建立 A/B 合成场景、失败用例和现有证据矩阵（`tasks/M0-SYNTHETIC-ACCEPTANCE.md`）；未实现的目录发现与真实读取明确标为 NOT RUN。
   - [ ] 在 M0-REBUILD-01 完成后审查并冻结完整验收映射；M1 纵切与 P0 安全验证未通过前不启用真实 connector。
@@ -53,6 +54,7 @@
   - [x] 合成来源、观点、修订和反馈后，共 64 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0c-fixture-opinion-check-2026-11-03.txt`。
   - [x] 合成用户决定和生命周期约束后，共 78 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0d-fixture-decisions-check-2026-11-03.txt`。
   - [x] 增加双 worker 实际竞争后，79 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-concurrent-revision-check-2026-11-03.txt`。
+  - [x] 增加 Event 时效与推断负例后，82 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-event-freshness-check-2026-11-03.txt`。
   - [x] 本地 CI 配置加入 Mac/Windows 分支触发和两平台测试任务；YAML 及触发分支解析检查见 `handoff/EVIDENCE/m0-ci-workflow-static-2026-11-03.txt`。
   - [ ] 推送后核验远端 CI 实际结果，补齐适用的 lint 与 Windows 验证。E2E 尚无可运行产品，不伪造通过。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。

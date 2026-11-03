@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- Event 时效纯预检已按缺期限失败关闭，模型推断不当作观察事实；有效时间只意味着需要继续核验来源。82 项本地测试见 `handoff/EVIDENCE/m0-event-freshness-check-2026-11-03.txt`，未接入真实消费路径。
 - 新增 `tasks/M0-SYNTHETIC-ACCEPTANCE.md`，逐项区分 fixture 已验证机制、目录纵切及 S01–S12 的未运行部分；不是 M0 Gate 通过证据。
 - CI 在本地加入 Mac/Windows 分支触发与平台测试任务；YAML 及分支列表本地解析通过，远端运行和 Windows 验证尚无证据。
 - 实际双 worker 同时竞争观点版本的合成场景已验证，只有一方成功且无孤儿记录；全量 79 项本地测试见 `handoff/EVIDENCE/m0-concurrent-revision-check-2026-11-03.txt`，Windows 和压力测试未运行。
