@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import re
 import sys
 
@@ -26,6 +27,19 @@ for name in entries:
         target = target.split('#', 1)[0]
         if not (path.parent / target).exists():
             errors.append(f'Broken link in {name}: {target}')
+try:
+    manifest = json.loads((root / 'tasks/manifest.json').read_text(encoding='utf-8'))
+    tasks = manifest['tasks']
+    ids = [task['id'] for task in tasks]
+    if len(ids) != len(set(ids)):
+        errors.append('Duplicate task IDs in manifest')
+    seen = set()
+    for task in tasks:
+        if not set(task['depends_on']).issubset(seen):
+            errors.append(f"Invalid or out-of-order task dependencies: {task['id']}")
+        seen.add(task['id'])
+except (ValueError, KeyError, TypeError, OSError) as exc:
+    errors.append(f'Invalid task manifest: {exc}')
 # This gate validates a documentation-only tree. Reintroducing implementation
 # requires replacing this guard with appropriate build and safety checks.
 for name in ['apps', 'packages', 'tests', 'scripts', 'prototypes', 'fixtures', 'src', 'package.json']:
