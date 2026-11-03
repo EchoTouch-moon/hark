@@ -1,0 +1,9 @@
+Local workflow configuration check, 2026-11-03:
+  Ruby YAML.load_file parsed .github/workflows/ci.yml successfully.
+  Required job IDs ci-gate and platform-checks were present.
+  platform-checks matrix: macos-latest, windows-latest.
+  push branch filter includes master, codex/macos-rebuild, codex/windows-rebuild.
+  git diff --check: PASS.
+
+This is a local syntax/shape check only. GitHub Actions has not executed this
+revision; no Windows runtime, lint, E2E, security Gate, or remote CI pass is claimed.

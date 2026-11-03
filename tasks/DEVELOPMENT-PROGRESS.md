@@ -51,7 +51,8 @@
   - [x] 合成来源、观点、修订和反馈后，共 64 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0c-fixture-opinion-check-2026-11-03.txt`。
   - [x] 合成用户决定和生命周期约束后，共 78 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0d-fixture-decisions-check-2026-11-03.txt`。
   - [x] 增加双 worker 实际竞争后，79 项本地测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-concurrent-revision-check-2026-11-03.txt`。
-  - [ ] 为 Mac 分支建立远端 CI 验证；补齐适用的 lint 与 Windows 检查。E2E 尚无可运行产品，不伪造通过。
+  - [x] 本地 CI 配置加入 Mac/Windows 分支触发和两平台测试任务；YAML 及触发分支解析检查见 `handoff/EVIDENCE/m0-ci-workflow-static-2026-11-03.txt`。
+  - [ ] 推送后核验远端 CI 实际结果，补齐适用的 lint 与 Windows 验证。E2E 尚无可运行产品，不伪造通过。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
 - [ ] M0 Gate：完成所有既定门槛和独立审核（未通过）。
 
