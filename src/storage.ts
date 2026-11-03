@@ -70,3 +70,20 @@ export function transitionRun(db: DatabaseSync, id: string, next: unknown): void
     db.exec('COMMIT');
   } catch (error) { db.exec('ROLLBACK'); throw error; }
 }
+
+/** Preserve uncertainty after a crash; recovery never starts or repeats work. */
+export function recoverInterruptedRun(db: DatabaseSync, id: string): RunState {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const row = db.prepare('SELECT state FROM runs WHERE id = ?').get(id);
+    if (!row) throw new Error('Run not found');
+    const state = RunState.parse(row.state);
+    const recovered = state === 'executing' ? 'pending_verification' : state;
+    if (recovered !== state) {
+      assertRunTransition(state, recovered);
+      db.prepare('UPDATE runs SET state = ? WHERE id = ?').run(recovered, id);
+    }
+    db.exec('COMMIT');
+    return recovered;
+  } catch (error) { db.exec('ROLLBACK'); throw error; }
+}

@@ -14,6 +14,10 @@
   - [x] 观察授权纯判断及默认拒绝未实现通道，见 `src/policy.ts` 和 `tests/policy-storage.test.ts`。
   - [x] 持久观察授权按次读取，撤权及重启后仍拒绝，见 `src/storage.ts` 和 `tests/policy-storage.test.ts`。
   - [ ] 真实路径边界、审批执行前二次校验；执行与外发通道保持关闭。
+  - [x] M0 合成路径预检：验证越界与符号链接拒绝（`src/path-check.ts`、`tests/path-check.test.ts`）；不能作为安全文件读取的声明。
+- [x] 官方 Super Agent 原型源码对照：锁定版本并记录可采用机制和安全差异（`docs/architecture/DEEPSEEK-PROTOTYPE-2026-11-03.md`）。
+- [x] 中断恢复：事务内将中断的执行状态转为待核验，禁止自动重放（`src/storage.ts`、`tests/policy-storage.test.ts`）。
+- [x] 测试收集限定到项目自身 `tests/**/*.test.ts`；本次意外收集原型测试的经过见 `handoff/BLOCKERS.md`。
 - [x] 状态转换规则与非法转换拒绝；执行和完成在未接入准入及验证器时关闭（`src/state-machine.ts`、`src/storage.ts`，两份测试）。
 - [ ] 数据库：版本迁移、重放与重启、幂等和只追加审计（主 Agent）。
   - [x] 第一版显式迁移、外键、WAL、唯一键及审计不可更新删除；已覆盖重复迁移和重启。
@@ -21,6 +25,7 @@
 - [x] 工程基础：本机 TypeScript、测试及构建配置（外部 Agent 实施，主 Agent 审查；Windows 尚未验证）。
 - [ ] 完成测试、类型检查和全部适用安全反例（主 Agent）。
   - [x] 本轮 21 项局部测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-foundation-check-2026-11-03.txt`；完整安全反例仍待补充。
+  - [x] 路径预检和恢复后共 26 项本地测试、类型检查、构建、文档检查及测试收集范围，见 `handoff/EVIDENCE/m0-path-recovery-check-2026-11-03.txt`。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
 - [ ] M0 Gate：完成所有既定门槛和独立审核（未通过）。
 

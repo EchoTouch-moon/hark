@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { evaluateAdmission } from '../src/policy.js';
-import { checkStoredObservation, migrate, openDatabase, transitionRun } from '../src/storage.js';
+import { checkStoredObservation, migrate, openDatabase, recoverInterruptedRun, transitionRun } from '../src/storage.js';
 
 const grant = { id: 'g', principalId: 'user', projectId: 'A', rootId: 'root', enabled: true, paused: false, expiresAt: '2099-01-01T00:00:00Z', revokedAt: null };
 const request = { principalId: 'user', projectId: 'A', rootId: 'root', operation: 'observe' };
@@ -82,6 +82,17 @@ describe('database migration and integrity', () => {
     db = openDatabase(path);
     expect(checkStoredObservation(db, 'g', request).allowed).toBe(false);
     expect(checkStoredObservation(db, 'unknown', request).allowed).toBe(false);
+    db.close();
+  });
+  it('preserves an interrupted run as uncertain across recovery without replaying it', () => {
+    const dbPath = database();
+    let db = openDatabase(dbPath);
+    db.exec("INSERT INTO projects VALUES ('A','A',''); INSERT INTO candidates VALUES ('c','A','k','candidate','{}'); INSERT INTO cards VALUES ('card','c','proposed','{}'); INSERT INTO runs VALUES ('r','card','a','key','executing')");
+    db.close();
+    db = openDatabase(dbPath);
+    expect(recoverInterruptedRun(db, 'r')).toBe('pending_verification');
+    expect(recoverInterruptedRun(db, 'r')).toBe('pending_verification');
+    expect(() => transitionRun(db, 'r', 'executing')).toThrow();
     db.close();
   });
 });

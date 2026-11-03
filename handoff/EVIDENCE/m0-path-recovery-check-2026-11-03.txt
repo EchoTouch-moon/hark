@@ -1,0 +1,47 @@
+(node:38752) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+tests/contracts-state.test.ts > external data contracts > accepts a sourced synthetic event and preserves its project and provenance
+tests/contracts-state.test.ts > external data contracts > rejects missing provenance and missing nested source identity
+tests/contracts-state.test.ts > external data contracts > rejects unknown fields at the event and nested source boundaries
+tests/contracts-state.test.ts > external data contracts > checks action bounds and rejects unknown nested verification or target fields
+tests/contracts-state.test.ts > external data contracts > keeps observation grants explicit and rejects undeclared execution capabilities
+tests/contracts-state.test.ts > run state transitions > allows the normal verified path and the explicit uncertain recovery path
+tests/contracts-state.test.ts > run state transitions > rejects forbidden transition queued -> completed even if verification is claimed
+tests/contracts-state.test.ts > run state transitions > rejects forbidden transition executing -> completed even if verification is claimed
+tests/contracts-state.test.ts > run state transitions > rejects forbidden transition pending_verification -> executing even if verification is claimed
+tests/contracts-state.test.ts > run state transitions > rejects forbidden transition blocked -> completed even if verification is claimed
+tests/contracts-state.test.ts > run state transitions > rejects forbidden transition completed -> executing even if verification is claimed
+tests/contracts-state.test.ts > run state transitions > does not complete verification without an independent pass
+tests/contracts-state.test.ts > run state transitions > rejects unknown states
+tests/digests.test.ts > approval digests and idempotency > is stable across key order and binds target, params, project and source version
+tests/digests.test.ts > approval digests and idempotency > refuses values that cannot be represented faithfully as JSON
+tests/path-check.test.ts > path candidate preflight (not file-read authorization) > recognizes an existing contained path in a synthetic root
+tests/path-check.test.ts > path candidate preflight (not file-read authorization) > rejects traversal, absolute paths, ambiguous separators and missing paths
+tests/path-check.test.ts > path candidate preflight (not file-read authorization) > rejects a symlinked root or a descendant link to either inside or outside
+tests/path-check.test.ts > path candidate preflight (not file-read authorization) > fails closed for missing or non-directory roots
+tests/policy-storage.test.ts > fail-closed admission > allows only matching, enabled observation and denies inactive or mismatched grants
+tests/policy-storage.test.ts > fail-closed admission > denies forged inputs and every unavailable external capability
+tests/policy-storage.test.ts > database migration and integrity > replays migrations, survives restart and enforces foreign keys, idempotency and append-only audit
+tests/policy-storage.test.ts > database migration and integrity > fails closed on an unknown migration and preserves database state
+tests/policy-storage.test.ts > database migration and integrity > rolls back the migration and version table when a schema change fails
+tests/policy-storage.test.ts > database migration and integrity > reads the persisted grant again and observes revocation even after restarting
+tests/policy-storage.test.ts > database migration and integrity > preserves an interrupted run as uncertain across recovery without replaying it
+$ vitest run --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:38791) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/path-check.test.ts (4 tests) 11ms
+ ✓ tests/digests.test.ts (2 tests) 7ms
+ ✓ tests/contracts-state.test.ts (13 tests) 8ms
+ ✓ tests/policy-storage.test.ts (7 tests) 25ms
+
+ Test Files  4 passed (4)
+      Tests  26 passed (26)
+   Start at  20:24:14
+   Duration  351ms (transform 105ms, setup 0ms, collect 187ms, tests 52ms, environment 0ms, prepare 352ms)
+
+$ tsc --noEmit -p tsconfig.json
+$ tsc -p tsconfig.build.json
+Documentation entry links, required references and task ordering: PASS
