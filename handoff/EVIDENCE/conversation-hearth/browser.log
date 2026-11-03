@@ -1,0 +1,10 @@
+PASS conversation-first empty surface, no standalone icon or tab bar, animated central light
+PASS failures preserve draft; 1/2/3/4 messages warm gradually; fifth is capped
+PASS history is on demand and warmth is scoped to each thread and survives reload
+PASS simulated background visibility pauses and resumes motion
+PASS pause/resume, reduced motion and 1280 desktop layout
+PASS welcome uses the same light field, can replay and skip without an icon
+PASS project management and welcome replay are reachable on demand and return to the conversation
+PASS fresh welcome, retained nickname and saved local preference
+PASS accepted message with unavailable readback does not falsely warm; reload recovers saved message
+PASS unconfirmed legacy local overlay never warms the conversation

@@ -1,0 +1,103 @@
+
+ RUN  v3.2.7 <isolated-worktree>
+
+ ❯ tests/unit/a01-old-client.test.ts (13 tests | 8 failed) 15ms
+   × CSRF session and retry contract > obtains a session before the first observe write and sends its token 7ms
+     → expected { ok: false, status: 200, …(2) } to deeply equal { ok: true, permissions: { …(4) } }
+   ✓ CSRF session and retry contract > refreshes and retries exactly once for gate 401 UNAUTHORIZED 1ms
+   ✓ CSRF session and retry contract > refreshes and retries exactly once for gate 403 CSRF_DENIED 1ms
+   ✓ CSRF session and retry contract > does not retry a second rejection 1ms
+   × CSRF session and retry contract > never retries unrelated 403 ORIGIN_DENIED errors 1ms
+     → expected "spy" to be called 1 times, but got 2 times
+   × CSRF session and retry contract > never retries unrelated 403 POLICY_DENIED errors 1ms
+     → expected "spy" to be called 1 times, but got 2 times
+   × CSRF session and retry contract > never retries unrelated 401 BUSINESS_DENIED errors 1ms
+     → expected "spy" to be called 1 times, but got 2 times
+   × CSRF session and retry contract > never retries unrelated 403 UNAUTHORIZED errors 0ms
+     → expected "spy" to be called 1 times, but got 2 times
+   × CSRF session and retry contract > never retries unrelated 401 CSRF_DENIED errors 1ms
+     → expected "spy" to be called 1 times, but got 2 times
+   × CSRF session and retry contract > does not replay a stream body even after a gate rejection 1ms
+     → expected "spy" to be called 1 times, but got 2 times
+   ✓ CSRF session and retry contract > does not retry network failures 0ms
+   × CSRF session and retry contract > does not refresh or replay an aborted write 0ms
+     → expected "spy" to be called 1 times, but got 2 times
+   ✓ CSRF session and retry contract > returns a business denial for observe without masking it or retrying 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/a01-old-client.test.ts > CSRF session and retry contract > obtains a session before the first observe write and sends its token
+AssertionError: expected { ok: false, status: 200, …(2) } to deeply equal { ok: true, permissions: { …(4) } }
+
+- Expected
++ Received
+
+  {
+-   "ok": true,
+-   "permissions": {
+-     "execute": false,
+-     "model": false,
+-     "observe": true,
+-     "research": false,
+-   },
++   "code": "invalid_response",
++   "message": "授权响应缺少 permissions",
++   "ok": false,
++   "status": 200,
+  }
+
+ ❯ tests/unit/a01-old-client.test.ts:26:42
+     24|   it('obtains a session before the first observe write and sends its t…
+     25|     fetchMock.mockResolvedValueOnce(json({ csrfToken: 'new-token' })).…
+     26|     expect(await putHearthObserve(true)).toEqual({ ok: true, permissio…
+       |                                          ^
+     27|     expect(fetchMock).toHaveBeenCalledTimes(2);
+     28|     expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/auth/session');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  tests/unit/a01-old-client.test.ts > CSRF session and retry contract > never retries unrelated 403 ORIGIN_DENIED errors
+ FAIL  tests/unit/a01-old-client.test.ts > CSRF session and retry contract > never retries unrelated 403 POLICY_DENIED errors
+ FAIL  tests/unit/a01-old-client.test.ts > CSRF session and retry contract > never retries unrelated 401 BUSINESS_DENIED errors
+ FAIL  tests/unit/a01-old-client.test.ts > CSRF session and retry contract > never retries unrelated 403 UNAUTHORIZED errors
+ FAIL  tests/unit/a01-old-client.test.ts > CSRF session and retry contract > never retries unrelated 401 CSRF_DENIED errors
+AssertionError: expected "spy" to be called 1 times, but got 2 times
+ ❯ tests/unit/a01-old-client.test.ts:55:23
+     53|     fetchMock.mockResolvedValueOnce(denied(status, code));
+     54|     await expect(apiFetch('/api/v1/example', { method: 'PUT', json: {}…
+     55|     expect(fetchMock).toHaveBeenCalledTimes(1);
+       |                       ^
+     56|   });
+     57|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  tests/unit/a01-old-client.test.ts > CSRF session and retry contract > does not replay a stream body even after a gate rejection
+AssertionError: expected "spy" to be called 1 times, but got 2 times
+ ❯ tests/unit/a01-old-client.test.ts:63:23
+     61|     const body = new globalThis.ReadableStream();
+     62|     await expect(apiFetch('/api/v1/example', { method: 'POST', body })…
+     63|     expect(fetchMock).toHaveBeenCalledTimes(1);
+       |                       ^
+     64|   });
+     65|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  tests/unit/a01-old-client.test.ts > CSRF session and retry contract > does not refresh or replay an aborted write
+AssertionError: expected "spy" to be called 1 times, but got 2 times
+ ❯ tests/unit/a01-old-client.test.ts:78:23
+     76|     fetchMock.mockImplementationOnce(() => { controller.abort(); retur…
+     77|     await expect(apiFetch('/api/v1/example', { method: 'POST', json: {…
+     78|     expect(fetchMock).toHaveBeenCalledTimes(1);
+       |                       ^
+     79|   });
+     80|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 5 passed (13)
+   Start at  15:34:56
+   Duration  303ms (transform 44ms, setup 0ms, collect 66ms, tests 15ms, environment 0ms, prepare 39ms)

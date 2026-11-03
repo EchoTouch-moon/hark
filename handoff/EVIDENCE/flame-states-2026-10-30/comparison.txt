@@ -1,0 +1,10 @@
+day spark: heat=0.12 size=1.00 golden=0.00 dormant=0.00 rendered={"u_time":3.1,"u_heat":0.12,"u_size":1,"u_response":0,"u_day":1,"u_golden":0,"u_dormant":0,"u_surge":0,"u_textureReady":1}
+day sprout: heat=0.42 size=1.00 golden=0.00 dormant=0.00 rendered={"u_time":3.1,"u_heat":0.42,"u_size":1,"u_response":0,"u_day":1,"u_golden":0,"u_dormant":0,"u_surge":0,"u_textureReady":1}
+day blaze: heat=0.73 size=1.00 golden=0.00 dormant=0.00 rendered={"u_time":3.1,"u_heat":0.73,"u_size":1,"u_response":0,"u_day":1,"u_golden":0,"u_dormant":0,"u_surge":0,"u_textureReady":1}
+day golden: heat=0.72 size=1.00 golden=1.00 dormant=0.00 rendered={"u_time":3.1,"u_heat":0.72,"u_size":1,"u_response":0,"u_day":1,"u_golden":1,"u_dormant":0,"u_surge":0,"u_textureReady":1}
+day dormant: heat=0.10 size=1.00 golden=0.00 dormant=1.00 rendered={"u_time":3.1,"u_heat":0.1,"u_size":1,"u_response":0,"u_day":1,"u_golden":0,"u_dormant":1,"u_surge":0,"u_textureReady":1}
+night spark: heat=0.12 size=1.00 golden=0.00 dormant=0.00 rendered={"u_time":3.1,"u_heat":0.12,"u_size":1,"u_response":0,"u_day":0,"u_golden":0,"u_dormant":0,"u_surge":0,"u_textureReady":1}
+night sprout: heat=0.42 size=1.00 golden=0.00 dormant=0.00 rendered={"u_time":3.1,"u_heat":0.42,"u_size":1,"u_response":0,"u_day":0,"u_golden":0,"u_dormant":0,"u_surge":0,"u_textureReady":1}
+night blaze: heat=0.73 size=1.00 golden=0.00 dormant=0.00 rendered={"u_time":3.1,"u_heat":0.73,"u_size":1,"u_response":0,"u_day":0,"u_golden":0,"u_dormant":0,"u_surge":0,"u_textureReady":1}
+night golden: heat=0.72 size=1.00 golden=1.00 dormant=0.00 rendered={"u_time":3.1,"u_heat":0.72,"u_size":1,"u_response":0,"u_day":0,"u_golden":1,"u_dormant":0,"u_surge":0,"u_textureReady":1}
+night dormant: heat=0.10 size=1.00 golden=0.00 dormant=1.00 rendered={"u_time":3.1,"u_heat":0.1,"u_size":1,"u_response":0,"u_day":0,"u_golden":0,"u_dormant":1,"u_surge":0,"u_textureReady":1}

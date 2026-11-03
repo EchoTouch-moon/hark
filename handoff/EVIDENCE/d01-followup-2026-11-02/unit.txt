@@ -1,0 +1,189 @@
+$ vitest run
+
+ RUN  v3.2.7 /private/tmp/hark-d01-pr29
+
+(node:37388) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37391) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37385) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37390) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37386) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37387) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37389) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-insight/src/s12.test.ts (14 tests) 2920ms
+   ✓ S1.2 durable signal inbox > ST-02/ST-03 injected faults roll back signals and cursor  430ms
+   ✓ S1.2 durable signal inbox > ST-09 new epoch does not inherit the old cursor  317ms
+   ✓ S1.2 durable signal inbox > ST-15 source deleted after extract is detected on the next consume  407ms
+(node:39887) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-insight/src/s11.test.ts (10 tests) 3469ms
+   ✓ S1.1 observer read port and signal batch > repeats the same signals and does not write observer or the git repo  423ms
+   ✓ S1.1 observer read port and signal batch > orders same-timestamp events by append_seq and recognizes A→B→A HEAD changes  754ms
+   ✓ S1.1 observer read port and signal batch > freezes highWatermark so later events stay out of the batch  308ms
+   ✓ S1.1 observer read port and signal batch > resumes from proposedCursor after a restart  327ms
+   ✓ S1.1 observer read port and signal batch > does not treat global seq holes between projects as lost events  620ms
+   ✓ S1.1 observer read port and signal batch > returns SOURCE_RESET_REQUIRED after delete, re-register, and cursor rewind  316ms
+(node:40266) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-observer/src/observer.s10.test.ts (12 tests) 4112ms
+   ✓ S1.0 observer schema v3 forward consume > assigns append_seq in insert order when occurred_at is identical  533ms
+   ✓ S1.0 observer schema v3 forward consume > consumes A → B → A worktree changes in append order  739ms
+   ✓ S1.0 observer schema v3 forward consume > frozen highWatermark ignores events inserted during pagination  562ms
+   ✓ S1.0 observer schema v3 forward consume > does not reuse append_seq after deleting the tail event  447ms
+   ✓ S1.0 observer schema v3 forward consume > keeps DESC UI pagination independent of append_seq  482ms
+   ✓ S1.0 observer schema v3 forward consume > detects project removal and epoch change after re-register  343ms
+(node:40623) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-observer/src/observer.h02.test.ts (6 tests) 4557ms
+   ✓ H02 recovery > RE-01 / RE-02 restart after HEAD change records one gap and latest HEAD  430ms
+   ✓ H02 recovery > RE-03 git timeout is isolated and keeps last-good  380ms
+   ✓ H02 recovery > RE-04 temporarily unreadable repo then recovered keeps last-good until recover  310ms
+   ✓ H02 recovery > RE-08 100 unavailable/recovered cycles do not emit gap storms  2974ms
+(node:40921) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ apps/server/src/http/app.test.ts (20 tests) 4437ms
+   ✓ M1-T02: seed, discovery, suppression > repeat discover is idempotent (no duplicate cards)  1636ms
+   ✓ M1-T02: seed, discovery, suppression > dismiss persists and is respected by later discovery (E2E-06)  1655ms
+   ✓ M1-T03: execute / runs / approvals / SSE-readiness > cancel of queued run yields cancelled terminal state  633ms
+ ✓ packages/project-insight/src/coordinator.test.ts (4 tests) 2224ms
+   ✓ a new report automatically creates one Insight; restart, repeat and idle do not duplicate  863ms
+   ✓ frozen source stays frozen and no writes occur during empty ticks  343ms
+   ✓ a restart past the gap threshold opens exactly one observation-gap insight  508ms
+   ✓ delete/re-register does not silently reset a broken stream  508ms
+(node:41420) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-observer/src/observer.p0.test.ts (17 tests) 6190ms
+   ✓ Project Observer P0 > T01 registers three fixtures and rejects duplicate paths  686ms
+   ✓ Project Observer P0 > T03 ten rapid dirty hints produce one worktree event  313ms
+   ✓ Project Observer P0 > T04 commit and branch checkout emit traceable git events  364ms
+   ✓ Project Observer P0 > T12 parses Chinese and space filenames via porcelain  323ms
+   ✓ Project Observer P0 > T13 handles unborn, detached HEAD, and git worktree  721ms
+   ✓ T14 command injection files are data > does not execute planted hooks or network commands  458ms
+   ✓ error isolation and recovery > T09 corrupt report is adapter error; sibling project still scans  582ms
+   ✓ error isolation and recovery > T10 restart after HEAD change emits gap, not fabricated intermediates  350ms
+   ✓ error isolation and recovery > T11 deleted repo becomes UNAVAILABLE and keeps history  382ms
+   ✓ error isolation and recovery > T16 reconcile recovers missed watch events  426ms
+ ✓ packages/project-analysis/src/engine/remediation.test.ts (8 tests) 2362ms
+   ✓ cancel A cannot abort a newer B; global concurrency is bounded  400ms
+   ✓ a killed writer leaves an interrupted record that restart can recover  339ms
+   ✓ validates cross-project and stale epoch targets and puts the selected Insight first  673ms
+ ✓ packages/project-observer/src/observer.h04.test.ts (5 tests) 2230ms
+   ✓ H04 sqlite > DB-01 injected faults roll back pointer, snapshot and events  552ms
+   ✓ H04 sqlite > DB-07 event pagination is stable and project-scoped  1198ms
+(node:41680) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41672) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-observer/src/observer.h03.test.ts (7 tests) 2114ms
+   ✓ H03 path and git safety > SE-03 duplicate realpath is rejected; worktrees are independent  533ms
+   ✓ H03 path and git safety > SE-04 fsmonitor helper is not invoked  336ms
+   ✓ H03 path and git safety > SE-05 quoted and dashed names do not inject  453ms
+   ✓ H03 path and git safety > SE-08 scan does not mutate the observed repository  427ms
+(node:41786) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41964) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-analysis/src/providers/pi.test.ts (11 tests) 1769ms
+   ✓ escalates a timeout to SIGKILL and waits for process exit  1051ms
+ ✓ packages/project-observer/src/observer.pf.test.ts (3 tests) 850ms
+   ✓ H05 PF-03 resource limits > GIT_TIMEOUT isolates the failing repo  437ms
+ ✓ packages/project-insight/src/p0-port.audit.test.ts (6 tests) 1626ms
+   ✓ P0 capability audit (S0 facts, not P1 engine) > schema is v3 with append_seq; public listEvents stays reverse-time  467ms
+   ✓ P0 capability audit (S0 facts, not P1 engine) > event ids are random, not monotonic; sqlite rowid still increases  408ms
+(node:42079) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ apps/server/src/http/overview.http.test.ts (5 tests) 857ms
+(node:42264) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42343) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-analysis/src/engine/service.test.ts (4 tests) 771ms
+ ✓ apps/server/src/http/hearth.http.test.ts (14 tests) 880ms
+(node:42401) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42513) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ apps/server/src/http/observer.http.test.ts (4 tests) 661ms
+   ✓ observer HTTP > registers, lists, scans, and never infers PASS without a report  339ms
+ ✓ packages/project-analysis/src/engine/privacy.test.ts (2 tests) 518ms
+(node:42499) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-analysis/src/context/assemble.test.ts (2 tests) 357ms
+ ✓ packages/core/src/orchestration/orchestrator.test.ts (8 tests) 426ms
+(node:42680) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42667) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42659) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ apps/server/src/http/g1a-security.test.ts (21 tests) 778ms
+(node:42699) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ apps/server/src/http/analysis.http.test.ts (2 tests) 549ms
+   ✓ analysis HTTP > starts a mock analysis and returns a card with evidence  398ms
+ ✓ packages/project-insight/src/insights/processor.test.ts (13 tests) 321ms
+ ✓ apps/server/src/http/insights.http.test.ts (6 tests) 379ms
+ ✓ packages/storage/src/storage.test.ts (21 tests) 367ms
+(node:42745) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ apps/server/src/http/demo-startup.test.ts (6 tests) 516ms
+   ✓ seeds first-start Demo fixtures without enabling legacy execution or approval  397ms
+ ✓ packages/project-observer/src/observer.h01.test.ts (7 tests) 9818ms
+   ✓ H01 idempotency > ID-01 100 identical scans add no change events  6532ms
+   ✓ H01 idempotency > ID-02 A→B→A keeps two real transitions  441ms
+   ✓ H01 idempotency > ID-03 concurrent watch/api/timer requests share one in-flight scan  324ms
+   ✓ H01 idempotency > ID-04 retry after successful commit does not duplicate events  343ms
+   ✓ H01 idempotency > ID-06 rename plus chinese/space/newline paths parse via real git  349ms
+   ✓ H01 idempotency > ID-07 repeated identical adapter faults do not flood the timeline  1820ms
+(node:42735) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42758) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-insight/src/insights/query.test.ts (11 tests) 125ms
+ ✓ packages/core/src/discovery/suppression.test.ts (8 tests) 20ms
+ ✓ tests/unit/challenger-r2-2-stress.test.ts (7 tests) 160ms
+ ✓ packages/core/src/discovery/discovery.test.ts (3 tests) 96ms
+ ✓ packages/project-observer/src/dirty.test.ts (1 test) 86ms
+ ✓ apps/server/src/http/g1a-live.test.ts (1 test) 177ms
+ ✓ tests/unit/flame-motion-stress.test.ts (7 tests) 121ms
+ ✓ packages/core/src/policy/policy.test.ts (17 tests) 38ms
+ ✓ tests/unit/adversarial-deep-stress.test.ts (16 tests) 60ms
+ ✓ packages/core/src/verify/verifier.test.ts (6 tests) 34ms
+ ✓ packages/project-observer/src/junit.test.ts (17 tests) 20ms
+ ✓ packages/project-analysis/src/context/files.r0.test.ts (4 tests) 12ms
+ ✓ packages/contracts/src/contracts.test.ts (23 tests) 21ms
+ ✓ tests/unit/ember-motion.test.ts (17 tests) 9ms
+ ✓ packages/hearth-contract/src/contract.test.ts (12 tests) 11ms
+ ✓ packages/eval/src/eval.test.ts (16 tests) 13ms
+ ✓ tests/unit/adversarial-lifecycle.test.ts (10 tests) 17ms
+(node:42794) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/discovery/scoring.test.ts (4 tests) 14ms
+ ✓ packages/project-insight/src/signals/extractor.test.ts (6 tests) 6ms
+ ✓ packages/project-insight/src/episodes/episodes.test.ts (9 tests) 5ms
+ ✓ packages/project-insight/src/contracts.test.ts (5 tests) 5ms
+ ✓ apps/server/src/http/hearth/chronicle.test.ts (3 tests) 3ms
+ ✓ tests/unit/flame-visual.test.ts (5 tests) 9ms
+ ✓ tests/unit/ci-gate-decision.test.ts (9 tests) 3ms
+ ✓ tests/unit/flame-size.test.ts (2 tests) 6ms
+ ✓ tests/unit/ci-change-detection.test.ts (12 tests) 5ms
+ ✓ packages/project-insight/src/rules/rules.test.ts (13 tests) 5ms
+ ✓ tests/unit/welcome-preference.test.ts (8 tests) 12ms
+ ✓ packages/contracts/src/state-machine.test.ts (9 tests) 3ms
+ ✓ tests/unit/ember-cues.test.ts (5 tests) 13ms
+ ✓ packages/agent-adapters/src/hermes.test.ts (4 tests) 3ms
+ ✓ apps/server/src/http/hearth/flame.test.ts (9 tests) 3ms
+ ✓ packages/project-observer/src/porcelain.test.ts (3 tests) 3ms
+ ✓ packages/project-observer/src/git/run.test.ts (1 test) 3ms
+ ✓ tests/unit/hearth-period.test.ts (1 test) 3ms
+
+ Test Files  62 passed (62)
+      Tests  522 passed (522)
+   Start at  10:20:13
+   Duration  12.30s (transform 1.87s, setup 0ms, collect 10.74s, tests 57.18s, environment 9ms, prepare 4.81s)

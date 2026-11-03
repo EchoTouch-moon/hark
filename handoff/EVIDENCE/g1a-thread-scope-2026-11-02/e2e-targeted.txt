@@ -1,0 +1,23 @@
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] $ tsc -p tsconfig.json --noEmit && vite build
+[WebServer] (node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer]
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+Running 4 tests using 1 worker
+
+(node) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/e2e/thread-scope-fallback.spec.ts:4:1 › 空服务器列表不会重新选中旧项目线程的缓存 ID (2.8s)
+  ✓  2 tests/e2e/thread-scope-fallback.spec.ts:36:1 › 列表上限外的全局线程须经服务端确认后才能打开 (1.3s)
+  ✓  3 tests/e2e/thread-scope-fallback.spec.ts:62:1 › 服务端拒绝旧项目线程时显示错误且不读取其历史 (1.3s)
+  ✓  4 tests/e2e/thread-scope-fallback.spec.ts:86:1 › 切换线程后旧的详情响应不会覆盖当前全局线程 (2.3s)
+
+  4 passed (14.4s)
+
+EXIT_CODE=0

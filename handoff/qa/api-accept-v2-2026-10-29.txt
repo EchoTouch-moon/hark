@@ -1,0 +1,14 @@
+SESSION ok csrf=5bdd94dd…
+G1_LIST PASS count=2 ids=thread-default,thread-mvtn1kxv-1v5hbw
+TID=thread-default
+G1_CREATE PASS thread-mvtn6p0z-npuj4z
+G3_PROACTIVE PASS_EMPTY_OR_NULL suggestion=null
+null
+ACTION_PICK={}
+G4_EXECUTE SKIP_NO_ACTION
+G3_AFTER_EXEC SKIP
+G2_CHAT PASS hasParts=True G5_noHomePush=True
+{"id": "msg-thread-default-1793284325285-a", "role": "assistant", "content": "你好。我是 Hearth 的**离线演示**助手：当前未连接任何真实模型（Hermes 未配置）。有事时我会在本线程给摘要和最多三条行动；无事就安静。不会假装已接入真模型。", "adapter": "mock", "createdAt": "2026-10-29T14:32:05.285Z", "threadId": "thread-default", "parts": [{"type": "text", "text": "你好。我是 Hearth 的**离线演示**助手：当前未连接任何真实模型（Hermes 未配置）。有事时我会在本线程给摘要和最多三条行动；无事就安静。不会假装已接入真模型。"}]}
+G2_HISTORY PASS msgs=4 withParts=4
+G1_GET PASS thread-default
+---DONE---

@@ -1,0 +1,35 @@
+
+ RUN  v3.2.7 /Users/v/new-idea/hark
+
+ ✓ tests/unit/project-ember.test.ts (5 tests) 3ms
+(node:34274) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34271) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34270) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34273) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/project-analysis/src/engine/privacy.test.ts (2 tests) 387ms
+ ✓ packages/project-insight/src/coordinator.test.ts (3 tests) 1272ms
+   ✓ a new report automatically creates one Insight; restart, repeat and idle do not duplicate  743ms
+   ✓ delete/re-register does not silently reset a broken stream  301ms
+ ✓ packages/project-analysis/src/engine/remediation.test.ts (8 tests) 1389ms
+   ✓ cancel A cannot abort a newer B; global concurrency is bounded  375ms
+ ✓ packages/project-observer/src/observer.p0.test.ts (17 tests) 3625ms
+   ✓ Project Observer P0 > T01 registers three fixtures and rejects duplicate paths  522ms
+   ✓ Project Observer P0 > T13 handles unborn, detached HEAD, and git worktree  404ms
+ ✓ packages/project-analysis/src/providers/pi.test.ts (11 tests) 4022ms
+   ✓ selects exact provider/model with only an explicit provider extension and text output  785ms
+   ✓ does not expose provider stderr or fall back to Mock on auth failure  344ms
+   ✓ reports timeout and invalid structured output  371ms
+   ✓ accepts an honest no-recommendation outcome  321ms
+   ✓ caps infinite stdout output and waits for the TERM-ignoring child to exit  368ms
+   ✓ caps infinite stderr output and waits for the TERM-ignoring child to exit  384ms
+   ✓ escalates a timeout to SIGKILL and waits for process exit  1046ms
+   ✓ cancels a running TERM-ignoring child without leaving an abort listener  399ms
+
+ Test Files  6 passed (6)
+      Tests  46 passed (46)
+   Start at  13:52:57
+   Duration  4.51s (transform 555ms, setup 0ms, collect 1.58s, tests 10.70s, environment 1ms, prepare 608ms)

@@ -1,0 +1,22 @@
+RUN  v3.2.7 <isolated-worktree>
+
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/server/src/http/g1a-scope-characterization.test.ts > G0 project scope behavior characterization (not security acceptance) > characterizes a chat write whose projectId disagrees with the existing thread
+{"case":"mismatched-thread-project","postStatus":200,"historyStatus":200,"before":{"aProject":"project-atlas","bProject":"project-beacon","aCount":1,"bCount":1,"auditCount":0},"after":{"aProject":"project-atlas","bProject":"project-beacon","aCount":3,"bCount":1,"auditCount":0},"returnedSyntheticMarker":true}
+
+stdout | apps/server/src/http/g1a-scope-characterization.test.ts > G0 project scope behavior characterization (not security acceptance) > characterizes a chat write with an unknown thread
+{"case":"unknown-thread","postStatus":200,"createdThreadProject":null,"createdMessages":2,"before":{"aProject":"project-atlas","bProject":"project-beacon","aCount":1,"bCount":1,"auditCount":0},"after":{"aProject":"project-atlas","bProject":"project-beacon","aCount":1,"bCount":1,"auditCount":0}}
+
+stdout | apps/server/src/http/g1a-scope-characterization.test.ts > G0 project scope behavior characterization (not security acceptance) > characterizes creation of a thread with an unknown project
+{"case":"unknown-project","postStatus":201,"storedProject":"project-does-not-exist","before":{"aProject":"project-atlas","bProject":"project-beacon","aCount":1,"bCount":1,"auditCount":0},"after":{"aProject":"project-atlas","bProject":"project-beacon","aCount":1,"bCount":1,"auditCount":1}}
+
+ ✓ apps/server/src/http/g1a-scope-characterization.test.ts (3 tests) 102ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  16:42:12
+   Duration  988ms (transform 350ms, setup 0ms, collect 612ms, tests 102ms, environment 0ms, prepare 52ms)
+
+
+EXIT_CODE=0

@@ -1,0 +1,32 @@
+PASS README.md: tasks/REBUILD-PLAN.md
+PASS README.md: docs/mvp/01-PRODUCT-CONTRACT.md
+PASS README.md: docs/mvp/03-ACCEPTANCE-SCENARIOS.md
+PASS README.md: AGENTS.md
+PASS README.md: docs/05-SECURITY.md
+PASS README.md: docs/04-CONTRACTS.md
+PASS README.md: tasks/REBUILD-PLAN.md
+PASS README.md: docs/mvp/00-START-HERE.md
+PASS README.md: docs/mvp/01-PRODUCT-CONTRACT.md
+PASS README.md: docs/mvp/04-PRODUCT-POSITIONING.md
+PASS README.md: docs/mvp/02-MIND-LIFE-ARCHITECTURE.md
+PASS README.md: docs/mvp/03-ACCEPTANCE-SCENARIOS.md
+PASS README.md: RESEARCH-BASELINE.md
+PASS README.md: docs/00-RESEARCH.md
+PASS README.md: docs/reviews/
+PASS 00-START-HERE.md: README.md
+PASS 00-START-HERE.md: tasks/REBUILD-PLAN.md
+PASS 00-START-HERE.md: AGENTS.md
+PASS tasks/REBUILD-PLAN.md: ../handoff/STATUS.md
+PASS old implementation removed: apps
+PASS old implementation removed: packages
+PASS old implementation removed: tests
+PASS old implementation removed: scripts
+PASS old implementation removed: prototypes
+PASS old implementation removed: fixtures
+PASS preserved: AGENTS.md
+PASS preserved: docs/05-SECURITY.md
+PASS preserved: docs/04-CONTRACTS.md
+PASS preserved: handoff/EVIDENCE
+PASS preserved: docs/mvp/04-PRODUCT-POSITIONING.md
+PASS preserved: docs/reviews
+PASS preserved: tasks/HEARTH-GATE-CLAIMABLE-BACKLOG.md

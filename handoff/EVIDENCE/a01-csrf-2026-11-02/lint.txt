@@ -1,0 +1,32 @@
+$ eslint .
+
+<isolated-worktree>/apps/web/src/app/AppShell.tsx
+  212:10  warning  'emberTick' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  241:10  warning  'nowMs' is assigned a value but never used      @typescript-eslint/no-unused-vars
+
+<isolated-worktree>/apps/web/src/pages/ChatPage.tsx
+  273:11  warning  'contextSafe' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+<isolated-worktree>/apps/web/src/pages/ObserverDetailPage.tsx
+  33:10  warning  'emitEmberCue' is defined but never used  @typescript-eslint/no-unused-vars
+
+<isolated-worktree>/packages/contracts/src/contracts.test.ts
+  71:24  warning  '_drop' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+<isolated-worktree>/packages/core/src/orchestration/orchestrator.test.ts
+  206:13  warning  'run' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+<isolated-worktree>/packages/core/src/orchestration/orchestrator.ts
+   7:27  warning  'ActionSpec' is defined but never used              @typescript-eslint/no-unused-vars
+  61:7   warning  'CARD_TERMINAL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+<isolated-worktree>/packages/storage/src/storage.ts
+  31:67  warning  'ctx' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+<isolated-worktree>/scripts/register-observer-pilots.ts
+  39:61  warning  'canonicalPath' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+✖ 10 problems (0 errors, 10 warnings)
+
+
+EXIT_CODE=0

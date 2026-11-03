@@ -1,36 +1,6 @@
-# Actual implementation decisions
+# 本次取舍（2026-11-03）
 
-> Agent 修改技术决策时，记录时间、任务、原计划、变更原因、对 Gate 的影响、引用测试/日志。规划合同不能静默更改。
-
-| timestamp | task | decision | reason | consequence | evidence |
-|---|---|---|---|---|---|
-| 2026-10-28T03:15Z | M0-T01 | zod 固定 3.24.1（不用 ^3.25） | npm 镜像上的 zod@3.25.0 tarball 缺 dist/（损坏包），vite/node 均无法解析入口 | 无合同影响；API 为 v3 稳定面 | pnpm install 日志（handoff 会话记录）；contracts 32 tests |
-| 2026-10-28T03:15Z | M0-T01 | SQLite 用 Node 22 内置 node:sqlite（DatabaseSync），不用 better-sqlite3 | 零原生依赖、零编译风险；WAL/busy_timeout/FK 均支持；experimental 警告可接受 | ADR-001；storage 13 tests 全过 | packages/storage/src/migrations.ts |
-| 2026-10-28T03:20Z | M0-T02 | sha256/canonical 用纯 TS 实现于 contracts 包 | contracts 会被浏览器 bundle 引用，禁 node:crypto | 需对照 node:crypto 向量测试（已做，全过） | contracts.test.ts「sha256 matches node:crypto vectors」 |
-| 2026-10-28T03:30Z | M0-T04 | ActionCard 合同无 cancelled 状态：run 取消后 card 回到 proposed | docs/04 CardStatus 枚举确实没有 cancelled；写 cancelled 会让 getCard 的 Zod 解析抛错（500） | orchestrator.cancel/updateCard 改为 proposed；重新执行受幂等键约束返回原 run | orchestrator 源码 + server cancel 测试 |
-| 2026-10-28T03:45Z | M1-T03 | executeCard 默认异步推进（fire-and-forget pipeline），支持 awaitCompletion 供测试/E2E | UI 需要立即返回 run id 做进度展示；测试需要确定性终态 | API ?sync=1 参数；pipeline 异常全部写 audit | runs.ts 路由 + orchestrator |
-| 2026-10-28T04:05Z | M1-T01 | 会话：单 principal；GET /auth/session 下发 HttpOnly SameSite=Strict cookie + csrfToken；写请求要求 Origin+x-csrf-token 双校验；无 Origin 的裸写一律 403 | docs/04 要求即使 localhost 也不能免 CSRF；浏览器 fetch 对 POST 恒带 Origin，curl 需显式 -H Origin | E2E/API 测试全部带 Origin；安全负例 4 条 | app.test.ts auth&boundary 8 tests |
-| 2026-10-28T04:30Z | M1-T01 | auth preHandler 只守卫 /api/v1/*（静态页与 SPA fallback 公开） | 原 hook 对 '/' 也 401，页面无法加载 | 无安全弱化：数据面全在 /api/v1 | app.ts + E2E-11 |
-| 2026-10-28T04:40Z | M1-T05 | client 任意 401（含 GET）都会重建会话并重试一次 | 首次加载时 GET /cards 先于会话建立，旧逻辑只救写请求 | 一次额外重试，无循环 | client.ts + E2E |
-| 2026-10-28T05:05Z | M2-T02 | 用户显式触发的 POST /discover 绕过静默时段延迟（预算仍生效）；仅后台扫描受静默限制 | 集成 E2E 时发现凌晨运行被 quiet hours 拦住建卡——静默规则应约束“主动打扰”，不应挡用户明确指令 | discovery.discover({userInitiated}) 参数；API 层传 true | ADR-006；discovery 集成测试 + E2E-01 |
-| 2026-10-28T05:10Z | M1-T09 | E2E 拓扑：Fastify 直接伺服 apps/web/dist（同源），不另起 vite preview | 消除跨源 cookie/CSRF 变量；与生产形态一致 | E2E 配置绝对路径 DB/静态目录（曾因相对路径落到 apps/server/data 造成跨 run 残留——已修并清理） | playwright.config.ts |
-| 2026-10-28T05:15Z | M1-T09 | E2E-05/09/10 在 API/单元层断言，浏览器层不构造非法状态 | 过期卡/伪造 verifier/L2 篡改无法从 UI 诚实地制造；在服务端注入状态更真实 | 用例映射表写明覆盖层级 | m1-t09-e2e.txt |
-| 2026-10-28T05:20Z | M1-T08 | SSE 端点已实现（/runs/:id/stream），但 UI 用 900ms 轮询消费 | 轮询实现更简单稳健（重连即最新快照），SSE 留给后续增强 | 无验收影响（docs 允许 polling fallback） | runs.ts + ActivityPage |
-| 2026-10-28T17:30Z | Observer-P0 | 规格中的四包合并为 `@hearth/project-observer`；独立 `observer.sqlite`；观察详情走 `/observe/:id` | 保留既有 Hearth events/projects 合同与 E2E；观察器可脱离 HTTP 测试 | 无 API Key、无 Docker；UI 不把 UNKNOWN 画成绿色成功 | docs/14-PROJECT-OBSERVER.md |
-| 2026-10-28T17:46Z | Observer-P0 | 扫描事务内不再 prune 仍被 events 引用的 runs；相同 fingerprint 不再重复 ADAPTER_ERROR；STALE 仅在 HEAD 变化时计算；git 沙箱去掉 HOME 全局配置与 fsmonitor | 审查复现持续运行 FK 失败与误标 STALE | T01–T16 仍绿；增加 filter 负例 | observer.p0.test.ts |
-
-## 2026-10-29 · P2-A live provider
-
-用户明确选定 stepfun-plan/step-5-preview。该 Provider 由已安装 StepFun 扩展注册；全部禁扩展会令其不可用。保留 --no-extensions，新增显式 HEARTH_PI_PROVIDER_EXTENSION，仅加载经审阅的 Provider 注册代码；不启用自动发现或其他扩展。模型身份必须显式指定并记入 Run。CLI 用 text 模式接收最终结构化文本，补充嵌套字段合同；真实错误不回退 Mock、不保存原始 stderr。默认服务仍为 Mock，真实验证使用独立 DB，未修改全局 Pi/Hermes 配置。
-
-## 2026-10-29 · GitHub 代码同步
-
-用户明确授权推送 GitHub，用于多端同步，覆盖此前默认不推送的任务边界。当前 GitHub 登录账号 EchoTouch-moon，无既有 hark/hearth 远端；目标为新建私有 EchoTouch-moon/hark，保留现有 master 分支与历史。纳入已有源码/测试/验收文档改动；缓存与编辑器配置加入忽略规则，未跟踪截图保留本地。数据库、凭证和本机注册路径不作为运行状态同步。
-
-## 2026-10-29 · R0整改
-
-Analysis中断复用failed+INTERRUPTED，保留旧Run且不自动重试模型。跨库清理采用analysis schema v2持久化删除日志和幂等补偿；不声称跨库原子。显式目标Insight进入优先上下文。上下文文件hash改为有界捕获前缀，完整大小和截断保留。每日模型预算定义为请求数（默认20），不是货币。非loopback暂不开放。保留默认Mock及用户触发模型原则。
-
-## 2026-10-29 · R1/R2边界与用户质量评价
-
-单一后台协调器只用ObserverReadPort+InsightStore，绝不获得Provider依赖。R2外发每次预览确认绑定稳定内容指纹和接收方，schema v3记录排除路径、v4记录发送确认。默认真实模式不自动混入Demo；Chat仍Mock。用户实际希望建议覆盖项目发展/演进，不能只提供本地检查清单；原样保存定性反馈，不假造逐项评分。仅调整中文/方向提示，不扩大代码采集，不跳至P2-B/C。真实评价基线不足时保持NOT_MEASURED。
+- 将既有产品合同的项目理解、研究、观点和反馈作为核心目标；重建计划不承诺既有实现仍可使用。
+- 删除本版本的旧实现与构建文件，保留安全合同、历史计划、研究文档和原证据；旧运行命令不再适用。
+- 为避免覆盖未提交改动，在独立工作目录和本地分支完成重建；原工作目录未改动；用户随后明确授权推送和处理关联 PR，通过受保护的 PR 流程交付。
+- 仅删除无开放 PR，且有相同提交或其提交已包含在保留分支中的 bot 分支。其余分支持有独有文档或关联开放 PR，先保留以避免丢失。

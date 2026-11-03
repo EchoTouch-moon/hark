@@ -1,0 +1,7 @@
+PASS actual pixels behind frosted glass change over time on warm-white desktop
+PASS pause freezes actual pixels; keyboard size control changes the fire without changing heat and persists locally
+PASS black night room and welcome use the same moving fire; day/night keeps draft and focus
+PASS waiting is separate from confirmed warmth; reduced motion is still at 1280 desktop
+PASS lost WebGL context falls back and restores its texture
+PASS missing WebGL retains a readable, still fire behind glass
+PASS no browser page errors

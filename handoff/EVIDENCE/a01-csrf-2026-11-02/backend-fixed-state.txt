@@ -1,0 +1,17 @@
+
+ RUN  v3.2.7 <isolated-worktree>
+
+(node) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/server/src/http/hearth.http.test.ts > PUT /api/v1/hearth/permissions > TEMP persisted evidence missing
+{"kind":"missing","status":403,"before":{"observe":false,"research":true,"model":true},"after":{"observe":false,"research":true,"model":true},"auditUnchanged":true}
+
+stdout | apps/server/src/http/hearth.http.test.ts > PUT /api/v1/hearth/permissions > TEMP persisted evidence incorrect
+{"kind":"incorrect","status":403,"before":{"observe":false,"research":true,"model":true},"after":{"observe":false,"research":true,"model":true},"auditUnchanged":true}
+
+ ✓ apps/server/src/http/hearth.http.test.ts (20 tests | 18 skipped) 68ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 18 skipped (20)
+   Start at  15:34:09
+   Duration  758ms (transform 291ms, setup 0ms, collect 480ms, tests 68ms, environment 0ms, prepare 36ms)
