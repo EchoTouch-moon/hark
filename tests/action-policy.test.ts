@@ -43,7 +43,6 @@ function basis(action: ActionSpecValue = buildAction()) {
       cardId: 'card-1',
       actionId: action.id,
       projectId: action.projectId,
-      approvalMode: 'stored_grant',
     },
     persisted: {
       run: { id: 'run-1', cardId: 'card-1', actionId: action.id, idempotencyKey, state: 'awaiting_approval' },
@@ -99,7 +98,8 @@ describe('frozen action policy', () => {
 });
 
 describe('pre-execution recheck', () => {
-  it('passes every binding check and still stops at the closed action enablement', () => {
+  it('passes every binding check on a caller-supplied basis and still stops at action_disabled', () => {
+    // The basis is caller-supplied: this asserts the check chain is reachable, not that a grant exists.
     expect(revalidateBeforeExecution(basis(), NOW)).toEqual({
       allowed: false,
       reason: 'action_disabled',
@@ -178,7 +178,7 @@ describe('pre-execution recheck', () => {
     });
   });
 
-  it('rejects risk below the floor, L3 and L2 without online approval', () => {
+  it('rejects risk below the floor, L3 and every L2 action', () => {
     const belowFloor = basis(buildAction({ risk: 'L0' }));
     expect(revalidateBeforeExecution(belowFloor, NOW).reason).toBe('risk_below_floor');
 
@@ -186,12 +186,12 @@ describe('pre-execution recheck', () => {
     forbidden.persisted.grant.risk = 'L3';
     expect(revalidateBeforeExecution(forbidden, NOW).reason).toBe('risk_l3_forbidden');
 
+    // No verifiable online-approval record exists, so L2 is refused even when the grant says L2.
     const l2 = basis(buildAction({ risk: 'L2' }));
     l2.persisted.grant.risk = 'L2';
-    expect(revalidateBeforeExecution(l2, NOW).reason).toBe('online_approval_required');
-
-    l2.request.approvalMode = 'online_explicit';
-    expect(revalidateBeforeExecution(l2, NOW).reason).toBe('action_disabled');
+    expect(revalidateBeforeExecution(l2, NOW)).toMatchObject({
+      reason: 'online_approval_not_implemented', blockedAt: 'risk_ceiling',
+    });
   });
 
   it('rejects a different effect, unreviewed capability or over-budget action', () => {
@@ -200,6 +200,10 @@ describe('pre-execution recheck', () => {
 
     const capability = basis(buildAction({ allowedCapabilities: ['artifact.write', 'shell.exec'] }));
     expect(revalidateBeforeExecution(capability, NOW).reason).toBe('capability_not_permitted');
+
+    // An empty capability set cannot satisfy the capabilities the action type requires.
+    const emptyCapabilities = basis(buildAction({ allowedCapabilities: [] }));
+    expect(revalidateBeforeExecution(emptyCapabilities, NOW).reason).toBe('capability_not_permitted');
 
     const steps = basis(buildAction({ maxSteps: 6 }));
     expect(revalidateBeforeExecution(steps, NOW).reason).toBe('budget_not_permitted');
@@ -267,6 +271,24 @@ describe('pre-execution recheck', () => {
     expect(revalidateBeforeExecution(input, NOW)).toMatchObject({
       reason: 'source_version_changed', blockedAt: 'source_version',
     });
+  });
+
+  it('requires write-like actions to pin a source version but not read-only ones', () => {
+    const unpinned = buildAction();
+    delete unpinned.expectedSourceVersion;
+    unpinned.idempotencyKey = idempotencyKeyForAction(unpinned);
+    expect(revalidateBeforeExecution(basis(unpinned), NOW)).toMatchObject({
+      reason: 'source_version_missing', blockedAt: 'source_version',
+    });
+
+    const diagnose = buildAction({
+      actionType: 'repo.read_diagnose', effect: 'read', params: { depth: 1 }, allowedCapabilities: ['repo.read'],
+    });
+    delete diagnose.expectedSourceVersion;
+    diagnose.idempotencyKey = idempotencyKeyForAction(diagnose);
+    const diagnoseBasis = basis(diagnose);
+    diagnoseBasis.persisted.grant.authorizedCapabilities = ['repo.read'];
+    expect(revalidateBeforeExecution(diagnoseBasis, NOW).reason).toBe('action_disabled');
   });
 
   it('never returns an allowed result for any action type', () => {

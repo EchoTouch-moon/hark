@@ -13,7 +13,12 @@ export type ActionPolicyDefinition = {
   readonly params: z.ZodTypeAny;
   readonly riskFloor: RiskLevel;
   readonly effect: ActionSpecValue['effect'];
+  /** Maximum capability set the action may request. */
   readonly capabilities: readonly string[];
+  /** Capabilities an action of this type must actually request; an empty set cannot satisfy them. */
+  readonly requiredCapabilities: readonly string[];
+  /** Write-like actions must pin the source version they were planned against. */
+  readonly requiresSourceVersion: boolean;
   readonly limits: {
     readonly maxSteps: number;
     readonly timeoutMs: number;
@@ -38,25 +43,29 @@ const diagnoseParams = z.object({
 }).strict();
 
 /**
- * Frozen per-type policy. `enabled` stays false: parameter review and risk floors do not grant
+ * Frozen per-type policy. `enabled` stays false: parameter constraints and risk floors do not grant
  * permission, and no executor exists. Enabling a type requires a reviewed contract change.
  */
 export const ACTION_POLICIES = {
   'report.generate': {
     params: reportParams, riskFloor: 'L1', effect: 'local_create',
-    capabilities: ['artifact.write'], limits: { maxSteps: 5, timeoutMs: 60_000, maxCostUsd: 0 }, enabled: false,
+    capabilities: ['artifact.write'], requiredCapabilities: ['artifact.write'], requiresSourceVersion: true,
+    limits: { maxSteps: 5, timeoutMs: 60_000, maxCostUsd: 0 }, enabled: false,
   },
   'checklist.generate': {
     params: checklistParams, riskFloor: 'L0', effect: 'local_create',
-    capabilities: ['artifact.write'], limits: { maxSteps: 3, timeoutMs: 30_000, maxCostUsd: 0 }, enabled: false,
+    capabilities: ['artifact.write'], requiredCapabilities: ['artifact.write'], requiresSourceVersion: true,
+    limits: { maxSteps: 3, timeoutMs: 30_000, maxCostUsd: 0 }, enabled: false,
   },
   'draft.generate': {
     params: draftParams, riskFloor: 'L1', effect: 'local_create',
-    capabilities: ['artifact.write'], limits: { maxSteps: 3, timeoutMs: 60_000, maxCostUsd: 0 }, enabled: false,
+    capabilities: ['artifact.write'], requiredCapabilities: ['artifact.write'], requiresSourceVersion: true,
+    limits: { maxSteps: 3, timeoutMs: 60_000, maxCostUsd: 0 }, enabled: false,
   },
   'repo.read_diagnose': {
     params: diagnoseParams, riskFloor: 'L0', effect: 'read',
-    capabilities: ['repo.read'], limits: { maxSteps: 10, timeoutMs: 120_000, maxCostUsd: 0 }, enabled: false,
+    capabilities: ['repo.read'], requiredCapabilities: ['repo.read'], requiresSourceVersion: false,
+    limits: { maxSteps: 10, timeoutMs: 120_000, maxCostUsd: 0 }, enabled: false,
   },
 } satisfies Record<ActionTypeValue, ActionPolicyDefinition>;
 
@@ -78,10 +87,13 @@ const ExecutionRequest = z.object({
   cardId: id,
   actionId: id,
   projectId: id,
-  approvalMode: z.enum(['stored_grant', 'online_explicit']),
 }).strict();
 
-/** Persisted rows a future store adapter must read inside one transaction before any side effect. */
+/**
+ * Persisted rows a future store adapter must read inside one transaction before any side effect.
+ * This object is caller-supplied: self-consistency here is not proof that a grant was issued,
+ * persisted, or still exists, and it never substitutes for server-side identity.
+ */
 const PersistedExecutionBasis = z.object({
   run: z.object({ id, cardId: id, actionId: id, idempotencyKey: id, state: RunState }).strict(),
   card: z.object({ id, candidateId: id, projectId: id, status: CardStatus, expiresAt: date }).strict(),
@@ -97,7 +109,7 @@ const ExecutionPrecheck = z.object({
 }).strict();
 
 export type ExecutionCheckName =
-  | 'request_shape' | 'run_identity' | 'card_binding' | 'candidate_binding' | 'project_binding'
+  | 'run_identity' | 'card_binding' | 'candidate_binding' | 'project_binding'
   | 'action_identity' | 'idempotency_key' | 'card_status' | 'card_expiry' | 'run_state'
   | 'parameter_policy' | 'risk_floor' | 'risk_ceiling' | 'effect_policy' | 'capability_policy'
   | 'budget_policy' | 'grant_principal' | 'grant_card' | 'grant_consumption' | 'grant_expiry'
@@ -108,11 +120,11 @@ export type ExecutionBlockReason =
   | 'invalid_request' | 'invalid_clock' | 'run_identity_mismatch' | 'card_binding_mismatch'
   | 'candidate_binding_mismatch' | 'project_binding_mismatch' | 'action_identity_mismatch'
   | 'idempotency_mismatch' | 'card_not_ready' | 'card_expired' | 'run_not_startable'
-  | 'params_not_allowed' | 'risk_below_floor' | 'risk_l3_forbidden' | 'online_approval_required'
+  | 'params_not_allowed' | 'risk_below_floor' | 'risk_l3_forbidden' | 'online_approval_not_implemented'
   | 'effect_not_permitted' | 'capability_not_permitted' | 'budget_not_permitted'
   | 'principal_mismatch' | 'grant_card_mismatch' | 'grant_consumed' | 'grant_expired'
   | 'grant_not_yet_valid' | 'grant_risk_insufficient' | 'grant_capability_missing'
-  | 'digest_mismatch' | 'source_version_changed' | 'action_disabled'
+  | 'digest_mismatch' | 'source_version_missing' | 'source_version_changed' | 'action_disabled'
   | 'execution_not_implemented';
 
 /**
@@ -151,6 +163,9 @@ function grantTimingFailure(grant: ApprovalGrantValue, nowMs: number): Execution
 /**
  * Pure recheck of a persisted approval immediately before a would-be side effect. Callers must still
  * read every row inside a transaction, reserve the grant and re-check the target afterwards.
+ *
+ * The supplied basis is untrusted caller input. Passing here proves internal consistency only: it
+ * does not prove that a grant was issued, is still stored, or that the caller is authenticated.
  */
 export function revalidateBeforeExecution(input: unknown, now: Date = new Date()): ExecutionGateResult {
   const parsed = ExecutionPrecheck.safeParse(input);
@@ -212,8 +227,9 @@ export function revalidateBeforeExecution(input: unknown, now: Date = new Date()
     },
     {
       name: 'risk_ceiling',
+      // No verifiable online-approval record exists yet, so L2 stays closed instead of trusting a request flag.
       failure: action.risk === 'L3' ? 'risk_l3_forbidden'
-        : action.risk === 'L2' && request.approvalMode !== 'online_explicit' ? 'online_approval_required' : null,
+        : action.risk === 'L2' ? 'online_approval_not_implemented' : null,
     },
     {
       name: 'effect_policy',
@@ -221,7 +237,9 @@ export function revalidateBeforeExecution(input: unknown, now: Date = new Date()
     },
     {
       name: 'capability_policy',
+      // The action must request every capability its type needs and nothing outside the allowed set.
       failure: action.allowedCapabilities.every(capability => policy.capabilities.includes(capability))
+        && policy.requiredCapabilities.every(capability => action.allowedCapabilities.includes(capability))
         ? null : 'capability_not_permitted',
     },
     {
@@ -261,8 +279,9 @@ export function revalidateBeforeExecution(input: unknown, now: Date = new Date()
     },
     {
       name: 'source_version',
-      failure: action.expectedSourceVersion === undefined || action.expectedSourceVersion === persisted.currentSourceVersion
-        ? null : 'source_version_changed',
+      failure: action.expectedSourceVersion === undefined
+        ? (policy.requiresSourceVersion ? 'source_version_missing' : null)
+        : action.expectedSourceVersion === persisted.currentSourceVersion ? null : 'source_version_changed',
     },
     {
       name: 'action_enablement',

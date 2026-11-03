@@ -20,6 +20,9 @@ describe('fail-closed admission', () => {
     expect(evaluateAdmission({ ...request, approved: true }, grant).allowed).toBe(false);
     for (const operation of ['research', 'model', 'execute']) expect(evaluateAdmission({ ...request, operation }, grant).allowed).toBe(false);
   });
+  it('fails closed when the clock is unusable', () => {
+    expect(evaluateAdmission(request, grant, new Date('invalid'))).toEqual({ allowed: false, reason: 'grant_expired' });
+  });
 });
 
 describe('database migration and integrity', () => {
