@@ -1,3 +1,5 @@
+> 历史叙事与设计参考：当前产品方向以 [README](README.md)、[PRD](docs/01-PRD.md) 与 [重建计划](tasks/REBUILD-PLAN.md) 为入口；下文旧实现及阶段状态不代表当前能力。
+
 # Hearth：对话，就是炉心
 
 2026-10-31 修订 · 产品。MVP 以 [PR #6](https://github.com/EchoTouch-moon/hark/pull/6) 与 [`docs/mvp/g0/05-dual-track-and-viewmodel.md`](docs/mvp/g0/05-dual-track-and-viewmodel.md) 为准；本文只保留氛围与交互叙事。**火光规则已改：只由服务端 `NarrativeState` 决定，不再按交流次数计算。** 下文与此冲突之处作废。
