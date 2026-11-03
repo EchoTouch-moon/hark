@@ -383,9 +383,9 @@ function isOfflineOnlyFailure(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 0 || error.status === 501);
 }
 
-/** 只有本地演示行动可以离线模拟；服务端真实行动不得伪造完成。 */
+/** 离线演示的唯一资格是显式 demo 标记；ID 前缀不构成授权。 */
 function isLocalDemoAction(action: MessageAction): boolean {
-  return action.demo === true || action.id.startsWith('mock-') || action.id.startsWith('demo-');
+  return action.demo === true;
 }
 
 /** G4：执行行动后在同线程回写 ProgressBlock + 结果（Mock 本地模拟）。 */
@@ -414,7 +414,7 @@ export async function executeMessageAction(
   // 原样抛给调用方，绝不生成模拟进度或“已完成”结果。
   if (signal?.aborted || liveApi || !isOfflineOnlyFailure(failure)) throw failure;
 
-  // 离线时也只保留本地演示；服务端真实行动失败关闭，原样抛出真实原因。
+  // 离线时只保留显式 demo 标记的本地演示；ID 前缀不构成授权，真实行动失败关闭。
   if (!isLocalDemoAction(action)) throw failure;
 
   if (action.id === 'mock-ignore' || action.id === 'demo-ignore' || action.label === '忽略') {
@@ -469,12 +469,11 @@ export async function executeMessageAction(
     {
       name: '汇总结果',
       status: 'done',
-      detail: action.demo ? '假结果 · 未接真洞察/真构建' : '完成',
+      detail: '假结果 · 未接真洞察/真构建',
     },
   ];
-  const resultText = action.demo
-    ? `「${action.label}」演示跑通了：进度与结果留在本线程。这不是真实洞察或真实构建。`
-    : `「${action.label}」已完成。`;
+  // 走到这里一定是显式 demo 行动；文案不再依赖未经确认的 action.demo。
+  const resultText = `「${action.label}」演示跑通了：进度与结果留在本线程。这不是真实洞察或真实构建。`;
   const message: CanvasMessage = {
     id: progressId,
     role: 'assistant',

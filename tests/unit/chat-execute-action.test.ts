@@ -219,4 +219,48 @@ describe('executeMessageAction 只在真正离线时保留本地演示', () => {
 
     expect(writtenKeys()).toEqual([]);
   });
+
+  // PR #34 复审 P1-2：ID 前缀不是演示授权，结果文案也不能只看 action.demo。
+  it.each([
+    ['网络失败', 0, 'network_error'],
+    ['501 未实现', 501, 'NOT_IMPLEMENTED'],
+  ])('%s 时 demo=false 的 mock- 行动不得生成未标注的“已完成”', async (_label, status, code) => {
+    const { chat } = await loadChat();
+    if (status === 0) {
+      fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
+    } else {
+      fetchMock.mockResolvedValueOnce(rejection(status, code));
+    }
+
+    await expect(
+      chat.executeMessageAction('thread-global-1', {
+        id: 'mock-rebuild',
+        label: '重新构建',
+        needsConfirm: true,
+        demo: false,
+      }),
+    ).rejects.toMatchObject({ status, code });
+
+    expect(writtenKeys()).toEqual([]);
+  });
+
+  it('只有 demo:true 可离线模拟，且结果文案必定标注演示', async () => {
+    const { chat } = await loadChat();
+    fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
+
+    const result = await chat.executeMessageAction('thread-global-1', {
+      id: 'act-rebuild',
+      label: '重新构建',
+      needsConfirm: true,
+      demo: true,
+    });
+
+    expect(result.mock).toBe(true);
+    expect(result.message.content).toContain('演示跑通了');
+    expect(result.message.content).not.toContain('已完成。');
+    expect(result.message.parts?.find((part) => part.type === 'result')).toMatchObject({
+      type: 'result',
+      ok: true,
+    });
+  });
 });

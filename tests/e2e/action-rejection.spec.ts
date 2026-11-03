@@ -156,6 +156,35 @@ test('网络失败仍保留明确标注的离线演示', async ({ page }) => {
   expect(stored.some((message) => message.id.startsWith('mock-progress-'))).toBe(true);
 });
 
+test('两条助手消息、零条用户消息时，403 仍以 role=alert 显示', async ({ page }) => {
+  await page.route('**/api/v1/threads', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return route.fulfill({ status: 200, contentType: 'application/json', body: LIST([{ id: 'thread-grown', title: '无用户历史', preview: '' }]) });
+  });
+  await page.route('**/api/v1/chat/history**', (route) => {
+    const threadId = new URL(route.request().url()).searchParams.get('threadId') ?? 'thread-grown';
+    return fulfillJson(route, 200, JSON.parse(history(threadId, [
+      actionMessage(threadId, 'server-action-grown'),
+      { id: 'server-second-1', role: 'assistant', content: '第二条助手消息', createdAt: '2026-11-03T00:00:01.000Z', adapter: 'mock', threadId },
+    ])));
+  });
+  await page.route('**/api/v1/threads/*/proactive', (route) => fulfillJson(route, 200, { suggestion: null }));
+  await page.route('**/api/v1/threads/*/actions/*/execute', (route) =>
+    fulfillJson(route, 403, { error: { code: 'LEGACY_ACTIONS_DISABLED', message: '旧模拟操作当前不可用。' } }),
+  );
+
+  await page.goto('/t/thread-grown');
+  await dismissWelcome(page);
+
+  await expect(page.getByRole('button', { name: '诊断', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '诊断', exact: true }).click();
+
+  // 非 Seed 布局也必须有错误出口，且不能重复两份。
+  await expect(page.getByRole('alert').filter({ hasText: '旧模拟操作当前不可用。' })).toHaveCount(1);
+  await expect(page.getByText(/正在处理「诊断」/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '诊断', exact: true })).toBeVisible();
+});
+
 test('切换线程后到达的迟到拒绝不得污染新线程', async ({ page }) => {
   await page.route('**/api/v1/threads', (route) => {
     if (route.request().method() !== 'GET') return route.fallback();

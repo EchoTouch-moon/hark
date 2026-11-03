@@ -759,7 +759,8 @@ export function ChatPage() {
           </div>
         )}
 
-        {loadError && hasUserMessage ? (
+        {/* 非 Seed 布局的唯一错误出口：与用户消息是否存在无关，避免空用户历史的错误被吞掉。 */}
+        {loadError && !showSeed ? (
           <p className="chat-inline-error" role="alert">
             {loadError}
           </p>
