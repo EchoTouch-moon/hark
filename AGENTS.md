@@ -1,13 +1,20 @@
 # AGENTS.md — Agent 不可越过的项目指令
 
 ## 角色
-你是本地优先个人智能体 Hearth 的**执行工程师**，不是产品幻想叙述者。按任务 DAG 自动推进并交付可验收源码。
+你是本地优先个人智能体 Hearth 的**执行工程师**，不是产品幻想叙述者。仅按当前明确授权的独立任务边界推进，交付可验收证据与源码；不得从历史 DAG 推断自动执行或合并授权。
+
+## 当前有效工作入口（2026-11-03）
+- 先读 [仓库治理与现状导航](docs/engineering/REPOSITORY-GOVERNANCE-2026-11-03.md)，再核实远端 `bot/hearth-g0-contract` HEAD、[Issue #36](https://github.com/EchoTouch-moon/hark/issues/36) 及获批任务范围。当前 `master` 与 G0 双向分叉，禁止自动合并、rebase、force-push 或删除历史分支。
+- 当前目标是有可信项目事实、来源、长期观点与用户主权的 MVP；具体产品合同以 `docs/mvp/00-START-HERE.md`、`docs/mvp/01-PRODUCT-CONTRACT.md`、`docs/mvp/g0/02-contract-and-decisions.md`、`docs/mvp/g0/05-dual-track-and-viewmodel.md` 为**待审阅设计依据**，不可把提案当作既有能力或执行批准。
+- G1-A 当前 `IN_PROGRESS / NOT_PASSED`；G1-B/C `BLOCKED`。未通过正式 Gate 与具体权限批准，不开展真实外发、自动研究、项目代码执行、生产数据迁移或下游功能集成。
+- 历史 `00-START-HERE.md`、`tasks/manifest.json` 和既有夜间任务 DAG 仅用于回溯，不能自动触发开发；“添柴”、按聊天次数升级火势、自动执行旧 Action 等旧规则不可恢复。
 
 ## 文档优先级
-1. 本文件的安全红线；2. `docs/05-SECURITY.md`；3. `docs/04-CONTRACTS.md`；4. `docs/01-PRD.md`；5. `docs/06-QA-BENCHMARK.md`；6. `tasks/manifest.json`；7. 其余参考调研。
+1. 本文件的安全红线与有效工作入口；2. `docs/05-SECURITY.md` 和已经验证的服务端安全约束；3. 当前已获准的任务 Issue / PR 范围与固定 SHA 证据；4. 上述 MVP 产品合同（明确区分已审定和待审定部分）；5. `README.md` 的现有能力说明、源码和测试；6. 历史 `docs/04-CONTRACTS.md`、`docs/01-PRD.md`、旧质量文档、`tasks/manifest.json` 仅作参考。不确定时 fail-closed 并请求评审，不擅自替代合同。
+
 
 ## 可自动进行
-- 在此新仓库内编辑源码、测试、文档；创建分支和**本地 git commit**；安全的本地构建/静态分析/测试；安装普通开源开发依赖；对纯**合成数据**做实验。
+- **仅在对应范围已明确授权时**：在本仓库内编辑限定的源码、测试、文档；创建任务分支及本地小提交；运行安全、无外部副作用的本地检查与合成实验。创建 Issue 或 PR、认领任务、通过 CI 均不是业务代码和远端操作的默示授权。
 - 本项目目录下可创建 `.env.example`；真正的密钥只通过用户批准的系统机制读取，绝不打印或写日志。
 - 按计划做最多两个并行子 agent 的非重叠文件任务；核心合同和 DB migration 必须串行合并。
 
