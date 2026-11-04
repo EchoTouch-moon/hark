@@ -86,23 +86,27 @@
     {
       "id": "B-C1",
       "parent": "M1-B",
-      "owner": "主 Agent",
-      "status": "IN_PROGRESS",
+      "owner": "主 Agent（场景并入 B-C1）",
+      "status": "DONE",
       "depends_on": [
         "A-C4"
       ],
-      "evidence": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-b-c1-understanding-2026-11-04.txt"
+      ],
       "external_ref": null
     },
     {
       "id": "B-S1",
       "parent": "M1-B",
-      "owner": null,
-      "status": "TODO",
+      "owner": "主 Agent（场景并入 B-C1）",
+      "status": "DONE",
       "depends_on": [
         "B-C1"
       ],
-      "evidence": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-b-c1-understanding-2026-11-04.txt"
+      ],
       "external_ref": null
     },
     {
