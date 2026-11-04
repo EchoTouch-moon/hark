@@ -1,5 +1,6 @@
 # 重建交接（2026-11-03）
 
+**2026-11-04 M1 执行原则**：已将最小必要实现、分级安全边界和以可操作合成闭环为中心的调度写入 `AGENTS.md` 和两份 M1 任务文档。仅修改文档，未复审 A-C3、实现 UI 或运行 M1-R01～R06；现有阻塞和运行说明继续见 `handoff/BLOCKERS.md`。文档检查见 `handoff/EVIDENCE/m1-occam-docs-2026-11-04.txt`。
 **2026-11-04 A-C3 修复待复审**：首轮审查五项缺陷已在实现和 `tests/fixture-discovery-ac3.test.ts` 中处理，138 项测试与复现脚本 exit 0，见 `handoff/EVIDENCE/m1-a-c3-fix-2026-11-04.txt`。A-C3 未勾选，M1-A 不关闭，复审前不进入 B-C1/B-S1。
 
 **2026-11-04 A-C2/A-S2**：合成发现与用户可见场景测试已在 macOS 跑通，133 项测试、lint、类型检查、构建见 `handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt`。后续 A-C3 发现问题，结果见上；Windows 适配器仍为 `unavailable`。

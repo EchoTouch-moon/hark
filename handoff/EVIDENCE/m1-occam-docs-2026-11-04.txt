@@ -1,0 +1,1 @@
+PASS: diff whitespace; A-C3 status and B-C1/D-C0/D-S0 dependencies unchanged

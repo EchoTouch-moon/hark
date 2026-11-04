@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- **2026-11-04 M1 执行原则文档更新**：`AGENTS.md` 和两份 M1 任务文档明确最小实现、实际能力分级、定向审查和合成产品验收；未改变任务状态。A-C3 仍待独立复审，D-C0/D-S0 可按既定依赖推进；M1-R01～R06 未运行。文档检查见 `handoff/EVIDENCE/m1-occam-docs-2026-11-04.txt`。
 - **2026-11-04 A-C3 缺陷已修复、独立复审未做**：项目内容读取需服务端签发的观察 grant；硬链接 `nlink != 1` 拒绝；原生模块仅从仓库 `build/` 加载；撤权释放句柄且不可 SQL 回滚；同一 inode 候选移回可恢复。138 项测试与 `node handoff/qa/m1-a-c3-repro.mjs` 退出码 0，见 `handoff/EVIDENCE/m1-a-c3-fix-2026-11-04.txt`。A-C3 未勾选，M1-A 未关闭，B-C1/B-S1 不可启动。首轮未通过记录仍见 `handoff/qa/M1-A-C3-REVIEW-2026-11-04.md`。
 - **2026-11-04 A-C2/A-S2 合成发现已完成本地验证**：隔离合成根上的 POSIX `openat` 发现、稳定身份、同名/嵌套待确认、重启恢复、撤权/暂停/取消、符号链接与替换负例见 `handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt` 与 `handoff/EVIDENCE/m1-a-s2-discovery-scenarios-2026-11-04.txt`。133 项本机测试、lint、类型检查与构建通过。Windows 适配器按合同返回 `unavailable`。A-C3 集成审查、M1-A 关闭和 M1 Gate 尚未完成；真实目录仍关闭。
 - **2026-11-04 策略加固已完成本地验证**：动作策略容器、能力数组及限制在运行时冻结；补充审批字段注入与写类动作缺来源版本负例，观察授权遇到无效时钟返回独立原因。macOS 合成数据的 122 项测试、lint、类型检查、构建及文档检查见 `handoff/EVIDENCE/m0-policy-hardening-2026-11-04.txt`。该证据对应 `cf29ec2` 基线及当时未提交修改，并非精确提交 SHA；真实执行仍关闭。
