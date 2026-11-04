@@ -1,0 +1,89 @@
+
+$ pnpm lint
+$ tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch
+exit=0
+
+$ pnpm typecheck
+$ tsc --noEmit -p tsconfig.json
+exit=0
+
+$ pnpm test
+$ node scripts/build-posix-dir.mjs
+$ vitest run --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:57721) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57719) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57723) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57722) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57720) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57725) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57724) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-feedback-v2.test.ts (9 tests) 131ms
+ ✓ tests/fixture-decision.test.ts (12 tests) 191ms
+ ✓ tests/fixture-chronicle.test.ts (14 tests) 228ms
+ ✓ tests/fixture-opinion-store.test.ts (16 tests) 311ms
+ ✓ tests/domain-contracts.test.ts (9 tests) 13ms
+(node:57736) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/action-policy.test.ts (23 tests) 61ms
+ ✓ tests/policy-storage.test.ts (8 tests) 48ms
+(node:57739) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/path-check.test.ts (4 tests) 42ms
+ ✓ tests/contracts-state.test.ts (14 tests) 10ms
+ ✓ tests/event-freshness.test.ts (3 tests) 9ms
+ ✓ tests/digests.test.ts (2 tests) 11ms
+ ✓ tests/action-registry.test.ts (7 tests) 7ms
+ ✓ tests/fixture-discovery-ac3.test.ts (5 tests) 65ms
+ ✓ tests/fixture-discovery-scenarios.test.ts (5 tests) 77ms
+ ✓ tests/fixture-discovery.test.ts (6 tests) 1502ms
+   ✓ synthetic discovery adapter availability > loads a prebuilt posix openat adapter and keeps Windows fail-closed  1395ms
+(node:57719) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57719) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-opinion-concurrency.test.ts (1 test) 1954ms
+   ✓ allows exactly one concurrent fixture revision for the same expected version  1953ms
+
+ Test Files  16 passed (16)
+      Tests  138 passed (138)
+   Start at  12:41:17
+   Duration  2.47s (transform 505ms, setup 0ms, collect 3.60s, tests 4.66s, environment 2ms, prepare 1.42s)
+
+exit=0
+
+$ pnpm build
+$ node scripts/build-posix-dir.mjs
+$ tsc -p tsconfig.build.json
+exit=0
+
+$ node handoff/qa/m1-a-c3-repro.mjs
+project grants: 0
+project content returned without project grant: false
+hard-linked external synthetic file returned: false
+returned candidate scan: available
+raw descriptor usable after revocation: false
+database reactivated revoked grant: false
+(node:57835) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+exit=0
+
+$ node synthetic candidate replacement reproduction
+A scope returned B content after directory replacement: true
+(node:57963) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+$ node synthetic revoked descriptor reuse reproduction
+descriptor number reused: true
+saved revoked descriptor lists second root: true
+(node:58031) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

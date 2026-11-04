@@ -56,8 +56,8 @@
     {
       "id": "A-C3",
       "parent": "M1-A",
-      "owner": "主 Agent",
-      "status": "TODO",
+      "owner": "主 Agent（独立复审：协作 Agent）",
+      "status": "BLOCKED",
       "depends_on": [
         "A-C2",
         "A-S2"
@@ -66,7 +66,20 @@
         "handoff/qa/M1-A-C3-REVIEW-2026-11-04.md",
         "handoff/EVIDENCE/m1-a-c3-reproduction-2026-11-04.txt",
         "handoff/EVIDENCE/m1-a-c3-suite-2026-11-04.txt",
-        "handoff/EVIDENCE/m1-a-c3-fix-2026-11-04.txt"
+        "handoff/EVIDENCE/m1-a-c3-fix-2026-11-04.txt",
+        "handoff/qa/M1-A-C3-REVIEW-R2-2026-11-04.md",
+        "handoff/EVIDENCE/m1-a-c3-r2-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "A-C4",
+      "parent": "M1-A",
+      "owner": "协作 Agent",
+      "status": "DONE",
+      "depends_on": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-a-c4-catalog-2026-11-04.txt"
       ],
       "external_ref": null
     },
@@ -76,7 +89,7 @@
       "owner": null,
       "status": "TODO",
       "depends_on": [
-        "A-C3"
+        "A-C4"
       ],
       "evidence": [],
       "external_ref": null
@@ -128,8 +141,8 @@
     {
       "id": "D-C0",
       "parent": "M1-D",
-      "owner": null,
-      "status": "TODO",
+      "owner": "主 Agent（协作 Agent 起草）",
+      "status": "IN_PROGRESS",
       "depends_on": [
         "A-C1"
       ],
@@ -139,7 +152,7 @@
     {
       "id": "D-S0",
       "parent": "M1-D",
-      "owner": null,
+      "owner": "协作 Agent（D-C0 后）",
       "status": "TODO",
       "depends_on": [
         "D-C0"
@@ -188,7 +201,7 @@
       "owner": null,
       "status": "TODO",
       "depends_on": [
-        "A-C3",
+        "A-C4",
         "B-S1",
         "C-S1",
         "C-C2",
