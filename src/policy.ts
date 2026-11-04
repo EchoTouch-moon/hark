@@ -13,7 +13,9 @@ export function evaluateAdmission(rawRequest: unknown, rawGrant: unknown, now: D
   const grant = ObservationGrant.safeParse(rawGrant);
   if (!grant.success) return { allowed: false, reason: 'missing_or_invalid_grant' };
   if (!grant.data.enabled || grant.data.paused || grant.data.revokedAt !== null) return { allowed: false, reason: 'grant_inactive' };
-  if (!Number.isFinite(now.getTime()) || Date.parse(grant.data.expiresAt) <= now.getTime()) return { allowed: false, reason: 'grant_expired' };
+  const nowMs = now.getTime();
+  if (!Number.isFinite(nowMs)) return { allowed: false, reason: 'invalid_clock' };
+  if (Date.parse(grant.data.expiresAt) <= nowMs) return { allowed: false, reason: 'grant_expired' };
   if (grant.data.principalId !== parsed.data.principalId || grant.data.projectId !== parsed.data.projectId || grant.data.rootId !== parsed.data.rootId) return { allowed: false, reason: 'scope_mismatch' };
   return { allowed: true };
 }

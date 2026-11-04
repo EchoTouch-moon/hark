@@ -79,6 +79,22 @@ describe('frozen action policy', () => {
     }
   });
 
+  it('prevents runtime mutation of policy definitions, capabilities and limits', () => {
+    expect(Object.isFrozen(ACTION_POLICIES)).toBe(true);
+    expect(Reflect.deleteProperty(ACTION_POLICIES, 'report.generate')).toBe(false);
+    for (const policy of Object.values(ACTION_POLICIES)) {
+      expect(Object.isFrozen(policy)).toBe(true);
+      expect(Object.isFrozen(policy.capabilities)).toBe(true);
+      expect(Object.isFrozen(policy.requiredCapabilities)).toBe(true);
+      expect(Object.isFrozen(policy.limits)).toBe(true);
+      expect(Reflect.set(policy, 'enabled', true)).toBe(false);
+      expect(Reflect.set(policy.capabilities, 0, 'shell.exec')).toBe(false);
+      expect(Reflect.set(policy.requiredCapabilities, 0, 'shell.exec')).toBe(false);
+      expect(Reflect.set(policy.limits, 'maxCostUsd', 100)).toBe(false);
+      expect(policy.enabled).toBe(false);
+    }
+  });
+
   it('rejects unreviewed parameters and values outside the frozen ranges', () => {
     expect(ACTION_POLICIES['report.generate'].params.safeParse({ format: 'markdown', title: 'x' }).success).toBe(true);
     for (const bad of [{ format: 'pdf' }, { title: '' }, { title: 'x', shell: 'rm' }, { title: 'x'.repeat(201) }]) {
@@ -115,6 +131,15 @@ describe('pre-execution recheck', () => {
     const extra = { ...basis(), unexpected: true };
     expect(revalidateBeforeExecution(extra, NOW).reason).toBe('invalid_request');
     expect(revalidateBeforeExecution(basis(), new Date('invalid')).reason).toBe('invalid_clock');
+  });
+
+  it('rejects a request that injects an online approval mode', () => {
+    const input = basis(buildAction({ risk: 'L2' }));
+    input.persisted.grant.risk = 'L2';
+    const injected = { ...input, request: { ...input.request, approvalMode: 'online' } };
+    expect(revalidateBeforeExecution(injected, NOW)).toMatchObject({
+      allowed: false, reason: 'invalid_request', blockedAt: null,
+    });
   });
 
   it('rejects a run, card, candidate or action that does not line up', () => {
@@ -272,6 +297,17 @@ describe('pre-execution recheck', () => {
       reason: 'source_version_changed', blockedAt: 'source_version',
     });
   });
+
+  it.each(['report.generate', 'checklist.generate', 'draft.generate'] as const)(
+    'rejects an unpinned source for %s', (actionType) => {
+      const action = buildAction({ actionType, params: {} });
+      delete action.expectedSourceVersion;
+      action.idempotencyKey = idempotencyKeyForAction(action);
+      expect(revalidateBeforeExecution(basis(action), NOW)).toMatchObject({
+        allowed: false, reason: 'source_version_missing', blockedAt: 'source_version',
+      });
+    },
+  );
 
   it('requires write-like actions to pin a source version but not read-only ones', () => {
     const unpinned = buildAction();

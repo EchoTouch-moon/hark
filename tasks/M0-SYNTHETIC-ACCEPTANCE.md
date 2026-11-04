@@ -1,6 +1,6 @@
 # M0-REBUILD-02 合成场景与验收矩阵
 
-状态：验收设计及现有证据映射；**不是目录发现器、真实研究或 M0 Gate 通过证明**。当前代码只提供合成存储及路径预检，尚无目录发现、项目对话或完整用户界面。各项应随实现独立运行，记录提交、平台、命令和脱敏输出；未运行不得标 PASS。
+状态：验收设计及现有证据映射；本文本身**不是目录发现器、真实研究或 M0 Gate 通过证明**。M0 基础合同 Gate 已于 R2 通过，范围和证据见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`；真实 connector 的 P0 安全门槛未通过，M1 尚未启动。当前代码只提供合成存储及路径预检，尚无目录发现、项目对话或完整用户界面。各项应随实现独立运行，记录提交、平台、命令和脱敏输出；未运行不得标 PASS。
 
 ## 合成输入约定
 
@@ -50,4 +50,4 @@
 
 ## 当前可复核结果和门槛
 
-`handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt` 记录 97 项本地测试、lint、类型检查和构建；仅证明其所运行的合成机制。上述目录、实际 API 和未运行安全用例不是 M0 PASS。M0→M1 仍须按 `docs/06-QA-BENCHMARK.md` 完成合同 schema、状态机、policy 负例、migrations 和独立审查，并完成 `tasks/manifest.json` 中合同与失败验收工作。M1 之前不得启动产品纵切；真实 connector 还需单独通过安全 P0 Gate。
+`handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt` 记录 R2 前 97 项本地测试、lint、类型检查和构建，仅证明其所运行的合成机制。M0→M1 基础合同门槛已按 `docs/06-QA-BENCHMARK.md` 经 R2 独立只读复审通过，基线 `46ab047`，见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md` 和 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`。这一结论不证明目录发现、实际 API 或未运行安全用例通过；M1 合成产品纵切尚未开始，真实 connector 还需单独通过安全 P0 Gate。

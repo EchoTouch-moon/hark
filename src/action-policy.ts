@@ -69,6 +69,16 @@ export const ACTION_POLICIES = {
   },
 } satisfies Record<ActionTypeValue, ActionPolicyDefinition>;
 
+// TypeScript readonly does not protect policy values at runtime. Freeze the policy containers
+// and their mutable data; Zod owns its schemas and must not be recursively frozen here.
+for (const policy of Object.values(ACTION_POLICIES)) {
+  Object.freeze(policy.capabilities);
+  Object.freeze(policy.requiredCapabilities);
+  Object.freeze(policy.limits);
+  Object.freeze(policy);
+}
+Object.freeze(ACTION_POLICIES);
+
 const riskRank: Readonly<Record<RiskLevel, number>> = { L0: 0, L1: 1, L2: 2, L3: 3 };
 
 const CardStatus = z.enum([

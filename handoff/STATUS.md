@@ -1,6 +1,7 @@
 # 当前状态（2026-11-03）
 
-- **M0 Gate R2 独立只读复审为 PASS（仅限"基础合同门禁"）**：按 `docs/06-QA-BENCHMARK.md` 的标准，contracts schema、状态机、policy 负例、migrations 与 `AGENTS.md`/威胁模型均通过；117 项本地测试与 lint/类型/构建/文档检查绑定提交 `46ab047`，见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`，复核记录见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。M1 尚未开始：执行器、身份认证、grant 事务占用、真实来源、Windows 与远端 CI 均未实现。
+- **2026-11-04 策略加固已完成本地验证**：动作策略容器、能力数组及限制在运行时冻结；补充审批字段注入与写类动作缺来源版本负例，观察授权遇到无效时钟返回独立原因。macOS 合成数据的 122 项测试、lint、类型检查、构建及文档检查见 `handoff/EVIDENCE/m0-policy-hardening-2026-11-04.txt`。该证据对应 `cf29ec2` 基线及当时未提交修改，并非精确提交 SHA；真实执行仍关闭。
+- **M0 Gate R2 独立只读复审为 PASS（仅限"基础合同门禁"）**：按 `docs/06-QA-BENCHMARK.md` 的标准，contracts schema、状态机、policy 负例、migrations 与 `AGENTS.md`/威胁模型均通过；117 项本地测试与 lint/类型/构建/文档检查绑定提交 `46ab047`，见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`，复核记录见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。M1 尚未开始；真实 connector 的 P0 安全门槛未通过，执行器、身份认证、grant 事务占用和真实来源未实现，Windows 与远端 CI 尚无验证证据。
 - 动作参数合同与执行前二次校验为**纯预检**：四类动作的可选严格参数、风险下限、效果、必需能力、零成本上限与写类来源版本要求已冻结；执行前按固定顺序核验绑定、状态、期限、风险、效果、能力、预算、grant 与摘要，任何不符即拒绝，全部通过仍停在 `action_disabled`；L2 在可验证在线审批记录存在前一律拒绝。预检不证明 grant 已签发，不能当授权边界。
 - M0-REBUILD-01 合同复核与 M0-REBUILD-02 合成验收**设计**已通过独立只读复核，见 `handoff/qa/M0-CONTRACT-REVIEW-2026-11-03.md`。
 - 独立 M0 复审（R2 前）结论为 NOT PASS；已补全禁用动作提案注册表及 QA 证据索引。R2 前的 97 项本地测试和 lint/构建见 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。合同及验收设计任务已复核，动作启用合同、产品/API E2E、真实来源和 Windows 等在 R2 时仍未完成。
@@ -13,10 +14,10 @@
 - 实际双 worker 同时竞争观点版本的合成场景已验证，只有一方成功且无孤儿记录；全量 79 项本地测试见 `handoff/EVIDENCE/m0-concurrent-revision-check-2026-11-03.txt`，Windows 和压力测试未运行。
 - M0 合成用户决定 v4 迁移已实现；修订或撤回后引用旧决定的观点不可用，历史保留；fixture 项目删除中时观察与观点也停止使用。78 项本地测试及类型检查/构建见 `handoff/EVIDENCE/m0d-fixture-decisions-check-2026-11-03.txt`；真实用户决定与正式生命周期未实现。
 - M0-C 的合成观点版本、不可执行方案、修订原因与反馈已实现并局部复核；64 项本地测试与类型检查/构建见 `handoff/EVIDENCE/m0c-fixture-opinion-check-2026-11-03.txt`，边界见 `docs/architecture/M0-C-FIXTURE-OPINION-MEMORY.md`。未实现真实来源、身份认证、研究或产品闭环。
-- M0-B 合成来源及不可变观察的 v2 迁移、授权重检、epoch 和幂等基础已完成局部验证；见 `docs/architecture/M0-B-FIXTURE-CHRONICLE.md` 和 `handoff/EVIDENCE/m0b-fixture-chronicle-check-2026-11-03.txt`。真实来源及观点持久化未完成。
-- M0-A 首版结构合同已落地：项目、类型化来源、观点版本、计划、反馈和版本对，见 `docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`；36 项本地测试及构建、类型检查、文档检查见 `handoff/EVIDENCE/m0a-project-contract-check-2026-11-03.txt`。可信来源核验、持久化和 Gate 均未完成。
+- M0-B 合成来源及不可变观察的 v2 迁移、授权重检、epoch 和幂等基础已完成局部验证；见 `docs/architecture/M0-B-FIXTURE-CHRONICLE.md` 和 `handoff/EVIDENCE/m0b-fixture-chronicle-check-2026-11-03.txt`。真实来源和正式观点持久化未完成。
+- M0-A 首版结构合同已落地：项目、类型化来源、观点版本、计划、反馈和版本对，见 `docs/architecture/M0-A-PROJECT-KNOWLEDGE-CONTRACT.md`；36 项本地测试及构建、类型检查、文档检查见 `handoff/EVIDENCE/m0a-project-contract-check-2026-11-03.txt`。该历史基线时可信来源核验、持久化和 Gate 尚未完成；当前门槛结论见本文件首项。
 - 官方原型已隔离克隆并按固定提交进行源码对照；本轮新增合成路径预检和中断恢复，26 项本地测试通过，见 `handoff/EVIDENCE/m0-path-recovery-check-2026-11-03.txt`。预检不能抵御检查后替换，真实目录读取、执行与外发仍未接通。
-- M0 近期工作见 `tasks/DEVELOPMENT-PROGRESS.md`。合同、摘要、观察权限判断、状态机和 SQLite 迁移已有基础；M0-REBUILD-01/02 仅合同及验收设计已完成，M0 Gate 仍未完成；真实目录和执行通道未接入。
+- M0 近期工作见 `tasks/DEVELOPMENT-PROGRESS.md`。合同、摘要、观察权限判断、状态机和 SQLite 迁移已有基础；M0-REBUILD-01/02 的合同及验收设计已完成，M0 基础合同 Gate 已通过；真实目录和执行通道未接入。
 - 文档优先的重建版本：已整理，入口为 `README.md` 和 `tasks/REBUILD-PLAN.md`。
 - 产品目标与既有 MVP 产品合同、验收和安全文件已保留；原先位于其他分支的产品定位、开发计划和 DeepSeek 研究资料已复制为历史参考。
 - 旧前后端、实现测试和构建文件已从此版本移除；本轮新增基础模块、构建及测试配置，尚无可运行完整产品。CI 定义已更新，远端执行未验证。

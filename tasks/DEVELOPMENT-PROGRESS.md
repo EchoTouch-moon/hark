@@ -38,8 +38,10 @@
   - [x] 动作与目标摘要、稳定幂等键的计算及负例，见 `src/digests.ts` 和 `tests/digests.test.ts`。
   - [x] 动作类型对应的参数约束已冻结；执行前重算动作/目标摘要并比对 grant，摘要不符即失败关闭（`src/action-policy.ts`、`tests/action-policy.test.ts`）。纯预检，执行通道仍关闭。
 - [x] 动作提案入口采用全禁用的服务端注册表，拒绝客户端注入风险、效果、审批、完成状态与未审参数（`src/action-registry.ts`、`tests/action-registry.test.ts`）。这不等于动作可安全启用。
+  - [x] R2 审查 N2/N4/N5：冻结策略注册表、策略对象、能力数组与限制对象；补充审批模式注入和三类写动作缺来源版本的负例。Zod schema 未递归冻结，所有动作与执行通道仍关闭（`tests/action-policy.test.ts`）。
 - [ ] 权限：默认拒绝、作用域、撤权、暂停与副作用审批边界（主 Agent）。
   - [x] 观察授权纯判断及默认拒绝未实现通道，见 `src/policy.ts` 和 `tests/policy-storage.test.ts`。
+  - [x] R2 审查 N3：时钟无效时独立返回 `invalid_clock` 并拒绝，不再误报授权过期（`src/policy.ts`、`tests/policy-storage.test.ts`）。
   - [x] 持久观察授权按次读取，撤权及重启后仍拒绝，见 `src/storage.ts` 和 `tests/policy-storage.test.ts`。
   - [ ] 真实路径边界、审批执行前二次校验；执行与外发通道保持关闭。
   - [x] M0 合成路径预检：验证越界与符号链接拒绝（`src/path-check.ts`、`tests/path-check.test.ts`）；不能作为安全文件读取的声明。
@@ -66,6 +68,7 @@
   - [x] 补齐 QA 标准证据索引，逐项标明 PASS/PARTIAL/NOT RUN；原始输出为 `handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt`。
   - [x] 增加动作参数合同与执行前二次校验后，115 项本地测试、lint、类型检查与构建，见 `handoff/EVIDENCE/m0-action-policy-gate-2026-11-03.txt`（R2 修复前基线）。
   - [x] R2 复核修复后（L2 一律拒绝、必需能力、写类来源版本必填），117 项本地测试、lint、类型检查、构建与文档检查绑定提交 `46ab047`，见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`。
+  - [x] R2 剩余问题加固后，122 项本机测试、lint、类型检查、构建与文档检查通过，见 `handoff/EVIDENCE/m0-policy-hardening-2026-11-04.txt`（`cf29ec2` 基线加本轮未提交修改）；独立代码复核见 `handoff/qa/M0-POLICY-REVIEW-2026-11-04.md`。
   - [ ] 推送后核验远端 CI 实际结果，补齐 Windows 验证。E2E 尚无可运行产品，不伪造通过。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
 - [x] M0 Gate（R2，2026-11-03）：按 `docs/06-QA-BENCHMARK.md` 的基础合同标准独立只读复审 **PASS**，基线 `46ab047`；117 项测试与 lint/类型/构建/文档检查见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`，复核记录见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。PASS 仅覆盖 contracts/状态机/policy 负例/migrations/威胁模型；执行器、身份认证、grant 事务占用、真实来源与 Windows/远端 CI 仍未完成，属 M1 及以后。
