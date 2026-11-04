@@ -1,0 +1,8 @@
+Status: NOT RUN / BLOCKED.
+No current user-facing application or E2E test runner is implemented.
+The E2E-01 through E2E-12 mapping is documented in
+docs/architecture/M0-EXECUTION-AND-E2E-MAPPING.md; it is not execution evidence.
+Current home/chat/projects screenshots: NOT_CAPTURED. Historical images are not
+evidence of a running rebuild. M1-to-M2 E2E requirements remain unmet.
+The retained demo-run.json is historical; demo-run-rebuild-status.json records
+the rebuild's actual NOT_RUN state.

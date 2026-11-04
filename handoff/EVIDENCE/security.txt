@@ -1,0 +1,11 @@
+Status: PARTIAL; security P0 Gate NOT PASSED.
+Command: pnpm test (2026-11-03, macOS, Node 22).
+Full output: handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt
+Action proposal registry: all four actions disabled; untrusted risk/effect/
+approval fields and unreviewed parameters rejected. Existing execution,
+research and model admission remains closed. Fixture grant, scope, epoch and
+path-preflight tests passed, within their stated synthetic scope.
+Missing: trusted real identity, race-resistant real file reads, complete S01-S12
+assertions, source-verification and approval/executor boundary. S01 and S12 are
+NOT RUN; see tasks/M0-SYNTHETIC-ACCEPTANCE.md for per-case status. macOS-only;
+Windows and remote CI have not run. No real connector is authorized by this file.

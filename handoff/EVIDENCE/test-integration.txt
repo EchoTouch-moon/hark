@@ -1,0 +1,6 @@
+Status: PARTIAL / product API NOT RUN.
+Command: pnpm test (2026-11-03, macOS, Node 22).
+Full output: handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt
+Fixture SQLite integration includes migrations, rollback, restart, source
+invalidation and draft revision/feedback tests. No HTTP or user-facing product
+integration is implemented; fixture storage tests do not validate those surfaces.

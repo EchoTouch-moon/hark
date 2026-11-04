@@ -1,0 +1,244 @@
+{
+  "version": 1,
+  "description": "M1 细分任务状态源；任务说明在 M1-AGENT-WORK-PACKAGES.md，看板为人工可读摘要。",
+  "items": [
+    {
+      "id": "A-C1",
+      "parent": "M1-A",
+      "owner": "主 Agent",
+      "status": "DONE",
+      "depends_on": [],
+      "evidence": [
+        "docs/architecture/M1-DISCOVERY-CONTRACT.md",
+        "handoff/qa/M1-A-DISCOVERY-CONTRACT-2026-11-04.md"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "A-S1",
+      "parent": "M1-A",
+      "owner": "fixture_samples",
+      "status": "DONE",
+      "depends_on": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-a-synthetic-fixtures-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "A-C2",
+      "parent": "M1-A",
+      "owner": "主 Agent",
+      "status": "DONE",
+      "depends_on": [
+        "A-C1",
+        "A-S1"
+      ],
+      "evidence": [
+        "docs/architecture/M1-A-FIXTURE-DISCOVERY.md",
+        "handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "A-S2",
+      "parent": "M1-A",
+      "owner": "协作 Agent",
+      "status": "DONE",
+      "depends_on": [
+        "A-C2"
+      ],
+      "evidence": [
+        "handoff/EVIDENCE/m1-a-s2-discovery-scenarios-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "A-C3",
+      "parent": "M1-A",
+      "owner": "主 Agent（独立复审：协作 Agent）",
+      "status": "BLOCKED",
+      "depends_on": [
+        "A-C2",
+        "A-S2"
+      ],
+      "evidence": [
+        "handoff/qa/M1-A-C3-REVIEW-2026-11-04.md",
+        "handoff/EVIDENCE/m1-a-c3-reproduction-2026-11-04.txt",
+        "handoff/EVIDENCE/m1-a-c3-suite-2026-11-04.txt",
+        "handoff/EVIDENCE/m1-a-c3-fix-2026-11-04.txt",
+        "handoff/qa/M1-A-C3-REVIEW-R2-2026-11-04.md",
+        "handoff/EVIDENCE/m1-a-c3-r2-2026-11-04.txt",
+        "handoff/qa/M1-A-C3-TARGETED-FIX-2026-11-04.md",
+        "handoff/EVIDENCE/m1-a-c3-targeted-fixes-2026-11-04.txt",
+        "handoff/qa/M1-A-C3-MOVE-CHECK-2026-11-04.md",
+        "handoff/EVIDENCE/m1-moved-child-fix-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "A-C4",
+      "parent": "M1-A",
+      "owner": "协作 Agent",
+      "status": "DONE",
+      "depends_on": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-a-c4-catalog-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "B-C1",
+      "parent": "M1-B",
+      "owner": "主 Agent（场景并入 B-C1）",
+      "status": "DONE",
+      "depends_on": [
+        "A-C4"
+      ],
+      "evidence": [
+        "handoff/EVIDENCE/m1-b-c1-understanding-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "B-S1",
+      "parent": "M1-B",
+      "owner": "主 Agent（场景并入 B-C1）",
+      "status": "DONE",
+      "depends_on": [
+        "B-C1"
+      ],
+      "evidence": [
+        "handoff/EVIDENCE/m1-b-c1-understanding-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "C-C1",
+      "parent": "M1-C",
+      "owner": "主 Agent",
+      "status": "DONE",
+      "depends_on": [
+        "B-C1"
+      ],
+      "evidence": [
+        "handoff/EVIDENCE/m1-c-c1-dialogue-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "C-C2",
+      "parent": "M1-C",
+      "owner": "主 Agent",
+      "status": "DONE",
+      "depends_on": [
+        "B-C1"
+      ],
+      "evidence": [
+        "handoff/EVIDENCE/m1-c-c2-inventory-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "C-S1",
+      "parent": "M1-C",
+      "owner": "协作 Agent（接口可用后）",
+      "status": "DONE",
+      "depends_on": [
+        "C-C1"
+      ],
+      "evidence": [
+        "handoff/EVIDENCE/m1-c-c1-dialogue-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "D-C0",
+      "parent": "M1-D",
+      "owner": "主 Agent（协作 Agent 起草）",
+      "status": "DONE",
+      "depends_on": [
+        "A-C1"
+      ],
+      "evidence": [
+        "docs/architecture/M1-UI-DISPLAY-CONTRACT.md"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "D-S0",
+      "parent": "M1-D",
+      "owner": "协作 Agent（D-C0 后）",
+      "status": "DONE",
+      "depends_on": [
+        "D-C0"
+      ],
+      "evidence": [
+        "handoff/EVIDENCE/m1-ui-shell-2026-11-04/browser-review.txt",
+        "handoff/EVIDENCE/m1-ui-shell-2026-11-04/checks.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "D-C1",
+      "parent": "M1-D",
+      "owner": "主 Agent",
+      "status": "DONE",
+      "depends_on": [
+        "C-C1",
+        "C-C2"
+      ],
+      "evidence": [
+        "docs/architecture/M1-SYNTHETIC-API.md",
+        "handoff/EVIDENCE/m1-d-c1-api-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "D-S1",
+      "parent": "M1-D",
+      "owner": "主 Agent（界面由协作 Agent 起草）",
+      "status": "DONE",
+      "depends_on": [
+        "D-S0",
+        "D-C1"
+      ],
+      "evidence": [
+        "handoff/EVIDENCE/m1-browser-2026-11-04-run.txt",
+        "handoff/EVIDENCE/m1-browser-2026-11-04/"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "D-S2",
+      "parent": "M1-D",
+      "owner": "主 Agent（界面由协作 Agent 起草）",
+      "status": "DONE",
+      "depends_on": [
+        "D-S1"
+      ],
+      "evidence": [
+        "handoff/EVIDENCE/m1-browser-2026-11-04-run.txt",
+        "handoff/EVIDENCE/m1-browser-2026-11-04/"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "G-C1",
+      "parent": "M1-REBUILD-01",
+      "owner": "主 Agent",
+      "status": "BLOCKED",
+      "depends_on": [
+        "A-C4",
+        "B-S1",
+        "C-S1",
+        "C-C2",
+        "D-S2"
+      ],
+      "evidence": [
+        "handoff/qa/M1-SYNTHETIC-ACCEPTANCE-2026-11-04.md"
+      ],
+      "external_ref": null
+    }
+  ]
+}

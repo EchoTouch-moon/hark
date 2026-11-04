@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Hark · 合成演示</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" aria-label="项目导航">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span><div><strong>hark</strong><small>YOUR PROJECT COMPANION</small></div></div>
+    <div class="demo-label" id="mode-label"><span class="demo-dot"></span>合成演示 · 模型未配置</div>
+    <p class="side-heading">工作空间</p>
+    <nav aria-label="项目列表" id="navigation"></nav>
+    <div class="side-bottom"><span class="mini-fire" aria-hidden="true">✺</span><div><strong>一处安静的工作空间</strong><p>仅使用预置虚构材料</p></div></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div class="breadcrumbs"><span>工作空间</span><span class="slash">/</span><strong id="breadcrumb">全部项目</strong></div><span class="top-status"><span></span> 合成模式</span></header>
+    <div class="notice" role="note"><span class="notice-symbol">✳</span><span><strong>这是合成演示。</strong> 项目与来源均为虚构。追问仍是固定 Mock；发给模型前会先预览，未确认不会外发。</span></div>
+    <section class="content" id="content" aria-live="polite"></section>
+    <footer><span>HARK / SYNTHETIC DEMO</span><span>预置虚构材料 · Mock 对话</span></footer>
+  </main>
+</div>
+</body>
+</html>

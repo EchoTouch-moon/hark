@@ -1,0 +1,8 @@
+project grants: 0
+project content returned without project grant: true
+hard-linked external synthetic file returned: true
+returned candidate scan throws: fixture discovery candidate identity is immutable
+raw descriptor usable after revocation: true
+database reactivated revoked grant: true
+(node:46192) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

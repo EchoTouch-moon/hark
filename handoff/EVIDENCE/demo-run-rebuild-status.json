@@ -1,0 +1,6 @@
+{
+  "status": "NOT_RUN",
+  "reason": "No rebuilt user-facing product or end-to-end demo is implemented.",
+  "scope": "Synthetic mechanism tests only; no real directory, model, or connector.",
+  "historicalEvidence": "demo-run.json belongs to the previous implementation and is not a rebuild result."
+}

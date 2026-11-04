@@ -3,7 +3,7 @@
   "project": "Hearth",
   "preparedAt": "2026-11-03",
   "timezone": "Asia/Shanghai",
-  "note": "重建入口；旧首夜任务清单归档于 tasks/archive/manifest-initial-2026-10-28.json。全部任务尚未开始，必须遵守 M0→M1→M2 门禁和现行安全合同。",
+  "note": "重建入口；M0 基础合同 Gate 已于 R2 通过；M1 合成只读首批任务进行中，细项唯一状态源见 tasks/m1-work-items.json，分工见 tasks/M1-AGENT-WORK-PACKAGES.md。真实 connector 与执行能力仍受各自安全门禁约束。",
   "tasks": [
     {
       "id": "M0-REBUILD-01",
@@ -12,7 +12,7 @@
       "priority": "P0",
       "deliverables": ["当前核心需求、权限边界与冲突裁决", "M0/M1/M2 验收和门禁映射"],
       "acceptance_tests": ["覆盖目录授权、多项目隔离、非 Git 项目、研究外发许可、暂停撤权和执行审批", "安全合同不得降级"],
-      "status": "TODO"
+      "status": "DONE"
     },
     {
       "id": "M0-REBUILD-02",
@@ -21,16 +21,52 @@
       "priority": "P0",
       "deliverables": ["合成多项目场景", "来源、记忆、反馈和修订合同", "安全反例与验证计划"],
       "acceptance_tests": ["覆盖越权路径、跨项目隔离、缺失来源、撤权与失败恢复", "明确 M0 Gate 的通过证据"],
-      "status": "TODO"
+      "status": "DONE"
+    },
+    {
+      "id": "M1-A",
+      "title": "受控预置合成项目盘点与稳定身份",
+      "depends_on": ["M0-REBUILD-02"],
+      "priority": "P1",
+      "deliverables": ["模拟 Git/非 Git 项目与不确定归属", "预置数据稳定身份及服务端范围隔离"],
+      "acceptance_tests": ["服务不接收路径、不调用旧目录内容读取", "稳定身份、项目隔离与重启通过；旧 A-C3 风险保持未通过"],
+      "status": "DONE"
+    },
+    {
+      "id": "M1-B",
+      "title": "有来源的项目理解与记忆",
+      "depends_on": ["M1-A"],
+      "priority": "P1",
+      "deliverables": ["合成目标、成果、未完成事项及来源", "区分事实、推断和未知"],
+      "acceptance_tests": ["项目隔离、来源失效、重复摄取与重启通过"],
+      "status": "DONE"
+    },
+    {
+      "id": "M1-C",
+      "title": "合成观点、追问与修订",
+      "depends_on": ["M1-B"],
+      "priority": "P1",
+      "deliverables": ["带来源的合成观点和用户反馈", "保留 v1 的可追踪 v2"],
+      "acceptance_tests": ["质疑不自动变成事实；缺证据不伪造", "隔离、重启和重复修订通过"],
+      "status": "DONE"
+    },
+    {
+      "id": "M1-D",
+      "title": "对话式最小体验",
+      "depends_on": ["M1-C"],
+      "priority": "P1",
+      "deliverables": ["炉心标识、合成模式、全局盘点和项目对话", "证据、反馈、版本和错误状态"],
+      "acceptance_tests": ["浏览器完成合成旅程并留证", "项目隔离及服务故障可见"],
+      "status": "DONE"
     },
     {
       "id": "M1-REBUILD-01",
-      "title": "M0 Gate 通过后实现合成数据纵切",
-      "depends_on": ["M0-REBUILD-02"],
+      "title": "验收 M1 合成项目重新发现闭环",
+      "depends_on": ["M1-D"],
       "priority": "P1",
-      "deliverables": ["可中断的授权目录发现和独立项目记忆", "有证据的观点、用户反馈与版本记录", "适用的自动化验证"],
-      "acceptance_tests": ["M0 Gate 有实际通过证据", "合成项目闭环和安全反例通过", "记录 M1 Gate 结果"],
-      "status": "TODO"
+      "deliverables": ["合成项目只读盘点、记忆、观点修订及对话", "适用安全和端到端验证记录"],
+      "acceptance_tests": ["M1-A 至 M1-D 完成且有证据", "按 docs/06 逐项审查 E2E-01～12 与 S01～S12，无法运行或不适用如实记录", "记录 M1 Gate 独立审查结果"],
+      "status": "BLOCKED"
     },
     {
       "id": "M2-REBUILD-01",

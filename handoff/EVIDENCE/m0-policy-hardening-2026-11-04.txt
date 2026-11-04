@@ -1,0 +1,50 @@
+cf29ec2738b21b2d23d7e2dbbba3864218fd10b8
+ M src/action-policy.ts
+ M src/policy.ts
+ M tests/action-policy.test.ts
+ M tests/policy-storage.test.ts
+?? handoff/EVIDENCE/m0-policy-hardening-2026-11-04.txt
+$ tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch
+$ tsc --noEmit -p tsconfig.json
+$ vitest run --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:20358) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20359) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20356) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20354) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20357) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/path-check.test.ts (4 tests) 32ms
+(node:20360) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/policy-storage.test.ts (8 tests) 48ms
+ ✓ tests/fixture-feedback-v2.test.ts (9 tests) 130ms
+ ✓ tests/fixture-chronicle.test.ts (14 tests) 178ms
+ ✓ tests/fixture-decision.test.ts (12 tests) 175ms
+ ✓ tests/fixture-opinion-store.test.ts (16 tests) 265ms
+ ✓ tests/action-policy.test.ts (23 tests) 55ms
+ ✓ tests/digests.test.ts (2 tests) 11ms
+ ✓ tests/contracts-state.test.ts (14 tests) 65ms
+ ✓ tests/domain-contracts.test.ts (9 tests) 21ms
+ ✓ tests/action-registry.test.ts (7 tests) 8ms
+ ✓ tests/event-freshness.test.ts (3 tests) 5ms
+(node:20354) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20354) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-opinion-concurrency.test.ts (1 test) 1541ms
+   ✓ allows exactly one concurrent fixture revision for the same expected version  1540ms
+
+ Test Files  13 passed (13)
+      Tests  122 passed (122)
+   Start at  09:56:43
+   Duration  1.96s (transform 404ms, setup 0ms, collect 1.19s, tests 2.53s, environment 1ms, prepare 1.24s)
+
+$ tsc -p tsconfig.build.json
+Documentation entry links, required references and task ordering: PASS

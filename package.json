@@ -1,0 +1,28 @@
+{
+  "name": "hearth-rebuild",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:native": "node scripts/build-posix-dir.mjs",
+    "pretest": "node scripts/build-posix-dir.mjs",
+    "prebuild": "node scripts/build-posix-dir.mjs",
+    "test": "vitest run --config vitest.config.ts",
+    "demo": "pnpm exec tsc -p tsconfig.build.json && node dist/fixture-server-main.js",
+    "test:e2e": "python3 tests/e2e/m1-synthetic.py",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "zod": "3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "5.7.2",
+    "vitest": "3.2.7"
+  }
+}

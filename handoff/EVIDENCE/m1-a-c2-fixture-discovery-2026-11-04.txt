@@ -1,0 +1,7 @@
+PASS: A-C2 synthetic discovery on macOS (Darwin, Node v22.23.2, pnpm 11.9.0).
+Commands: pnpm lint; pnpm typecheck; pnpm test; pnpm build; python3 .github/check_docs.py
+Results: 15 test files, 133 tests passed; lint/typecheck/build/docs check passed.
+Covered: Git/non-Git fixtures, stable IDs across repeat scan and process restart, nested same-name needs_confirmation, cross-root isolation, symlink/traversal/file-replacement negatives, pause/revoke/cancel, replaced root instance restore failure.
+Adapter: POSIX openat + O_NOFOLLOW compiled from src/native/hearth_posix_dir.c; public results contain no host paths.
+NOT TESTED: Windows directory adapter (returns unavailable by contract), tight concurrent directory-replace races beyond sequential replacement, real user directories, Git execution, models, network, P0 connector Gate.
+This is not M1-A closeout or M1 Gate pass; A-C3 integration review remains.

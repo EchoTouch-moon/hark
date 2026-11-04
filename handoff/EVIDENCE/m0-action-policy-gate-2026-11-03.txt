@@ -1,0 +1,63 @@
+M0 动作参数合同与执行前二次校验 — 本机运行记录
+日期：2026-11-03（Asia/Shanghai）
+基线：2a14f2c（工作区含本次未提交改动）
+环境：macOS 本机，Node >= 22.13，pnpm；未推送、未在 Windows 或远端 CI 运行。
+范围：src/action-policy.ts、src/action-registry.ts、tests/action-policy.test.ts、tests/action-registry.test.ts。
+边界：纯预检，无执行器、无身份认证、无数据库接线；115 项测试通过不代表 M0 Gate 通过。
+
+$ pnpm lint
+$ tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch
+
+$ pnpm typecheck
+$ tsc --noEmit -p tsconfig.json
+
+$ pnpm test
+$ vitest run --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:88947) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88941) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88943) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88944) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88946) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88945) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/policy-storage.test.ts (7 tests) 49ms
+ ✓ tests/fixture-chronicle.test.ts (14 tests) 158ms
+ ✓ tests/fixture-feedback-v2.test.ts (9 tests) 108ms
+ ✓ tests/fixture-decision.test.ts (12 tests) 158ms
+ ✓ tests/fixture-opinion-store.test.ts (16 tests) 199ms
+ ✓ tests/path-check.test.ts (4 tests) 2022ms
+   ✓ path candidate preflight (not file-read authorization) > rejects a symlinked root or a descendant link to either inside or outside  1093ms
+   ✓ path candidate preflight (not file-read authorization) > fails closed for missing or non-directory roots  421ms
+ ✓ tests/contracts-state.test.ts (14 tests) 9ms
+ ✓ tests/domain-contracts.test.ts (9 tests) 11ms
+ ✓ tests/action-policy.test.ts (17 tests) 25ms
+ ✓ tests/digests.test.ts (2 tests) 7ms
+ ✓ tests/action-registry.test.ts (7 tests) 8ms
+ ✓ tests/event-freshness.test.ts (3 tests) 7ms
+(node:88941) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88941) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-opinion-concurrency.test.ts (1 test) 14206ms
+   ✓ allows exactly one concurrent fixture revision for the same expected version  14205ms
+
+ Test Files  13 passed (13)
+      Tests  115 passed (115)
+   Start at  22:51:04
+   Duration  21.81s (transform 1.68s, setup 0ms, collect 11.11s, tests 16.97s, environment 2ms, prepare 37.41s)
+
+
+$ pnpm build
+$ tsc -p tsconfig.build.json
+
+exit: 0
+
+未覆盖：真实文件读取、身份认证、grant 事务占用与并发、执行器、独立 verifier、审计写入、Windows 与远端 CI。

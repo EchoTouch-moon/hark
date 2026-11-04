@@ -1,0 +1,6 @@
+Status: PASS for local build and compiler checks.
+Commands: pnpm lint; pnpm typecheck; pnpm build (2026-11-03, macOS, Node 22).
+Full output: handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt
+lint checks unused locals, unused parameters and switch fallthrough via the
+TypeScript compiler; it is not a comprehensive security/static analysis.
+Node 22 emitted an experimental SQLite warning. Windows/remote CI NOT RUN.

@@ -1,0 +1,15 @@
+$ pnpm exec vitest run tests/synthetic-catalog.test.ts --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+ ✓ tests/synthetic-catalog.test.ts (4 tests) 102ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  12:45:05
+   Duration  475ms (transform 63ms, setup 0ms, collect 35ms, tests 102ms, environment 0ms, prepare 100ms)
+
+exit=0
+$ pnpm typecheck
+$ tsc --noEmit -p tsconfig.json
+exit=0

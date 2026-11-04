@@ -1,0 +1,9 @@
+Status: PASS for the listed local contract tests only; not M0 Gate PASS.
+Working tree based on 54b0c25 with subsequent disabled-registry changes.
+Command: pnpm test (2026-11-03, macOS, Node 22).
+Full output: handoff/EVIDENCE/m0-disabled-action-check-2026-11-03.txt
+Relevant suites: contracts-state (14), domain-contracts (9), digests (2),
+event-freshness (3), action-registry (6).
+Scope: strict structural validation, selected cross-project references,
+synthetic action proposals, event freshness precheck, and hash behavior.
+Not proven: actual source truth, authorized identity, or real action admission.

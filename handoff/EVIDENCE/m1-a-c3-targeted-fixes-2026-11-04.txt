@@ -1,0 +1,72 @@
+Baseline before fixes: descriptor-reuse test returned names from synthetic root B (FAIL as expected).
+Baseline before fixes: project-replacement test returned status available (FAIL as expected).
+
+$ pnpm exec vitest run tests/fixture-descriptor-reuse.test.ts tests/fixture-project-replacement.test.ts tests/fixture-discovery-ac3.test.ts tests/fixture-discovery.test.ts tests/fixture-discovery-scenarios.test.ts --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:22404) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22405) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22403) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22402) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22406) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-descriptor-reuse.test.ts (1 test) 11ms
+ ✓ tests/fixture-project-replacement.test.ts (1 test) 15ms
+ ✓ tests/fixture-discovery-ac3.test.ts (5 tests) 51ms
+ ✓ tests/fixture-discovery-scenarios.test.ts (5 tests) 65ms
+ ✓ tests/fixture-discovery.test.ts (6 tests) 88ms
+
+ Test Files  5 passed (5)
+      Tests  18 passed (18)
+   Start at  14:53:16
+   Duration  552ms (transform 203ms, setup 0ms, collect 584ms, tests 230ms, environment 1ms, prepare 539ms)
+
+exit=0
+
+$ pnpm lint
+$ tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch
+exit=0
+
+$ pnpm typecheck
+$ tsc --noEmit -p tsconfig.json
+exit=0
+
+$ pnpm exec tsc -p tsconfig.build.json
+exit=0
+
+$ node handoff/qa/m1-synthetic-moved-directory.mjs (expected to demonstrate remaining limitation)
+moved synthetic directory still readable by held handle: true
+(node:22525) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+exit=0
+
+$ node handoff/qa/m1-a-c3-repro.mjs
+project grants: 0
+project content returned without project grant: false
+hard-linked external synthetic file returned: false
+returned candidate scan: available
+raw descriptor usable after revocation: false
+database reactivated revoked grant: false
+(node:22924) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+exit=0
+
+$ pnpm exec vitest run tests/fixture-api.test.ts --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:22936) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-api.test.ts (4 tests) 164ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  14:54:36
+   Duration  560ms (transform 100ms, setup 0ms, collect 129ms, tests 164ms, environment 0ms, prepare 54ms)
+
+exit=0

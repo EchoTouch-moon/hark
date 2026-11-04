@@ -14,6 +14,7 @@
 ## 最小权限
 - 只允许 Agent 改当前新仓库及其 `.hearth-demo-artifacts`，拒绝 HOME 广域扫描。
 - 所有真实 connector 默认 off；启用需要数据源白名单/最少 read scopes/操作日志。
+- 用户主动授权的项目文件夹读取权限默认长期有效，直到用户暂停或撤销，重启后保留；不逐文件重复请求授权。历史限时观察授权仍按已有期限处理。此规则不更改有外部副作用的动作审批期限。
 - 任何能执行外部工具的 Hermes 请求必须由 Hearth policy 包装；Hermes 自带批准界面**不是** Hearth 审批替代品，二者都应阻挡危险调用。
 - Demo 数据完全合成、无真实账号、项目 id 虚构；生产模式与 demo 的目录、DB、状态、缓存分离。
 - 不保存密码、access token 到 SQLite/raw logs/github；未来系统密钥库接入需独立安全验收。

@@ -63,6 +63,7 @@ type PanelSpec = {
 ```
 
 ### 不可变原则
+- 项目文件夹的观察授权默认持续有效：持久记录中 `expiresAt: "never"` 表示不按时间过期，用户可暂停、恢复或撤销；旧的 ISO 日期记录保留原期限语义。授权覆盖该文件夹范围内按需读取，不要求逐文件重复授权。动作 `ApprovalGrant` 仍使用其独立的日期期限。
 - `Event.source` 与 `Evidence.sourceRef` 是不可丢失的来源链；`whyNow` 必须可解释，不能只有空洞判断。
 - `idempotencyKey` 稳定绑定 `(actionType, projectId, canonical target, params normalized, sourceVersion)`；同一 key 在 DB 存有唯一结果。
 - `maxSteps/timeoutMs/maxCostUsd` 都是上限，executor 自报次数并由 orchestrator 计数；默认 maxCostUsd=0（无真实模型费用）。
