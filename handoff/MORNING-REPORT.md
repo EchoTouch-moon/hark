@@ -1,5 +1,6 @@
 # 重建交接（2026-11-03）
 
+**2026-11-04 合成观点与反馈**：内部服务支持有来源观点、标注 Mock 的追问、持久质疑与保留 v1 的 v2；双 worker 冲突及局部检查见 `handoff/EVIDENCE/m1-c-c1-dialogue-2026-11-04.txt`。页面及本地 API 仍在接入。
 **2026-11-04 合成盘点投影**：逐项目查询授权与覆盖状态，不拼接未授权项目材料；局部检查见 `handoff/EVIDENCE/m1-c-c2-inventory-2026-11-04.txt`。可信服务端接入尚未完成。
 **2026-11-04 预置理解层**：复用 Chronicle 存储合成目标、成果及待办，授权与来源失效时保守处理；局部证据见 `handoff/EVIDENCE/m1-b-c1-understanding-2026-11-04.txt`。服务、对话、界面集成及实际 M1 验收仍待完成。
 **2026-11-04 静态界面**：`web/index.html` 可打开查看合成外壳；本地预览可用 `python3 -m http.server 18765 --bind 127.0.0.1 --directory web`。它不连接服务、不保存反馈；浏览器复查与静态检查见 `handoff/EVIDENCE/m1-ui-shell-2026-11-04/`，后改来源文字未再次浏览器复验，截图未保存。

@@ -112,12 +112,14 @@
     {
       "id": "C-C1",
       "parent": "M1-C",
-      "owner": null,
-      "status": "TODO",
+      "owner": "主 Agent",
+      "status": "DONE",
       "depends_on": [
         "B-C1"
       ],
-      "evidence": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-c-c1-dialogue-2026-11-04.txt"
+      ],
       "external_ref": null
     },
     {
@@ -136,12 +138,14 @@
     {
       "id": "C-S1",
       "parent": "M1-C",
-      "owner": null,
-      "status": "TODO",
+      "owner": "协作 Agent（接口可用后）",
+      "status": "DONE",
       "depends_on": [
         "C-C1"
       ],
-      "evidence": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-c-c1-dialogue-2026-11-04.txt"
+      ],
       "external_ref": null
     },
     {
@@ -174,8 +178,8 @@
     {
       "id": "D-C1",
       "parent": "M1-D",
-      "owner": null,
-      "status": "TODO",
+      "owner": "主 Agent",
+      "status": "IN_PROGRESS",
       "depends_on": [
         "C-C1",
         "C-C2"
@@ -186,8 +190,8 @@
     {
       "id": "D-S1",
       "parent": "M1-D",
-      "owner": null,
-      "status": "TODO",
+      "owner": "协作 Agent（接口冻结后接入）",
+      "status": "IN_PROGRESS",
       "depends_on": [
         "D-S0",
         "D-C1"

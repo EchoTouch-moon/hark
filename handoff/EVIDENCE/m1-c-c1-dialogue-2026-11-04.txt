@@ -1,0 +1,28 @@
+$ pnpm exec vitest run tests/fixture-dialogue-scenarios.test.ts --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:63930) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63930) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | tests/fixture-dialogue-scenarios.test.ts > keeps one v2 and records both feedback items when two workers challenge the same v1
+Synthetic worker results: [{"type":"result","kind":"success","actor":"first","version":2},{"type":"result","kind":"failure","actor":"second","message":"Revision conflict"}]
+
+(node:63930) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-dialogue-scenarios.test.ts (5 tests) 1345ms
+   ✓ keeps one v2 and records both feedback items when two workers challenge the same v1  1294ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  12:55:05
+   Duration  1.73s (transform 83ms, setup 0ms, collect 106ms, tests 1.34s, environment 0ms, prepare 50ms)
+
+exit=0
+$ pnpm lint
+$ tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch
+exit=0
+$ pnpm typecheck
+$ tsc --noEmit -p tsconfig.json
+exit=0
