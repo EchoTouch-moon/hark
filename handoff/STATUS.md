@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- **2026-11-04 文件夹授权改为长期有效**：用户确认文件夹只需授权一次；观察授权支持 `never`，演示新授权默认不超时，旧演示默认值在盘点时升级但不恢复暂停/撤权。合成数据全量 164 测试、lint/typecheck/build 和浏览器 E2E 通过，见 `handoff/EVIDENCE/persistent-folder-grant-2026-11-04.txt`。真实项目入口尚未实现。
 - **2026-11-04 A-C3 定向修复、真实接入仍受阻**：旧句柄复用及打开前目录替换的具体合成复现已修复，18 项定向测试、lint/typecheck/构建通过；底层句柄在打开后被移出根仍能读取，故 A-C3/P0 未通过，真实 connector 未启用。见 `handoff/qa/M1-A-C3-TARGETED-FIX-2026-11-04.md`。
 - **2026-11-04 合成产品闭环本机可用**：`pnpm demo` 启动 `http://127.0.0.1:4173/`；隔离浏览器完成 M1-R01～R06，含持久 Mock 追问与反馈、重启、权限和故障，见 `handoff/qa/M1-SYNTHETIC-ACCEPTANCE-2026-11-04.md`。158 项测试、lint/typecheck/build 通过；Gate 独立复审未完成，M1→M2 未通过。
 - **2026-11-04 D-C1**：本地合成 API 已实现；固定项目 scope、会话/Origin/CSRF、项目状态、反馈及独立数据库重启等 3 项局部集成测试、lint/typecheck 通过，见 `handoff/EVIDENCE/m1-d-c1-api-2026-11-04.txt`。服务未接入旧目录读取；浏览器产品闭环待联调。

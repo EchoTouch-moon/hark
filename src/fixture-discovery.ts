@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import { closeDescriptor, identitiesEqual, listDirectory, openChild, openRootDirectory, posixDirAdapterAvailable, readOpened, type DirHandle, type DirIdentity } from './posix-dir-handle.js';
 import { checkStoredObservation } from './storage.js';
+import { ObservationExpiry } from './contracts.js';
 
 export const FIXTURE_ROOT_OWNER = 'hearth.fixture.internal';
 export const DiscoveryStatus = z.enum(['available', 'needs_confirmation', 'unavailable', 'cancelled']);
@@ -100,7 +101,7 @@ export function checkFixtureRootAccess(db: DatabaseSync, rootId: string, rootEpo
   const row = rootRow(db, rootId, rootEpoch);
   if (!row || row.owner !== FIXTURE_ROOT_OWNER) return { allowed: false, reason: 'unavailable' };
   if (row.revoked_at !== null || row.enabled !== 1) return { allowed: false, reason: 'unavailable' };
-  if (Date.parse(row.expires_at) <= nowMs) return { allowed: false, reason: 'unavailable' };
+  if (!ObservationExpiry.safeParse(row.expires_at).success || (row.expires_at !== 'never' && Date.parse(row.expires_at) <= nowMs)) return { allowed: false, reason: 'unavailable' };
   if (row.paused === 1 && (operation === 'enumerate' || operation === 'read' || operation === 'restore')) return { allowed: false, reason: 'unavailable' };
   if (handle) {
     if (!handle.alive) return { allowed: false, reason: handle.cancelled ? 'cancelled' : 'unavailable' };
@@ -118,7 +119,7 @@ export function beginSyntheticRoot(): { setupPath: string; commit: (db: Database
     commit(db, now, expiresAt) {
       const nowMs = clock(now);
       if (typeof nowMs !== 'number') return { status: 'unavailable', reason: 'invalid_clock' };
-      if (!DateTime.safeParse(expiresAt).success || Date.parse(expiresAt) <= nowMs) return { status: 'unavailable', reason: 'unavailable' };
+      if (!ObservationExpiry.safeParse(expiresAt).success || (expiresAt !== 'never' && Date.parse(expiresAt) <= nowMs)) return { status: 'unavailable', reason: 'unavailable' };
       if (!posixDirAdapterAvailable()) return { status: 'unavailable', reason: 'adapter_unavailable' };
       if (!isManagedFixturePath(setupPath)) return { status: 'unavailable', reason: 'invalid_path' };
       const opened = openRootDirectory(setupPath);
@@ -296,7 +297,7 @@ function pathBelongsToCandidate(relativePath: string, components: string[]): boo
 
 export function issueSyntheticProjectRead(db: DatabaseSync, handle: FixtureRootHandle, candidateId: unknown, now: Date, expiresAt: string): { status: 'available'; scope: ProjectReadScope } | { status: 'unavailable'; reason: string } {
   const parsedId = Id.safeParse(candidateId);
-  if (!parsedId.success || !DateTime.safeParse(expiresAt).success) return { status: 'unavailable', reason: 'unavailable' };
+  if (!parsedId.success || !ObservationExpiry.safeParse(expiresAt).success) return { status: 'unavailable', reason: 'unavailable' };
   if (handle.cancelled || !handle.alive) return { status: 'unavailable', reason: 'cancelled' };
   return transaction(db, () => {
     const access = checkFixtureRootAccess(db, handle.rootId, handle.rootEpoch, 'read', now, handle);

@@ -59,6 +59,7 @@ describe('local synthetic service', () => {
       const seeded = await (await s.post('/api/inventory', {})).json() as Inventory;
       expect(seeded.projects.map(x => x.id)).toEqual(['project-a', 'project-b']);
       expect(seeded.projects.every(x => x.coverage === 'available')).toBe(true);
+      expect(db.prepare("SELECT expires_at FROM observation_grants WHERE id='grant-project-a'").get()?.expires_at).toBe('never');
       const before = db.prepare('SELECT total_changes() AS n').get()?.n;
       const a = await (await s.get('/api/projects/project-a')).json() as { current: { revision: { version: number } }; understanding: { todo: { text: string } } };
       expect(a.current.revision.version).toBe(1); expect(a.understanding.todo.text).toContain('主题筛选');
@@ -129,6 +130,18 @@ describe('local synthetic service', () => {
       db.prepare('INSERT INTO feedback(id,project_id,data_json) VALUES (?,?,?)').run('m1-question-invalid', 'project-a', '{');
       expect((await s.get('/api/projects/project-a')).status).toBe(403);
       expect((await s.get('/api/projects/project-b')).status).toBe(200);
+    } finally { db.close(); }
+  });
+  it('upgrades old demo defaults without reactivating paused or revoked projects', async () => {
+    const db = openDatabase(':memory:');
+    try {
+      const s = await start(db); expect((await s.post('/api/inventory', {})).status).toBe(200);
+      db.exec("UPDATE observation_grants SET expires_at='2099-01-01T00:00:00.000Z', paused=1 WHERE id='grant-project-a'; UPDATE observation_grants SET expires_at='2099-01-01T00:00:00.000Z', enabled=0, revoked_at='2026-11-04T00:00:00Z' WHERE id='grant-project-b'");
+      expect((await s.post('/api/inventory', {})).status).toBe(200);
+      const a = db.prepare("SELECT expires_at,paused,enabled,revoked_at FROM observation_grants WHERE id='grant-project-a'").get();
+      const b = db.prepare("SELECT expires_at,paused,enabled,revoked_at FROM observation_grants WHERE id='grant-project-b'").get();
+      expect(a).toMatchObject({ expires_at: 'never', paused: 1, enabled: 1, revoked_at: null });
+      expect(b).toMatchObject({ expires_at: 'never', enabled: 0, revoked_at: '2026-11-04T00:00:00Z' });
     } finally { db.close(); }
   });
 });

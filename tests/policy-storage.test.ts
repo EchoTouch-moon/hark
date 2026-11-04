@@ -23,6 +23,13 @@ describe('fail-closed admission', () => {
   it('fails closed when the clock is unusable', () => {
     expect(evaluateAdmission(request, grant, new Date('invalid'))).toEqual({ allowed: false, reason: 'invalid_clock' });
   });
+  it('keeps a persistent folder grant until it is paused or revoked', () => {
+    const persistent = { ...grant, expiresAt: 'never' };
+    expect(evaluateAdmission(request, persistent, new Date('2300-01-01T00:00:00Z'))).toEqual({ allowed: true });
+    expect(evaluateAdmission(request, { ...persistent, paused: true }).allowed).toBe(false);
+    expect(evaluateAdmission(request, { ...persistent, revokedAt: '2026-11-03T00:00:00Z' }).allowed).toBe(false);
+    expect(evaluateAdmission(request, { ...persistent, expiresAt: 'invalid' }).allowed).toBe(false);
+  });
 });
 
 describe('database migration and integrity', () => {
@@ -86,6 +93,15 @@ describe('database migration and integrity', () => {
     expect(checkStoredObservation(db, 'g', request).allowed).toBe(false);
     expect(checkStoredObservation(db, 'unknown', request).allowed).toBe(false);
     db.close();
+  });
+  it('preserves a non-expiring folder grant across database restarts without restoring a revocation', () => {
+    const path = database(); let db = openDatabase(path);
+    db.exec("INSERT INTO projects VALUES ('A','A',''); INSERT INTO observation_grants VALUES ('g','user','A','root',1,0,'never',NULL)");
+    db.close(); db = openDatabase(path);
+    expect(checkStoredObservation(db, 'g', request, new Date('2300-01-01T00:00:00Z')).allowed).toBe(true);
+    db.exec("UPDATE observation_grants SET revoked_at='2026-11-03T00:00:00Z' WHERE id='g'");
+    db.close(); db = openDatabase(path);
+    expect(checkStoredObservation(db, 'g', request).allowed).toBe(false); db.close();
   });
   it('preserves an interrupted run as uncertain across recovery without replaying it', () => {
     const dbPath = database();

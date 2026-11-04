@@ -31,4 +31,6 @@ export const TaskRun = z.object({ id, cardId: id, actionId: id, idempotencyKey: 
 export const PanelSpec = z.object({ id, kind: z.enum(['metric', 'list', 'timeline', 'activity']), projectId: id.optional(), dataQueryId: id, refreshSeconds: z.number().int().positive(), components: z.array(z.object({ type: z.enum(['text', 'metric', 'list', 'status', 'link']), field: id, label: text.optional() }).strict()) }).strict();
 
 // Observation grants do not confer research, network or execution permission.
-export const ObservationGrant = z.object({ id, principalId: id, projectId: id, rootId: id, enabled: z.boolean(), paused: z.boolean(), expiresAt: date, revokedAt: date.nullable() }).strict();
+// 'never' represents a lasting folder authorization; dated legacy records remain readable.
+export const ObservationExpiry = z.union([date, z.literal('never')]);
+export const ObservationGrant = z.object({ id, principalId: id, projectId: id, rootId: id, enabled: z.boolean(), paused: z.boolean(), expiresAt: ObservationExpiry, revokedAt: date.nullable() }).strict();

@@ -1,0 +1,104 @@
+Before implementation, new persistent-grant cases failed because a date was required and the demo used 2099.
+
+$ pnpm lint
+$ tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch
+exit=0
+
+$ pnpm typecheck
+$ tsc --noEmit -p tsconfig.json
+exit=0
+
+$ pnpm test
+$ node scripts/build-posix-dir.mjs
+$ vitest run --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:26363) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26366) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26365) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26369) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26364) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26368) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/synthetic-catalog.test.ts (4 tests) 127ms
+ ✓ tests/fixture-chronicle.test.ts (14 tests) 197ms
+ ✓ tests/fixture-decision.test.ts (12 tests) 167ms
+ ✓ tests/fixture-opinion-store.test.ts (16 tests) 254ms
+ ✓ tests/fixture-api.test.ts (5 tests) 404ms
+(node:26398) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26400) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26401) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-understanding.test.ts (5 tests) 50ms
+ ✓ tests/fixture-feedback-v2.test.ts (9 tests) 88ms
+ ✓ tests/action-policy.test.ts (23 tests) 55ms
+(node:26407) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26409) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26410) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/path-check.test.ts (4 tests) 26ms
+ ✓ tests/policy-storage.test.ts (10 tests) 54ms
+(node:26417) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-discovery-ac3.test.ts (5 tests) 44ms
+ ✓ tests/fixture-discovery-scenarios.test.ts (5 tests) 47ms
+ ✓ tests/fixture-discovery.test.ts (6 tests) 747ms
+   ✓ synthetic discovery adapter availability > loads a prebuilt posix openat adapter and keeps Windows fail-closed  682ms
+ ✓ tests/domain-contracts.test.ts (9 tests) 36ms
+ ✓ tests/fixture-global-inventory.test.ts (2 tests) 44ms
+(node:26421) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26424) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26423) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-project-replacement.test.ts (1 test) 15ms
+ ✓ tests/contracts-state.test.ts (14 tests) 18ms
+ ✓ tests/fixture-descriptor-reuse.test.ts (1 test) 13ms
+ ✓ tests/fixture-persistent-grant.test.ts (1 test) 22ms
+ ✓ tests/digests.test.ts (2 tests) 26ms
+ ✓ tests/event-freshness.test.ts (3 tests) 12ms
+ ✓ tests/action-registry.test.ts (7 tests) 10ms
+(node:26364) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26364) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-opinion-concurrency.test.ts (1 test) 2867ms
+   ✓ allows exactly one concurrent fixture revision for the same expected version  2866ms
+(node:26363) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | tests/fixture-dialogue-scenarios.test.ts > keeps one v2 and records both feedback items when two workers challenge the same v1
+Synthetic worker results: [{"type":"result","kind":"failure","actor":"first","message":"Revision conflict"},{"type":"result","kind":"success","actor":"second","version":2}]
+
+(node:26363) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-dialogue-scenarios.test.ts (5 tests) 2905ms
+   ✓ keeps one v2 and records both feedback items when two workers challenge the same v1  2798ms
+
+ Test Files  24 passed (24)
+      Tests  164 passed (164)
+   Start at  15:05:41
+   Duration  3.36s (transform 758ms, setup 0ms, collect 3.31s, tests 8.23s, environment 4ms, prepare 1.95s)
+
+exit=0
+
+$ pnpm build
+$ node scripts/build-posix-dir.mjs
+$ tsc -p tsconfig.build.json
+exit=0
+
+$ pnpm test:e2e
+$ python3 tests/e2e/m1-synthetic.py
+PASS M1-R01 through R06: isolated synthetic browser journey; restart, revocation and failure observed
+PASS layouts: 1280x800 and 1440x800; screenshots saved in handoff/EVIDENCE/m1-browser-2026-11-04
+exit=0

@@ -11,6 +11,7 @@ import { readFixtureOpinion } from './fixture-opinion-store.js';
 import { ingestSyntheticUnderstanding, readSyntheticUnderstanding } from './fixture-understanding.js';
 import { listSyntheticCatalog } from './synthetic-catalog.js';
 import { checkStoredObservation } from './storage.js';
+import { ObservationExpiry } from './contracts.js';
 
 const ProjectId = z.enum(['project-a', 'project-b']);
 type ProjectId = z.infer<typeof ProjectId>;
@@ -36,7 +37,7 @@ function state(db: DatabaseSync, id: ProjectId): AccessState {
   const row = db.prepare('SELECT principal_id, project_id, root_id, enabled, paused, expires_at, revoked_at FROM observation_grants WHERE id=?').get(scope.grantId);
   if (!row || row.principal_id !== scope.principalId || row.project_id !== id || row.root_id !== scope.rootId) return 'unavailable';
   if (row.revoked_at !== null) return 'revoked';
-  if (row.enabled !== 1 || typeof row.expires_at !== 'string' || !Number.isFinite(Date.parse(row.expires_at)) || Date.parse(row.expires_at) <= Date.now()) return 'unavailable';
+  if (row.enabled !== 1 || typeof row.expires_at !== 'string' || !ObservationExpiry.safeParse(row.expires_at).success || (row.expires_at !== 'never' && Date.parse(row.expires_at) <= Date.now())) return 'unavailable';
   if (row.paused === 1) return 'paused';
   return checkStoredObservation(db, scope.grantId, { principalId: scope.principalId, projectId: scope.projectId, rootId: scope.rootId, operation: 'observe' }).allowed ? 'active' : 'unavailable';
 }
@@ -54,11 +55,14 @@ function initialize(db: DatabaseSync): string[] {
       for (const project of catalog.projects) {
         const scope = scopeFor(project.id);
         db.prepare('INSERT INTO projects(id,name,description) VALUES (?,?,?)').run(project.id, project.title, 'synthetic');
-        db.prepare('INSERT INTO observation_grants VALUES (?,?,?,?,1,0,?,NULL)').run(scope.grantId, scope.principalId, scope.projectId, scope.rootId, '2099-01-01T00:00:00.000Z');
+        db.prepare('INSERT INTO observation_grants VALUES (?,?,?,?,1,0,?,NULL)').run(scope.grantId, scope.principalId, scope.projectId, scope.rootId, 'never');
         db.prepare('INSERT INTO fixture_project_profiles VALUES (?, ?, ?)').run(project.id, 'active', '2026-11-04T00:00:00.000Z');
       }
       db.prepare('INSERT INTO settings(key,value) VALUES (?,?)').run(marker, '1');
     } else if (existing.value !== '1') throw new Error('Fixture unavailable');
+    // Upgrade only the two previously issued demo defaults; never re-enable a paused or revoked grant.
+    for (const scope of scopes) db.prepare("UPDATE observation_grants SET expires_at='never' WHERE id=? AND principal_id=? AND project_id=? AND root_id=? AND expires_at='2099-01-01T00:00:00.000Z'")
+      .run(scope.grantId, scope.principalId, scope.projectId, scope.rootId);
     db.exec('COMMIT');
   } catch (error) { db.exec('ROLLBACK'); throw error; }
   const errors: string[] = [];

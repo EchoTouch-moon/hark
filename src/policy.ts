@@ -15,7 +15,7 @@ export function evaluateAdmission(rawRequest: unknown, rawGrant: unknown, now: D
   if (!grant.data.enabled || grant.data.paused || grant.data.revokedAt !== null) return { allowed: false, reason: 'grant_inactive' };
   const nowMs = now.getTime();
   if (!Number.isFinite(nowMs)) return { allowed: false, reason: 'invalid_clock' };
-  if (Date.parse(grant.data.expiresAt) <= nowMs) return { allowed: false, reason: 'grant_expired' };
+  if (grant.data.expiresAt !== 'never' && Date.parse(grant.data.expiresAt) <= nowMs) return { allowed: false, reason: 'grant_expired' };
   if (grant.data.principalId !== parsed.data.principalId || grant.data.projectId !== parsed.data.projectId || grant.data.rootId !== parsed.data.rootId) return { allowed: false, reason: 'scope_mismatch' };
   return { allowed: true };
 }
