@@ -1,5 +1,7 @@
 # 重建交接（2026-11-03）
 
+**2026-11-04 A-C2/A-S2**：合成发现与用户可见场景测试已在 macOS 跑通，133 项测试、lint、类型检查、构建见 `handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt`。下一步是 A-C3 集成审查；不要把此项当成 M1-A 或 M1 Gate 通过。Windows 适配器仍为 `unavailable`。
+
 **M1 分工细化并启动首批工作**：`tasks/M1-AGENT-WORK-PACKAGES.md` 为不同 LLM 划分核心与辅助任务；`tasks/m1-work-items.json` 是细项状态源。合成样本 A-S1 已审查，见 `handoff/EVIDENCE/m1-a-synthetic-fixtures-2026-11-04.txt`；发现合同 A-C1 已复审，见 `handoff/qa/M1-A-DISCOVERY-CONTRACT-2026-11-04.md`；实际发现和安全读取尚未实现。
 
 **2026-11-04 方向调整**：M1 优先合成只读项目发现、项目记忆、观点修订及对话体验；A～D 拆分和验收见 `tasks/M1-REDISCOVERY-2026-11-04.md`。执行链安全条件在接入执行能力前完成；真实 connector 的 P0 Gate 未通过。

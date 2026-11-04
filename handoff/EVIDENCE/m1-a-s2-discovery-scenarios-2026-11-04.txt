@@ -1,0 +1,7 @@
+PASS: A-S2 user-visible discovery scenarios on macOS (Darwin, Node v22.23.2).
+Command: pnpm test -- tests/fixture-discovery-scenarios.test.ts
+File: tests/fixture-discovery-scenarios.test.ts (5 tests) passed as part of the 133-test suite in m1-a-c2-fixture-discovery-2026-11-04.txt.
+Covered: empty registered root returns available with no candidates; unassigned and same-name nested paths stay needs_confirmation; repeat scans keep candidate IDs; pause hides inventory and resume restores the same IDs; adapter absence does not invent a successful inventory.
+Did not mock authorization or path reads.
+NOT TESTED: Windows live discovery (adapter unavailable), browser UI, real projects.
+Auxiliary delivery; A-C3 must review before M1-A is closed.

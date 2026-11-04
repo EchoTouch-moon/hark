@@ -85,7 +85,37 @@ const migrations = [
    );
    CREATE TRIGGER fixture_feedback_version_no_update BEFORE UPDATE ON fixture_feedback_versions BEGIN SELECT RAISE(ABORT,'fixture feedback versions are append-only'); END;
    CREATE TRIGGER fixture_feedback_version_no_delete BEFORE DELETE ON fixture_feedback_versions BEGIN SELECT RAISE(ABORT,'fixture feedback versions are append-only'); END;`,
+  `CREATE TABLE fixture_roots (
+     root_id TEXT NOT NULL, root_epoch INTEGER NOT NULL CHECK(root_epoch > 0),
+     owner TEXT NOT NULL CHECK(owner = 'hearth.fixture.internal'),
+     binding_dev TEXT NOT NULL, binding_ino TEXT NOT NULL, locator TEXT NOT NULL,
+     enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), paused INTEGER NOT NULL CHECK(paused IN (0,1)),
+     expires_at TEXT NOT NULL, revoked_at TEXT, record_version INTEGER NOT NULL CHECK(record_version > 0),
+     PRIMARY KEY(root_id, root_epoch)
+   );
+   CREATE TABLE fixture_discovery_candidates (
+     candidate_id TEXT PRIMARY KEY, root_id TEXT NOT NULL, root_epoch INTEGER NOT NULL,
+     relative_path TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('git_marker','non_git','unknown')),
+     attribution TEXT NOT NULL CHECK(attribution IN ('confirmed','needs_confirmation')),
+     inspected_at TEXT NOT NULL, binding_dev TEXT NOT NULL, binding_ino TEXT NOT NULL,
+     status TEXT NOT NULL CHECK(status IN ('active','invalid')),
+     UNIQUE(root_id, root_epoch, relative_path, binding_dev, binding_ino),
+     FOREIGN KEY(root_id, root_epoch) REFERENCES fixture_roots(root_id, root_epoch)
+   );
+   CREATE TRIGGER fixture_roots_no_delete BEFORE DELETE ON fixture_roots BEGIN SELECT RAISE(ABORT,'fixture roots are append-only'); END;
+   CREATE TRIGGER fixture_roots_identity_immutable BEFORE UPDATE ON fixture_roots
+   WHEN NEW.root_id IS NOT OLD.root_id OR NEW.root_epoch IS NOT OLD.root_epoch OR NEW.owner IS NOT OLD.owner
+     OR NEW.binding_dev IS NOT OLD.binding_dev OR NEW.binding_ino IS NOT OLD.binding_ino OR NEW.locator IS NOT OLD.locator
+   BEGIN SELECT RAISE(ABORT,'fixture root identity is immutable'); END;
+   CREATE TRIGGER fixture_candidates_no_delete BEFORE DELETE ON fixture_discovery_candidates BEGIN SELECT RAISE(ABORT,'fixture discovery candidates are append-only'); END;
+   CREATE TRIGGER fixture_candidates_identity_immutable BEFORE UPDATE ON fixture_discovery_candidates
+   WHEN NEW.candidate_id IS NOT OLD.candidate_id OR NEW.root_id IS NOT OLD.root_id OR NEW.root_epoch IS NOT OLD.root_epoch
+     OR NEW.relative_path IS NOT OLD.relative_path OR NEW.binding_dev IS NOT OLD.binding_dev OR NEW.binding_ino IS NOT OLD.binding_ino
+     OR OLD.status = 'invalid'
+   BEGIN SELECT RAISE(ABORT,'fixture discovery candidate identity is immutable'); END;`,
 ] as const;
+
+export const SCHEMA_VERSION = migrations.length;
 
 export function openDatabase(path: string): DatabaseSync {
   const db = new DatabaseSync(path);

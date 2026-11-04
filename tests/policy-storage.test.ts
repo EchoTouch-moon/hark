@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { evaluateAdmission } from '../src/policy.js';
-import { checkStoredObservation, migrate, openDatabase, recoverInterruptedRun, transitionRun } from '../src/storage.js';
+import { checkStoredObservation, migrate, openDatabase, recoverInterruptedRun, SCHEMA_VERSION, transitionRun } from '../src/storage.js';
 
 const grant = { id: 'g', principalId: 'user', projectId: 'A', rootId: 'root', enabled: true, paused: false, expiresAt: '2099-01-01T00:00:00Z', revokedAt: null };
 const request = { principalId: 'user', projectId: 'A', rootId: 'root', operation: 'observe' };
@@ -33,7 +33,7 @@ describe('database migration and integrity', () => {
     const path = database();
     let db = openDatabase(path);
     migrate(db);
-    expect(db.prepare('SELECT version FROM schema_migrations').all()).toHaveLength(5);
+    expect(db.prepare('SELECT version FROM schema_migrations').all()).toHaveLength(SCHEMA_VERSION);
     expect(db.prepare('PRAGMA foreign_keys').get()?.foreign_keys).toBe(1);
     expect(db.prepare('PRAGMA journal_mode').get()?.journal_mode).toBe('wal');
     expect(() => db.prepare("INSERT INTO sources VALUES ('s','missing','fixture','fixture',1)").run()).toThrow();
@@ -59,9 +59,9 @@ describe('database migration and integrity', () => {
   it('fails closed on an unknown migration and preserves database state', () => {
     const path = database();
     const db = openDatabase(path);
-    db.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run(6, 'future');
+    db.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run(SCHEMA_VERSION + 1, 'future');
     expect(() => migrate(db)).toThrow('Unknown or non-contiguous');
-    expect(db.prepare('SELECT version FROM schema_migrations').all()).toHaveLength(6);
+    expect(db.prepare('SELECT version FROM schema_migrations').all()).toHaveLength(SCHEMA_VERSION + 1);
     db.close();
     expect(() => openDatabase(path)).toThrow('Unknown or non-contiguous');
   });
