@@ -91,7 +91,7 @@ static napi_value OpenAt(napi_env env, napi_callback_info info) {
 
 static napi_value FstatFd(napi_env env, napi_callback_info info) {
   size_t argc = 1;
-  napi_value args[1], obj, ok, dev, ino, mode, size;
+  napi_value args[1], obj, ok, dev, ino, mode, size, nlink;
   int32_t fd = -1;
   struct stat st;
   napi_get_cb_info(env, info, &argc, args, NULL, NULL);
@@ -108,11 +108,13 @@ static napi_value FstatFd(napi_env env, napi_callback_info info) {
   napi_create_bigint_uint64(env, (uint64_t)st.st_ino, &ino);
   napi_create_uint32(env, (uint32_t)st.st_mode, &mode);
   napi_create_bigint_uint64(env, (uint64_t)st.st_size, &size);
+  napi_create_bigint_uint64(env, (uint64_t)st.st_nlink, &nlink);
   napi_set_named_property(env, obj, "ok", ok);
   napi_set_named_property(env, obj, "dev", dev);
   napi_set_named_property(env, obj, "ino", ino);
   napi_set_named_property(env, obj, "mode", mode);
   napi_set_named_property(env, obj, "size", size);
+  napi_set_named_property(env, obj, "nlink", nlink);
   return obj;
 }
 

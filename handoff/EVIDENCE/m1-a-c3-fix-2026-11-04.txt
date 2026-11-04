@@ -1,0 +1,6 @@
+PASS: A-C3 defect fixes on macOS (Darwin, Node v22.23.2).
+Commands: pnpm lint; pnpm typecheck; pnpm test; pnpm build; python3 .github/check_docs.py; pnpm build && node handoff/qa/m1-a-c3-repro.mjs
+Results: 16 test files, 138 tests passed; lint/typecheck/build/docs check passed; repro exit 0.
+Assertions: no project grant => content unavailable; hard-linked outside inode rejected; revoke closes descriptors and SQL cannot re-enable; moved-out then restored candidate keeps the same id without throwing; native adapter loads from repo build/ and source no longer calls execFileSync or tmpdir caches.
+NOT TESTED: independent A-C3 re-review, Windows adapter, tight concurrent replace races, real directories, P0 Gate.
+This does not close M1-A or mark A-C3 DONE.

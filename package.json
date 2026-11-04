@@ -9,6 +9,9 @@
   "scripts": {
     "lint": "tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:native": "node scripts/build-posix-dir.mjs",
+    "pretest": "node scripts/build-posix-dir.mjs",
+    "prebuild": "node scripts/build-posix-dir.mjs",
     "test": "vitest run --config vitest.config.ts",
     "build": "tsc -p tsconfig.build.json"
   },

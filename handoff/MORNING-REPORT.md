@@ -1,6 +1,6 @@
 # 重建交接（2026-11-03）
 
-**2026-11-04 A-C3 未通过**：现有 133 项测试和构建通过，但独立审查与纯合成定向复现发现多项权限、读取和恢复问题；见 `handoff/qa/M1-A-C3-REVIEW-2026-11-04.md`。A-C3 标记 BLOCKED，M1-A 不关闭，修复并复审前不进入 B-C1/B-S1。
+**2026-11-04 A-C3 修复待复审**：首轮审查五项缺陷已在实现和 `tests/fixture-discovery-ac3.test.ts` 中处理，138 项测试与复现脚本 exit 0，见 `handoff/EVIDENCE/m1-a-c3-fix-2026-11-04.txt`。A-C3 未勾选，M1-A 不关闭，复审前不进入 B-C1/B-S1。
 
 **2026-11-04 A-C2/A-S2**：合成发现与用户可见场景测试已在 macOS 跑通，133 项测试、lint、类型检查、构建见 `handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt`。后续 A-C3 发现问题，结果见上；Windows 适配器仍为 `unavailable`。
 

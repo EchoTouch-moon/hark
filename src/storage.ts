@@ -113,6 +113,19 @@ const migrations = [
      OR NEW.relative_path IS NOT OLD.relative_path OR NEW.binding_dev IS NOT OLD.binding_dev OR NEW.binding_ino IS NOT OLD.binding_ino
      OR OLD.status = 'invalid'
    BEGIN SELECT RAISE(ABORT,'fixture discovery candidate identity is immutable'); END;`,
+  `DROP TRIGGER fixture_candidates_identity_immutable;
+   CREATE TRIGGER fixture_candidates_identity_immutable BEFORE UPDATE ON fixture_discovery_candidates
+   WHEN NEW.candidate_id IS NOT OLD.candidate_id OR NEW.root_id IS NOT OLD.root_id OR NEW.root_epoch IS NOT OLD.root_epoch
+     OR NEW.relative_path IS NOT OLD.relative_path OR NEW.binding_dev IS NOT OLD.binding_dev OR NEW.binding_ino IS NOT OLD.binding_ino
+   BEGIN SELECT RAISE(ABORT,'fixture discovery candidate identity is immutable'); END;
+   CREATE TRIGGER fixture_roots_revoke_irreversible BEFORE UPDATE ON fixture_roots
+   WHEN OLD.revoked_at IS NOT NULL AND (NEW.revoked_at IS NULL OR NEW.enabled = 1)
+   BEGIN SELECT RAISE(ABORT,'fixture root revocation is irreversible'); END;
+   CREATE TABLE fixture_candidate_grants (
+     candidate_id TEXT PRIMARY KEY REFERENCES fixture_discovery_candidates(candidate_id),
+     project_id TEXT NOT NULL, grant_id TEXT NOT NULL, root_id TEXT NOT NULL,
+     FOREIGN KEY(grant_id, project_id, root_id) REFERENCES observation_grants(id, project_id, root_id)
+   );`,
 ] as const;
 
 export const SCHEMA_VERSION = migrations.length;

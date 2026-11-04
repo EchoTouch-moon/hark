@@ -5,6 +5,7 @@ import { isAbsolute, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import { closeDescriptor, identitiesEqual, listDirectory, openChild, openRootDirectory, posixDirAdapterAvailable, readOpened, type DirIdentity } from './posix-dir-handle.js';
+import { checkStoredObservation } from './storage.js';
 
 export const FIXTURE_ROOT_OWNER = 'hearth.fixture.internal';
 export const DiscoveryStatus = z.enum(['available', 'needs_confirmation', 'unavailable', 'cancelled']);
@@ -19,6 +20,10 @@ export const DiscoveryCandidate = z.object({
   attribution: z.enum(['confirmed', 'needs_confirmation']), inspectedAt: DateTime, synthetic: z.literal(true),
 }).strict();
 export type DiscoveryCandidate = z.infer<typeof DiscoveryCandidate>;
+export const ProjectReadScope = z.object({
+  principalId: Id, projectId: Id, grantId: Id, rootId: Id, candidateId: Id,
+}).strict();
+export type ProjectReadScope = z.infer<typeof ProjectReadScope>;
 export type DiscoveryResult =
   | { status: 'available' | 'needs_confirmation'; candidates: DiscoveryCandidate[] }
   | { status: 'unavailable' | 'cancelled'; reason: string };
@@ -26,6 +31,7 @@ export type RootAccess = { allowed: true } | { allowed: false; reason: string };
 export type RootSession = { status: 'available'; rootId: string; rootEpoch: number; handle: FixtureRootHandle } | { status: 'unavailable'; reason: string };
 type RootOperation = 'enumerate' | 'read' | 'restore' | 'pause' | 'resume' | 'revoke';
 const MAX_DEPTH = 3, MAX_READ = 65536, MAX_CANDIDATES = 32;
+const liveHandles = new Set<FixtureRootHandle>();
 
 export class FixtureRootHandle {
   readonly #fd: number;
@@ -36,13 +42,25 @@ export class FixtureRootHandle {
   #cancelled = false;
   constructor(rootId: string, rootEpoch: number, fd: number, identity: DirIdentity) {
     this.rootId = rootId; this.rootEpoch = rootEpoch; this.#fd = fd; this.identity = Object.freeze({ ...identity });
+    liveHandles.add(this);
   }
   get cancelled(): boolean { return this.#cancelled; }
   get alive(): boolean { return this.#alive; }
-  get fd(): number { return this.#alive ? this.#fd : -1; }
+  rootDescriptor(): number { return this.#alive ? this.#fd : -1; }
   cancel(): void { this.#cancelled = true; this.release(); }
-  release(): void { if (!this.#alive) return; this.#alive = false; closeDescriptor(this.#fd); }
+  release(): void {
+    if (!this.#alive) return;
+    this.#alive = false;
+    liveHandles.delete(this);
+    closeDescriptor(this.#fd);
+  }
   toJSON(): never { throw new Error('Fixture root handles are not serializable'); }
+}
+
+function releaseHandles(rootId: string, rootEpoch: number): void {
+  for (const handle of [...liveHandles]) {
+    if (handle.rootId === rootId && handle.rootEpoch === rootEpoch) handle.release();
+  }
 }
 
 function transaction<T>(db: DatabaseSync, work: () => T): T {
@@ -141,7 +159,7 @@ export function restoreSyntheticRoot(db: DatabaseSync, rootId: string, rootEpoch
 }
 
 function setRootFlag(db: DatabaseSync, rootId: string, rootEpoch: number, now: Date, operation: 'pause' | 'resume' | 'revoke'): RootAccess {
-  return transaction(db, () => {
+  const result = transaction(db, () => {
     const row = rootRow(db, rootId, rootEpoch);
     const nowMs = clock(now);
     if (typeof nowMs !== 'number') return { allowed: false as const, reason: 'invalid_clock' };
@@ -157,6 +175,8 @@ function setRootFlag(db: DatabaseSync, rootId: string, rootEpoch: number, now: D
     audit(db, operation === 'pause' ? 'fixture_root_paused' : 'fixture_root_resumed', rootId, { rootEpoch });
     return { allowed: true as const };
   });
+  if (operation === 'revoke' && result.allowed) releaseHandles(rootId, rootEpoch);
+  return result;
 }
 
 export function pauseSyntheticRoot(db: DatabaseSync, rootId: string, rootEpoch: number, now: Date): RootAccess {
@@ -181,12 +201,12 @@ function inspectDirectory(fd: number): { kind: DiscoveryCandidate['kind']; proje
 type Found = { relativePath: string; kind: DiscoveryCandidate['kind']; identity: DirIdentity };
 
 function scanHandle(handle: FixtureRootHandle): Found[] | { reason: string } {
-  const listed = listDirectory(handle.fd);
+  const listed = listDirectory(handle.rootDescriptor());
   if ('reason' in listed) return listed;
   const found: Found[] = [];
   for (const name of listed.names) {
     if (found.length >= MAX_CANDIDATES) return { reason: 'unavailable' };
-    const dir = openChild(handle.fd, name, true);
+    const dir = openChild(handle.rootDescriptor(), name, true);
     if ('reason' in dir) continue;
     try {
       const markers = inspectDirectory(dir.fd);
@@ -227,7 +247,7 @@ function persistCandidates(db: DatabaseSync, rootId: string, rootEpoch: number, 
       .get(rootId, rootEpoch, item.relativePath, item.identity.dev, item.identity.ino) as { candidate_id: string } | undefined;
     const candidateId = same?.candidate_id ?? randomUUID();
     if (same) {
-      db.prepare('UPDATE fixture_discovery_candidates SET kind = ?, attribution = ?, inspected_at = ? WHERE candidate_id = ?')
+      db.prepare("UPDATE fixture_discovery_candidates SET kind = ?, attribution = ?, inspected_at = ?, status = 'active' WHERE candidate_id = ?")
         .run(item.kind, attribution, inspectedAt, candidateId);
     } else {
       db.prepare("UPDATE fixture_discovery_candidates SET status = 'invalid' WHERE root_id = ? AND root_epoch = ? AND relative_path = ? AND status = 'active'")
@@ -269,13 +289,66 @@ function parseComponents(components: unknown): string[] | null {
   return parsed;
 }
 
-export function readSyntheticFile(db: DatabaseSync, handle: FixtureRootHandle, components: unknown, maxBytes: number, now: Date): { status: 'available'; bytes: Buffer } | { status: 'unavailable' | 'cancelled'; reason: string } {
+function pathBelongsToCandidate(relativePath: string, components: string[]): boolean {
+  const parts = relativePath.split('/');
+  return parts.length < components.length && parts.every((part, index) => components[index] === part);
+}
+
+export function issueSyntheticProjectRead(db: DatabaseSync, handle: FixtureRootHandle, candidateId: unknown, now: Date, expiresAt: string): { status: 'available'; scope: ProjectReadScope } | { status: 'unavailable'; reason: string } {
+  const parsedId = Id.safeParse(candidateId);
+  if (!parsedId.success || !DateTime.safeParse(expiresAt).success) return { status: 'unavailable', reason: 'unavailable' };
+  if (handle.cancelled || !handle.alive) return { status: 'unavailable', reason: 'cancelled' };
+  return transaction(db, () => {
+    const access = checkFixtureRootAccess(db, handle.rootId, handle.rootEpoch, 'read', now, handle);
+    if (!access.allowed) return { status: 'unavailable' as const, reason: access.reason };
+    const candidate = db.prepare("SELECT candidate_id, relative_path, attribution, status FROM fixture_discovery_candidates WHERE candidate_id = ? AND root_id = ? AND root_epoch = ?")
+      .get(parsedId.data, handle.rootId, handle.rootEpoch) as { candidate_id: string; relative_path: string; attribution: string; status: string } | undefined;
+    if (!candidate || candidate.status !== 'active' || candidate.attribution !== 'confirmed') return { status: 'unavailable' as const, reason: 'unavailable' };
+    const existing = db.prepare('SELECT project_id, grant_id, root_id, candidate_id FROM fixture_candidate_grants WHERE candidate_id = ?').get(candidate.candidate_id) as { project_id: string; grant_id: string; root_id: string; candidate_id: string } | undefined;
+    if (existing) {
+      const grant = checkStoredObservation(db, existing.grant_id, {
+        principalId: FIXTURE_ROOT_OWNER, projectId: existing.project_id, rootId: existing.root_id, operation: 'observe',
+      }, now);
+      if (!grant.allowed) return { status: 'unavailable' as const, reason: 'unavailable' };
+      return { status: 'available' as const, scope: ProjectReadScope.parse({ principalId: FIXTURE_ROOT_OWNER, projectId: existing.project_id, grantId: existing.grant_id, rootId: existing.root_id, candidateId: existing.candidate_id }) };
+    }
+    const projectId = randomUUID(), grantId = randomUUID();
+    db.prepare('INSERT INTO projects(id, name, description) VALUES (?, ?, ?)').run(projectId, candidate.relative_path, 'synthetic');
+    db.prepare('INSERT INTO observation_grants(id, principal_id, project_id, root_id, enabled, paused, expires_at, revoked_at) VALUES (?, ?, ?, ?, 1, 0, ?, NULL)')
+      .run(grantId, FIXTURE_ROOT_OWNER, projectId, handle.rootId, expiresAt);
+    db.prepare('INSERT INTO fixture_candidate_grants(candidate_id, project_id, grant_id, root_id) VALUES (?, ?, ?, ?)')
+      .run(candidate.candidate_id, projectId, grantId, handle.rootId);
+    audit(db, 'fixture_candidate_grant_issued', candidate.candidate_id, { rootEpoch: handle.rootEpoch });
+    return { status: 'available' as const, scope: ProjectReadScope.parse({ principalId: FIXTURE_ROOT_OWNER, projectId, grantId, rootId: handle.rootId, candidateId: candidate.candidate_id }) };
+  });
+}
+
+function projectReadAllowed(db: DatabaseSync, handle: FixtureRootHandle, scope: ProjectReadScope, components: string[], now: Date): RootAccess {
+  const access = checkFixtureRootAccess(db, handle.rootId, handle.rootEpoch, 'read', now, handle);
+  if (!access.allowed) return access;
+  if (scope.rootId !== handle.rootId || scope.principalId !== FIXTURE_ROOT_OWNER) return { allowed: false, reason: 'unavailable' };
+  const grant = checkStoredObservation(db, scope.grantId, {
+    principalId: scope.principalId, projectId: scope.projectId, rootId: scope.rootId, operation: 'observe',
+  }, now);
+  if (!grant.allowed) return { allowed: false, reason: grant.reason };
+  const bound = db.prepare('SELECT candidate_id FROM fixture_candidate_grants WHERE candidate_id = ? AND project_id = ? AND grant_id = ? AND root_id = ?')
+    .get(scope.candidateId, scope.projectId, scope.grantId, scope.rootId);
+  const candidate = db.prepare("SELECT relative_path, attribution, status FROM fixture_discovery_candidates WHERE candidate_id = ? AND root_id = ? AND root_epoch = ?")
+    .get(scope.candidateId, handle.rootId, handle.rootEpoch) as { relative_path: string; attribution: string; status: string } | undefined;
+  if (!bound || !candidate || candidate.status !== 'active' || candidate.attribution !== 'confirmed' || !pathBelongsToCandidate(candidate.relative_path, components)) {
+    return { allowed: false, reason: 'unavailable' };
+  }
+  return { allowed: true };
+}
+
+export function readSyntheticFile(db: DatabaseSync, handle: FixtureRootHandle, rawScope: unknown, components: unknown, maxBytes: number, now: Date): { status: 'available'; bytes: Buffer } | { status: 'unavailable' | 'cancelled'; reason: string } {
   if (handle.cancelled || !handle.alive) return { status: 'cancelled', reason: 'cancelled' };
+  const scope = ProjectReadScope.safeParse(rawScope);
   const parts = parseComponents(components);
-  if (!parts || !Number.isInteger(maxBytes) || maxBytes <= 0 || maxBytes > MAX_READ) return { status: 'unavailable', reason: 'invalid_path' };
-  const access = transaction(db, () => checkFixtureRootAccess(db, handle.rootId, handle.rootEpoch, 'read', now, handle));
+  if (!scope.success || !parts || !Number.isInteger(maxBytes) || maxBytes <= 0 || maxBytes > MAX_READ) return { status: 'unavailable', reason: 'unavailable' };
+  const access = transaction(db, () => projectReadAllowed(db, handle, scope.data, parts, now));
   if (!access.allowed) return { status: access.reason === 'cancelled' ? 'cancelled' : 'unavailable', reason: access.reason };
-  let cursor = handle.fd;
+  let cursor = handle.rootDescriptor();
   const opened: number[] = [];
   try {
     for (let index = 0; index < parts.length; index++) {
@@ -286,7 +359,7 @@ export function readSyntheticFile(db: DatabaseSync, handle: FixtureRootHandle, c
       cursor = child.fd;
     }
     const read = readOpened(cursor, maxBytes);
-    const recheck = transaction(db, () => checkFixtureRootAccess(db, handle.rootId, handle.rootEpoch, 'read', now, handle));
+    const recheck = transaction(db, () => projectReadAllowed(db, handle, scope.data, parts, now));
     if (!recheck.allowed) return { status: recheck.reason === 'cancelled' ? 'cancelled' : 'unavailable', reason: recheck.reason };
     if ('reason' in read) return { status: 'unavailable', reason: read.reason };
     return { status: 'available', bytes: read.bytes };

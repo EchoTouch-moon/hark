@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeF
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { beginSyntheticRoot, enumerateSyntheticRoot, pauseSyntheticRoot, posixDirAdapterAvailable, readSyntheticFile, restoreSyntheticRoot, resumeSyntheticRoot, revokeSyntheticRoot, type DiscoveryCandidate, type DiscoveryResult } from '../src/fixture-discovery.js';
+import { beginSyntheticRoot, enumerateSyntheticRoot, issueSyntheticProjectRead, pauseSyntheticRoot, posixDirAdapterAvailable, readSyntheticFile, restoreSyntheticRoot, resumeSyntheticRoot, revokeSyntheticRoot, type DiscoveryCandidate, type DiscoveryResult } from '../src/fixture-discovery.js';
 import { openDatabase } from '../src/storage.js';
 
 const sampleRoot = fileURLToPath(new URL('./fixtures/rediscovery', import.meta.url));
@@ -33,7 +33,7 @@ function stageRoot(extra?: (setupPath: string) => void) {
 }
 
 describe('synthetic discovery adapter availability', () => {
-  it('compiles a posix openat adapter and keeps Windows fail-closed', () => {
+  it('loads a prebuilt posix openat adapter and keeps Windows fail-closed', () => {
     if (process.platform === 'win32') expect(posixDirAdapterAvailable()).toBe(false);
     else expect(posixDirAdapterAvailable()).toBe(true);
   });
@@ -70,9 +70,15 @@ describe.skipIf(process.platform === 'win32')('synthetic fixture discovery', () 
     if (restored.status !== 'available') return;
     const againCandidates = inventory(enumerateSyntheticRoot(db, restored.handle, now));
     expect(againCandidates.map(item => item.candidateId).sort()).toEqual(firstCandidates.map(item => item.candidateId).sort());
-    const text = readSyntheticFile(db, restored.handle, ['project-a', 'PROJECT.md'], 4096, now);
+    const projectA = againCandidates.find(item => item.relativePath === 'project-a');
+    expect(projectA?.attribution).toBe('confirmed');
+    const issued = issueSyntheticProjectRead(db, restored.handle, projectA?.candidateId, now, expires);
+    expect(issued.status).toBe('available');
+    if (issued.status !== 'available') return;
+    const text = readSyntheticFile(db, restored.handle, issued.scope, ['project-a', 'PROJECT.md'], 4096, now);
     expect(text.status).toBe('available');
     if (text.status === 'available') expect(text.bytes.toString('utf8')).toContain('星光书签');
+    expect(readSyntheticFile(db, restored.handle, ['project-a', 'PROJECT.md'], ['project-a', 'PROJECT.md'], 4096, now).status).toBe('unavailable');
     restored.handle.release();
     db.close();
   });
@@ -119,12 +125,12 @@ describe.skipIf(process.platform === 'win32')('synthetic fixture discovery', () 
     const foundCandidates = inventory(found);
     expect(foundCandidates.some(item => item.relativePath === 'escape')).toBe(false);
     expect(JSON.stringify(found)).not.toContain('OUTSIDE_SECRET');
-    expect(readSyntheticFile(db, committed.handle, ['escape', 'secret.txt'], 4096, now).status).toBe('unavailable');
-    expect(readSyntheticFile(db, committed.handle, ['..', 'secret.txt'], 4096, now).status).toBe('unavailable');
-    expect(readSyntheticFile(db, committed.handle, [join(outside, 'secret.txt')], 4096, now).status).toBe('unavailable');
+    expect(readSyntheticFile(db, committed.handle, { principalId: 'user', projectId: 'A', grantId: 'g', rootId: committed.rootId, candidateId: 'missing' }, ['escape', 'secret.txt'], 4096, now).status).toBe('unavailable');
+    expect(readSyntheticFile(db, committed.handle, { principalId: 'user', projectId: 'A', grantId: 'g', rootId: committed.rootId, candidateId: 'missing' }, ['..', 'secret.txt'], 4096, now).status).toBe('unavailable');
+    expect(readSyntheticFile(db, committed.handle, { principalId: 'user', projectId: 'A', grantId: 'g', rootId: committed.rootId, candidateId: 'missing' }, [join(outside, 'secret.txt')], 4096, now).status).toBe('unavailable');
     rmSync(join(session.setupPath, 'project-a', 'PROJECT.md'));
     symlinkSync(join(outside, 'secret.txt'), join(session.setupPath, 'project-a', 'PROJECT.md'));
-    const replaced = readSyntheticFile(db, committed.handle, ['project-a', 'PROJECT.md'], 4096, now);
+    const replaced = readSyntheticFile(db, committed.handle, { principalId: 'user', projectId: 'A', grantId: 'g', rootId: committed.rootId, candidateId: 'missing' }, ['project-a', 'PROJECT.md'], 4096, now);
     expect(replaced.status).toBe('unavailable');
     if (replaced.status === 'available') expect(replaced.bytes.toString('utf8')).not.toContain('OUTSIDE_SECRET');
     expect(enumerateSyntheticRoot(db, committed.handle, new Date('invalid')).status).toBe('unavailable');
@@ -133,7 +139,7 @@ describe.skipIf(process.platform === 'win32')('synthetic fixture discovery', () 
     expect(resumeSyntheticRoot(db, committed.rootId, committed.rootEpoch, now).allowed).toBe(true);
     expect(enumerateSyntheticRoot(db, committed.handle, now).status).not.toBe('unavailable');
     expect(revokeSyntheticRoot(db, committed.rootId, committed.rootEpoch, now).allowed).toBe(true);
-    expect(enumerateSyntheticRoot(db, committed.handle, now).status).toBe('unavailable');
+    expect(enumerateSyntheticRoot(db, committed.handle, now).status).toBe('cancelled');
     expect(resumeSyntheticRoot(db, committed.rootId, committed.rootEpoch, now).allowed).toBe(false);
     committed.handle.cancel();
     expect(enumerateSyntheticRoot(db, committed.handle, now).status).toBe('cancelled');
