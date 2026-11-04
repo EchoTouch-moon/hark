@@ -39,6 +39,8 @@ describe('local synthetic service', () => {
       expect((await post('/api/inventory', { path: '/tmp' })).status).toBe(400);
       expect((await post('/api/inventory', {}, { 'content-type': 'text/plain' })).status).toBe(403);
       expect((await post('/api/projects/project-a/execute', {})).status).toBe(404);
+      expect((await post('/api/v1/cards/card/execute', {})).status).toBe(404);
+      expect((await post('/api/v1/approvals/run', {})).status).toBe(404);
       const hostStatus = await new Promise<number | undefined>((resolve, reject) => {
         const req = request(`${base}/api/session`, { headers: { host: 'example.invalid' } }, res => { res.resume(); resolve(res.statusCode); });
         req.on('error', reject); req.end();
@@ -66,8 +68,12 @@ describe('local synthetic service', () => {
       expect((await changed.json() as { current: { revision: { version: number } } }).current.revision.version).toBe(2);
       expect((await s.post('/api/projects/project-a/challenge', challenge)).status).toBe(200);
       expect((await s.post('/api/projects/project-a/challenge', { ...challenge, reason: '不同反馈' })).status).toBe(409);
-      const answer = await s.post('/api/projects/project-a/question', { question: '依据是什么？' });
+      const question = { requestId: 'question-api', question: '依据是什么？', createdAt: '2026-11-04T03:00:00.000Z' };
+      const answer = await s.post('/api/projects/project-a/question', question);
       expect(await answer.json()).toMatchObject({ synthetic: true, mode: 'mock' });
+      expect((await s.post('/api/projects/project-a/question', question)).status).toBe(200);
+      expect((await s.post('/api/projects/project-a/question', { ...question, question: '不同的问题' })).status).toBe(409);
+      expect(JSON.stringify(await (await s.get('/api/projects/project-b')).json())).not.toContain(question.question);
       expect((await s.post('/api/projects/project-a/access', { action: 'pause' })).status).toBe(200);
       expect((await s.get('/api/projects/project-a')).status).toBe(403);
       const paused = await (await s.get('/api/inventory')).json() as Inventory;
@@ -76,12 +82,18 @@ describe('local synthetic service', () => {
       const restart = await start(db);
       expect((await (await restart.get('/api/inventory')).json() as Inventory).access.find(x => x.id === 'project-a')?.state).toBe('paused');
       expect((await restart.post('/api/projects/project-a/access', { action: 'resume' })).status).toBe(200);
-      const resumed = await (await restart.get('/api/projects/project-a')).json() as { current: { revision: { version: number } }; previous: { feedback: unknown[] } };
+      const resumed = await (await restart.get('/api/projects/project-a')).json() as { current: { revision: { version: number } }; previous: { feedback: unknown[] }; questions: unknown[] };
       expect(resumed.current.revision.version).toBe(2); expect(resumed.previous.feedback).toHaveLength(1);
+      expect(resumed.questions).toHaveLength(1);
+      expect((await restart.post('/api/projects/project-a/challenge', { requestId: 'another', reason: '继续核对', createdAt: '2026-11-04T04:00:00.000Z', expectedVersion: 2 })).status).toBe(200);
+      const third = await (await restart.get('/api/projects/project-a')).json() as { current: { revision: { version: number } }; previous: { revision: { version: number } }; first: { revision: { version: number } } };
+      expect([third.current.revision.version, third.previous.revision.version, third.first.revision.version]).toEqual([3, 2, 1]);
       db.exec("UPDATE fixture_sources SET enabled=0 WHERE id='source-project-a-1'");
-      const unavailable = await (await restart.get('/api/projects/project-a')).json() as { current: unknown; understanding: { goal: unknown }; project: object };
+      const unavailable = await (await restart.get('/api/projects/project-a')).json() as { current: unknown; understanding: { goal: unknown }; project: object; questions: unknown[] };
       expect(unavailable.current).toBeNull(); expect(unavailable.understanding.goal).toBeNull();
+      expect(unavailable.questions).toEqual([]);
       expect(unavailable.project).not.toHaveProperty('source');
+      expect((await restart.post('/api/projects/project-a/question', { ...question, requestId: 'after-source-disabled' })).status).toBe(409);
       const partial = await (await restart.post('/api/inventory', {})).json() as Inventory & { initializationErrors: string[] };
       expect(partial.initializationErrors).toEqual(['project-a']);
       expect(partial.projects.find(project => project.id === 'project-b')?.coverage).toBe('available');
@@ -98,14 +110,25 @@ describe('local synthetic service', () => {
     try {
       const first = await start(db);
       expect((await first.post('/api/inventory', {})).status).toBe(200);
+      expect((await first.post('/api/projects/project-a/question', { requestId: 'question-restart', question: '合成测试：什么依据？', createdAt: '2026-11-04T03:00:00.000Z' })).status).toBe(200);
       expect((await first.post('/api/projects/project-a/challenge', { requestId: 'restart', reason: '再核对', createdAt: '2026-11-04T03:00:00.000Z', expectedVersion: 1 })).status).toBe(200);
       await new Promise<void>(resolve => first.server.close(() => resolve()));
       servers.splice(servers.indexOf(first.server), 1);
       db.close(); db = openDatabase(path);
       const second = await start(db);
-      const restored = await (await second.get('/api/projects/project-a')).json() as { current: { revision: { version: number } }; previous: { feedback: Array<{ reason: string }> } };
+      const restored = await (await second.get('/api/projects/project-a')).json() as { current: { revision: { version: number } }; previous: { feedback: Array<{ reason: string }> }; questions: Array<{ question: string }> };
       expect(restored.current.revision.version).toBe(2);
       expect(restored.previous.feedback[0]?.reason).toBe('再核对');
+      expect(restored.questions[0]?.question).toBe('合成测试：什么依据？');
     } finally { db.close(); rmSync(dir, { recursive: true, force: true }); }
+  });
+  it('does not disguise corrupt stored questions as a successful empty history', async () => {
+    const db = openDatabase(':memory:');
+    try {
+      const s = await start(db); expect((await s.post('/api/inventory', {})).status).toBe(200);
+      db.prepare('INSERT INTO feedback(id,project_id,data_json) VALUES (?,?,?)').run('m1-question-invalid', 'project-a', '{');
+      expect((await s.get('/api/projects/project-a')).status).toBe(403);
+      expect((await s.get('/api/projects/project-b')).status).toBe(200);
+    } finally { db.close(); }
   });
 });

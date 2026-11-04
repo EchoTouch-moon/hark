@@ -193,31 +193,37 @@
     {
       "id": "D-S1",
       "parent": "M1-D",
-      "owner": "协作 Agent（接口冻结后接入）",
-      "status": "IN_PROGRESS",
+      "owner": "主 Agent（界面由协作 Agent 起草）",
+      "status": "DONE",
       "depends_on": [
         "D-S0",
         "D-C1"
       ],
-      "evidence": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-browser-2026-11-04-run.txt",
+        "handoff/EVIDENCE/m1-browser-2026-11-04/"
+      ],
       "external_ref": null
     },
     {
       "id": "D-S2",
       "parent": "M1-D",
-      "owner": null,
-      "status": "TODO",
+      "owner": "主 Agent（界面由协作 Agent 起草）",
+      "status": "DONE",
       "depends_on": [
         "D-S1"
       ],
-      "evidence": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-browser-2026-11-04-run.txt",
+        "handoff/EVIDENCE/m1-browser-2026-11-04/"
+      ],
       "external_ref": null
     },
     {
       "id": "G-C1",
       "parent": "M1-REBUILD-01",
-      "owner": null,
-      "status": "TODO",
+      "owner": "主 Agent",
+      "status": "BLOCKED",
       "depends_on": [
         "A-C4",
         "B-S1",
@@ -225,7 +231,9 @@
         "C-C2",
         "D-S2"
       ],
-      "evidence": [],
+      "evidence": [
+        "handoff/qa/M1-SYNTHETIC-ACCEPTANCE-2026-11-04.md"
+      ],
       "external_ref": null
     }
   ]

@@ -30,7 +30,7 @@
       "priority": "P1",
       "deliverables": ["模拟 Git/非 Git 项目与不确定归属", "预置数据稳定身份及服务端范围隔离"],
       "acceptance_tests": ["服务不接收路径、不调用旧目录内容读取", "稳定身份、项目隔离与重启通过；旧 A-C3 风险保持未通过"],
-      "status": "IN_PROGRESS"
+      "status": "DONE"
     },
     {
       "id": "M1-B",
@@ -39,7 +39,7 @@
       "priority": "P1",
       "deliverables": ["合成目标、成果、未完成事项及来源", "区分事实、推断和未知"],
       "acceptance_tests": ["项目隔离、来源失效、重复摄取与重启通过"],
-      "status": "TODO"
+      "status": "DONE"
     },
     {
       "id": "M1-C",
@@ -48,7 +48,7 @@
       "priority": "P1",
       "deliverables": ["带来源的合成观点和用户反馈", "保留 v1 的可追踪 v2"],
       "acceptance_tests": ["质疑不自动变成事实；缺证据不伪造", "隔离、重启和重复修订通过"],
-      "status": "TODO"
+      "status": "DONE"
     },
     {
       "id": "M1-D",
@@ -57,7 +57,7 @@
       "priority": "P1",
       "deliverables": ["炉心标识、合成模式、全局盘点和项目对话", "证据、反馈、版本和错误状态"],
       "acceptance_tests": ["浏览器完成合成旅程并留证", "项目隔离及服务故障可见"],
-      "status": "TODO"
+      "status": "DONE"
     },
     {
       "id": "M1-REBUILD-01",
@@ -66,7 +66,7 @@
       "priority": "P1",
       "deliverables": ["合成项目只读盘点、记忆、观点修订及对话", "适用安全和端到端验证记录"],
       "acceptance_tests": ["M1-A 至 M1-D 完成且有证据", "按 docs/06 逐项审查 E2E-01～12 与 S01～S12，无法运行或不适用如实记录", "记录 M1 Gate 独立审查结果"],
-      "status": "TODO"
+      "status": "BLOCKED"
     },
     {
       "id": "M2-REBUILD-01",

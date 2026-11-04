@@ -5,11 +5,15 @@ import { withFixtureAccess } from './fixture-chronicle.js';
 import { appendFixtureFeedback, readFixtureOpinion, saveFixtureOpinion } from './fixture-opinion-store.js';
 import { readSyntheticUnderstanding } from './fixture-understanding.js';
 import { getSyntheticProject } from './synthetic-catalog.js';
+import { GroundedFact } from './domain-contracts.js';
 
 // Internal demo service only; scope must be derived by a trusted server.
 const Id = z.string().trim().min(1).max(256);
 const Scope = z.object({ principalId: Id, projectId: Id, grantId: Id, rootId: Id }).strict();
 const Challenge = z.object({ requestId: Id, reason: z.string().trim().min(1).max(500), createdAt: z.string().datetime({ offset: true }), expectedVersion: z.number().int().positive().safe().default(1) }).strict();
+const Question = z.object({ requestId: Id, question: z.string().trim().min(1).max(500), createdAt: z.string().datetime({ offset: true }) }).strict();
+const StoredQuestion = Question.extend({ id: Id, projectId: Id, type: z.literal('synthetic_question'), synthetic: z.literal(true), mode: z.literal('mock'),
+  answer: z.literal('这是固定的示意回复：当前观点依据下方虚构材料，并未分析你的问题。'), facts: z.array(GroundedFact).min(1).max(32) }).strict();
 const initialTime = '2026-11-04T00:00:00.000Z';
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 const opinionId = (projectId: string) => `opinion-${projectId}`;
@@ -43,6 +47,56 @@ export function answerSyntheticQuestion(db: DatabaseSync, rawScope: unknown, raw
   if (!record) return null;
   return { synthetic: true as const, mode: 'mock' as const,
     answer: '这是固定的示意回复：当前观点依据下方虚构材料，并未分析你的问题。', facts: record.revision.facts };
+}
+
+function factsAvailable(facts: z.infer<typeof GroundedFact>[], projectId: string, find: (sourceId: string, factId: string) => { projectId: string; epoch: number; observedAt: string; summary: string } | null): boolean {
+  return facts.every(item => {
+    if (item.subject !== 'project' || item.source.kind !== 'observer' || item.source.projectId !== projectId || item.source.quality !== 'observed') return false;
+    const fact = find(item.source.observerSourceId, item.source.eventId);
+    return !!fact && fact.projectId === projectId && fact.epoch === item.source.epoch && fact.observedAt === item.source.observedAt && fact.summary === item.statement;
+  });
+}
+
+/** Reuses the local feedback store; a request key makes retries idempotent. */
+export function saveSyntheticQuestion(db: DatabaseSync, rawScope: unknown, rawQuestion: unknown) {
+  const scope = Scope.parse(rawScope), question = Question.parse(rawQuestion);
+  const answer = answerSyntheticQuestion(db, scope, question.question);
+  if (!answer) throw new Error('Fixture unavailable');
+  const id = `m1-question-${digest(`${scope.projectId}\0${question.requestId}`)}`;
+  const record = StoredQuestion.parse({ ...question, ...answer, id, projectId: scope.projectId, type: 'synthetic_question' });
+  return withFixtureAccess(db, scope, (_scope, findFact) => {
+    if (!factsAvailable(record.facts, scope.projectId, findFact)) throw new Error('Fixture unavailable');
+    const json = JSON.stringify(record);
+    const existing = db.prepare('SELECT project_id,data_json FROM feedback WHERE id=?').get(id);
+    if (existing) {
+      if (existing.project_id !== scope.projectId || existing.data_json !== json) throw new Error('Fixture idempotency conflict');
+      return record;
+    }
+    db.prepare('INSERT INTO feedback(id,project_id,data_json) VALUES (?,?,?)').run(id, scope.projectId, json);
+    return record;
+  });
+}
+
+/** Only current, authorized source-backed messages are returned after restart. */
+export function readSyntheticQuestions(db: DatabaseSync, rawScope: unknown) {
+  const parsed = Scope.safeParse(rawScope);
+  if (!parsed.success) return null;
+  const scope = parsed.data;
+  try {
+    return withFixtureAccess(db, scope, (_scope, findFact) => {
+      const rows = db.prepare("SELECT id,data_json FROM feedback WHERE project_id=? AND id LIKE 'm1-question-%' ORDER BY rowid DESC LIMIT 100").all(scope.projectId);
+      const result: z.infer<typeof StoredQuestion>[] = [];
+      for (const row of rows.reverse()) {
+        if (typeof row.data_json !== 'string') return null;
+        try {
+          const data = StoredQuestion.safeParse(JSON.parse(row.data_json));
+          if (!data.success || data.data.id !== row.id || data.data.projectId !== scope.projectId || data.data.id !== `m1-question-${digest(`${scope.projectId}\0${data.data.requestId}`)}`) return null;
+          if (factsAvailable(data.data.facts, scope.projectId, findFact)) result.push(data.data);
+        } catch { return null; }
+      }
+      return result;
+    });
+  } catch { return null; }
 }
 
 /** Explicit write operation, not a GET; creates a source-backed synthetic opinion. */

@@ -1,5 +1,6 @@
 # 重建交接（2026-11-03）
 
+**2026-11-04 本机合成产品**：在仓库根运行 `pnpm demo`，浏览器打开 `http://127.0.0.1:4173/`，点击“盘点预置项目”；Ctrl-C 停止服务。演示数据库独立保存在 `data/m1-synthetic/`。M1-R01～R06、截图及逐项旧验收适用性见 `handoff/qa/M1-SYNTHETIC-ACCEPTANCE-2026-11-04.md`；158 项测试和构建见 `handoff/EVIDENCE/m1-integrated-checks-2026-11-04.txt`。Mock 追问、回复、反馈和版本均可恢复；独立复审未完成，M1→M2 未通过。旧目录读取的 A-C3 问题未修复，不能接入服务。
 **2026-11-04 合成 API**：`pnpm demo` 构建 TypeScript 并启动仅绑定 `127.0.0.1:4173` 的演示服务，状态保存在独立 `data/m1-synthetic/`。三项 API 集成测试及 lint/typecheck 见 `handoff/EVIDENCE/m1-d-c1-api-2026-11-04.txt`；页面联调和浏览器验收仍待完成。
 **2026-11-04 合成观点与反馈**：内部服务支持有来源观点、标注 Mock 的追问、持久质疑与保留 v1 的 v2；双 worker 冲突及局部检查见 `handoff/EVIDENCE/m1-c-c1-dialogue-2026-11-04.txt`。页面及本地 API 仍在接入。
 **2026-11-04 合成盘点投影**：逐项目查询授权与覆盖状态，不拼接未授权项目材料；局部检查见 `handoff/EVIDENCE/m1-c-c2-inventory-2026-11-04.txt`。可信服务端接入尚未完成。

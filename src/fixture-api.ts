@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { answerSyntheticQuestion, challengeSyntheticOpinion, ensureSyntheticOpinion, readSyntheticOpinion } from './fixture-dialogue.js';
+import { challengeSyntheticOpinion, ensureSyntheticOpinion, readSyntheticOpinion, readSyntheticQuestions, saveSyntheticQuestion } from './fixture-dialogue.js';
 import { readSyntheticInventory } from './fixture-global-inventory.js';
 import { readFixtureOpinion } from './fixture-opinion-store.js';
 import { ingestSyntheticUnderstanding, readSyntheticUnderstanding } from './fixture-understanding.js';
@@ -17,7 +17,7 @@ type ProjectId = z.infer<typeof ProjectId>;
 const Empty = z.object({}).strict();
 const Challenge = z.object({ requestId: z.string().trim().min(1).max(256), reason: z.string().trim().min(1).max(500),
   createdAt: z.string().datetime({ offset: true }), expectedVersion: z.number().int().positive().safe() }).strict();
-const Question = z.object({ question: z.string().trim().min(1).max(500) }).strict();
+const Question = z.object({ requestId: z.string().trim().min(1).max(256), question: z.string().trim().min(1).max(500), createdAt: z.string().datetime({ offset: true }) }).strict();
 const Access = z.object({ action: z.enum(['pause', 'resume', 'revoke']) }).strict();
 const marker = 'm1-synthetic-initialized';
 const scopeFor = (id: ProjectId) => ({ principalId: 'demo', projectId: id, grantId: `grant-${id}`, rootId: 'synthetic-root' });
@@ -139,15 +139,17 @@ export function createSyntheticServer(db: DatabaseSync) {
         const project = listSyntheticCatalog().projects.find(item => item.id === id)!;
         const current = readSyntheticOpinion(db, scope);
         const previous = current && current.revision.version > 1 ? readFixtureOpinion(db, scope, current.revision.opinionId, current.revision.version - 1) : null;
-        return reply(res, 200, { project, understanding, current, previous });
+        const first = current && current.revision.version > 2 ? readFixtureOpinion(db, scope, current.revision.opinionId, 1) : null;
+        const questions = readSyntheticQuestions(db, scope);
+        if (!questions) return reply(res, 403, { error: '项目不可用' });
+        return reply(res, 200, { project, understanding, current, previous, first, questions });
       }
       if (req.method !== 'POST' || !action) return reply(res, 404, { error: '没有此入口' });
       const raw = await body(req);
       if (action === 'access') return reply(res, 200, { state: changeAccess(db, id, Access.parse(raw).action) });
       if (state(db, id) !== 'active') return reply(res, 403, { error: '项目不可用' });
       if (action === 'question') {
-        const answer = answerSyntheticQuestion(db, scope, Question.parse(raw).question);
-        return answer ? reply(res, 200, answer) : reply(res, 409, { error: '观点或来源不可用' });
+        return reply(res, 200, saveSyntheticQuestion(db, scope, Question.parse(raw)));
       }
       return reply(res, 200, challengeSyntheticOpinion(db, scope, Challenge.parse(raw)));
     } catch (error) {

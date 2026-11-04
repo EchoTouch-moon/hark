@@ -74,29 +74,29 @@
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
 - [x] M0 Gate（R2，2026-11-03）：按 `docs/06-QA-BENCHMARK.md` 的基础合同标准独立只读复审 **PASS**，基线 `46ab047`；117 项测试与 lint/类型/构建/文档检查见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`，复核记录见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。PASS 仅覆盖 contracts/状态机/policy 负例/migrations/威胁模型；执行器、身份认证、grant 事务占用及真实来源仍未完成；后续 Windows/远端 CI 结果见上。
 
-## M1：合成数据纵切 [首批进行中]
+## M1：合成数据纵切 [本机闭环已验证；Gate 未通过]
 
-- [ ] M1-A：受控预置合成项目盘点及稳定身份；旧目录读取 A-C3 未通过，A-C4 正在实现替代入口。
+- [x] M1-A：受控预置合成项目盘点及稳定身份；旧目录读取 A-C3 未通过、不接入服务。
   - [x] A-C1（核心）：合成发现合同经独立上下文复审，见 `docs/architecture/M1-DISCOVERY-CONTRACT.md` 与 `handoff/qa/M1-A-DISCOVERY-CONTRACT-2026-11-04.md`；安全读取适配器仍待实现验证。
   - [x] A-S1（辅助）：隔离合成项目样本经主 Agent 审查；证据 `handoff/EVIDENCE/m1-a-synthetic-fixtures-2026-11-04.txt`；不代表发现器或真实路径安全已完成。
   - [x] A-C2（核心）：合成发现实现已交付；负责人：主 Agent，依赖 A-C1/A-S1。证据 `handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt`；A-C3 指出的边界缺陷已有后续修复，集成验收仍待复审。Windows 适配器保持 unavailable。
   - [x] A-S2（辅助）：补充发现的用户可见场景测试；负责人：协作 Agent，依赖 A-C1/A-C2。证据 `handoff/EVIDENCE/m1-a-s2-discovery-scenarios-2026-11-04.txt`；待 A-C3 审查。
   - [ ] A-C3（核心）：独立复审 BLOCKED，目录替换及撤权后句柄复用可复现；见 `handoff/qa/M1-A-C3-REVIEW-R2-2026-11-04.md`。旧目录读取不得接入服务。
   - [x] A-C4（核心）：受控预置合成数据入口已复核；不接收路径或调用旧目录适配器，4 项局部测试及类型检查见 `handoff/EVIDENCE/m1-a-c4-catalog-2026-11-04.txt`。服务入口尚未实现。
-- [ ] M1-B：有来源的目标、成果、待办与项目记忆；区分事实、推断和未知。
+- [x] M1-B：有来源的目标、成果、待办与项目记忆；区分事实、推断和未知。
   - [x] B-C1（核心）：受控预置材料投影复用 Chronicle；5 项局部测试与类型检查见 `handoff/EVIDENCE/m1-b-c1-understanding-2026-11-04.txt`。API 接入尚未完成。
   - [x] B-S1（场景并入 B-C1）：覆盖未摄取、伪造内容、来源失效、撤权、项目隔离和重启；当前不接收任意格式输入。
-- [ ] M1-C：合成观点、追问、反馈和可追溯修订；明确 mock，保留 v1。
+- [x] M1-C：合成观点、追问、反馈和可追溯修订；明确 mock，保留 v1，追问及回复在隔离演示库持久化。
   - [x] C-C1（核心）：合成观点、明确 Mock 的追问、质疑反馈及保留旧版的修订；5 项场景、lint 与类型检查见 `handoff/EVIDENCE/m1-c-c1-dialogue-2026-11-04.txt`。
   - [x] C-C2（核心）：逐项目检查的合成盘点投影与覆盖范围；2 项测试及类型检查见 `handoff/EVIDENCE/m1-c-c2-inventory-2026-11-04.txt`，服务端可信 scope 尚待接入。
   - [x] C-S1（辅助）：覆盖重启、来源失效、隔离、重放与双 worker 同版竞争；见 C-C1 证据。
-- [ ] M1-D：带基本炉心视觉的中文对话与全局盘点，含真实错误状态。
+- [x] M1-D：中文合成对话与全局盘点、真实错误状态；浏览器证据 `handoff/EVIDENCE/m1-browser-2026-11-04/`。
   - [x] D-C0（核心）：展示合同已复核，见 `docs/architecture/M1-UI-DISPLAY-CONTRACT.md`。
   - [x] D-S0（辅助）：明确标示的静态外壳已复核；浏览器与静态检查见 `handoff/EVIDENCE/m1-ui-shell-2026-11-04/`。来源标签在浏览器复查后修改，尚未浏览器复验；未接入服务。
-  - [x] D-C1（核心）：合成本地服务与 API 已实现，合同 `docs/architecture/M1-SYNTHETIC-API.md`；会话、权限、来源、重启及反馈等 3 项集成测试、lint/typecheck 见 `handoff/EVIDENCE/m1-d-c1-api-2026-11-04.txt`。浏览器联调待完成。
-  - [ ] D-S1（辅助）：协作 Agent 按冻结合同接入页面，等待服务联调。
-  - [ ] D-S2（辅助）：运行浏览器场景并记录证据；负责人未分配，依赖 D-S1。
-- [ ] M1-REBUILD-01：合成闭环及适用安全/E2E 通过独立 Gate 审查。细分、依赖、责任和验证见 `tasks/M1-REDISCOVERY-2026-11-04.md`。
+  - [x] D-C1（核心）：合成本地服务与 API 已实现，合同 `docs/architecture/M1-SYNTHETIC-API.md`；会话、权限、来源、重启及反馈等 4 项 API 测试包含在 `handoff/EVIDENCE/m1-integrated-checks-2026-11-04.txt`，浏览器联调见 D-S2。
+  - [x] D-S1（辅助）：页面接入本地合成 API、授权状态、Mock 追问、反馈和版本，主 Agent 完成联调。
+  - [x] D-S2（辅助）：主 Agent 运行隔离浏览器 M1-R01～R06，证据 `handoff/EVIDENCE/m1-browser-2026-11-04-run.txt`。
+- [ ] M1-REBUILD-01：**BLOCKED**；Gate 独立审查未完成。逐项适用性见 `handoff/qa/M1-SYNTHETIC-ACCEPTANCE-2026-11-04.md`。
   - [ ] G-C1（核心）：审查交付、逐项记录安全和 E2E 证据并组织 Gate 复审；负责人未分配。
 
 细分任务状态源为 `tasks/m1-work-items.json`，本看板是同步摘要；文件所有权、验收和并行约束见 `tasks/M1-AGENT-WORK-PACKAGES.md`。标为辅助的交付必须经主 Agent 审查后才可勾选。可信执行存储、身份认证、grant 事务占用和独立 verifier 是接入执行能力的前置，不是合成只读闭环的前置。真实 connector 仍须安全 P0 Gate 与相应授权。
