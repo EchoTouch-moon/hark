@@ -22,7 +22,7 @@ const S_IFMT = 0o170000;
 const S_IFDIR = 0o040000;
 const S_IFREG = 0o100000;
 const require = createRequire(import.meta.url);
-type HandleState = { fd: number; active: boolean; parent?: HandleState; children: Set<HandleState> };
+type HandleState = { fd: number; active: boolean; identity: DirIdentity; directory: boolean; name?: string; parent?: HandleState; children: Set<HandleState> };
 const owned = new WeakMap<object, HandleState>();
 let loaded: NativeAddon | null | undefined;
 
@@ -85,12 +85,32 @@ function closeQuiet(addon: NativeAddon, state: HandleState): void {
   addon.close(state.fd);
 }
 
-function take(fd: number, parent?: HandleState): DirHandle {
+function take(fd: number, identity: DirIdentity, directory: boolean, parent?: HandleState, name?: string): DirHandle {
   const handle = Object.freeze(Object.create(null)) as DirHandle;
-  const state: HandleState = { fd, active: true, children: new Set(), ...(parent ? { parent } : {}) };
+  const state: HandleState = { fd, identity: Object.freeze({ ...identity }), directory, active: true, children: new Set(), ...(parent && name ? { parent, name } : {}) };
   parent?.children.add(state);
   owned.set(handle, state);
   return handle;
+}
+
+// Verify each still-open child is still the object named under its original
+// parent. The selected root itself deliberately follows the original folder.
+// This detects completed moves/replacements, but cannot make rename and read atomic.
+function stillBound(addon: NativeAddon, state: HandleState): boolean {
+  if (!state.active) return false;
+  const current = addon.fstat(state.fd);
+  const identity = current.ok ? identityOf(current) : null;
+  const expected = state.directory ? S_IFDIR : S_IFREG;
+  if (!identity || !identitiesEqual(identity, state.identity) || (Number(current.mode) & S_IFMT) !== expected || (!state.directory && Number(current.nlink) !== 1)) return false;
+  if (!state.parent) return true;
+  if (!state.name || !stillBound(addon, state.parent)) return false;
+  const reopened = addon.openAt(state.parent.fd, state.name, state.directory ? 1 : 0);
+  if (reopened.fd < 0) return false;
+  try {
+    const stat = addon.fstat(reopened.fd);
+    const reopenedIdentity = stat.ok ? identityOf(stat) : null;
+    return !!reopenedIdentity && identitiesEqual(reopenedIdentity, state.identity) && (Number(stat.mode) & S_IFMT) === expected && (state.directory || Number(stat.nlink) === 1);
+  } finally { addon.close(reopened.fd); }
 }
 
 export function openRootDirectory(absolutePath: string): OpenedDir | { reason: string } {
@@ -107,14 +127,14 @@ export function openRootDirectory(absolutePath: string): OpenedDir | { reason: s
     addon.close(opened.fd);
     return { reason: 'unavailable' };
   }
-  return { fd: take(opened.fd), identity, nlink: Number(stat.nlink ?? 0) };
+  return { fd: take(opened.fd, identity, true), identity, nlink: Number(stat.nlink ?? 0) };
 }
 
 export function listDirectory(dirfd: unknown): { names: string[] } | { reason: string } {
   const addon = native();
   if (!addon) return { reason: 'adapter_unavailable' };
   const state = lookup(dirfd);
-  if (!state) return { reason: 'unavailable' };
+  if (!state || !stillBound(addon, state)) return { reason: 'unavailable' };
   const listed = addon.list(state.fd);
   if (!listed.ok) return { reason: 'unavailable' };
   return { names: listed.names.filter(name => NAME.test(name)) };
@@ -124,7 +144,7 @@ export function openChild(dirfd: unknown, name: string, asDirectory: boolean): O
   const addon = native();
   if (!addon) return { reason: 'adapter_unavailable' };
   const parent = lookup(dirfd);
-  if (!parent || !NAME.test(name) || name === '.' || name === '..') return { reason: 'invalid_path' };
+  if (!parent || !stillBound(addon, parent) || !NAME.test(name) || name === '.' || name === '..') return { reason: 'invalid_path' };
   const opened = addon.openAt(parent.fd, name, asDirectory ? 1 : 0);
   if (opened.fd < 0) {
     if (opened.errno === 62 || opened.errno === 40) return { reason: 'symlink' };
@@ -139,14 +159,14 @@ export function openChild(dirfd: unknown, name: string, asDirectory: boolean): O
     addon.close(opened.fd);
     return { reason: 'unavailable' };
   }
-  return { fd: take(opened.fd, parent), identity, nlink };
+  return { fd: take(opened.fd, identity, asDirectory, parent, name), identity, nlink };
 }
 
 export function readOpened(fd: unknown, maxBytes: number): { bytes: Buffer } | { reason: string } {
   const addon = native();
   if (!addon) return { reason: 'adapter_unavailable' };
   const state = lookup(fd);
-  if (!state || !Number.isInteger(maxBytes) || maxBytes <= 0 || maxBytes > 65536) return { reason: 'unavailable' };
+  if (!state || !stillBound(addon, state) || !Number.isInteger(maxBytes) || maxBytes <= 0 || maxBytes > 65536) return { reason: 'unavailable' };
   const stat = addon.fstat(state.fd);
   if (!stat.ok || Number(stat.nlink) !== 1 || (Number(stat.mode) & S_IFMT) !== S_IFREG) return { reason: 'unavailable' };
   const read = addon.read(state.fd, maxBytes);

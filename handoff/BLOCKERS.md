@@ -1,7 +1,7 @@
 # 当前待办（2026-11-03）
 
 - **M1→M2 Gate 未通过**：Mock 追问持久化已补齐，但 B-C1 独立只读复核请求被自动审查以可能涉及网络安全风险为由拦截，整体 Gate 独立复审尚未完成。恢复时由有权限的独立审阅者审查 `handoff/qa/M1-SYNTHETIC-ACCEPTANCE-2026-11-04.md`、当前差异与适用性；不得把本机自查当作独立通过。可复跑 `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e`；浏览器测试依赖 Python Playwright 与可用 Chromium/Chrome。
-- **2026-11-04 A-C3 独立复审 BLOCKED**：原目录替换和撤权后描述符复用的具体复现已做定向修复并通过合成回归；但底层句柄在打开后被移出根仍可读取，尚不能保证读取期间的范围，证据及恢复条件见 `handoff/qa/M1-A-C3-TARGETED-FIX-2026-11-04.md`。该修复未通过 A-C3 或 P0；真实 connector 不得启用。原审查记录保留于 `handoff/qa/M1-A-C3-REVIEW-R2-2026-11-04.md`。
+- **2026-11-04 A-C3 独立复审 BLOCKED**：原目录替换、旧句柄复用及子目录已移出后的后续访问已有定向修复；授权根整体移动仍可用。但检查和实际读取之间的移动仍可复现，详见 `handoff/qa/M1-A-C3-MOVE-CHECK-2026-11-04.md`。该修复未通过 A-C3 或 P0；真实 connector 不得启用。原审查记录保留于 `handoff/qa/M1-A-C3-REVIEW-R2-2026-11-04.md`。
 - Windows 合成发现适配器按合同保持 `unavailable`，本机未跑 Windows 实机。恢复命令：在 Windows 上 `pnpm test -- tests/fixture-discovery.test.ts`，确认 `adapter_unavailable` 且无 `realpath` 回退；POSIX 适配器曾通过的局部场景见 `handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt`，其安全边界未通过 A-C3。不能把 macOS 局部测试当成 Windows 路径安全。
 - 历史：首轮 A-C3 修复见 `handoff/EVIDENCE/m1-a-c3-fix-2026-11-04.txt`；复审发现新问题，当前结论以上方条目为准。B-C1 改依赖 A-C4，真实用户目录、P0 connector Gate、执行通道仍关闭。
 - M0 Gate 已由 R2 独立只读复审**通过**（仅限基础合同范围，基线 `46ab047`）：contracts schema、状态机、policy 负例、migrations 与威胁模型均通过，见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。动作准入仍只有纯预检（`src/action-policy.ts`），未接可信持久化、身份认证、事务内 grant 占用和执行器；它们是接入执行能力的前置，不阻塞合成只读 M1。S01/S12 与真实 API/connector 安全反例仍 NOT RUN。

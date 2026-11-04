@@ -1,0 +1,156 @@
+Baseline: selected root move stayed usable; moved child still exposed synthetic content (expected failure).
+
+$ pnpm lint
+$ tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch
+exit=0
+
+$ pnpm typecheck
+$ tsc --noEmit -p tsconfig.json
+exit=0
+
+$ pnpm test
+$ node scripts/build-posix-dir.mjs
+$ vitest run --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:31391) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31388) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31394) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31392) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31389) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31393) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31390) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-chronicle.test.ts (14 tests) 187ms
+ ✓ tests/fixture-decision.test.ts (12 tests) 169ms
+ ✓ tests/fixture-discovery.test.ts (6 tests) 194ms
+ ✓ tests/fixture-opinion-store.test.ts (16 tests) 228ms
+(node:31406) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31404) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-api.test.ts (5 tests) 514ms
+   ✓ local synthetic service > supports the synthetic journey and retains feedback after restart without exposing disabled sources  306ms
+ ✓ tests/synthetic-catalog.test.ts (4 tests) 119ms
+ ✓ tests/fixture-discovery-ac3.test.ts (5 tests) 59ms
+ ✓ tests/fixture-feedback-v2.test.ts (9 tests) 150ms
+ ✓ tests/action-policy.test.ts (23 tests) 55ms
+(node:31414) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31415) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31413) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31418) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-discovery-scenarios.test.ts (5 tests) 67ms
+ ✓ tests/domain-contracts.test.ts (9 tests) 29ms
+ ✓ tests/fixture-understanding.test.ts (5 tests) 54ms
+ ✓ tests/fixture-global-inventory.test.ts (2 tests) 41ms
+ ✓ tests/policy-storage.test.ts (10 tests) 75ms
+(node:31425) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31426) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31424) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-persistent-grant.test.ts (1 test) 31ms
+ ✓ tests/fixture-project-replacement.test.ts (1 test) 25ms
+ ✓ tests/digests.test.ts (2 tests) 14ms
+ ✓ tests/fixture-moved-directory.test.ts (4 tests) 64ms
+ ✓ tests/path-check.test.ts (4 tests) 33ms
+(node:31433) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/event-freshness.test.ts (3 tests) 7ms
+ ✓ tests/contracts-state.test.ts (14 tests) 11ms
+ ✓ tests/fixture-descriptor-reuse.test.ts (1 test) 12ms
+ ✓ tests/action-registry.test.ts (7 tests) 5ms
+(node:31388) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | tests/fixture-dialogue-scenarios.test.ts > keeps one v2 and records both feedback items when two workers challenge the same v1
+Synthetic worker results: [{"type":"result","kind":"failure","actor":"first","message":"Revision conflict"},{"type":"result","kind":"success","actor":"second","version":2}]
+
+(node:31388) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-dialogue-scenarios.test.ts (5 tests) 2843ms
+   ✓ keeps one v2 and records both feedback items when two workers challenge the same v1  2760ms
+(node:31389) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31389) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-opinion-concurrency.test.ts (1 test) 2897ms
+   ✓ allows exactly one concurrent fixture revision for the same expected version  2896ms
+
+ Test Files  25 passed (25)
+      Tests  168 passed (168)
+   Start at  15:21:08
+   Duration  3.30s (transform 649ms, setup 0ms, collect 2.41s, tests 7.88s, environment 4ms, prepare 2.40s)
+
+exit=0
+
+$ pnpm build
+$ node scripts/build-posix-dir.mjs
+$ tsc -p tsconfig.build.json
+exit=0
+
+$ node handoff/qa/m1-synthetic-moved-directory.mjs
+moved synthetic child rejected: true
+(node:31566) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+exit=0
+
+$ node handoff/qa/m1-synthetic-move-interleave.mjs (expected limitation reproduction)
+high-level read returned synthetic content written outside after the last check: true
+(node:31944) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+exit=0
+
+$ pnpm exec vitest run tests/fixture-moved-directory.test.ts tests/fixture-descriptor-reuse.test.ts tests/fixture-project-replacement.test.ts tests/fixture-discovery.test.ts tests/fixture-discovery-ac3.test.ts tests/fixture-persistent-grant.test.ts --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:32397) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32399) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32398) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32400) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32401) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32402) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-descriptor-reuse.test.ts (1 test) 9ms
+ ✓ tests/fixture-project-replacement.test.ts (1 test) 11ms
+ ✓ tests/fixture-persistent-grant.test.ts (1 test) 19ms
+ ✓ tests/fixture-moved-directory.test.ts (4 tests) 28ms
+ ✓ tests/fixture-discovery-ac3.test.ts (5 tests) 43ms
+ ✓ tests/fixture-discovery.test.ts (6 tests) 68ms
+
+ Test Files  6 passed (6)
+      Tests  18 passed (18)
+   Start at  15:24:10
+   Duration  476ms (transform 146ms, setup 0ms, collect 581ms, tests 178ms, environment 1ms, prepare 521ms)
+
+exit=0
+
+$ pnpm typecheck
+$ tsc --noEmit -p tsconfig.json
+exit=0
+
+$ pnpm exec tsc -p tsconfig.build.json
+exit=0
+
+$ node handoff/qa/m1-synthetic-move-interleave.mjs (expected limitation reproduction)
+high-level read returned synthetic content written outside after the last check: true
+(node:32500) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+exit=0

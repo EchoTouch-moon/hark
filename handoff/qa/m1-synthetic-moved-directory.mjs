@@ -1,9 +1,9 @@
-// Demonstrates a remaining limitation, not a safety PASS. All paths are created here.
+// Checks the completed-move case only; it does not prove rename/read atomicity.
 import { mkdtempSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beginSyntheticRoot } from '../../dist/fixture-discovery.js';
-import { openChild, readOpened } from '../../dist/posix-dir-handle.js';
+import { openChild } from '../../dist/posix-dir-handle.js';
 import { openDatabase } from '../../dist/storage.js';
 
 const outside = mkdtempSync(join(tmpdir(), 'hark-move-proof-'));
@@ -19,11 +19,9 @@ try {
   if ('reason' in directory) throw new Error('Synthetic directory unavailable');
   renameSync(join(root.setupPath, 'project-a'), join(outside, 'project-a'));
   const file = openChild(directory.fd, 'data.txt', false);
-  if ('reason' in file) throw new Error('Synthetic moved file unavailable');
-  const result = readOpened(file.fd, 1024);
-  const movedStillReadable = 'bytes' in result && result.bytes.toString() === 'SYNTHETIC_MOVE_PROOF';
-  console.log(`moved synthetic directory still readable by held handle: ${movedStillReadable}`);
-  if (!movedStillReadable) throw new Error('Expected limitation did not reproduce');
+  const blocked = 'reason' in file;
+  console.log(`moved synthetic child rejected: ${blocked}`);
+  if (!blocked) throw new Error('Moved synthetic child was still readable');
 } finally {
   if (session?.status === 'available') session.handle.release();
   db.close();

@@ -84,7 +84,8 @@ static napi_value OpenAt(napi_env env, napi_callback_info info) {
     errno = EINVAL;
     return fd_result(env, -1);
   }
-  flags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC;
+  /* A replaced FIFO or device must not block the type check. */
+  flags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC | (as_dir ? 0 : O_NONBLOCK);
   if (as_dir) flags |= O_DIRECTORY;
   return fd_result(env, openat(dirfd, name, flags));
 }
