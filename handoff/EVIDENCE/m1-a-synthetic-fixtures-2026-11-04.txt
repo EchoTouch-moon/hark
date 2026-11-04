@@ -1,0 +1,2 @@
+PASS: copied five synthetic files to an isolated temporary root; labels and marker distinction verified; no symlinks or real Git repositories.
+NOT TESTED: discovery, authorization, race-resistant file reading, real projects and user value.

@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "description": "M1 细分任务状态源；任务说明在 M1-AGENT-WORK-PACKAGES.md，看板为人工可读摘要。",
+  "items": [
+    {
+      "id": "A-C1",
+      "parent": "M1-A",
+      "owner": "主 Agent",
+      "status": "DONE",
+      "depends_on": [],
+      "evidence": [
+        "docs/architecture/M1-DISCOVERY-CONTRACT.md",
+        "handoff/qa/M1-A-DISCOVERY-CONTRACT-2026-11-04.md"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "A-S1",
+      "parent": "M1-A",
+      "owner": "fixture_samples",
+      "status": "DONE",
+      "depends_on": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-a-synthetic-fixtures-2026-11-04.txt"
+      ],
+      "external_ref": null
+    },
+    {
+      "id": "A-C2",
+      "parent": "M1-A",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "A-C1",
+        "A-S1"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "A-S2",
+      "parent": "M1-A",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "A-C2"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "A-C3",
+      "parent": "M1-A",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "A-C2",
+        "A-S2"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "B-C1",
+      "parent": "M1-B",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "A-C3"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "B-S1",
+      "parent": "M1-B",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "B-C1"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "C-C1",
+      "parent": "M1-C",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "B-C1"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "C-C2",
+      "parent": "M1-C",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "B-C1"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "C-S1",
+      "parent": "M1-C",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "C-C1"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "D-C0",
+      "parent": "M1-D",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "A-C1"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "D-S0",
+      "parent": "M1-D",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "D-C0"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "D-C1",
+      "parent": "M1-D",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "C-C1",
+        "C-C2"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "D-S1",
+      "parent": "M1-D",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "D-S0",
+        "D-C1"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "D-S2",
+      "parent": "M1-D",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "D-S1"
+      ],
+      "evidence": [],
+      "external_ref": null
+    },
+    {
+      "id": "G-C1",
+      "parent": "M1-REBUILD-01",
+      "owner": null,
+      "status": "TODO",
+      "depends_on": [
+        "A-C3",
+        "B-S1",
+        "C-S1",
+        "C-C2",
+        "D-S2"
+      ],
+      "evidence": [],
+      "external_ref": null
+    }
+  ]
+}

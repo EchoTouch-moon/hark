@@ -3,7 +3,7 @@
   "project": "Hearth",
   "preparedAt": "2026-11-03",
   "timezone": "Asia/Shanghai",
-  "note": "重建入口；M0 基础合同 Gate 已于 R2 通过；M1 合成只读闭环计划见 tasks/M1-REDISCOVERY-2026-11-04.md，核心/辅助分工见 tasks/M1-AGENT-WORK-PACKAGES.md，开发未开始。真实 connector 与执行能力仍受各自安全门禁约束。",
+  "note": "重建入口；M0 基础合同 Gate 已于 R2 通过；M1 合成只读首批任务进行中，细项唯一状态源见 tasks/m1-work-items.json，分工见 tasks/M1-AGENT-WORK-PACKAGES.md。真实 connector 与执行能力仍受各自安全门禁约束。",
   "tasks": [
     {
       "id": "M0-REBUILD-01",
@@ -30,7 +30,7 @@
       "priority": "P1",
       "deliverables": ["合成 Git/非 Git 发现与不确定归属", "授权停止及重启恢复"],
       "acceptance_tests": ["隔离根、越界和链接反例可复现", "稳定身份、项目隔离、撤权和重启通过"],
-      "status": "TODO"
+      "status": "IN_PROGRESS"
     },
     {
       "id": "M1-B",
