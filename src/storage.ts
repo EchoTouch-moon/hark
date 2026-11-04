@@ -126,6 +126,54 @@ const migrations = [
      project_id TEXT NOT NULL, grant_id TEXT NOT NULL, root_id TEXT NOT NULL,
      FOREIGN KEY(grant_id, project_id, root_id) REFERENCES observation_grants(id, project_id, root_id)
    );`,
+  `CREATE TABLE model_conversations (
+     id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), created_at TEXT NOT NULL
+   );
+   CREATE TABLE model_messages (
+     id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES model_conversations(id), project_id TEXT NOT NULL,
+     role TEXT NOT NULL CHECK(role IN ('user','assistant')), body_json TEXT NOT NULL, created_at TEXT NOT NULL, run_id TEXT,
+     UNIQUE(conversation_id, role, run_id)
+   );
+   CREATE TABLE model_previews (
+     id TEXT PRIMARY KEY, project_id TEXT NOT NULL, conversation_id TEXT NOT NULL REFERENCES model_conversations(id),
+     request_key TEXT NOT NULL, question TEXT NOT NULL, payload_json TEXT NOT NULL, payload_digest TEXT NOT NULL,
+     provider_id TEXT NOT NULL, model_id TEXT NOT NULL, limits_json TEXT NOT NULL, sources_json TEXT NOT NULL,
+     context_stamp TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+     status TEXT NOT NULL CHECK(status IN ('open','consumed','cancelled','superseded','expired')),
+     UNIQUE(project_id, request_key)
+   );
+   CREATE TABLE model_runs (
+     id TEXT PRIMARY KEY, preview_id TEXT NOT NULL UNIQUE REFERENCES model_previews(id), project_id TEXT NOT NULL,
+     conversation_id TEXT NOT NULL, provider_id TEXT NOT NULL, model_id TEXT NOT NULL,
+     state TEXT NOT NULL CHECK(state IN ('running','succeeded','failed','cancelled','unknown')),
+     error_code TEXT, result_json TEXT, usage_json TEXT, started_at TEXT NOT NULL, finished_at TEXT
+   );
+   CREATE TABLE model_outbound_approvals (
+     id TEXT PRIMARY KEY, preview_id TEXT NOT NULL UNIQUE REFERENCES model_previews(id), project_id TEXT NOT NULL,
+     principal_id TEXT NOT NULL, payload_digest TEXT NOT NULL, provider_id TEXT NOT NULL, model_id TEXT NOT NULL,
+     granted_at TEXT NOT NULL, consumed_at TEXT NOT NULL
+   );
+   CREATE TABLE model_opinion_links (
+     run_id TEXT PRIMARY KEY REFERENCES model_runs(id), project_id TEXT NOT NULL, opinion_id TEXT NOT NULL, created_at TEXT NOT NULL
+   );
+   CREATE TRIGGER model_messages_no_update BEFORE UPDATE ON model_messages BEGIN SELECT RAISE(ABORT,'model messages are append-only'); END;
+   CREATE TRIGGER model_messages_no_delete BEFORE DELETE ON model_messages BEGIN SELECT RAISE(ABORT,'model messages are append-only'); END;
+   CREATE TRIGGER model_previews_no_delete BEFORE DELETE ON model_previews BEGIN SELECT RAISE(ABORT,'model previews are append-only'); END;
+   CREATE TRIGGER model_previews_frozen BEFORE UPDATE ON model_previews
+   WHEN NEW.id IS NOT OLD.id OR NEW.project_id IS NOT OLD.project_id OR NEW.conversation_id IS NOT OLD.conversation_id
+     OR NEW.request_key IS NOT OLD.request_key OR NEW.question IS NOT OLD.question OR NEW.payload_json IS NOT OLD.payload_json
+     OR NEW.payload_digest IS NOT OLD.payload_digest OR NEW.provider_id IS NOT OLD.provider_id OR NEW.model_id IS NOT OLD.model_id
+     OR NEW.limits_json IS NOT OLD.limits_json OR NEW.sources_json IS NOT OLD.sources_json OR NEW.context_stamp IS NOT OLD.context_stamp
+     OR NEW.created_at IS NOT OLD.created_at OR NEW.expires_at IS NOT OLD.expires_at OR OLD.status <> 'open'
+   BEGIN SELECT RAISE(ABORT,'model preview is frozen'); END;
+   CREATE TRIGGER model_runs_no_delete BEFORE DELETE ON model_runs BEGIN SELECT RAISE(ABORT,'model runs are append-only'); END;
+   CREATE TRIGGER model_runs_frozen BEFORE UPDATE ON model_runs
+   WHEN NEW.id IS NOT OLD.id OR NEW.preview_id IS NOT OLD.preview_id OR NEW.project_id IS NOT OLD.project_id
+     OR NEW.conversation_id IS NOT OLD.conversation_id OR NEW.provider_id IS NOT OLD.provider_id OR NEW.model_id IS NOT OLD.model_id
+     OR NEW.started_at IS NOT OLD.started_at OR OLD.state <> 'running'
+   BEGIN SELECT RAISE(ABORT,'model run identity is immutable'); END;
+   CREATE TRIGGER model_approvals_no_update BEFORE UPDATE ON model_outbound_approvals BEGIN SELECT RAISE(ABORT,'model approvals are immutable'); END;
+   CREATE TRIGGER model_approvals_no_delete BEFORE DELETE ON model_outbound_approvals BEGIN SELECT RAISE(ABORT,'model approvals are append-only'); END;`,
 ] as const;
 
 export const SCHEMA_VERSION = migrations.length;

@@ -6,6 +6,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { challengeSyntheticOpinion, ensureSyntheticOpinion, readSyntheticOpinion, readSyntheticQuestions, saveSyntheticQuestion } from './fixture-dialogue.js';
+import { disabledModelConfig, loadModelConfig } from './model/config.js';
+import { createModelService, type ModelService } from './model/service.js';
+import { CancelPreviewInput, ConfirmInput, ModelError, PreviewInput, SaveOpinionInput } from './model/types.js';
 import { readSyntheticInventory } from './fixture-global-inventory.js';
 import { readFixtureOpinion } from './fixture-opinion-store.js';
 import { ingestSyntheticUnderstanding, readSyntheticUnderstanding } from './fixture-understanding.js';
@@ -104,8 +107,11 @@ async function body(req: IncomingMessage): Promise<unknown> {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
+const modelId = '([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})';
+
 /** Caller owns db and server lifecycle. Only the caller may bind the returned server. */
-export function createSyntheticServer(db: DatabaseSync) {
+export function createSyntheticServer(db: DatabaseSync, options?: { model?: ModelService }) {
+  const model = options?.model ?? createModelService(db, process.env['VITEST'] ? disabledModelConfig() : loadModelConfig(process.env));
   const session = randomBytes(32).toString('hex'), csrf = randomBytes(32).toString('hex');
   const server = createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -134,6 +140,44 @@ export function createSyntheticServer(db: DatabaseSync) {
     try {
       if (path === '/api/inventory' && req.method === 'GET') return reply(res, 200, inventory(db));
       if (path === '/api/inventory' && req.method === 'POST') { Empty.parse(await body(req)); const initializationErrors = initialize(db); return reply(res, 200, { ...inventory(db), initializationErrors }); }
+      if (path === '/api/model/status' && req.method === 'GET') return reply(res, 200, model.status());
+      if (path === '/api/model/preview' && req.method === 'POST') {
+        const input = PreviewInput.parse(await body(req));
+        if (state(db, input.projectId) !== 'active') return reply(res, 403, { error: '项目不可用' });
+        return reply(res, 200, model.preview(scopeFor(input.projectId), input));
+      }
+      if (path === '/api/model/runs' && req.method === 'POST') {
+        const input = ConfirmInput.parse(await body(req));
+        if (state(db, input.projectId) !== 'active') return reply(res, 403, { error: '项目不可用' });
+        return reply(res, 202, model.confirm(scopeFor(input.projectId), input));
+      }
+      if (path === '/api/model/opinions' && req.method === 'POST') {
+        const input = SaveOpinionInput.parse(await body(req));
+        if (state(db, input.projectId) !== 'active') return reply(res, 403, { error: '项目不可用' });
+        return reply(res, 200, model.saveOpinion(scopeFor(input.projectId), input));
+      }
+      const previewCancel = new RegExp(`^/api/model/previews/${modelId}/cancel$`, 'i').exec(path);
+      if (previewCancel && req.method === 'POST') {
+        const input = CancelPreviewInput.parse(await body(req));
+        return reply(res, 200, model.cancelPreview(scopeFor(input.projectId), previewCancel[1]!));
+      }
+      const runCancel = new RegExp(`^/api/model/runs/${modelId}/cancel$`, 'i').exec(path);
+      if (runCancel && req.method === 'POST') {
+        const input = CancelPreviewInput.parse(await body(req));
+        return reply(res, 200, model.cancelRun(scopeFor(input.projectId), runCancel[1]!));
+      }
+      const runRead = new RegExp(`^/api/model/runs/${modelId}$`, 'i').exec(path);
+      if (runRead && req.method === 'GET') {
+        const project = ProjectId.parse(new URL(req.url ?? '/', origin).searchParams.get('projectId'));
+        return reply(res, 200, model.getRun(scopeFor(project), runRead[1]!));
+      }
+      const conversationRead = new RegExp(`^/api/model/conversations/${modelId}$`, 'i').exec(path);
+      if (conversationRead && req.method === 'GET') {
+        const project = ProjectId.parse(new URL(req.url ?? '/', origin).searchParams.get('projectId'));
+        return reply(res, 200, model.getConversation(scopeFor(project), conversationRead[1]!));
+      }
+      const latest = /^\/api\/model\/projects\/(project-a|project-b)\/conversation$/.exec(path);
+      if (latest && req.method === 'GET') return reply(res, 200, model.latestConversation(scopeFor(ProjectId.parse(latest[1]))));
       const match = /^\/api\/projects\/(project-a|project-b)(?:\/(challenge|question|access))?$/.exec(path);
       if (!match) return reply(res, 404, { error: '没有此入口' });
       const id = ProjectId.parse(match[1]), action = match[2], scope = scopeFor(id);
@@ -157,6 +201,7 @@ export function createSyntheticServer(db: DatabaseSync) {
       }
       return reply(res, 200, challengeSyntheticOpinion(db, scope, Challenge.parse(raw)));
     } catch (error) {
+      if (error instanceof ModelError) return reply(res, error.status, { error: error.message, code: error.code });
       if (error instanceof z.ZodError || error instanceof SyntaxError) return reply(res, 400, { error: '请求格式不正确' });
       if (error instanceof Error && /conflict/i.test(error.message)) return reply(res, 409, { error: '版本或重复请求冲突' });
       return reply(res, 409, { error: '数据不可用，请检查合成项目状态' });

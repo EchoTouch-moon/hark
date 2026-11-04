@@ -62,13 +62,14 @@ describe('fixture opinion memory', () => {
     db.exec(`DROP TABLE fixture_feedback_versions; DROP TABLE fixture_decisions; DROP TABLE fixture_opinion_feedback; DROP TABLE fixture_opinion_plans;
       DROP TABLE fixture_opinion_revisions; DROP TABLE fixture_opinions; DROP TABLE fixture_project_profiles;
       DROP TABLE fixture_candidate_grants; DROP TABLE fixture_discovery_candidates; DROP TABLE fixture_roots;
+      DROP TABLE model_opinion_links; DROP TABLE model_outbound_approvals; DROP TABLE model_runs; DROP TABLE model_messages; DROP TABLE model_previews; DROP TABLE model_conversations;
       DELETE FROM schema_migrations WHERE version>=3;`);
     db.close();
     db = openDatabase(setup.path);
     registerFixtureProject(db, scopeA, projectA);
     expect(saveFixtureOpinion(db, scopeA, bundleFor(projectA, 1), 0)).toBe(1);
     expect(readFixtureOpinion(db, scopeA, 'opinion-a', 1)?.revision.facts[0]?.statement).toBe('synthetic');
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }, { version: 8 }]);
     db.close();
   });
 

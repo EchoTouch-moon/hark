@@ -1,0 +1,97 @@
+$ node scripts/build-posix-dir.mjs
+$ vitest run --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:49593) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49589) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49594) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49592) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49590) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49591) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49588) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-chronicle.test.ts (14 tests) 148ms
+ ✓ tests/fixture-opinion-store.test.ts (16 tests) 190ms
+(node:49605) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/model-api.test.ts (4 tests) 485ms
+ ✓ tests/fixture-api.test.ts (5 tests) 496ms
+ ✓ tests/fixture-decision.test.ts (12 tests) 115ms
+ ✓ tests/model-provider.test.ts (5 tests) 363ms
+(node:49609) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-discovery.test.ts (6 tests) 970ms
+   ✓ synthetic discovery adapter availability > loads a prebuilt posix openat adapter and keeps Windows fail-closed  880ms
+(node:49614) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/synthetic-catalog.test.ts (4 tests) 203ms
+ ✓ tests/fixture-feedback-v2.test.ts (9 tests) 228ms
+ ✓ tests/fixture-understanding.test.ts (5 tests) 129ms
+(node:49618) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49620) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-discovery-scenarios.test.ts (5 tests) 142ms
+(node:49623) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49624) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/policy-storage.test.ts (10 tests) 91ms
+ ✓ tests/fixture-moved-directory.test.ts (4 tests) 123ms
+ ✓ tests/fixture-discovery-ac3.test.ts (5 tests) 77ms
+ ✓ tests/action-policy.test.ts (23 tests) 120ms
+ ✓ tests/digests.test.ts (2 tests) 10ms
+(node:49667) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/domain-contracts.test.ts (9 tests) 85ms
+ ✓ tests/path-check.test.ts (4 tests) 38ms
+(node:49672) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/model-context.test.ts (1 test) 165ms
+ ✓ tests/fixture-persistent-grant.test.ts (1 test) 20ms
+(node:49675) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-global-inventory.test.ts (2 tests) 17ms
+(node:49678) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49677) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-descriptor-reuse.test.ts (1 test) 15ms
+ ✓ tests/fixture-project-replacement.test.ts (1 test) 42ms
+ ✓ tests/event-freshness.test.ts (3 tests) 7ms
+ ✓ tests/contracts-state.test.ts (14 tests) 36ms
+ ✓ tests/action-registry.test.ts (7 tests) 7ms
+(node:49589) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49589) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-opinion-concurrency.test.ts (1 test) 4133ms
+   ✓ allows exactly one concurrent fixture revision for the same expected version  4133ms
+(node:49588) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | tests/fixture-dialogue-scenarios.test.ts > keeps one v2 and records both feedback items when two workers challenge the same v1
+Synthetic worker results: [{"type":"result","kind":"success","actor":"first","version":2},{"type":"result","kind":"failure","actor":"second","message":"Revision conflict"}]
+
+(node:49588) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-dialogue-scenarios.test.ts (5 tests) 4356ms
+   ✓ keeps one v2 and records both feedback items when two workers challenge the same v1  4277ms
+
+ Test Files  28 passed (28)
+      Tests  178 passed (178)
+   Start at  16:24:43
+   Duration  4.97s (transform 849ms, setup 0ms, collect 3.43s, tests 12.81s, environment 5ms, prepare 3.61s)
+
+$ tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch
+$ tsc --noEmit -p tsconfig.json
+The line above is the typecheck exit, not the browser run.
+Browser: python3 tests/e2e/m2-model.py exit 0. Screenshots in handoff/EVIDENCE/m2-model-browser-2026-11-04/.
+Browser regression: python3 tests/e2e/m1-synthetic.py exit 0, M1-R01 through R06.
+No real StepFun request was made. Mock mode and a local Pi process double were used.

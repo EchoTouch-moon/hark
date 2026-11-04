@@ -42,11 +42,12 @@ describe('synthetic project observation persistence', () => {
       DROP TABLE fixture_opinions; DROP TABLE fixture_project_profiles;
       DROP TABLE fixture_facts; DROP TABLE fixture_sources; DROP INDEX observation_grants_scope;
       DROP TABLE fixture_candidate_grants; DROP TABLE fixture_discovery_candidates; DROP TABLE fixture_roots;
+      DROP TABLE model_opinion_links; DROP TABLE model_outbound_approvals; DROP TABLE model_runs; DROP TABLE model_messages; DROP TABLE model_previews; DROP TABLE model_conversations;
       DELETE FROM schema_migrations WHERE version>=2;`);
     db.close();
     db = openDatabase(fixtureDb.path);
     migrate(db);
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }, { version: 8 }]);
     expect(db.prepare("SELECT name FROM projects WHERE id='A'").get()?.name).toBe('Synthetic A');
     expect(db.prepare("SELECT object_id FROM audit_log WHERE id='audit-1'").get()?.object_id).toBe('A');
     expect(db.prepare("SELECT principal_id FROM observation_grants WHERE id='gA'").get()?.principal_id).toBe('user');

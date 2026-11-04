@@ -118,10 +118,10 @@ describe('versioned fixture feedback', () => {
     const setup = fixture();
     let db = setup.db;
     appendFixtureFeedback(db, scope, v1, 'key-v1');
-    db.exec('DROP TABLE fixture_feedback_versions; DROP TABLE fixture_candidate_grants; DROP TABLE fixture_discovery_candidates; DROP TABLE fixture_roots; DELETE FROM schema_migrations WHERE version>=5;');
+    db.exec('DROP TABLE fixture_feedback_versions; DROP TABLE fixture_candidate_grants; DROP TABLE fixture_discovery_candidates; DROP TABLE fixture_roots; DROP TABLE model_opinion_links; DROP TABLE model_outbound_approvals; DROP TABLE model_runs; DROP TABLE model_messages; DROP TABLE model_previews; DROP TABLE model_conversations; DELETE FROM schema_migrations WHERE version>=5;');
     close(db);
     db = open(setup.path);
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }, { version: 8 }]);
     expect(readFixtureOpinion(db, scope, 'opinion-a', 1)?.feedback).toEqual([v1]);
     expect(db.prepare('SELECT count(*) AS n FROM fixture_feedback_versions').get()?.n).toBe(0);
     appendFixtureFeedback(db, scope, v2, 'key-v2');

@@ -2,6 +2,8 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 'n
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createSyntheticServer } from './fixture-api.js';
+import { loadModelConfig } from './model/config.js';
+import { createModelService } from './model/service.js';
 import { openDatabase } from './storage.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,6 +24,11 @@ if (existsSync(dbPath)) {
 }
 const port = Number(process.env.HARK_SYNTHETIC_PORT ?? '4173');
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid synthetic service port');
-const db = openDatabase(dbPath), server = createSyntheticServer(db);
-server.listen(port, '127.0.0.1', () => { process.stdout.write(`合成演示：http://127.0.0.1:${port}\n`); });
+const db = openDatabase(dbPath);
+const model = createModelService(db, loadModelConfig(process.env));
+const server = createSyntheticServer(db, { model });
+server.listen(port, '127.0.0.1', () => {
+  const status = model.status();
+  process.stdout.write(`合成演示：http://127.0.0.1:${port}\n模型：${status.modelId ?? '未配置'}\n`);
+});
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => server.close(() => { db.close(); process.exit(0); }));
