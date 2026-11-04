@@ -53,7 +53,7 @@
 - [ ] 数据库：版本迁移、重放与重启、幂等和只追加审计（主 Agent）。
   - [x] 第一版显式迁移、外键、WAL、唯一键及审计不可更新删除；已覆盖重复迁移和重启。
   - [ ] 执行入口强制动作幂等、审计脱敏入口、项目记忆及观点版本持久化。
-- [x] 工程基础：本机 TypeScript、测试及构建配置（外部 Agent 实施，主 Agent 审查；Windows 尚未验证）。
+- [x] 工程基础：本机 TypeScript、测试及构建配置（外部 Agent 实施，主 Agent 审查；后续 Windows CI 结果见下）。
 - [ ] 完成测试、类型检查和全部适用安全反例（主 Agent）。
   - [x] 本轮 21 项局部测试、类型检查、构建和文档检查，见 `handoff/EVIDENCE/m0-foundation-check-2026-11-03.txt`；完整安全反例仍待补充。
   - [x] 路径预检和恢复后共 26 项本地测试、类型检查、构建、文档检查及测试收集范围，见 `handoff/EVIDENCE/m0-path-recovery-check-2026-11-03.txt`。
@@ -69,13 +69,20 @@
   - [x] 增加动作参数合同与执行前二次校验后，115 项本地测试、lint、类型检查与构建，见 `handoff/EVIDENCE/m0-action-policy-gate-2026-11-03.txt`（R2 修复前基线）。
   - [x] R2 复核修复后（L2 一律拒绝、必需能力、写类来源版本必填），117 项本地测试、lint、类型检查、构建与文档检查绑定提交 `46ab047`，见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`。
   - [x] R2 剩余问题加固后，122 项本机测试、lint、类型检查、构建与文档检查通过，见 `handoff/EVIDENCE/m0-policy-hardening-2026-11-04.txt`（`cf29ec2` 基线加本轮未提交修改）；独立代码复核见 `handoff/qa/M0-POLICY-REVIEW-2026-11-04.md`。
-  - [ ] 推送后核验远端 CI 实际结果，补齐 Windows 验证。E2E 尚无可运行产品，不伪造通过。
+  - [x] 核验 `c69250e` 的远端 CI：Linux、macOS、Windows 三项成功，见 `handoff/EVIDENCE/m0-ci-c69250e-2026-11-04.md`；这不等于 Windows 真实路径安全和产品 E2E 验证。
+  - [ ] Windows 真实路径安全及产品 E2E 尚未验证。
 - [x] 依据现有实现生成底层架构图（`docs/architecture/hearth-foundation-v2.html`）；图中明确标注尚未接入的能力。
-- [x] M0 Gate（R2，2026-11-03）：按 `docs/06-QA-BENCHMARK.md` 的基础合同标准独立只读复审 **PASS**，基线 `46ab047`；117 项测试与 lint/类型/构建/文档检查见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`，复核记录见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。PASS 仅覆盖 contracts/状态机/policy 负例/migrations/威胁模型；执行器、身份认证、grant 事务占用、真实来源与 Windows/远端 CI 仍未完成，属 M1 及以后。
+- [x] M0 Gate（R2，2026-11-03）：按 `docs/06-QA-BENCHMARK.md` 的基础合同标准独立只读复审 **PASS**，基线 `46ab047`；117 项测试与 lint/类型/构建/文档检查见 `handoff/EVIDENCE/m0-gate-r2-2026-11-03.txt`，复核记录见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。PASS 仅覆盖 contracts/状态机/policy 负例/migrations/威胁模型；执行器、身份认证、grant 事务占用及真实来源仍未完成；后续 Windows/远端 CI 结果见上。
 
 ## M1：合成数据纵切 [未开始]
 
-- [ ] M1-REBUILD-01：M0 Gate 已于 2026-11-03 R2 通过（基础合同范围），尚未启动。启动前先补：执行前校验的受信任 store 适配器与身份认证设计、grant 事务内一次性占用、结构化 verifier verdict。
+- [ ] M1-A：合成 Git/非 Git 项目发现、稳定身份、不确定归属、授权及重启恢复（首个待认领任务）。
+- [ ] M1-B：有来源的目标、成果、待办与项目记忆；区分事实、推断和未知。
+- [ ] M1-C：合成观点、追问、反馈和可追溯修订；明确 mock，保留 v1。
+- [ ] M1-D：带基本炉心视觉的中文对话与全局盘点，含真实错误状态。
+- [ ] M1-REBUILD-01：合成闭环及适用安全/E2E 通过独立 Gate 审查。细分、依赖、责任和验证见 `tasks/M1-REDISCOVERY-2026-11-04.md`。
+
+M1 合成只读工作可先启动；可信执行存储、身份认证、grant 事务占用和独立 verifier 是接入执行能力的前置，不是合成只读闭环的前置。真实 connector 仍须安全 P0 Gate 与相应授权。
 
 ## M2：受控研究与真实体验 [未开始]
 

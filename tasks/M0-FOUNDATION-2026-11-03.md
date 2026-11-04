@@ -1,6 +1,6 @@
 # M0：重建底层合同与验证基础
 
-状态：进行中。范围对应 `manifest.json` 的 M0-REBUILD-01 和 M0-REBUILD-02；M0 Gate 尚未通过。此文件是近期任务的工作计划，不是实现或通过证明。
+状态：M0 基础合同 Gate 已于 2026-11-03 R2 通过（基线 `46ab047`，见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`）。本文保留历史任务与验收草案；真实 connector 安全 P0 Gate 未通过，M1 当前计划见 `tasks/M1-REDISCOVERY-2026-11-04.md`。
 
 ## 目标与边界
 
@@ -52,4 +52,4 @@
 
 ## 未决与下一步
 
-具体测试工具及 SQLite 驱动尚未选定；选择需兼顾 strict TypeScript、明确迁移、可重复测试及 macOS/Windows 支持。旧合同与产品修订的逐字段差异、M1 E2E 不适用项需在实现前审查并留下证据。下一步先完成 M0-REBUILD-01 的逐条合同映射，再冻结 M0-REBUILD-02 场景和核心 schema；暂不启动真实项目访问或 M1 纵切。
+历史计划中的工具选型、M0 合同映射及验收设计已经完成；当前使用 Node 内置 SQLite 和 strict TypeScript。下一步为 M1 合成只读纵切，逐项记录 E2E 适用性；真实项目访问仍关闭。

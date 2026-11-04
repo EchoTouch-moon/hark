@@ -3,7 +3,7 @@
   "project": "Hearth",
   "preparedAt": "2026-11-03",
   "timezone": "Asia/Shanghai",
-  "note": "重建入口；旧首夜任务清单归档于 tasks/archive/manifest-initial-2026-10-28.json。M0 Gate 已于 2026-11-03 R2 通过（仅基础合同范围，见 handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md），M1 尚未开始；必须遵守 M0→M1→M2 门禁和现行安全合同；细项状态见 DEVELOPMENT-PROGRESS.md。",
+  "note": "重建入口；M0 基础合同 Gate 已于 R2 通过；M1 合成只读闭环计划见 tasks/M1-REDISCOVERY-2026-11-04.md，开发未开始。真实 connector 与执行能力仍受各自安全门禁约束。",
   "tasks": [
     {
       "id": "M0-REBUILD-01",
@@ -24,12 +24,48 @@
       "status": "DONE"
     },
     {
-      "id": "M1-REBUILD-01",
-      "title": "M0 Gate 通过后实现合成数据纵切",
+      "id": "M1-A",
+      "title": "合成目录发现与稳定身份",
       "depends_on": ["M0-REBUILD-02"],
       "priority": "P1",
-      "deliverables": ["可中断的授权目录发现和独立项目记忆", "有证据的观点、用户反馈与版本记录", "适用的自动化验证"],
-      "acceptance_tests": ["M0 Gate 有实际通过证据", "合成项目闭环和安全反例通过", "记录 M1 Gate 结果"],
+      "deliverables": ["合成 Git/非 Git 发现与不确定归属", "授权停止及重启恢复"],
+      "acceptance_tests": ["隔离根、越界和链接反例可复现", "稳定身份、项目隔离、撤权和重启通过"],
+      "status": "TODO"
+    },
+    {
+      "id": "M1-B",
+      "title": "有来源的项目理解与记忆",
+      "depends_on": ["M1-A"],
+      "priority": "P1",
+      "deliverables": ["合成目标、成果、未完成事项及来源", "区分事实、推断和未知"],
+      "acceptance_tests": ["项目隔离、来源失效、重复摄取与重启通过"],
+      "status": "TODO"
+    },
+    {
+      "id": "M1-C",
+      "title": "合成观点、追问与修订",
+      "depends_on": ["M1-B"],
+      "priority": "P1",
+      "deliverables": ["带来源的合成观点和用户反馈", "保留 v1 的可追踪 v2"],
+      "acceptance_tests": ["质疑不自动变成事实；缺证据不伪造", "隔离、重启和重复修订通过"],
+      "status": "TODO"
+    },
+    {
+      "id": "M1-D",
+      "title": "对话式最小体验",
+      "depends_on": ["M1-C"],
+      "priority": "P1",
+      "deliverables": ["炉心标识、合成模式、全局盘点和项目对话", "证据、反馈、版本和错误状态"],
+      "acceptance_tests": ["浏览器完成合成旅程并留证", "项目隔离及服务故障可见"],
+      "status": "TODO"
+    },
+    {
+      "id": "M1-REBUILD-01",
+      "title": "验收 M1 合成项目重新发现闭环",
+      "depends_on": ["M1-D"],
+      "priority": "P1",
+      "deliverables": ["合成项目只读盘点、记忆、观点修订及对话", "适用安全和端到端验证记录"],
+      "acceptance_tests": ["M1-A 至 M1-D 完成且有证据", "按 docs/06 逐项审查 E2E-01～12 与 S01～S12，无法运行或不适用如实记录", "记录 M1 Gate 独立审查结果"],
       "status": "TODO"
     },
     {
