@@ -76,12 +76,12 @@
 
 ## M1：合成数据纵切 [首批进行中]
 
-- [ ] M1-A：合成 Git/非 Git 项目发现、稳定身份、不确定归属、授权及重启恢复（首个待认领任务）。
+- [ ] M1-A：合成 Git/非 Git 项目发现、稳定身份、不确定归属、授权及重启恢复（A-C3 审查未通过，待修复）。
   - [x] A-C1（核心）：合成发现合同经独立上下文复审，见 `docs/architecture/M1-DISCOVERY-CONTRACT.md` 与 `handoff/qa/M1-A-DISCOVERY-CONTRACT-2026-11-04.md`；安全读取适配器仍待实现验证。
   - [x] A-S1（辅助）：隔离合成项目样本经主 Agent 审查；证据 `handoff/EVIDENCE/m1-a-synthetic-fixtures-2026-11-04.txt`；不代表发现器或真实路径安全已完成。
-  - [x] A-C2（核心）：实现合成发现、受限读取与身份恢复；负责人：主 Agent，依赖 A-C1/A-S1。证据 `handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt`；Windows 适配器按合同保持 unavailable。
+  - [x] A-C2（核心）：合成发现实现已交付；负责人：主 Agent，依赖 A-C1/A-S1。证据 `handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt`；A-C3 发现权限、读取边界等缺陷，须修复后重新验收。Windows 适配器保持 unavailable。
   - [x] A-S2（辅助）：补充发现的用户可见场景测试；负责人：协作 Agent，依赖 A-C1/A-C2。证据 `handoff/EVIDENCE/m1-a-s2-discovery-scenarios-2026-11-04.txt`；待 A-C3 审查。
-  - [ ] A-C3（核心）：集成审查、运行验证并记录 M1-A 证据；负责人未分配。
+  - [ ] A-C3（核心）：**BLOCKED**，主 Agent 已完成首轮审查并发现待修复问题；详情 `handoff/qa/M1-A-C3-REVIEW-2026-11-04.md`，修复后须复审。
 - [ ] M1-B：有来源的目标、成果、待办与项目记忆；区分事实、推断和未知。
   - [ ] B-C1（核心）：实现授权来源投影与记忆；负责人未分配，依赖 A-C3。
   - [ ] B-S1（辅助）：补充来源与未知结果场景；负责人未分配，依赖 B-C1。

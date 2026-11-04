@@ -1,7 +1,7 @@
 # 当前待办（2026-11-03）
 
-- Windows 合成发现适配器按合同保持 `unavailable`，本机未跑 Windows 实机。恢复命令：在 Windows 上 `pnpm test -- tests/fixture-discovery.test.ts`，确认 `adapter_unavailable` 且无 `realpath` 回退；已验证的 POSIX 适配器见 `handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt`。不能把 macOS 通过当成 Windows 路径安全。
-- M1-A 尚未关闭：A-C3 集成审查未做。真实用户目录、P0 connector Gate、执行通道仍关闭。`src/path-check.ts` 仍只是预检，发现读取走 `openat` 句柄，二者不可互相替代。
+- Windows 合成发现适配器按合同保持 `unavailable`，本机未跑 Windows 实机。恢复命令：在 Windows 上 `pnpm test -- tests/fixture-discovery.test.ts`，确认 `adapter_unavailable` 且无 `realpath` 回退；POSIX 适配器曾通过的局部场景见 `handoff/EVIDENCE/m1-a-c2-fixture-discovery-2026-11-04.txt`，其安全边界未通过 A-C3。不能把 macOS 局部测试当成 Windows 路径安全。
+- M1-A 尚未关闭：A-C3 首轮审查 BLOCKED。项目授权和硬链接边界、原生模块运行时加载、撤权持久性与句柄释放、候选恢复异常须修复，见 `handoff/qa/M1-A-C3-REVIEW-2026-11-04.md`。恢复与复现：`pnpm build` 后运行 `node handoff/qa/m1-a-c3-repro.mjs`；当前缺陷存在时故意返回 exit 1，修复后需新增自动化回归和独立复审。真实用户目录、P0 connector Gate、执行通道仍关闭。
 - M0 Gate 已由 R2 独立只读复审**通过**（仅限基础合同范围，基线 `46ab047`）：contracts schema、状态机、policy 负例、migrations 与威胁模型均通过，见 `handoff/qa/M0-GATE-REVIEW-R2-2026-11-03.md`。动作准入仍只有纯预检（`src/action-policy.ts`），未接可信持久化、身份认证、事务内 grant 占用和执行器；它们是接入执行能力的前置，不阻塞合成只读 M1。S01/S12 与真实 API/connector 安全反例仍 NOT RUN。
 - 合成观点存储支持观察和用户决定 fixture，尚不支持可信研究来源或真实用户决定；真实身份认证、正式项目生命周期、真实目录读取、并行 CAS 压测均未完成（两个 worker 的单次真实竞争已通过）。反馈 v2 已支持明确拒绝，真实用户交互尚未实现。
 - fixture Chronicle 不验证真实项目事实或路径；仍需可信来源、项目生命周期、目录安全读取、观点版本与反馈持久化。不得使用其合成结果声称真实项目已被观察。
