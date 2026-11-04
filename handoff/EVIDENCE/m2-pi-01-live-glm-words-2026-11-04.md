@@ -1,6 +1,6 @@
 # 一次真实 StepFun 调用（2026-11-04）
 
-用户确认外发，并指定文件夹 `/Users/v/new-idea/glm-words`。
+用户确认外发，项目别名 `glm-words`。本机目录不写入仓库。这次调用没有经过 Hark 页面，因此没有预览 ID、确认记录或 `runId`，不能单独当作产品闭环通过。
 
 - Provider / 模型：`stepfun-plan` / `step-5-preview`
 - 扩展：已安装的 `@d3ara1n/pi-provider-stepfun` 入口，只加载这一份

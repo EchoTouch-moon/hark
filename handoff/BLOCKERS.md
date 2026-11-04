@@ -1,6 +1,6 @@
 # 当前待办（2026-11-03）
 
-- **真实 StepFun 已有一次授权调用**：2026-11-04 用户确认后，用 `stepfun-plan/step-5-preview` 询问 `/Users/v/new-idea/glm-words` 的 README 与 pyproject 摘要。没有读取 `.env`、数据库或源码，没有第二次请求。记录见 `handoff/EVIDENCE/m2-pi-01-live-glm-words-2026-11-04.md`。页面里的合成项目仍需各自预览后才能外发。
+- **真实 StepFun 已有一次授权调用，但没有 Hark 页面闭环**：2026-11-04 用 `stepfun-plan/step-5-preview` 询问项目别名 `glm-words` 的 README 与 pyproject 摘要。没有读取 `.env`、数据库或源码，没有第二次请求，也没有预览 ID 或 `runId`。记录见 `handoff/EVIDENCE/m2-pi-01-live-glm-words-2026-11-04.md`。下一次真实调用应走页面预览和单次确认，并留下脱敏关联证据。
 - **M1→M2 独立 Gate 仍未通过**：本次实现不把 M2 记为 PASS，也不打开真实目录、后台研究或自动执行。
 - **M1→M2 Gate 未通过**：Mock 追问持久化已补齐，但 B-C1 独立只读复核请求被自动审查以可能涉及网络安全风险为由拦截，整体 Gate 独立复审尚未完成。恢复时由有权限的独立审阅者审查 `handoff/qa/M1-SYNTHETIC-ACCEPTANCE-2026-11-04.md`、当前差异与适用性；不得把本机自查当作独立通过。可复跑 `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e`；浏览器测试依赖 Python Playwright 与可用 Chromium/Chrome。
 - **2026-11-04 A-C3 独立复审 BLOCKED**：原目录替换、旧句柄复用及子目录已移出后的后续访问已有定向修复；授权根整体移动仍可用。但检查和实际读取之间的移动仍可复现，详见 `handoff/qa/M1-A-C3-MOVE-CHECK-2026-11-04.md`。该修复未通过 A-C3 或 P0；真实 connector 不得启用。原审查记录保留于 `handoff/qa/M1-A-C3-REVIEW-R2-2026-11-04.md`。

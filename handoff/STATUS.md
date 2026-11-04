@@ -1,6 +1,6 @@
 # 当前状态（2026-11-03）
 
-- **2026-11-04 一次真实 StepFun 调用**：用户确认后，`stepfun-plan/step-5-preview` 根据 `/Users/v/new-idea/glm-words` 的 README 与 pyproject 摘要作了回答。未读 `.env`、数据库和源码，没有第二次请求。见 `handoff/EVIDENCE/m2-pi-01-live-glm-words-2026-11-04.md`。
+- **2026-11-04 一次真实 StepFun 调用**：用户确认后，`stepfun-plan/step-5-preview` 根据项目别名 `glm-words` 的 README 与 pyproject 摘要作了回答。未读 `.env`、数据库和源码，没有第二次请求，也没有经过 Hark 页面。见 `handoff/EVIDENCE/m2-pi-01-live-glm-words-2026-11-04.md`。
 - **2026-11-04 M2-Pi-01 手动模型对话已接入合成路径，真实 StepFun 调用未进行**：分支 `codex/macos-rebuild`。用户可对合成项目预览外发内容、确认或取消、恢复对话，并把模型草案显式存成观点。178 项测试、lint、typecheck 通过；浏览器见 `handoff/EVIDENCE/m2-model-browser-2026-11-04/` 与 `handoff/EVIDENCE/m2-pi-01-2026-11-04.txt`。未配置时不发请求；Mock 不会在真实 Provider 失败后顶替。M1 独立 Gate 仍未通过，本项不记为 M2 PASS。真实目录、后台研究和自动执行保持关闭。
 - **2026-11-04 文件夹移动定向修复**：现有句柄存活期间授权根整体移动保持可用，已移出的子目录与同名替换文件在后续操作时被拒绝；168 项测试、lint/typecheck/build 通过，随后对最终微调复跑 18 项相关测试。根移动后的跨重启找回未实现；检查与读取之间的并发移动仍在纯合成高层调用中复现，A-C3/P0 仍 BLOCKED；详见 `handoff/qa/M1-A-C3-MOVE-CHECK-2026-11-04.md`。
 - **2026-11-04 文件夹授权改为长期有效**：用户确认文件夹只需授权一次；观察授权支持 `never`，演示新授权默认不超时，旧演示默认值在盘点时升级但不恢复暂停/撤权。合成数据全量 164 测试、lint/typecheck/build 和浏览器 E2E 通过，见 `handoff/EVIDENCE/persistent-folder-grant-2026-11-04.txt`。真实项目入口尚未实现。

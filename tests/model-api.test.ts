@@ -51,6 +51,22 @@ async function settled(get: (path: string) => Promise<Response>, runId: string) 
 }
 
 describe('manual model API', () => {
+  it('shows the frozen StepFun channel when the adapter id is pi', async () => {
+    const provider = new ScriptedProvider(async () => { throw new Error('preview must not call the provider'); });
+    const s = await start(provider, { mode: 'pi', provider: 'stepfun-plan', model: 'step-5-preview' });
+    try {
+      const status = await (await s.get('/api/model/status')).json() as { providerId: string; modelId: string; recipient: string; configured: boolean };
+      expect(status.configured).toBe(true);
+      expect(status.providerId).toBe('pi');
+      expect(status.modelId).toBe('stepfun-plan/step-5-preview');
+      expect(status.recipient).toBe('StepFun（api.stepfun.com）');
+      const preview = await (await s.post('/api/model/preview', previewBody())).json() as { recipient: string; providerId: string; modelId: string };
+      expect(preview.providerId).toBe('pi');
+      expect(preview.modelId).toBe('stepfun-plan/step-5-preview');
+      expect(preview.recipient).toBe('StepFun（api.stepfun.com）');
+      expect(provider.calls).toBe(0);
+    } finally { s.db.close(); }
+  });
   it('makes no provider call for status, preview or cancellation, and rejects an unconfigured model', async () => {
     const provider = new CountingProvider(new MockModelProvider());
     const s = await start(provider);

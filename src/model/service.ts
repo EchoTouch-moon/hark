@@ -12,7 +12,17 @@ import { MODEL_SYSTEM_PROMPT, ModelError, type ConfirmRequest, type ModelConfig,
 type Scope = { principalId: string; projectId: 'project-a' | 'project-b'; grantId: string; rootId: string };
 interface Payload { providerId: string; modelId: string; projectId: string; question: string; system: string; user: string; }
 const digestOf = (payload: Payload) => createHash('sha256').update(JSON.stringify(payload)).digest('hex');
-const recipientFor = (provider: string | null) => provider === 'stepfun' || provider === 'stepfun-plan' ? 'StepFun（api.stepfun.com）' : provider === 'mock' ? '本地 Mock，不访问网络' : '未配置';
+/** The adapter id is `pi`. The StepFun channel is the frozen provider name, also stored as the model id prefix. */
+function stepfunChannel(value: string | null): 'stepfun' | 'stepfun-plan' | null {
+  if (value === 'stepfun' || value === 'stepfun-plan') return value;
+  const head = value?.split('/')[0];
+  return head === 'stepfun' || head === 'stepfun-plan' ? head : null;
+}
+function recipientFor(adapterId: string | null, channelSource: string | null): string {
+  if (stepfunChannel(channelSource)) return 'StepFun（api.stepfun.com）';
+  if (adapterId === 'mock' || channelSource === 'mock') return '本地 Mock，不访问网络';
+  return '未配置';
+}
 const asRecord = (row: unknown): Record<string, unknown> => {
   if (!row || typeof row !== 'object') throw new ModelError('not_found', '记录不可用', 404);
   return row as Record<string, unknown>;
@@ -33,7 +43,8 @@ export class ModelService {
     const configured = this.provider?.configured === true;
     return {
       configured, mode: this.config.mode, providerId: configured ? this.provider!.providerId : null, modelId: configured ? this.provider!.modelId : null,
-      reason: configured ? null : (this.provider?.unavailableReason ?? this.config.reason ?? '模型未配置'), recipient: recipientFor(configured ? this.provider!.providerId : this.config.provider),
+      reason: configured ? null : (this.provider?.unavailableReason ?? this.config.reason ?? '模型未配置'),
+      recipient: configured ? recipientFor(this.provider!.providerId, this.config.mode === 'pi' ? this.config.provider : this.config.mode === 'mock' ? 'mock' : null) : '未配置',
       synthetic: true, timeoutMs: this.config.timeoutMs, maxOutputBytes: this.config.maxOutputBytes, maxCalls: this.config.maxCalls,
     };
   }
@@ -207,7 +218,8 @@ export class ModelService {
     const outbound = JSON.parse(payload.user) as { truncated?: boolean; omitted?: string[]; items?: unknown[] };
     return {
       previewId: row.id, conversationId: row.conversation_id, requestId: row.request_key, projectId: row.project_id,
-      providerId: row.provider_id, modelId: row.model_id, recipient: recipientFor(typeof row.provider_id === 'string' ? row.provider_id : null),
+      providerId: row.provider_id, modelId: row.model_id,
+      recipient: recipientFor(typeof row.provider_id === 'string' ? row.provider_id : null, typeof row.model_id === 'string' ? row.model_id : null),
       digest: row.payload_digest, expiresAt: row.expires_at, synthetic: true as const, truncated: outbound.truncated === true, omitted: outbound.omitted ?? [],
       limits: { ...JSON.parse(String(row.limits_json)), callsUsed: Number(this.db.prepare('SELECT count(*) AS n FROM model_runs').get()?.n ?? 0) },
       sources: outbound.items ?? [], outbound: { system: payload.system, user: payload.user },
