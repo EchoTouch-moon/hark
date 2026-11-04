@@ -1,5 +1,6 @@
 # 当前状态（2026-11-03）
 
+- **2026-11-04 D-C1**：本地合成 API 已实现；固定项目 scope、会话/Origin/CSRF、项目状态、反馈及独立数据库重启等 3 项局部集成测试、lint/typecheck 通过，见 `handoff/EVIDENCE/m1-d-c1-api-2026-11-04.txt`。服务未接入旧目录读取；浏览器产品闭环待联调。
 - **2026-11-04 C-C1/C-S1**：已实现来源支持的合成观点、明确 Mock 追问、持久反馈及 CAS 版本修订；5 项场景含双 worker 竞争、重启和隔离，lint/typecheck 通过，见 `handoff/EVIDENCE/m1-c-c1-dialogue-2026-11-04.txt`。D-C1/D-S1 正在接入，尚无完整产品验收。
 - **2026-11-04 C-C2**：全局盘点逐项目调用授权理解投影，区分已覆盖、未完整分析及不可用数量；2 项局部测试与类型检查见 `handoff/EVIDENCE/m1-c-c2-inventory-2026-11-04.txt`。scope 尚须由未来服务端可信上下文提供。
 - **2026-11-04 B-C1/B-S1**：受控预置项目目标、成果和待办按来源写入现有 Chronicle 并投影，重复摄取、跨项目、来源 epoch、撤权和重启等 5 项局部测试及类型检查通过，见 `handoff/EVIDENCE/m1-b-c1-understanding-2026-11-04.txt`。这是内部接口，服务和界面尚未接入。

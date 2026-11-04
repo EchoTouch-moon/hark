@@ -179,12 +179,15 @@
       "id": "D-C1",
       "parent": "M1-D",
       "owner": "主 Agent",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "depends_on": [
         "C-C1",
         "C-C2"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/architecture/M1-SYNTHETIC-API.md",
+        "handoff/EVIDENCE/m1-d-c1-api-2026-11-04.txt"
+      ],
       "external_ref": null
     },
     {

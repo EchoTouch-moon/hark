@@ -1,5 +1,6 @@
 # 重建交接（2026-11-03）
 
+**2026-11-04 合成 API**：`pnpm demo` 构建 TypeScript 并启动仅绑定 `127.0.0.1:4173` 的演示服务，状态保存在独立 `data/m1-synthetic/`。三项 API 集成测试及 lint/typecheck 见 `handoff/EVIDENCE/m1-d-c1-api-2026-11-04.txt`；页面联调和浏览器验收仍待完成。
 **2026-11-04 合成观点与反馈**：内部服务支持有来源观点、标注 Mock 的追问、持久质疑与保留 v1 的 v2；双 worker 冲突及局部检查见 `handoff/EVIDENCE/m1-c-c1-dialogue-2026-11-04.txt`。页面及本地 API 仍在接入。
 **2026-11-04 合成盘点投影**：逐项目查询授权与覆盖状态，不拼接未授权项目材料；局部检查见 `handoff/EVIDENCE/m1-c-c2-inventory-2026-11-04.txt`。可信服务端接入尚未完成。
 **2026-11-04 预置理解层**：复用 Chronicle 存储合成目标、成果及待办，授权与来源失效时保守处理；局部证据见 `handoff/EVIDENCE/m1-b-c1-understanding-2026-11-04.txt`。服务、对话、界面集成及实际 M1 验收仍待完成。

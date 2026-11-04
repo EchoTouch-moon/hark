@@ -13,6 +13,7 @@
     "pretest": "node scripts/build-posix-dir.mjs",
     "prebuild": "node scripts/build-posix-dir.mjs",
     "test": "vitest run --config vitest.config.ts",
+    "demo": "pnpm exec tsc -p tsconfig.build.json && node dist/fixture-server-main.js",
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {

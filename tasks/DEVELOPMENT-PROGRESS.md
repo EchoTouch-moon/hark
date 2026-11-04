@@ -93,7 +93,7 @@
 - [ ] M1-D：带基本炉心视觉的中文对话与全局盘点，含真实错误状态。
   - [x] D-C0（核心）：展示合同已复核，见 `docs/architecture/M1-UI-DISPLAY-CONTRACT.md`。
   - [x] D-S0（辅助）：明确标示的静态外壳已复核；浏览器与静态检查见 `handoff/EVIDENCE/m1-ui-shell-2026-11-04/`。来源标签在浏览器复查后修改，尚未浏览器复验；未接入服务。
-  - [ ] D-C1（核心）：主 Agent 正在建立受控合成本地服务与 API，合同见 `docs/architecture/M1-SYNTHETIC-API.md`。
+  - [x] D-C1（核心）：合成本地服务与 API 已实现，合同 `docs/architecture/M1-SYNTHETIC-API.md`；会话、权限、来源、重启及反馈等 3 项集成测试、lint/typecheck 见 `handoff/EVIDENCE/m1-d-c1-api-2026-11-04.txt`。浏览器联调待完成。
   - [ ] D-S1（辅助）：协作 Agent 按冻结合同接入页面，等待服务联调。
   - [ ] D-S2（辅助）：运行浏览器场景并记录证据；负责人未分配，依赖 D-S1。
 - [ ] M1-REBUILD-01：合成闭环及适用安全/E2E 通过独立 Gate 审查。细分、依赖、责任和验证见 `tasks/M1-REDISCOVERY-2026-11-04.md`。
