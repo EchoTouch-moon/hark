@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Hark · 合成项目预览</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" aria-label="项目导航">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span><div><strong>hark</strong><small>YOUR PROJECT COMPANION</small></div></div>
+    <div class="demo-label"><span class="demo-dot"></span>合成演示 <span>·</span> 静态预览</div>
+    <p class="side-heading">工作空间</p>
+    <nav aria-label="项目列表">
+      <button class="nav-item active" type="button" data-view="overview" aria-current="page"><span class="nav-icon">◫</span>全部项目 <span class="nav-count">02</span></button>
+      <p class="side-heading projects-label">合成项目 <span>2</span></p>
+      <button class="nav-item" type="button" data-view="a"><span class="project-icon star">✦</span><span>星光书签<small>模拟 Git 项目</small></span></button>
+      <button class="nav-item" type="button" data-view="b"><span class="project-icon rain">◒</span><span>雨滴记录<small>模拟非 Git 项目</small></span></button>
+    </nav>
+    <div class="side-bottom"><span class="mini-fire" aria-hidden="true">✺</span><div><strong>一处安静的工作空间</strong><p>预置内容 · 不连接真实项目</p></div></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div class="breadcrumbs"><span>工作空间</span><span class="slash">/</span><strong id="breadcrumb">全部项目</strong></div><span class="top-status"><span></span> 静态预览</span></header>
+    <div class="notice" role="note"><span class="notice-symbol">✳</span><span><strong>这是合成演示。</strong> 内容均为虚构，未连接服务；输入和反馈不会保存。</span></div>
+    <section class="content" id="content" aria-live="polite"></section>
+    <footer><span>HARK / SYNTHETIC PREVIEW</span><span>只为展示交互，不代表真实项目观察</span></footer>
+  </main>
+</div>
+<template id="overview-template">
+  <div class="page-heading"><div><div class="eyebrow"><span></span> YOUR WORKSPACE</div><h1>从这里，重新看见你的项目<span class="period">.</span></h1><p>把散落的线索放在一起，慢慢理清正在发生的事。</p></div><div class="heading-mark" aria-hidden="true">✳</div></div>
+  <div class="section-heading"><div><span class="section-index">01 / 项目盘点</span><h2>项目一览 <span>02</span></h2></div><span class="quiet-note">以下均为预置合成数据</span></div>
+  <div class="project-grid">
+    <button type="button" class="project-card" data-view="a"><div class="card-top"><span class="project-icon big star">✦</span><span class="card-arrow">↗</span></div><span class="tag">模拟 Git 项目</span><h3>星光书签</h3><p>整理一份虚构阅读笔记的书签清单。</p><div class="card-footer"><span><i></i> 有 1 项待办</span><span>查看项目 →</span></div></button>
+    <button type="button" class="project-card" data-view="b"><div class="card-top"><span class="project-icon big rain">◒</span><span class="card-arrow">↗</span></div><span class="tag">模拟非 Git 项目</span><h3>雨滴记录</h3><p>整理一份虚构的每日天气观察记录。</p><div class="card-footer"><span><i></i> 有 1 项待办</span><span>查看项目 →</span></div></button>
+  </div>
+  <div class="unassigned"><div class="unassigned-icon">?</div><div><strong>还有 1 条未归属记录</strong><p>它没有足够的项目信息，因此暂不归入任何项目。</p></div><span>保留待确认</span></div>
+  <div class="overview-note"><span>✧</span><p>选择一个项目，看看它的目标、进展和待办。<br><small>这里的内容来自固定的虚构样本。</small></p></div>
+</template>
+<template id="project-template">
+  <button type="button" class="back-link" data-view="overview">← <span>返回全部项目</span></button>
+  <div class="project-header"><div><div class="eyebrow"><span></span> 合成项目 / <span id="kind"></span></div><h1 id="title"></h1><p id="description"></p></div><span id="hero-icon" class="project-icon hero" aria-hidden="true"></span></div>
+  <div class="project-layout"><div class="details">
+    <div class="section-heading compact"><div><span class="section-index">01 / 项目概览</span><h2>目前，我们知道的</h2></div><span class="quiet-note">来自虚构材料</span></div>
+    <div class="facts"><article><span class="fact-number">01</span><div><span class="fact-label">目标</span><p id="goal"></p></div></article><article><span class="fact-number">02</span><div><span class="fact-label">已有成果</span><p id="result"></p></div></article><article><span class="fact-number">03</span><div><span class="fact-label">接下来</span><p id="todo"></p></div></article></div>
+    <div class="source-line"><span class="source-icon">▤</span><span>合成来源 <strong id="source"></strong></span><span class="source-status">固定样本</span></div>
+    <div class="section-heading opinion-heading"><div><span class="section-index">02 / 一点想法</span><h2>值得留意</h2></div><span class="quiet-note">观点示意 · v1</span></div>
+    <article class="opinion"><div class="opinion-top"><span>✳</span><span>预置观点 · 非模型分析</span></div><p id="opinion"></p><div class="opinion-foot"><span>依据：上方虚构材料</span><span>仅供界面展示</span></div></article>
+    <p class="uncertainty">这是一条示意观点，并非对真实项目的判断。更多背景尚未知。</p>
+    <details class="version-preview"><summary>查看反馈与版本的展示示例</summary><p>虚构反馈：能否把语气放得更谨慎一些？</p><p><strong>v2 示例：</strong>可以考虑先查看待办，再决定下一步。<br>修订原因：回应虚构反馈、调整措辞；依据仍为上方合成材料。v1 保留如上。</p><small>仅为预置展示，未发生实际保存或修订。</small></details>
+  </div><aside class="conversation" aria-label="项目对话示意"><div class="conversation-header"><div><span class="chat-spark">✳</span><div><strong>和 Hark 聊聊</strong><small>对话样式预览</small></div></div><span class="mock-chip">MOCK</span></div><div class="chat-body" id="chat-body"><div class="chat-message"><span class="avatar">✳</span><div><strong>Hark <small>预置内容</small></strong><p>可以从这条观点开始。你有什么想补充或质疑的？</p></div></div><p class="chat-hint">这个预览不会分析你的输入，也不会保存反馈或生成修订。</p></div><form id="chat-form"><label for="question">输入一条示意消息</label><div class="chat-input"><textarea id="question" rows="2" placeholder="写下你的想法…" maxlength="500"></textarea><button type="submit" aria-label="发送示意消息">↑</button></div><small>仅演示界面 · 刷新后内容消失</small></form></aside></div>
+</template>
+</body>
+</html>

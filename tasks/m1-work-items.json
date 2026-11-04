@@ -86,8 +86,8 @@
     {
       "id": "B-C1",
       "parent": "M1-B",
-      "owner": null,
-      "status": "TODO",
+      "owner": "主 Agent",
+      "status": "IN_PROGRESS",
       "depends_on": [
         "A-C4"
       ],
@@ -142,22 +142,27 @@
       "id": "D-C0",
       "parent": "M1-D",
       "owner": "主 Agent（协作 Agent 起草）",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "depends_on": [
         "A-C1"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/architecture/M1-UI-DISPLAY-CONTRACT.md"
+      ],
       "external_ref": null
     },
     {
       "id": "D-S0",
       "parent": "M1-D",
       "owner": "协作 Agent（D-C0 后）",
-      "status": "TODO",
+      "status": "DONE",
       "depends_on": [
         "D-C0"
       ],
-      "evidence": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-ui-shell-2026-11-04/browser-review.txt",
+        "handoff/EVIDENCE/m1-ui-shell-2026-11-04/checks.txt"
+      ],
       "external_ref": null
     },
     {

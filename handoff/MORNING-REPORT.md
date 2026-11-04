@@ -1,5 +1,6 @@
 # 重建交接（2026-11-03）
 
+**2026-11-04 静态界面**：`web/index.html` 可打开查看合成外壳；本地预览可用 `python3 -m http.server 18765 --bind 127.0.0.1 --directory web`。它不连接服务、不保存反馈；浏览器复查与静态检查见 `handoff/EVIDENCE/m1-ui-shell-2026-11-04/`，后改来源文字未再次浏览器复验，截图未保存。
 **2026-11-04 A-C3 复审及范围调整**：复审发现跨项目目录替换与撤权后描述符复用两项可复现问题，A-C3 BLOCKED。用户批准 M1 使用受控预置合成项目，旧目录读取不接入服务；A-C4 局部测试已通过，产品闭环与浏览器验收尚未完成。详见 `handoff/qa/M1-A-C3-REVIEW-R2-2026-11-04.md` 与 `handoff/EVIDENCE/m1-a-c4-catalog-2026-11-04.txt`。
 **2026-11-04 M1 执行原则**：已将最小必要实现、分级安全边界和以可操作合成闭环为中心的调度写入 `AGENTS.md` 和两份 M1 任务文档。仅修改文档，未复审 A-C3、实现 UI 或运行 M1-R01～R06；现有阻塞和运行说明继续见 `handoff/BLOCKERS.md`。文档检查见 `handoff/EVIDENCE/m1-occam-docs-2026-11-04.txt`。
 **2026-11-04 A-C3 修复待复审**：首轮审查五项缺陷已在实现和 `tests/fixture-discovery-ac3.test.ts` 中处理，138 项测试与复现脚本 exit 0，见 `handoff/EVIDENCE/m1-a-c3-fix-2026-11-04.txt`。A-C3 未勾选，M1-A 不关闭，复审前不进入 B-C1/B-S1。
