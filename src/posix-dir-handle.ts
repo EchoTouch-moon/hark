@@ -4,7 +4,9 @@ import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export type DirIdentity = { readonly dev: string; readonly ino: string };
-export type OpenedDir = { readonly fd: number; readonly identity: DirIdentity; readonly nlink: number };
+declare const handleBrand: unique symbol;
+export type DirHandle = { readonly [handleBrand]: never };
+export type OpenedDir = { readonly fd: DirHandle; readonly identity: DirIdentity; readonly nlink: number };
 type NativeAddon = {
   available: boolean;
   openRoot(path: string): { fd: number; errno: number };
@@ -20,7 +22,8 @@ const S_IFMT = 0o170000;
 const S_IFDIR = 0o040000;
 const S_IFREG = 0o100000;
 const require = createRequire(import.meta.url);
-const owned = new Set<number>();
+type HandleState = { fd: number; active: boolean; parent?: HandleState; children: Set<HandleState> };
+const owned = new WeakMap<object, HandleState>();
 let loaded: NativeAddon | null | undefined;
 
 function packageRoot(): string {
@@ -68,14 +71,26 @@ function identityOf(stat: { dev?: bigint; ino?: bigint }): DirIdentity | null {
   return { dev: stat.dev.toString(), ino: stat.ino.toString() };
 }
 
-function closeQuiet(addon: NativeAddon, fd: number): void {
-  owned.delete(fd);
-  if (fd >= 0) addon.close(fd);
+function lookup(handle: unknown): HandleState | undefined {
+  if (!handle || typeof handle !== 'object') return undefined;
+  const state = owned.get(handle);
+  return state?.active ? state : undefined;
 }
 
-function take(fd: number): number {
-  owned.add(fd);
-  return fd;
+function closeQuiet(addon: NativeAddon, state: HandleState): void {
+  if (!state.active) return;
+  state.active = false;
+  for (const child of [...state.children]) closeQuiet(addon, child);
+  state.parent?.children.delete(state);
+  addon.close(state.fd);
+}
+
+function take(fd: number, parent?: HandleState): DirHandle {
+  const handle = Object.freeze(Object.create(null)) as DirHandle;
+  const state: HandleState = { fd, active: true, children: new Set(), ...(parent ? { parent } : {}) };
+  parent?.children.add(state);
+  owned.set(handle, state);
+  return handle;
 }
 
 export function openRootDirectory(absolutePath: string): OpenedDir | { reason: string } {
@@ -95,20 +110,22 @@ export function openRootDirectory(absolutePath: string): OpenedDir | { reason: s
   return { fd: take(opened.fd), identity, nlink: Number(stat.nlink ?? 0) };
 }
 
-export function listDirectory(dirfd: number): { names: string[] } | { reason: string } {
+export function listDirectory(dirfd: unknown): { names: string[] } | { reason: string } {
   const addon = native();
   if (!addon) return { reason: 'adapter_unavailable' };
-  if (!Number.isInteger(dirfd) || dirfd < 0 || !owned.has(dirfd)) return { reason: 'unavailable' };
-  const listed = addon.list(dirfd);
+  const state = lookup(dirfd);
+  if (!state) return { reason: 'unavailable' };
+  const listed = addon.list(state.fd);
   if (!listed.ok) return { reason: 'unavailable' };
   return { names: listed.names.filter(name => NAME.test(name)) };
 }
 
-export function openChild(dirfd: number, name: string, asDirectory: boolean): OpenedDir | { reason: string } {
+export function openChild(dirfd: unknown, name: string, asDirectory: boolean): OpenedDir | { reason: string } {
   const addon = native();
   if (!addon) return { reason: 'adapter_unavailable' };
-  if (!Number.isInteger(dirfd) || dirfd < 0 || !owned.has(dirfd) || !NAME.test(name) || name === '.' || name === '..') return { reason: 'invalid_path' };
-  const opened = addon.openAt(dirfd, name, asDirectory ? 1 : 0);
+  const parent = lookup(dirfd);
+  if (!parent || !NAME.test(name) || name === '.' || name === '..') return { reason: 'invalid_path' };
+  const opened = addon.openAt(parent.fd, name, asDirectory ? 1 : 0);
   if (opened.fd < 0) {
     if (opened.errno === 62 || opened.errno === 40) return { reason: 'symlink' };
     return { reason: 'unavailable' };
@@ -122,23 +139,25 @@ export function openChild(dirfd: number, name: string, asDirectory: boolean): Op
     addon.close(opened.fd);
     return { reason: 'unavailable' };
   }
-  return { fd: take(opened.fd), identity, nlink };
+  return { fd: take(opened.fd, parent), identity, nlink };
 }
 
-export function readOpened(fd: number, maxBytes: number): { bytes: Buffer } | { reason: string } {
+export function readOpened(fd: unknown, maxBytes: number): { bytes: Buffer } | { reason: string } {
   const addon = native();
   if (!addon) return { reason: 'adapter_unavailable' };
-  if (!Number.isInteger(fd) || fd < 0 || !owned.has(fd) || !Number.isInteger(maxBytes) || maxBytes <= 0 || maxBytes > 65536) return { reason: 'unavailable' };
-  const stat = addon.fstat(fd);
+  const state = lookup(fd);
+  if (!state || !Number.isInteger(maxBytes) || maxBytes <= 0 || maxBytes > 65536) return { reason: 'unavailable' };
+  const stat = addon.fstat(state.fd);
   if (!stat.ok || Number(stat.nlink) !== 1 || (Number(stat.mode) & S_IFMT) !== S_IFREG) return { reason: 'unavailable' };
-  const read = addon.read(fd, maxBytes);
+  const read = addon.read(state.fd, maxBytes);
   if (!read.ok || !read.bytes) return { reason: 'unavailable' };
   return { bytes: read.bytes };
 }
 
-export function closeDescriptor(fd: number): void {
+export function closeDescriptor(fd: unknown): void {
   const addon = native();
-  if (addon && Number.isInteger(fd) && fd >= 0) closeQuiet(addon, fd);
+  const state = lookup(fd);
+  if (addon && state) closeQuiet(addon, state);
 }
 
 export function identitiesEqual(left: DirIdentity, right: DirIdentity): boolean {

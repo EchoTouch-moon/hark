@@ -68,7 +68,9 @@
         "handoff/EVIDENCE/m1-a-c3-suite-2026-11-04.txt",
         "handoff/EVIDENCE/m1-a-c3-fix-2026-11-04.txt",
         "handoff/qa/M1-A-C3-REVIEW-R2-2026-11-04.md",
-        "handoff/EVIDENCE/m1-a-c3-r2-2026-11-04.txt"
+        "handoff/EVIDENCE/m1-a-c3-r2-2026-11-04.txt",
+        "handoff/qa/M1-A-C3-TARGETED-FIX-2026-11-04.md",
+        "handoff/EVIDENCE/m1-a-c3-targeted-fixes-2026-11-04.txt"
       ],
       "external_ref": null
     },
