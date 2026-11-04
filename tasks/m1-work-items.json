@@ -123,12 +123,14 @@
     {
       "id": "C-C2",
       "parent": "M1-C",
-      "owner": null,
-      "status": "TODO",
+      "owner": "主 Agent",
+      "status": "DONE",
       "depends_on": [
         "B-C1"
       ],
-      "evidence": [],
+      "evidence": [
+        "handoff/EVIDENCE/m1-c-c2-inventory-2026-11-04.txt"
+      ],
       "external_ref": null
     },
     {

@@ -1,0 +1,17 @@
+$ pnpm exec vitest run tests/fixture-global-inventory.test.ts --config vitest.config.ts
+
+ RUN  v3.2.7 /Users/v/new-idea/hark-reboot-docs
+
+(node:61661) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/fixture-global-inventory.test.ts (2 tests) 17ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  12:50:16
+   Duration  396ms (transform 71ms, setup 0ms, collect 89ms, tests 17ms, environment 0ms, prepare 53ms)
+
+exit=0
+$ pnpm typecheck
+$ tsc --noEmit -p tsconfig.json
+exit=0
