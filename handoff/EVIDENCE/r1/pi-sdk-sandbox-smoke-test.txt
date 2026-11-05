@@ -1,0 +1,23 @@
+command: npm run test:pi-sdk-smoke
+npm notice run test:pi-sdk-smoke
+npm notice run npm run test:pi-sdk-smoke -w @hark/agent-host
+npm notice run @hark/agent-host@0.0.0 test:pi-sdk-smoke
+npm notice run node --experimental-strip-types --test test/sandbox-smoke.test.ts
+TAP version 13
+# {"piSdk":"1.5.0","provider":"faux","fauxIsNotStepFun":true,"providerHttpPayload":"untested","networkAttempts":0,"spawnAttempts":0,"piGlobalProbes":0,"vaultProbes":0,"projectDiscoveryReads":0,"ambientAdcDeniedWithoutOpen":6,"extensionExecuted":false,"jsonlRestoredWithoutReinjection":true}
+# Subtest: isolated Pi SDK session stays off built-ins, project resources, and the network
+ok 1 - isolated Pi SDK session stays off built-ins, project resources, and the network
+  ---
+  duration_ms: 742.526917
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 837.611416
+exit:0

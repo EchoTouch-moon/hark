@@ -1,0 +1,8 @@
+node v22.23.2
+npm 12.0.2
+command: npm run typecheck
+npm notice run typecheck
+npm notice run npm run typecheck -w @hark/agent-host
+npm notice run @hark/agent-host@0.0.0 typecheck
+npm notice run tsc -p tsconfig.json --noEmit
+exit:0

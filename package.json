@@ -1,0 +1,15 @@
+{
+  "name": "hark-r1-agent-host",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "workspaces": [
+    "packages/agent-host"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck -w @hark/agent-host",
+    "test:pi-sdk-smoke": "npm run test:pi-sdk-smoke -w @hark/agent-host"
+  }
+}

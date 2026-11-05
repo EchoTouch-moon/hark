@@ -32,4 +32,5 @@ READ 任务 → 最小接口/测试 → 实现 → 局部测试/类型检查 →
 - 本机已执行验证：Node `v22.23.2`、Cargo `1.95.0`、rustc `1.95.0`、Bun `1.3.14`。均为本机开发工具，不证明打包后无需预装运行时。
 - 当前 registry 已确认 `xai/grok-4.7`；用户随后要求所有新 Grok child 显式 `xai/grok-4.7:high`。未指定强度的早期 grok-dev 实际继承 `xhigh`，不能把 default 当 high；已对新的 high child 核对实际会话记录。主会话负责规划与验收。
 - 本机 macOS 合成磁盘测试已验证 `/var` 系统路径别名可用打开目录的 dev/ino 物理祖先判重；默认 SQLite journal 下另一 Core 连接可见已提交撤权，短 `BEGIN IMMEDIATE` 可协调 I/O 准入与撤权。未改变 WAL，不能据此宣称 Windows 或远程外发验收通过。
-- Pi `1.5.0` 宿主不声明 chord 依赖，本地 pi-subagents 旧启动检查会误拒绝。已获用户批准定向修复 runner 检查，局部测试 7/7、typecheck 与实际宿主 alias 解析通过；须 `/reload` 后重新验证后台委派，尚不能声称 Grok 已开始实现。
+- Pi `1.5.0` 宿主不声明 chord 依赖，本地 pi-subagents 旧启动检查会误拒绝。已获用户批准定向修复 runner 检查，局部测试 7/7、typecheck 与宿主 alias 解析通过；重载后已通过原协议实际运行 Grok child，不再是当前启动阻塞。
+- 本轮 SDK smoke 精确锁 `@earendil-works/pi-coding-agent`/`pi-ai` `1.5.0`，`npm run typecheck` 与 `npm run test:pi-sdk-smoke` 在 Node `v22.23.2` 实测通过。`noTools: "builtin"` 不移除注册表中的内置工具；使用纯名字 allowlist 并核验 all/active/callable。无网络 faux 不是 StepFun 验收；SDK 的 ADC fileExists 探测被测试 guard 拒绝，生产 Host 仍需显式收口环境凭据来源。

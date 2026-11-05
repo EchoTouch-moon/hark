@@ -1,0 +1,23 @@
+{
+  "name": "@hark/agent-host",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:pi-sdk-smoke": "node --experimental-strip-types --test test/sandbox-smoke.test.ts"
+  },
+  "dependencies": {
+    "@earendil-works/pi-ai": "1.5.0",
+    "@earendil-works/pi-coding-agent": "1.5.0",
+    "typebox": "1.3.27",
+    "zod": "3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.0",
+    "typescript": "5.8.3"
+  }
+}
