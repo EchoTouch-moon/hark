@@ -83,9 +83,9 @@ fn confirm_single(
 }
 
 #[test]
-fn migration_is_v1_and_lists_only_current_tables() {
+fn migration_is_current_and_lists_only_current_tables() {
     let db = Db::new();
-    assert_eq!(db.core.schema_version().unwrap(), 1);
+    assert_eq!(db.core.schema_version().unwrap(), 2);
     db.core.schema_version().unwrap();
     let mut tables = db.core.schema_tables().unwrap();
     tables.sort();
@@ -105,7 +105,7 @@ fn migration_is_v1_and_lists_only_current_tables() {
         ]
     );
     let again = Core::open(&db.path).unwrap();
-    assert_eq!(again.schema_version().unwrap(), 1);
+    assert_eq!(again.schema_version().unwrap(), 2);
     assert_eq!(again.schema_tables().unwrap().len(), tables.len());
 }
 
@@ -575,6 +575,7 @@ fn first_messages_are_idempotent_and_fold_only_after_successful_receipt() {
         .core
         .commit_agent_opening(&AgentOpeningReceipt {
             workspace_id: ws.id.clone(),
+            run_id: hark_core::RunId::parse("run_0123456789abcdef0123456789abcdef").unwrap(),
             receipt_id: "receipt-1".to_string(),
             provider: "stepfun".to_string(),
             model: "step-2".to_string(),
@@ -611,10 +612,13 @@ fn first_messages_are_idempotent_and_fold_only_after_successful_receipt() {
             model: Some("step-2".to_string()),
         })
         .unwrap();
+    let started = db.core.mark_analyzing(&ws.id).unwrap();
+    let run_id = started.active_run_id.clone().expect("core issued run");
     let bad_source = db
         .core
         .commit_agent_opening(&AgentOpeningReceipt {
             workspace_id: ws.id.clone(),
+            run_id: run_id.clone(),
             receipt_id: "receipt-bad".to_string(),
             provider: "stepfun".to_string(),
             model: "step-2".to_string(),
@@ -632,6 +636,7 @@ fn first_messages_are_idempotent_and_fold_only_after_successful_receipt() {
         .core
         .commit_agent_opening(&AgentOpeningReceipt {
             workspace_id: ws.id.clone(),
+            run_id: run_id.clone(),
             receipt_id: "receipt-fail".to_string(),
             provider: "stepfun".to_string(),
             model: "step-2".to_string(),
@@ -641,6 +646,16 @@ fn first_messages_are_idempotent_and_fold_only_after_successful_receipt() {
         })
         .unwrap_err();
     assert_code(&failed, ErrorCode::ModelReceiptRejected);
+    assert!(
+        !db.core.onboarding(&ws.id).unwrap().model_analyzed,
+        "failure must not claim analysis"
+    );
+    db.core.retry_onboarding(&ws.id).unwrap();
+    let restarted = db.core.mark_analyzing(&ws.id).unwrap();
+    let run_id = restarted
+        .active_run_id
+        .clone()
+        .expect("retry issued a new run");
 
     let source_ids = read
         .sources
@@ -651,6 +666,7 @@ fn first_messages_are_idempotent_and_fold_only_after_successful_receipt() {
         .core
         .commit_agent_opening(&AgentOpeningReceipt {
             workspace_id: ws.id.clone(),
+            run_id: run_id.clone(),
             receipt_id: "receipt-ok".to_string(),
             provider: "stepfun".to_string(),
             model: "step-2".to_string(),
@@ -665,6 +681,7 @@ fn first_messages_are_idempotent_and_fold_only_after_successful_receipt() {
         .core
         .commit_agent_opening(&AgentOpeningReceipt {
             workspace_id: ws.id.clone(),
+            run_id,
             receipt_id: "receipt-other".to_string(),
             provider: "stepfun".to_string(),
             model: "step-2".to_string(),
@@ -741,21 +758,21 @@ fn cross_workspace_source_ref_is_rejected() {
         .source;
     let err = db.core.get_source_ref(&ws_a.id, &src_b.id).unwrap_err();
     assert_code(&err, ErrorCode::CrossWorkspaceRef);
-    let opening = db
-        .core
+    db.core
         .set_service_grant(&ServiceGrantUpdate {
             workspace_id: ws_a.id.clone(),
             service: ServiceKind::Model,
             status: ServiceStatus::Enabled,
-            provider: None,
-            model: None,
+            provider: Some("stepfun".to_string()),
+            model: Some("step-2".to_string()),
         })
         .unwrap();
-    let _ = opening;
+    let started = db.core.mark_analyzing(&ws_a.id).unwrap();
     let cross = db
         .core
         .commit_agent_opening(&AgentOpeningReceipt {
             workspace_id: ws_a.id.clone(),
+            run_id: started.active_run_id.expect("core issued run"),
             receipt_id: "cross".to_string(),
             provider: "stepfun".to_string(),
             model: "step-2".to_string(),

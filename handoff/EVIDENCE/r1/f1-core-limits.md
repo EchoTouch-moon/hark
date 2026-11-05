@@ -21,7 +21,7 @@
 - 无 writer FIFO 与打开前检查后换成 FIFO 的扫描/读取在本机 3 秒内返回，并记 `special_file_rejected`。
 - `readdir`/`open` 计数证明 `max_entries` 与中途取消发生在枚举边界，不是只看最终 `files_seen`。
 - 命令与退出码见 `f1-reader-fifo-budget.md`。
-- #1/#5 的后续本地修复见 `f1-scope-repair.md`，尚未经父会话复跑。#3 仍未修。
+- 当时这次 Reader 切片没有修 #1/#3/#5。后续本地修复分别见 `f1-scope-repair.md`、`f1-revocation-admission.md`、`f1-opening-receipt.md`。联合结果见 `f1-core-integrated.md`，不是父会话放行。
 
 ## 可恢复限制
 

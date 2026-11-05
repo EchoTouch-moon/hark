@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 
 use crate::error::{CoreError, ErrorCode, Result};
 use crate::grant::{self, AuthorizedRoot, RootStatus};
-use crate::ids::{MessageId, SourceId, WorkspaceId};
+use crate::ids::{MessageId, RunId, SourceId, WorkspaceId};
 use crate::limits::{
     MAX_EVENT_BODY_CHARS, MAX_EXCERPT_CHARS, MAX_USER_MESSAGE_CHARS, ONBOARDING_GENERATION,
 };
@@ -77,12 +77,21 @@ pub struct OnboardingCheckpoint {
     pub local_card_folded: bool,
     pub model_status: String,
     pub error_code: Option<String>,
+    /// Core-issued opening run. Absent until `mark_analyzing` binds one.
+    pub active_run_id: Option<RunId>,
+    pub auth_provider: Option<String>,
+    pub auth_model: Option<String>,
+    pub auth_grant_updated_at: Option<String>,
+    pub auth_root_updated_at: Option<String>,
+    pub initial_read_requested: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentOpeningReceipt {
     pub workspace_id: WorkspaceId,
+    /// Must be the run Core issued for this workspace. A caller-supplied id is not a run.
+    pub run_id: RunId,
     pub receipt_id: String,
     pub provider: String,
     pub model: String,
@@ -223,7 +232,8 @@ impl Core {
             tx.execute(
                 "UPDATE onboarding_runs
                  SET selective_read_done = 1, state = 'reading', updated_at = ?1
-                 WHERE workspace_id = ?2 AND generation = ?3 AND opening_presented = 0",
+                 WHERE workspace_id = ?2 AND generation = ?3 AND opening_presented = 0
+                   AND state NOT IN ('cancelled', 'failed', 'presented')",
                 params![
                     Utc::now().to_rfc3339(),
                     ws.id.as_str(),
@@ -318,7 +328,8 @@ impl Core {
             tx.execute(
                 "UPDATE onboarding_runs
                  SET state = ?1, updated_at = ?2
-                 WHERE workspace_id = ?3 AND generation = ?4 AND opening_presented = 0",
+                 WHERE workspace_id = ?3 AND generation = ?4 AND opening_presented = 0
+                   AND state NOT IN ('cancelled', 'failed', 'presented', 'analyzing')",
                 params![
                     next_state,
                     Utc::now().to_rfc3339(),
@@ -335,15 +346,6 @@ impl Core {
     }
 
     pub fn commit_agent_opening(&self, receipt: &AgentOpeningReceipt) -> Result<FirstMessage> {
-        if !receipt.success
-            || receipt.body.trim().is_empty()
-            || receipt.body.chars().count() > MAX_EVENT_BODY_CHARS
-        {
-            return Err(CoreError::new(
-                ErrorCode::ModelReceiptRejected,
-                "opening requires a successful non-empty receipt; core will not invent one",
-            ));
-        }
         validate_provider_token(&receipt.provider)?;
         validate_provider_token(&receipt.model)?;
         if receipt.receipt_id.trim().is_empty() || receipt.receipt_id.len() > 128 {
@@ -352,88 +354,17 @@ impl Core {
                 "receipt id missing",
             ));
         }
-        self.with_tx(|tx| {
-            if let Some(event) =
-                find_first_message(tx, &receipt.workspace_id, "agent_opening_message")?
-            {
-                fold_local_card(tx, &receipt.workspace_id)?;
-                return Ok(FirstMessage {
-                    event,
-                    replayed: true,
-                    folded_local_card: true,
-                });
-            }
-            let grant = workspace::load_grant(tx, &receipt.workspace_id, ServiceKind::Model)?
-                .ok_or_else(|| {
-                    CoreError::new(ErrorCode::ModelNotAuthorized, "model grant missing")
-                })?;
-            if grant.status != ServiceStatus::Enabled {
-                return Err(CoreError::new(
-                    ErrorCode::ModelNotAuthorized,
-                    "model initial read is not enabled; refusing a fake opening",
-                ));
-            }
-            if let Some(expected) = &grant.provider {
-                if expected != &receipt.provider {
-                    return Err(CoreError::new(
-                        ErrorCode::ProviderMismatch,
-                        "receipt provider does not match grant",
-                    ));
-                }
-            }
-            for source_id in &receipt.source_ids {
-                let owner: Option<String> = tx
-                    .query_row(
-                        "SELECT workspace_id FROM source_refs WHERE id = ?1",
-                        params![source_id.as_str()],
-                        |row| row.get(0),
-                    )
-                    .optional()?;
-                match owner {
-                    None => {
-                        return Err(CoreError::new(
-                            ErrorCode::SourceRefNotFound,
-                            source_id.as_str(),
-                        ));
-                    }
-                    Some(other) if other != receipt.workspace_id.as_str() => {
-                        return Err(CoreError::new(
-                            ErrorCode::CrossWorkspaceRef,
-                            source_id.as_str(),
-                        ));
-                    }
-                    Some(_) => {}
-                }
-            }
-            let ws = workspace::load_workspace(tx, &receipt.workspace_id)?.ok_or_else(|| {
-                CoreError::new(ErrorCode::WorkspaceNotFound, receipt.workspace_id.as_str())
-            })?;
-            let event = insert_event(
-                tx,
-                &ws,
-                "agent_opening_message",
-                Some(ONBOARDING_GENERATION),
-                receipt.body.trim(),
-                "normal",
-                &receipt.source_ids,
-                Some(&receipt.receipt_id),
-            )?;
-            fold_local_card(tx, &ws.id)?;
-            let now = Utc::now().to_rfc3339();
-            tx.execute(
-                "UPDATE onboarding_runs
-                 SET state = 'presented', model_analyzed = 1, opening_presented = 1,
-                     local_card_folded = 1, model_status = 'receipt_accepted', error_code = NULL,
-                     updated_at = ?1
-                 WHERE workspace_id = ?2 AND generation = ?3",
-                params![now, ws.id.as_str(), ONBOARDING_GENERATION],
-            )?;
-            Ok(FirstMessage {
-                event,
-                replayed: false,
-                folded_local_card: true,
-            })
-        })
+        if receipt.body.chars().count() > MAX_EVENT_BODY_CHARS {
+            return Err(CoreError::new(
+                ErrorCode::ModelReceiptRejected,
+                "opening body too long",
+            ));
+        }
+        let outcome = self.with_tx(|tx| commit_opening_tx(tx, receipt))?;
+        match outcome {
+            OpeningOutcome::Stored(message) => Ok(message),
+            OpeningOutcome::Rejected(err) => Err(err),
+        }
     }
 
     pub fn record_model_unavailable(
@@ -450,11 +381,24 @@ impl Core {
                     "opening already stored",
                 ));
             }
+            if current.state == "cancelled" {
+                return Err(CoreError::new(
+                    ErrorCode::Cancelled,
+                    "closed onboarding cannot be reopened by an unavailable record",
+                ));
+            }
+            if current.state == "failed" {
+                return Err(CoreError::new(
+                    ErrorCode::ModelReceiptRejected,
+                    "retry required before recording model unavailable",
+                ));
+            }
             tx.execute(
                 "UPDATE onboarding_runs
                  SET state = 'waiting_for_model_auth', model_status = 'unavailable',
                      model_analyzed = 0, error_code = ?1, updated_at = ?2
-                 WHERE workspace_id = ?3 AND generation = ?4",
+                 WHERE workspace_id = ?3 AND generation = ?4
+                   AND state NOT IN ('cancelled', 'failed', 'presented')",
                 params![
                     reason,
                     Utc::now().to_rfc3339(),
@@ -475,21 +419,45 @@ impl Core {
                     workspace_id.as_str(),
                 ));
             }
-            let grant =
-                workspace::load_grant(tx, workspace_id, ServiceKind::Model)?.ok_or_else(|| {
-                    CoreError::new(ErrorCode::ModelNotAuthorized, "model grant missing")
-                })?;
-            if grant.status != ServiceStatus::Enabled {
+            if current.state == "cancelled" {
                 return Err(CoreError::new(
-                    ErrorCode::ModelNotAuthorized,
-                    "model is not enabled",
+                    ErrorCode::Cancelled,
+                    "retry required before a new opening run",
                 ));
             }
+            if current.state == "failed" {
+                return Err(CoreError::new(
+                    ErrorCode::ModelReceiptRejected,
+                    "retry required before a new opening run",
+                ));
+            }
+            let (provider, model, grant_updated_at) = explicit_model_grant(tx, workspace_id)?;
+            let root = root_for_workspace(tx, workspace_id)?;
+            grant::require_active(&root)?;
+            if current.state == "analyzing"
+                && current.active_run_id.is_some()
+                && current.auth_provider.as_deref() == Some(provider.as_str())
+                && current.auth_model.as_deref() == Some(model.as_str())
+                && current.auth_grant_updated_at.as_deref() == Some(grant_updated_at.as_str())
+                && current.auth_root_updated_at.as_deref() == Some(root.updated_at.as_str())
+            {
+                return Ok(current);
+            }
+            let run_id = RunId::new();
+            let now = Utc::now().to_rfc3339();
             tx.execute(
-                "UPDATE onboarding_runs SET state = 'analyzing', updated_at = ?1
-                 WHERE workspace_id = ?2 AND generation = ?3",
+                "UPDATE onboarding_runs
+                 SET state = 'analyzing', active_run_id = ?1, auth_provider = ?2, auth_model = ?3,
+                     auth_grant_updated_at = ?4, auth_root_updated_at = ?5, model_analyzed = 0,
+                     error_code = NULL, model_status = 'enabled_awaiting_receipt', updated_at = ?6
+                 WHERE workspace_id = ?7 AND generation = ?8 AND opening_presented = 0",
                 params![
-                    Utc::now().to_rfc3339(),
+                    run_id.as_str(),
+                    provider,
+                    model,
+                    grant_updated_at,
+                    root.updated_at,
+                    now,
                     workspace_id.as_str(),
                     ONBOARDING_GENERATION
                 ],
@@ -507,6 +475,7 @@ impl Core {
                     workspace_id.as_str(),
                 ));
             }
+            // Keep active_run_id so a late receipt for that run is still identifiable and rejected.
             tx.execute(
                 "UPDATE onboarding_runs SET state = 'cancelled', updated_at = ?1
                  WHERE workspace_id = ?2 AND generation = ?3",
@@ -537,7 +506,9 @@ impl Core {
             }
             tx.execute(
                 "UPDATE onboarding_runs
-                 SET state = 'workspace_created', error_code = NULL, updated_at = ?1
+                 SET state = 'workspace_created', error_code = NULL, model_analyzed = 0,
+                     active_run_id = NULL, auth_provider = NULL, auth_model = NULL,
+                     auth_grant_updated_at = NULL, auth_root_updated_at = NULL, updated_at = ?1
                  WHERE workspace_id = ?2 AND generation = ?3",
                 params![
                     Utc::now().to_rfc3339(),
@@ -814,6 +785,191 @@ fn insert_event(
     })
 }
 
+enum OpeningOutcome {
+    Stored(FirstMessage),
+    Rejected(CoreError),
+}
+
+fn commit_opening_tx(
+    tx: &rusqlite::Transaction<'_>,
+    receipt: &AgentOpeningReceipt,
+) -> Result<OpeningOutcome> {
+    if let Some(event) = find_first_message(tx, &receipt.workspace_id, "agent_opening_message")? {
+        fold_local_card(tx, &receipt.workspace_id)?;
+        return Ok(OpeningOutcome::Stored(FirstMessage {
+            event,
+            replayed: true,
+            folded_local_card: true,
+        }));
+    }
+    let checkpoint = load_checkpoint(tx, &receipt.workspace_id)?;
+    if checkpoint.state == "cancelled" {
+        return Err(CoreError::new(
+            ErrorCode::Cancelled,
+            "late opening after cancel",
+        ));
+    }
+    let grant = workspace::load_grant(tx, &receipt.workspace_id, ServiceKind::Model)?
+        .ok_or_else(|| CoreError::new(ErrorCode::ModelNotAuthorized, "model grant missing"))?;
+    if grant.status != ServiceStatus::Enabled {
+        return Err(CoreError::new(
+            ErrorCode::ModelNotAuthorized,
+            format!("model grant is {}", grant.status.as_str()),
+        ));
+    }
+    let provider = grant.provider.as_deref().filter(|value| !value.is_empty());
+    let model = grant.model.as_deref().filter(|value| !value.is_empty());
+    let (Some(provider), Some(model)) = (provider, model) else {
+        return Err(CoreError::new(
+            ErrorCode::ModelNotAuthorized,
+            "explicit provider and model required; initial-read intent is not a wildcard",
+        ));
+    };
+    match checkpoint.active_run_id.as_ref() {
+        Some(active) if active.as_str() == receipt.run_id.as_str() => {}
+        Some(_) => {
+            return Err(CoreError::new(ErrorCode::RunMismatch, "run_not_current"));
+        }
+        None => return Err(CoreError::new(ErrorCode::RunMismatch, "no_active_run")),
+    }
+    if checkpoint.state != "analyzing" {
+        return Err(CoreError::new(
+            ErrorCode::ModelReceiptRejected,
+            "opening_run_not_active",
+        ));
+    }
+    let root = root_for_workspace(tx, &receipt.workspace_id)?;
+    grant::require_active(&root)?;
+    if receipt.provider != provider {
+        return Err(CoreError::new(
+            ErrorCode::ProviderMismatch,
+            "receipt provider does not match grant",
+        ));
+    }
+    if receipt.model != model {
+        return Err(CoreError::new(
+            ErrorCode::ModelMismatch,
+            "receipt model does not match grant",
+        ));
+    }
+    if checkpoint.auth_provider.as_deref() != Some(provider)
+        || checkpoint.auth_model.as_deref() != Some(model)
+        || checkpoint.auth_grant_updated_at.as_deref() != Some(grant.updated_at.as_str())
+        || checkpoint.auth_root_updated_at.as_deref() != Some(root.updated_at.as_str())
+    {
+        return Err(CoreError::new(
+            ErrorCode::RunMismatch,
+            "authorization_snapshot_stale",
+        ));
+    }
+    if !receipt.success || receipt.body.trim().is_empty() {
+        let now = Utc::now().to_rfc3339();
+        tx.execute(
+            "UPDATE onboarding_runs
+             SET state = 'failed', model_analyzed = 0, opening_presented = 0,
+                 model_status = 'receipt_rejected', error_code = 'model_receipt_rejected',
+                 updated_at = ?1
+             WHERE workspace_id = ?2 AND generation = ?3",
+            params![now, receipt.workspace_id.as_str(), ONBOARDING_GENERATION],
+        )?;
+        return Ok(OpeningOutcome::Rejected(CoreError::new(
+            ErrorCode::ModelReceiptRejected,
+            "model run failed; core will not claim analysis or fold the local card",
+        )));
+    }
+    if receipt.source_ids.is_empty() {
+        return Err(CoreError::new(
+            ErrorCode::ModelReceiptRejected,
+            "empty_evidence",
+        ));
+    }
+    for source_id in &receipt.source_ids {
+        let owner: Option<String> = tx
+            .query_row(
+                "SELECT workspace_id FROM source_refs WHERE id = ?1",
+                params![source_id.as_str()],
+                |row| row.get(0),
+            )
+            .optional()?;
+        match owner {
+            None => {
+                return Err(CoreError::new(
+                    ErrorCode::SourceRefNotFound,
+                    source_id.as_str(),
+                ));
+            }
+            Some(other) if other != receipt.workspace_id.as_str() => {
+                return Err(CoreError::new(
+                    ErrorCode::CrossWorkspaceRef,
+                    source_id.as_str(),
+                ));
+            }
+            Some(_) => {}
+        }
+    }
+    let ws = workspace::load_workspace(tx, &receipt.workspace_id)?.ok_or_else(|| {
+        CoreError::new(ErrorCode::WorkspaceNotFound, receipt.workspace_id.as_str())
+    })?;
+    let event = insert_event(
+        tx,
+        &ws,
+        "agent_opening_message",
+        Some(ONBOARDING_GENERATION),
+        receipt.body.trim(),
+        "normal",
+        &receipt.source_ids,
+        Some(&receipt.receipt_id),
+    )?;
+    fold_local_card(tx, &ws.id)?;
+    let now = Utc::now().to_rfc3339();
+    tx.execute(
+        "UPDATE onboarding_runs
+         SET state = 'presented', model_analyzed = 1, opening_presented = 1,
+             local_card_folded = 1, model_status = 'receipt_accepted', error_code = NULL,
+             updated_at = ?1
+         WHERE workspace_id = ?2 AND generation = ?3",
+        params![now, ws.id.as_str(), ONBOARDING_GENERATION],
+    )?;
+    Ok(OpeningOutcome::Stored(FirstMessage {
+        event,
+        replayed: false,
+        folded_local_card: true,
+    }))
+}
+
+fn explicit_model_grant(
+    tx: &rusqlite::Transaction<'_>,
+    workspace_id: &WorkspaceId,
+) -> Result<(String, String, String)> {
+    let grant = workspace::load_grant(tx, workspace_id, ServiceKind::Model)?
+        .ok_or_else(|| CoreError::new(ErrorCode::ModelNotAuthorized, "model grant missing"))?;
+    if grant.status != ServiceStatus::Enabled {
+        return Err(CoreError::new(
+            ErrorCode::ModelNotAuthorized,
+            format!("model grant is {}", grant.status.as_str()),
+        ));
+    }
+    let provider = grant
+        .provider
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            CoreError::new(
+                ErrorCode::ModelNotAuthorized,
+                "explicit provider and model required; initial-read intent is not a wildcard",
+            )
+        })?;
+    let model = grant
+        .model
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            CoreError::new(
+                ErrorCode::ModelNotAuthorized,
+                "explicit provider and model required; initial-read intent is not a wildcard",
+            )
+        })?;
+    Ok((provider, model, grant.updated_at))
+}
+
 fn fold_local_card(tx: &rusqlite::Transaction<'_>, workspace_id: &WorkspaceId) -> Result<()> {
     tx.execute(
         "UPDATE conversation_events SET presentation = 'folded_evidence'
@@ -886,10 +1042,13 @@ fn load_checkpoint(
 ) -> Result<OnboardingCheckpoint> {
     conn.query_row(
         "SELECT workspace_id, generation, state, structure_scanned, selective_read_done, model_analyzed,
-                opening_presented, local_card_folded, model_status, error_code
+                opening_presented, local_card_folded, model_status, error_code,
+                active_run_id, auth_provider, auth_model, auth_grant_updated_at, auth_root_updated_at,
+                initial_read_requested
          FROM onboarding_runs WHERE workspace_id = ?1 AND generation = ?2",
         params![workspace_id.as_str(), ONBOARDING_GENERATION],
         |row| {
+            let active_run_id: Option<String> = row.get(10)?;
             Ok(OnboardingCheckpoint {
                 workspace_id: WorkspaceId::from_trusted(row.get(0)?),
                 generation: row.get(1)?,
@@ -901,6 +1060,12 @@ fn load_checkpoint(
                 local_card_folded: row.get::<_, i64>(7)? == 1,
                 model_status: row.get(8)?,
                 error_code: row.get(9)?,
+                active_run_id: active_run_id.map(RunId::from_trusted),
+                auth_provider: row.get(11)?,
+                auth_model: row.get(12)?,
+                auth_grant_updated_at: row.get(13)?,
+                auth_root_updated_at: row.get(14)?,
+                initial_read_requested: row.get::<_, i64>(15)? == 1,
             })
         },
     )

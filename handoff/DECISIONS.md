@@ -21,5 +21,24 @@
 - 非撤销授权或 Workspace 若不能按存储 inode 重新打开，不能当成与新范围不相交。新的 `authorize_directory` / `confirm_import` 返回 `overlap_refused`，detail 仍含 `parent_child_exclusion_not_implemented`。用户需先撤销陈旧授权，才能授权另一个目录。这不是父子排除。
 - Workspace 文件读取绑定验证过 inode 的目录 fd，子路径用 `openat` 从该 fd 打开，不从 root 重走 Workspace 路径。
 - 每次新的 open/读取/来源插入前复查授权，不在整次扫描或整个文件读期间持有 Core 锁。单独的 `get_root` / `with_conn` 不能关闭检查到系统调用的窗口：锁在回调返回时已释放。`with_tx` 是延迟事务且会提交，也不能当作 I/O 准入，嵌套再锁会死锁。
-- 内容 open/read 使用 `Core::admit_active_io`：同一把 `Core.conn` 互斥锁加 `BEGIN IMMEDIATE`，只包住一次 `openat` 或一次有界 `read`，然后 rollback。同 Core 的暂停/撤权等这把互斥锁；另一连接等 rollback journal 的 reserved 锁（现有 `busy_timeout`）。不要为此改 WAL：WAL 下读者不挡写者，窗口会重新打开。未加锁表，未改 migration。
+- 内容 open/read 使用 `Core::admit_active_io`：同一把 `Core.conn` 互斥锁加 `BEGIN IMMEDIATE`，只包住一次 `openat` 或一次有界 `read`，然后 rollback。同 Core 的暂停/撤权等这把互斥锁；另一连接等 rollback journal 的 reserved 锁（现有 `busy_timeout`）。不要为此改 WAL：WAL 下读者不挡写者，窗口会重新打开。未加锁表。读侧准入不改 migration。
 - 暂停/撤权与读取路径的来源提交用 `Core::with_immediate_tx`，避免延迟事务升级共享锁时和等待中的写者死锁。撤权或暂停成功返回后，不再开始新的 open、read 或成功来源提交。已开始的单次系统调用可以结束，但不能开始下一次 read。结果返回前再查授权；已撤权则不外发字节。历史 source 行保留，但 `content_available=false` 且摘录清空。
+
+## 审查 #3 开场收据（实现选择，不是产品验收）
+
+现有 onboarding 字段不能复用为受信 run/授权版本：
+
+- `onboarding_runs.id` 必须在 `workspace_id + generation` 上保持稳定，否则两种首消息幂等会被拆开。retry 需要新 run、并继续拒绝旧 run，所以 onboarding 行 id 不能兼作 run id。
+- `state` 与 `model_status` 有 CHECK，放不进 `run_` id 或授权版本。`error_code` 会被 retry 清空，也不能当绑定。
+- `evidence_json` 是初扫笔记。把安全绑定塞进这份自由 JSON，后续扫描说明更新可以丢掉它。这正是“前端 success 即完成、重启可绕过”的验收缺口。
+- `service_grants` 的 provider/model/`updated_at` 只是当前配置，不是发放 run 时的快照。只在提交时比较当前 grant，取消后仍能收下迟到 success。
+
+最小替代：不改已提交的 `0001_init.sql`。显式 v2 只给 `onboarding_runs` 增加 `active_run_id`、`auth_provider`、`auth_model`、`auth_grant_updated_at`、`auth_root_updated_at`、`initial_read_requested`。不新建通用审批表或执行框架。
+
+行为：`mark_analyzing` 由 Core 发放并持久化当前 run，并快照模型授权与目录版本。确认页初读开关只保存意向，不 enabled、也不 wildcard。未同时配置明确 Provider 与 Model 不能开始真实 run。`commit_agent_opening` 的 success 不是完成状态。伪 run、跨 workspace、不同 Provider/Model、取消、目录/模型撤权或暂停、配置切换（含切回）以及空证据都拒绝。失败不折叠本地卡，也不把 `model_analyzed` 置真。显式 retry 清除旧绑定；之后新的 `mark_analyzing` 才发新 run。已提交开场重放返回原消息。空证据的最小策略是：成功开场必须引用至少一条本 workspace 的 source，且目录授权仍为 active。不解析正文，不把本地卡伪装成模型分析。
+
+## 串行集成（不是产品验收）
+
+- 当前 Core 保留读侧物理范围、fd 绑定、FIFO、预算和短事务 I/O 准入。开场 lane 只带入 schema v2、run 绑定和开场负例。不把 `c69ade2` 的 base Reader 或旧 handoff 状态合进来。
+- 来源目录撤权后，读侧与开场侧使用同一 `require_active` 结果：不再新读，摘录不可用，旧 receipt 不折叠、不创建开场。开场写路径不改成整次扫描锁，也不新建权限表。它仍是延迟事务；重叠撤权可能 busy。Host 发送前必须再查当前授权。
+- F2 的工具白名单落地、ContextPack、session-ref、credential 槽本轮不实现。

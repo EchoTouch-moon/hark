@@ -1,0 +1,17 @@
+# Redacted. No private directories, credentials, or model calls.
+# set -o pipefail
+
+cargo fmt --manifest-path crates/hark-core/Cargo.toml -- --check
+exit 0
+
+cargo check --manifest-path crates/hark-core/Cargo.toml --offline --tests
+Finished dev profile
+exit 0
+
+cargo test --manifest-path crates/hark-core/Cargo.toml --offline -- --test-threads=8
+unittests: 3 passed
+f1_disk: 32 passed
+ipc_contract: 3 passed
+opening_receipt: 8 passed
+doc-tests: 0 passed
+exit 0

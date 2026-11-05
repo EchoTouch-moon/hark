@@ -233,6 +233,17 @@ impl Core {
         if let Some(model) = &update.model {
             validate_provider_token(model)?;
         }
+        if update.service == ServiceKind::Model && update.status == ServiceStatus::Enabled {
+            match (&update.provider, &update.model) {
+                (Some(provider), Some(model)) if !provider.is_empty() && !model.is_empty() => {}
+                _ => {
+                    return Err(CoreError::new(
+                        ErrorCode::ModelNotAuthorized,
+                        "explicit provider and model required; initial-read intent is not a wildcard",
+                    ));
+                }
+            }
+        }
         self.with_tx(|tx| {
             let ws = load_workspace(tx, &update.workspace_id)?.ok_or_else(|| {
                 CoreError::new(ErrorCode::WorkspaceNotFound, update.workspace_id.as_str())
@@ -251,6 +262,15 @@ impl Core {
                     update.service.as_str(),
                 ],
             )?;
+            if update.service == ServiceKind::Model && update.status == ServiceStatus::Enabled {
+                tx.execute(
+                    "UPDATE onboarding_runs
+                     SET model_status = 'enabled_awaiting_receipt', updated_at = ?1
+                     WHERE workspace_id = ?2 AND generation = ?3 AND opening_presented = 0
+                       AND state NOT IN ('cancelled', 'failed', 'presented')",
+                    params![now, ws.id.as_str(), ONBOARDING_GENERATION],
+                )?;
+            }
             load_grant(tx, &ws.id, update.service)?
                 .ok_or_else(|| CoreError::new(ErrorCode::NotFound, "service grant missing"))
         })
@@ -561,6 +581,7 @@ fn sql_err(err: CoreError) -> rusqlite::Error {
     rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::other(err.to_string())))
 }
 
+/// The confirm-page switch records intent only. It must not enable a provider wildcard.
 pub(crate) fn enable_model_if_requested(
     tx: &rusqlite::Transaction<'_>,
     workspace_id: &WorkspaceId,
@@ -571,12 +592,7 @@ pub(crate) fn enable_model_if_requested(
     }
     let now = Utc::now().to_rfc3339();
     tx.execute(
-        "UPDATE service_grants SET status = 'enabled', updated_at = ?1
-         WHERE workspace_id = ?2 AND service = 'model'",
-        params![now, workspace_id.as_str()],
-    )?;
-    tx.execute(
-        "UPDATE onboarding_runs SET model_status = 'enabled_awaiting_receipt', updated_at = ?1
+        "UPDATE onboarding_runs SET initial_read_requested = 1, updated_at = ?1
          WHERE workspace_id = ?2 AND generation = ?3",
         params![now, workspace_id.as_str(), ONBOARDING_GENERATION],
     )?;
