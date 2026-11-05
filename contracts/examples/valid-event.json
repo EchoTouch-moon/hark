@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "kind": "event",
+  "id": "evt_0123456789abcdef0123456789abcdef",
+  "replyTo": "req_0123456789abcdef0123456789abcdef",
+  "workspaceId": "ws_0123456789abcdef0123456789abcdef",
+  "runId": "run_0123456789abcdef0123456789abcdef",
+  "method": "stream.delta",
+  "deadlineUnixMs": null,
+  "payload": {
+    "text": "partial"
+  },
+  "error": null
+}

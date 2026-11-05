@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "kind": "request",
+  "id": "req_0123456789abcdef0123456789abcdef",
+  "replyTo": null,
+  "workspaceId": "ws_0123456789abcdef0123456789abcdef",
+  "runId": "run_0123456789abcdef0123456789abcdef",
+  "method": "workspace.read_file",
+  "deadlineUnixMs": 2000000000000,
+  "payload": {
+    "relativePath": "README.md"
+  },
+  "error": null
+}

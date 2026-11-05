@@ -1,0 +1,97 @@
+# Hark IPC v1
+
+状态：`frozen for F1 host consumption`。这是 Rust Core 与未来 TypeScript Agent Host 之间的消息合同，不是已运行的 Sidecar，也不是 HTTP API。
+
+本阶段实现了可测试的 frame codec、有界队列和关联门禁。没有进程监督、没有端口、没有模型调用。Tauri 应直接调用 in-process `hark_core::Core`，不要把本文件当成已经接通的 stdio 服务。
+
+## 1. 传输规则（Host 实现时必须遵守）
+
+- 版本 `v = 1`。不兼容的字段进入 v2，不在 v1 frame 上加未声明字段。
+- 首选 NDJSON over stdio。一行一个 JSON object，UTF-8，以 `\n` 结束。
+- stdout 只写协议 frame。日志、诊断、panic 文本进入 stderr。
+- 不监听 TCP、不监听公网、不因为回环就免认证。本阶段不实现回环服务。
+- 最大 frame：`1048576` 字节，不含换行。超限的 frame 失败并丢弃到下一个换行，不截断后当成功。
+- 控制队列与流式队列分开，各 64。`try_push` 失败返回 `queue_overflow`，不得阻塞另一方向。
+- 流式方法：`stream.delta`、`stream.done`。其余进入控制队列，包括反向 Tool 请求和取消。
+- 默认请求超时 30000 ms，最大 120000 ms。超时是拒绝，不是静默成功。
+- 机器可读上限见 `contracts/ipc-v1.limits.json`。DTO 见 `contracts/ipc-v1.schema.json`。
+
+## 2. Envelope
+
+| 字段 | 含义 |
+|---|---|
+| `v` | 必须为 1 |
+| `kind` | `request` / `response` / `event` / `error` |
+| `id` | request 与 response 使用同一个 `req_` id；event 为 `evt_`；error 为 `err_` |
+| `replyTo` | response 必须等于 `id`；event/error 指向原 request；新 request 为 null |
+| `workspaceId` | 业务帧必须绑定 Core 发放的 workspace。host.ready 可为 null |
+| `runId` | 一次 Agent 运行的 Core/Host 发放 id。取消和流式事件必须带回 |
+| `method` | 见下表 |
+| `deadlineUnixMs` | 可选绝对截止时间。超过后关联门禁返回 `timeout` |
+| `payload` | object。不是模型可扩大权限的自由参数 |
+| `error` | 仅 `kind=error` 时非 null |
+
+ID 形状：`<prefix>_<32 lowercase hex>`。允许前缀：`req evt err ws run root src msg scan cand op tool grant agt conv onb`。
+
+workspace、run、source、message、root 由 Core 发放。Host 可以生成 `req` / `evt` / `err` / `tool` 关联 id，但不能用模型文本替换 `workspaceId` 或 `runId`。
+
+## 3. 方法
+
+| method | 方向 | kind | 说明 |
+|---|---|---|---|
+| `host.ready` | Host → Core | request | Sidecar 就绪。无 workspace |
+| `run.start` | Core → Host | request | 未来模型回合。本阶段不执行 |
+| `run.cancel` | 双向 | request | `payload.targetRequestId`。后续关联帧返回 `cancelled` |
+| `run.status` | Host → Core | event | 运行状态，必须带回 workspace/run |
+| `stream.delta` | Host → Core | event | 流式增量。进入 stream 队列 |
+| `stream.done` | Host → Core | event | 流结束 |
+| `tool.request` | Host → Core | request | 反向 Tool。`payload.tool` 只能是白名单 |
+| `tool.result` | Core → Host | response | 反向 Tool 结果。`replyTo` 为 tool request id |
+| `workspace.read_file` | Tool payload | — | `{ "relativePath": "README.md" }`。相对 workspace，不是绝对路径 |
+| `workspace.overview` | Tool payload | — | 无模型推断。Core 返回已持久化的扫描/来源 id |
+| `error` | 双向 | error | 结构化失败 |
+
+反向 Tool 白名单仅：`workspace.read_file`、`workspace.overview`。没有 bash、write、edit、通用 read。Tool 的 `workspaceId`、`runId`、`operationId` 由 Host 受信上下文绑定，不接受模型参数扩大范围。
+
+## 4. 关联与死锁
+
+禁止在唯一读取反向 Tool 的线程上同步写请求并阻塞等待响应。流式事件和反向 Tool 必须可以交错完成。
+
+关联门禁拒绝：
+
+- `replyTo` 对不上未完成 request
+- workspace 或 run 与原 request 不一致
+- 已取消 request 的后续成功帧
+- 重复 request id
+
+跨 workspace 回复的错误码是 `workspace_mismatch`。跨 run 是 `run_mismatch`。这不是产品验收里的跨项目记忆隔离测试，只是协议门禁。
+
+## 5. Core in-process API（Tauri 直接调用）
+
+不开放 HTTP。稳定入口是 `hark_core::Core`：
+
+- `open` / `open_in_memory` / `schema_version` / `schema_tables`
+- `authorize_directory` / `pause_directory` / `resume_directory` / `revoke_directory` / `list_roots`
+- `run_initial_scan` / `get_scan`
+- `confirm_import`
+- `read_workspace_file` / `selective_key_read` / `list_source_refs` / `get_source_ref`
+- `set_service_grant` / `get_service_grant`
+- `commit_local_scan_card` / `commit_agent_opening` / `record_model_unavailable`
+- `mark_analyzing` / `cancel_onboarding` / `retry_onboarding`
+- `append_user_message` / `list_conversation` / `onboarding` / `workspace_overview`
+
+`commit_agent_opening` 只接受外部成功收据。Core 不调用模型，也不在收据失败时折叠 `local_scan_card`。收据成功与折叠在同一 SQLite 事务。
+
+## 6. 错误码
+
+`path_escape` `symlink_rejected` `hardlink_rejected` `alias_rejected` `alias_check_failed` `cross_device_rejected` `sensitive_path` `artifact_path` `reader_unsupported_platform` `root_paused` `root_revoked` `grant_identity_mismatch` `overlap_refused` `budget_rejected` `cancelled` `scan_not_confirmable` `cross_workspace_ref` `model_not_authorized` `model_receipt_rejected` `provider_mismatch` `frame_too_large` `invalid_frame` `queue_overflow` `timeout` `workspace_mismatch` `run_mismatch` `correlation_rejected`
+
+`overlap_refused` 的 detail 包含 `parent_child_exclusion_not_implemented`。这表示父子排除未实现，不是 AT-05 通过。
+
+## 7. 明确未实现
+
+- Sidecar 进程、Windows Job Object、stdout 实管道
+- HTTP / 回环服务
+- 真实模型、搜索、网页 Reader、FTS、记忆表、Observer
+- macOS security-scoped bookmark。授权路径被替换或改名后 fail closed，不跟随新 inode
+- Windows 安全读。该平台 `reader_capability = fail_closed`

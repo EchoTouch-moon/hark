@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "maxFrameBytes": 1048576,
+  "maxStreamQueue": 64,
+  "maxControlQueue": 64,
+  "defaultTimeoutMs": 30000,
+  "maxTimeoutMs": 120000
+}

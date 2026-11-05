@@ -1,0 +1,6 @@
+{
+  "v": 1,
+  "kind": "request",
+  "method": "workspace.read_file",
+  "payload": {}
+}

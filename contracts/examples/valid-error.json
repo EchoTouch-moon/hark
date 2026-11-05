@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "kind": "error",
+  "id": "err_0123456789abcdef0123456789abcdef",
+  "replyTo": "req_0123456789abcdef0123456789abcdef",
+  "workspaceId": "ws_0123456789abcdef0123456789abcdef",
+  "runId": "run_0123456789abcdef0123456789abcdef",
+  "method": "error",
+  "deadlineUnixMs": null,
+  "payload": {},
+  "error": {
+    "code": "workspace_mismatch",
+    "message": "cross-workspace reply rejected",
+    "retryable": false
+  }
+}
