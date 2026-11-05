@@ -22,3 +22,8 @@
 #2：打开前拒绝特殊对象，O_NONBLOCK 打开后 fstat 复验，新增 regular→FIFO 可控竞态覆盖；本机此修复接受。#4：readdir/分类处已应用 entry/cancel 预算，初扫与 selective read 均传入，有实际工作计数负例；本机此修复接受。公开测试 hook/counter 非产品指标，后续可收敛为测试专用，不因此扩建运行基础设施。
 
 **仍阻塞：#1 物理别名重叠；#5 Workspace descriptor 与运行中撤权；#3 首次开场运行/模型/取消收据。** 接下来先修 #1/#5 同一目录读取边界，再修 #3。本段接受不代表 F1 整体或 R1 产品通过。
+
+## 第二段返工复核（HEAD 643be34）
+父会话复跑 2 单元 + 27 磁盘 + 3 IPC，32 项全通过；重新链接库运行原中间 alias/child 探针，实际 `nested_alias_authorized=false`。已检查物理祖先 dev/ino 关联与 Workspace fd 直接读路径，本机接受 #1 与 #5 中 fd 绑定部分。
+
+#5 尚有明确小窗口：reader::open_child 的 `grant_check()` 返回后释放 Core/SQLite 查询锁，随后才调用 `openat`；read_within_workspace 的读前检查返回后才调用 read_fd，read_fd 内多次 read 没有同一准入边界。另一线程/连接可在检查后提交撤权并返回，再被旧操作 open/read。已有同步测试在检查之前撤权，未覆盖检查已成功后的窗口，因此“撤权返回后不再新开/新读”的强声明仍不能成立。需要只在短 I/O 准入处协调授权状态变更，不能锁住整次扫描；补检查成功后与实际 open/read 之间的可控竞争证据。#3 由隔离 high lane 并行处理。
