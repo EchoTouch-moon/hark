@@ -169,7 +169,7 @@ impl Core {
         next: RootStatus,
         allowed: &[RootStatus],
     ) -> Result<AuthorizedRoot> {
-        self.with_tx(|tx| {
+        self.with_immediate_tx(|tx| {
             let current = load_root(tx, id)?
                 .ok_or_else(|| CoreError::new(ErrorCode::NotFound, id.as_str()))?;
             if current.status == RootStatus::Revoked && next != RootStatus::Revoked {
@@ -196,6 +196,95 @@ pub(crate) fn require_active(root: &AuthorizedRoot) -> Result<()> {
         RootStatus::Active => Ok(()),
         RootStatus::Paused => Err(CoreError::new(ErrorCode::RootPaused, root.id.as_str())),
         RootStatus::Revoked => Err(CoreError::new(ErrorCode::RootRevoked, root.id.as_str())),
+    }
+}
+
+/// Reader admission callbacks. `check` returns with no Core/SQLite lock held.
+/// `admit` rechecks and holds the short reservation across `op`.
+pub(crate) struct IoGate<'a> {
+    check_fn: &'a dyn Fn() -> Result<()>,
+    admit_fn: &'a dyn Fn(&mut dyn FnMut() -> Result<()>) -> Result<()>,
+}
+
+impl<'a> IoGate<'a> {
+    pub(crate) fn new(
+        check_fn: &'a dyn Fn() -> Result<()>,
+        admit_fn: &'a dyn Fn(&mut dyn FnMut() -> Result<()>) -> Result<()>,
+    ) -> Self {
+        Self { check_fn, admit_fn }
+    }
+
+    pub(crate) fn check(&self) -> Result<()> {
+        (self.check_fn)()
+    }
+
+    pub(crate) fn admit(&self, op: &mut dyn FnMut() -> Result<()>) -> Result<()> {
+        (self.admit_fn)(op)
+    }
+}
+
+fn relaxed_check() -> Result<()> {
+    Ok(())
+}
+
+fn relaxed_admit(op: &mut dyn FnMut() -> Result<()>) -> Result<()> {
+    op()
+}
+
+/// Identity and overlap opens run inside `with_tx` and must not take `Core.conn` again.
+pub(crate) fn relaxed_io_gate() -> IoGate<'static> {
+    IoGate::new(&relaxed_check, &relaxed_admit)
+}
+
+impl Core {
+    /// Short open/read admission.
+    ///
+    /// `get_root` / `with_conn` cannot be reused: they drop the mutex before the
+    /// syscall, which is the race. `with_tx` cannot be reused either: it is a
+    /// deferred business transaction that commits, it does not reserve the
+    /// writer lock before the check, and calling it while it is already held
+    /// deadlocks the non-reentrant mutex.
+    ///
+    /// This locks `Core.conn` and `BEGIN IMMEDIATE` only for `op` (one syscall).
+    /// Same-Core revoke/pause waits on the mutex. Another connection waits on
+    /// the rollback-journal reserved lock (`busy_timeout`). Do not enable WAL:
+    /// WAL readers do not block writers. `op` must not re-enter Core. Rollback
+    /// leaves no row and no migration. Fold into `db.rs` later as
+    /// `Core::admit_active_io(root_id, op)` if a serial merge wants one helper.
+    pub(crate) fn admit_active_io<T>(
+        &self,
+        root_id: &RootId,
+        op: impl FnOnce() -> Result<T>,
+    ) -> Result<T> {
+        let mut guard = self
+            .conn
+            .lock()
+            .map_err(|_| CoreError::new(ErrorCode::LockPoisoned, "core lock poisoned"))?;
+        let tx = guard.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let current = load_root(&tx, root_id)?
+            .ok_or_else(|| CoreError::new(ErrorCode::NotFound, root_id.as_str()))?;
+        require_active(&current)?;
+        let value = op()?;
+        tx.rollback()?;
+        Ok(value)
+    }
+
+    /// Write transaction that reserves the writer lock before the callback.
+    /// Used by pause/revoke and read-path source commits so they queue with
+    /// `admit_active_io` instead of upgrading a deferred shared lock (that
+    /// upgrade deadlocks against a waiting writer and returns SQLITE_BUSY).
+    pub(crate) fn with_immediate_tx<T>(
+        &self,
+        f: impl FnOnce(&rusqlite::Transaction<'_>) -> Result<T>,
+    ) -> Result<T> {
+        let mut guard = self
+            .conn
+            .lock()
+            .map_err(|_| CoreError::new(ErrorCode::LockPoisoned, "core lock poisoned"))?;
+        let tx = guard.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let value = f(&tx)?;
+        tx.commit()?;
+        Ok(value)
     }
 }
 

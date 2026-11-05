@@ -3,7 +3,7 @@
 use std::fs;
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -1056,6 +1056,8 @@ impl Drop for ClearReaderHooks {
     fn drop(&mut self) {
         hark_core::set_reader_before_open_hook(None);
         hark_core::set_reader_after_workspace_verify_hook(None);
+        hark_core::set_reader_after_grant_before_syscall_hook(None);
+        hark_core::set_reader_admitted_syscall_hook(None);
     }
 }
 
@@ -1394,5 +1396,368 @@ fn revoke_from_reopened_core_stops_scan_opens_and_persist() {
         .query_row("SELECT COUNT(*) FROM scan_sessions", [], |row| row.get(0))
         .unwrap();
     assert_eq!(scans, 0, "scan row committed after revoke");
+    cleanup(&root_path);
+}
+
+fn raw_source_blob(path: &Path) -> String {
+    let conn = rusqlite::Connection::open(path).unwrap();
+    let count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM source_refs", [], |row| row.get(0))
+        .unwrap();
+    let mut stmt = conn
+        .prepare("SELECT relative_path, IFNULL(excerpt, '') FROM source_refs")
+        .unwrap();
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(format!(
+                "{}:{}",
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?
+            ))
+        })
+        .unwrap();
+    let mut body = String::new();
+    for row in rows {
+        body.push_str(&row.unwrap());
+        body.push('\n');
+    }
+    format!("count={count}\n{body}")
+}
+
+struct ReleaseOnDrop(Option<mpsc::Sender<()>>);
+impl Drop for ReleaseOnDrop {
+    fn drop(&mut self) {
+        if let Some(tx) = self.0.take() {
+            let _ = tx.send(());
+        }
+    }
+}
+
+fn prepared_readme(name: &str) -> (Db, PathBuf, hark_core::RootId, hark_core::WorkspaceId) {
+    let db = Db::new();
+    let root_path = project(name);
+    fs::write(root_path.join("README.md"), format!("body-{CANARY}")).unwrap();
+    let root = db.core.authorize_directory(&root_path).unwrap();
+    let scan = db
+        .core
+        .run_initial_scan(&root.id, &budget(), &CancelFlag::new())
+        .unwrap();
+    let ws = confirm_single(&db.core, &root.id, &scan.id, false);
+    (db, root_path, root.id, ws.id)
+}
+
+#[test]
+fn grant_check_then_same_core_revoke_before_open_has_no_canary() {
+    let (db, root_path, root_id, ws_id) = prepared_readme("admit-open-same");
+    let core = &db.core;
+    let (entered_tx, entered_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let release_rx = Arc::new(Mutex::new(release_rx));
+    let at_release = Arc::new(AtomicU64::new(u64::MAX));
+    let at_hook = at_release.clone();
+    let once = Arc::new(AtomicBool::new(false));
+    let (result, at_release, after) = thread::scope(|scope| {
+        let handle = scope.spawn(move || {
+            let _clear = ClearReaderHooks;
+            hark_core::reset_reader_work_counters();
+            hark_core::set_reader_after_grant_before_syscall_hook(Some(Arc::new(move |kind| {
+                if kind != "open:README.md" || once.swap(true, Ordering::SeqCst) {
+                    return;
+                }
+                let _ = entered_tx.send(());
+                let _ = release_rx
+                    .lock()
+                    .expect("release")
+                    .recv_timeout(Duration::from_secs(3));
+                at_hook.store(hark_core::reader_open_attempts(), Ordering::SeqCst);
+            })));
+            let result = core.read_workspace_file(&ws_id, "README.md", &budget());
+            (
+                result,
+                at_release.load(Ordering::SeqCst),
+                hark_core::reader_open_attempts(),
+            )
+        });
+        let release = ReleaseOnDrop(Some(release_tx));
+        entered_rx
+            .recv_timeout(Duration::from_secs(3))
+            .expect("open grant check did not succeed before syscall");
+        core.revoke_directory(&root_id).unwrap();
+        drop(release);
+        handle.join().unwrap()
+    });
+    let err = result.expect_err("open continued after revoke returned");
+    assert_code(&err, ErrorCode::RootRevoked);
+    assert_ne!(
+        at_release,
+        u64::MAX,
+        "hook did not record the pre-syscall count"
+    );
+    assert_eq!(
+        after, at_release,
+        "openat started after revoke returned: before={at_release} after={after}"
+    );
+    let blob = raw_source_blob(&db.path);
+    assert!(!blob.contains(CANARY), "{blob}");
+    assert!(blob.starts_with("count=0"), "{blob}");
+    cleanup(&root_path);
+}
+
+#[test]
+fn grant_check_then_other_core_revoke_before_read_has_no_canary() {
+    let (db, root_path, root_id, ws_id) = prepared_readme("admit-read-other");
+    let db_path = db.path.clone();
+    let (entered_tx, entered_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let release_rx = Arc::new(Mutex::new(release_rx));
+    let at_release = Arc::new(AtomicU64::new(u64::MAX));
+    let at_hook = at_release.clone();
+    let once = Arc::new(AtomicBool::new(false));
+    let worker = thread::spawn(move || {
+        let _clear = ClearReaderHooks;
+        hark_core::set_reader_after_grant_before_syscall_hook(Some(Arc::new(move |kind| {
+            if kind != "read:README.md" || once.swap(true, Ordering::SeqCst) {
+                return;
+            }
+            let _ = entered_tx.send(());
+            let _ = release_rx
+                .lock()
+                .expect("release")
+                .recv_timeout(Duration::from_secs(3));
+            at_hook.store(hark_core::reader_read_syscalls(), Ordering::SeqCst);
+        })));
+        hark_core::reset_reader_work_counters();
+        let core = Core::open(&db_path).unwrap();
+        let result = core.read_workspace_file(&ws_id, "README.md", &budget());
+        (
+            result,
+            at_release.load(Ordering::SeqCst),
+            hark_core::reader_read_syscalls(),
+        )
+    });
+    let _release = ReleaseOnDrop(Some(release_tx));
+    entered_rx
+        .recv_timeout(Duration::from_secs(3))
+        .expect("read grant check did not succeed before syscall");
+    db.core.revoke_directory(&root_id).unwrap();
+    drop(_release);
+    let (result, at_release, after) = worker.join().unwrap();
+    let err = result.expect_err("read continued after other-core revoke returned");
+    assert_code(&err, ErrorCode::RootRevoked);
+    assert_ne!(
+        at_release,
+        u64::MAX,
+        "hook did not record the pre-read count"
+    );
+    assert_eq!(
+        after, at_release,
+        "read syscall started after revoke returned: before={at_release} after={after}"
+    );
+    let blob = raw_source_blob(&db.path);
+    assert!(!blob.contains(CANARY), "{blob}");
+    assert!(blob.starts_with("count=0"), "{blob}");
+    cleanup(&root_path);
+}
+
+#[test]
+fn grant_check_then_other_core_pause_before_open_has_no_canary() {
+    let (db, root_path, root_id, ws_id) = prepared_readme("admit-pause-other");
+    let db_path = db.path.clone();
+    let (entered_tx, entered_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let release_rx = Arc::new(Mutex::new(release_rx));
+    let once = Arc::new(AtomicBool::new(false));
+    let at_release = Arc::new(AtomicU64::new(u64::MAX));
+    let at_hook = at_release.clone();
+    let worker = thread::spawn(move || {
+        let _clear = ClearReaderHooks;
+        hark_core::set_reader_after_grant_before_syscall_hook(Some(Arc::new(move |kind| {
+            if kind != "open:README.md" || once.swap(true, Ordering::SeqCst) {
+                return;
+            }
+            let _ = entered_tx.send(());
+            let _ = release_rx
+                .lock()
+                .expect("release")
+                .recv_timeout(Duration::from_secs(3));
+            at_hook.store(hark_core::reader_open_attempts(), Ordering::SeqCst);
+        })));
+        hark_core::reset_reader_work_counters();
+        let core = Core::open(&db_path).unwrap();
+        let result = core.read_workspace_file(&ws_id, "README.md", &budget());
+        (
+            result,
+            at_release.load(Ordering::SeqCst),
+            hark_core::reader_open_attempts(),
+        )
+    });
+    let _release = ReleaseOnDrop(Some(release_tx));
+    entered_rx
+        .recv_timeout(Duration::from_secs(3))
+        .expect("open grant check did not succeed before syscall");
+    let other = Core::open(&db.path).unwrap();
+    other.pause_directory(&root_id).unwrap();
+    drop(_release);
+    let (result, at_release, after) = worker.join().unwrap();
+    let err = result.expect_err("open continued after other-core pause returned");
+    assert_code(&err, ErrorCode::RootPaused);
+    assert_eq!(
+        after, at_release,
+        "openat started after pause returned: before={at_release} after={after}"
+    );
+    let blob = raw_source_blob(&db.path);
+    assert!(!blob.contains(CANARY), "{blob}");
+    assert!(blob.starts_with("count=0"), "{blob}");
+    cleanup(&root_path);
+}
+
+#[test]
+fn second_read_after_other_core_revoke_does_not_emit_canary() {
+    let db = Db::new();
+    let root_path = project("admit-second-read");
+    let mut body = format!("head-{CANARY}-");
+    body.push_str(&"x".repeat(20 * 1024));
+    fs::write(root_path.join("README.md"), &body).unwrap();
+    let root = db.core.authorize_directory(&root_path).unwrap();
+    let scan = db
+        .core
+        .run_initial_scan(&root.id, &budget(), &CancelFlag::new())
+        .unwrap();
+    let ws = confirm_single(&db.core, &root.id, &scan.id, false);
+    let root_id = root.id.clone();
+    let ws_id = ws.id.clone();
+    let db_path = db.path.clone();
+    let (entered_tx, entered_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let release_rx = Arc::new(Mutex::new(release_rx));
+    let calls = Arc::new(AtomicU32::new(0));
+    let calls_hook = calls.clone();
+    let at_release = Arc::new(AtomicU64::new(u64::MAX));
+    let at_hook = at_release.clone();
+    let worker = thread::spawn(move || {
+        let _clear = ClearReaderHooks;
+        hark_core::reset_reader_work_counters();
+        hark_core::set_reader_after_grant_before_syscall_hook(Some(Arc::new(move |kind| {
+            if kind != "read:README.md" {
+                return;
+            }
+            if calls_hook.fetch_add(1, Ordering::SeqCst) != 1 {
+                return;
+            }
+            let _ = entered_tx.send(());
+            let _ = release_rx
+                .lock()
+                .expect("release")
+                .recv_timeout(Duration::from_secs(3));
+            at_hook.store(hark_core::reader_read_syscalls(), Ordering::SeqCst);
+        })));
+        let core = Core::open(&db_path).unwrap();
+        let result = core.read_workspace_file(&ws_id, "README.md", &budget());
+        (
+            result,
+            at_release.load(Ordering::SeqCst),
+            hark_core::reader_read_syscalls(),
+        )
+    });
+    let release = ReleaseOnDrop(Some(release_tx));
+    entered_rx
+        .recv_timeout(Duration::from_secs(3))
+        .expect("second read grant check did not run");
+    db.core.revoke_directory(&root_id).unwrap();
+    drop(release);
+    let (result, at_release, after) = worker.join().unwrap();
+    let err = result.expect_err("second read published bytes after revoke");
+    assert_code(&err, ErrorCode::RootRevoked);
+    assert_eq!(
+        after, at_release,
+        "next read started after revoke returned: before={at_release} after={after}"
+    );
+    assert!(
+        at_release >= 1,
+        "first chunk was not admitted before the gap"
+    );
+    let blob = raw_source_blob(&db.path);
+    assert!(!blob.contains(CANARY), "{blob}");
+    assert!(blob.starts_with("count=0"), "{blob}");
+    cleanup(&root_path);
+}
+
+#[test]
+fn admitted_read_blocks_other_core_revoke_until_section_ends() {
+    let (db, root_path, root_id, ws_id) = prepared_readme("admit-hold-other");
+    let db_path = db.path.clone();
+    let ws_for_worker = ws_id.clone();
+    let (entered_tx, entered_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let release_rx = Arc::new(Mutex::new(release_rx));
+    let once = Arc::new(AtomicBool::new(false));
+    let syscall_started = Arc::new(AtomicBool::new(false));
+    let syscall_flag = syscall_started.clone();
+    let worker = thread::spawn(move || {
+        let _clear = ClearReaderHooks;
+        hark_core::set_reader_admitted_syscall_hook(Some(Arc::new(move |kind| {
+            if kind != "read:README.md" || once.swap(true, Ordering::SeqCst) {
+                return;
+            }
+            let _ = entered_tx.send(());
+            let _ = release_rx
+                .lock()
+                .expect("release")
+                .recv_timeout(Duration::from_secs(3));
+            syscall_flag.store(true, Ordering::SeqCst);
+        })));
+        let core = Core::open(&db_path).unwrap();
+        core.read_workspace_file(&ws_for_worker, "README.md", &budget())
+    });
+    let release = ReleaseOnDrop(Some(release_tx));
+    entered_rx
+        .recv_timeout(Duration::from_secs(3))
+        .expect("admitted read section was not entered");
+    let revoke_done = Arc::new(AtomicBool::new(false));
+    let revoke_flag = revoke_done.clone();
+    let revoke_started = Arc::new(AtomicBool::new(false));
+    let started_flag = revoke_started.clone();
+    let other_path = db.path.clone();
+    let root_for_revoke = root_id.clone();
+    let revoker = thread::spawn(move || {
+        let other = Core::open(&other_path).unwrap();
+        started_flag.store(true, Ordering::SeqCst);
+        other.revoke_directory(&root_for_revoke).unwrap();
+        revoke_flag.store(true, Ordering::SeqCst);
+    });
+    let wait_start = std::time::Instant::now();
+    while !revoke_started.load(Ordering::SeqCst) {
+        assert!(
+            wait_start.elapsed() < Duration::from_secs(2),
+            "revoke thread did not start"
+        );
+        thread::sleep(Duration::from_millis(5));
+    }
+    thread::sleep(Duration::from_millis(250));
+    assert!(
+        !revoke_done.load(Ordering::SeqCst),
+        "other-core revoke returned while the admitted read section was held"
+    );
+    drop(release);
+    revoker.join().unwrap();
+    assert!(
+        revoke_done.load(Ordering::SeqCst),
+        "revoke did not finish after the admission section ended"
+    );
+    assert!(
+        syscall_started.load(Ordering::SeqCst),
+        "read was not inside the admission that blocked revoke"
+    );
+    let inflight = worker.join().unwrap();
+    if let Err(err) = &inflight {
+        assert!(!err.to_string().contains(CANARY), "{err}");
+    }
+    let follow = db
+        .core
+        .read_workspace_file(&ws_id, "README.md", &budget())
+        .unwrap_err();
+    assert_code(&follow, ErrorCode::RootRevoked);
+    let listed = serde_json::to_string(&db.core.list_source_refs(&ws_id).unwrap()).unwrap();
+    assert!(!listed.contains(CANARY), "{listed}");
     cleanup(&root_path);
 }

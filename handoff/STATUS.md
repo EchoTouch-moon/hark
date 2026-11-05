@@ -5,8 +5,8 @@
 | 项目 | 状态 | 证据/下一步 |
 |---|---|---|
 | F0 工程基线 | implemented | 用户批准；AGENTS、README、docs/r1/IMPLEMENTATION-PLAN.md |
-| F1 Core/Reader/SQLite | verified-local-partial | Core 库在本机测试。#2/#4 见 `f1-reader-fifo-budget.md`。#1/#5 已有本地修复与合成目录负例，见 `handoff/EVIDENCE/r1/f1-scope-repair.md`。#3 仍未修。不是产品 PASS，也未经父会话放行 |
-| F2 嵌入式 Pi Host | blocked | #3 取消后开场收据未修；#1/#5 本地修复尚未经父会话复跑。不得开始 Host |
+| F1 Core/Reader/SQLite | verified-local-partial | Core 库在本机测试。#2/#4 见 `f1-reader-fifo-budget.md`。#1 与 #5 的 fd 绑定见 `f1-scope-repair.md`。#5 检查到 open/read 的准入窗口已有本地修复，见 `handoff/EVIDENCE/r1/f1-revocation-admission.md`。#3 仍未修，不得标通过。不是产品 PASS，也未经父会话放行 |
+| F2 嵌入式 Pi Host | blocked | #3 取消后开场收据未修。#1/#5 本地修复尚未经父会话复跑。不得开始 Host |
 | F3 Tauri 集成底座 | pending | F1+F2 之后；正式 UI 后续 agent 负责 |
 | R1-A/B/C/D 产品闭环 | pending | 见实施计划 DAG，未交付完整 R1 |
 | 真实项目/StepFun/搜索/用户验收 | unverified | 需要单独授权/凭据/真实交互 |

@@ -20,4 +20,6 @@
 - 重叠判断使用已打开目录 fd 的物理祖先 dev/ino，不使用调用方路径字符串前缀，也不先 canonicalize 再普通 open。最终组件仍 `O_NOFOLLOW`。macOS `/var`→`/private/var`、`/tmp` 这类中间系统别名由内核在打开真实最终组件时解析，不因此拒绝所有测试或用户目录。
 - 非撤销授权或 Workspace 若不能按存储 inode 重新打开，不能当成与新范围不相交。新的 `authorize_directory` / `confirm_import` 返回 `overlap_refused`，detail 仍含 `parent_child_exclusion_not_implemented`。用户需先撤销陈旧授权，才能授权另一个目录。这不是父子排除。
 - Workspace 文件读取绑定验证过 inode 的目录 fd，子路径用 `openat` 从该 fd 打开，不从 root 重走 Workspace 路径。
-- 每次新的 open/读取/来源插入前做一次短 SQLite 授权查询，不在整次扫描期间持有 Core 锁。撤权或暂停返回后，不再开始新的 open、读取或成功来源提交。历史 source 行保留，但 `content_available=false` 且摘录清空，不能当当前读取。
+- 每次新的 open/读取/来源插入前复查授权，不在整次扫描或整个文件读期间持有 Core 锁。单独的 `get_root` / `with_conn` 不能关闭检查到系统调用的窗口：锁在回调返回时已释放。`with_tx` 是延迟事务且会提交，也不能当作 I/O 准入，嵌套再锁会死锁。
+- 内容 open/read 使用 `Core::admit_active_io`：同一把 `Core.conn` 互斥锁加 `BEGIN IMMEDIATE`，只包住一次 `openat` 或一次有界 `read`，然后 rollback。同 Core 的暂停/撤权等这把互斥锁；另一连接等 rollback journal 的 reserved 锁（现有 `busy_timeout`）。不要为此改 WAL：WAL 下读者不挡写者，窗口会重新打开。未加锁表，未改 migration。
+- 暂停/撤权与读取路径的来源提交用 `Core::with_immediate_tx`，避免延迟事务升级共享锁时和等待中的写者死锁。撤权或暂停成功返回后，不再开始新的 open、read 或成功来源提交。已开始的单次系统调用可以结束，但不能开始下一次 read。结果返回前再查授权；已撤权则不外发字节。历史 source 行保留，但 `content_available=false` 且摘录清空。

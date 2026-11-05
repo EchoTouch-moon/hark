@@ -37,7 +37,8 @@ pub use messages::{
     SelectiveReadReport, SourceRef, WorkspaceOverview,
 };
 pub use reader::{
-    reader_open_attempts, reader_readdir_steps, reset_reader_work_counters,
+    reader_open_attempts, reader_read_syscalls, reader_readdir_steps, reset_reader_work_counters,
+    set_reader_admitted_syscall_hook, set_reader_after_grant_before_syscall_hook,
     set_reader_after_workspace_verify_hook, set_reader_before_open_hook,
 };
 pub use scan::{CandidateRole, IgnoredEntry, InitialScan, ScanBudget, ScanCandidate, ScanStatus};

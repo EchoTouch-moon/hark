@@ -48,11 +48,23 @@ pub fn reader_open_attempts() -> u64 {
     0
 }
 
+pub fn reader_read_syscalls() -> u64 {
+    0
+}
+
 pub fn set_reader_before_open_hook(_hook: Option<std::sync::Arc<dyn Fn(&str) + Send + Sync>>) {}
 
 pub fn set_reader_after_workspace_verify_hook(
     _hook: Option<std::sync::Arc<dyn Fn(&str) + Send + Sync>>,
 ) {
+}
+
+pub fn set_reader_after_grant_before_syscall_hook(
+    _hook: Option<std::sync::Arc<dyn Fn(&str) + Send + Sync>>,
+) {
+}
+
+pub fn set_reader_admitted_syscall_hook(_hook: Option<std::sync::Arc<dyn Fn(&str) + Send + Sync>>) {
 }
 
 pub(crate) fn inspect_directory(
@@ -61,7 +73,7 @@ pub(crate) fn inspect_directory(
     _rel_dir: &str,
     _max_entries: u32,
     _cancel: &crate::CancelFlag,
-    _grant_check: &dyn Fn() -> Result<()>,
+    _gate: &crate::grant::IoGate<'_>,
 ) -> Result<InspectedDir> {
     unsupported()
 }
@@ -79,7 +91,7 @@ pub(crate) fn read_file(
     _expected: &DirIdentity,
     _rel_file: &str,
     _max_bytes: u64,
-    _grant_check: &dyn Fn() -> Result<()>,
+    _gate: &crate::grant::IoGate<'_>,
 ) -> Result<ReadBytes> {
     unsupported()
 }
@@ -104,7 +116,7 @@ pub(crate) fn read_within_workspace(
     _workspace_expected: &DirIdentity,
     _file_rel: &str,
     _max_bytes: u64,
-    _grant_check: &dyn Fn() -> Result<()>,
+    _gate: &crate::grant::IoGate<'_>,
 ) -> Result<ReadBytes> {
     unsupported()
 }

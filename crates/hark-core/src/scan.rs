@@ -167,17 +167,23 @@ impl Core {
             ino: root.ino.clone(),
         };
         let root_id = root_id.clone();
-        let grant_check = || {
-            let current = self.get_root(&root_id)?;
+        let check_id = root_id.clone();
+        let admit_id = root_id.clone();
+        let check = move || {
+            let current = self.get_root(&check_id)?;
             grant::require_active(&current)
         };
+        let admit =
+            move |op: &mut dyn FnMut() -> Result<()>| self.admit_active_io(&admit_id, || op());
+        let gate = grant::IoGate::new(&check, &admit);
         // Re-open before walking so a replaced path cannot be scanned under the old grant.
-        grant_check()?;
+        gate.check()?;
         let _ = reader::identify_relative(std::path::Path::new(&root.path), &identity, "")?;
-        let walked = walk_scan(&root, &identity, budget, cancel, &grant_check)?;
-        // Status is re-read inside the write transaction so a revoke that has
-        // already returned cannot be followed by a successful scan commit.
-        self.with_tx(|tx| {
+        let walked = walk_scan(&root, &identity, budget, cancel, &gate)?;
+        // Status is re-read inside an IMMEDIATE write so a revoke that has
+        // already returned cannot be followed by a successful scan commit, and
+        // the commit queues with revoke instead of upgrading a shared lock.
+        self.with_immediate_tx(|tx| {
             let root_now = grant::load_root(tx, &root_id)?
                 .ok_or_else(|| CoreError::new(ErrorCode::NotFound, root_id.as_str()))?;
             grant::require_active(&root_now)?;
@@ -205,7 +211,7 @@ fn walk_scan(
     identity: &reader::DirIdentity,
     budget: &ScanBudget,
     cancel: &CancelFlag,
-    grant_check: &dyn Fn() -> Result<()>,
+    gate: &grant::IoGate<'_>,
 ) -> Result<Walked> {
     let root_path = std::path::Path::new(&root.path);
     let mut facts: BTreeMap<String, DirFacts> = BTreeMap::new();
@@ -247,9 +253,9 @@ fn walk_scan(
             }
             break;
         }
-        grant_check()?;
+        gate.check()?;
         let inspected =
-            reader::inspect_directory(root_path, identity, &rel, remaining, cancel, grant_check)?;
+            reader::inspect_directory(root_path, identity, &rel, remaining, cancel, gate)?;
         if inspected.cancelled {
             cancelled = true;
             stop = true;
@@ -310,12 +316,20 @@ fn walk_scan(
                             budget,
                             &mut total_read,
                             &mut limits_hit,
-                            grant_check,
+                            gate,
                         ) {
                             Ok(Some(flag)) => {
                                 facts.entry(String::new()).or_default().evidence.push(flag);
                             }
                             Ok(None) => {}
+                            Err(err)
+                                if matches!(
+                                    err.code,
+                                    ErrorCode::RootRevoked | ErrorCode::RootPaused
+                                ) =>
+                            {
+                                return Err(err);
+                            }
                             Err(err) => {
                                 push_ignored(&mut ignored, &child_rel, err.code_str());
                             }
@@ -364,7 +378,7 @@ fn read_manifest(
     budget: &ScanBudget,
     total_read: &mut u64,
     limits_hit: &mut Vec<String>,
-    grant_check: &dyn Fn() -> Result<()>,
+    gate: &grant::IoGate<'_>,
 ) -> Result<Option<String>> {
     if *total_read >= budget.max_total_bytes {
         if !limits_hit.iter().any(|s| s == "max_total_bytes") {
@@ -374,7 +388,7 @@ fn read_manifest(
     }
     let remaining = budget.max_total_bytes - *total_read;
     let cap = budget.max_file_bytes.min(remaining);
-    let read = reader::read_file(root, identity, name, cap, grant_check)?;
+    let read = reader::read_file(root, identity, name, cap, gate)?;
     *total_read += read.bytes.len() as u64;
     if read.truncated {
         if !limits_hit.iter().any(|s| s == "max_file_bytes") {

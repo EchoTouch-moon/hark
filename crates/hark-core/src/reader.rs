@@ -18,21 +18,35 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::error::{CoreError, ErrorCode, Result};
+use crate::grant::{self, IoGate};
 use crate::policy::{blocked_component, private_key_bytes, split_relative};
 use crate::CancelFlag;
 
 thread_local! {
     static READDIR_STEPS: Cell<u64> = const { Cell::new(0) };
     static OPEN_ATTEMPTS: Cell<u64> = const { Cell::new(0) };
+    static READ_SYSCALLS: Cell<u64> = const { Cell::new(0) };
     static BEFORE_OPEN: RefCell<Option<Arc<dyn Fn(&str) + Send + Sync>>> = RefCell::new(None);
     static AFTER_WORKSPACE_VERIFY: RefCell<Option<Arc<dyn Fn(&str) + Send + Sync>>> =
         RefCell::new(None);
+    /// After a grant check has returned and before the next open/read syscall.
+    /// Must not run while the admission lock is held.
+    static AFTER_GRANT_BEFORE_SYSCALL: RefCell<Option<Arc<dyn Fn(&str) + Send + Sync>>> =
+        RefCell::new(None);
+    /// Inside the short admission section, before the syscall. Must not call Core
+    /// or wait for revoke/pause: that lock is held here.
+    static ADMITTED_SYSCALL: RefCell<Option<Arc<dyn Fn(&str) + Send + Sync>>> = RefCell::new(None);
 }
+
+/// One `read` admission. Not the whole file: the lock is released between chunks
+/// so pause/revoke is not stuck behind a long read.
+const READ_ADMISSION_CHUNK: usize = 16 * 1024;
 
 /// Test hook: counts `readdir` returns on this thread. Not a product metric.
 pub fn reset_reader_work_counters() {
     READDIR_STEPS.with(|n| n.set(0));
     OPEN_ATTEMPTS.with(|n| n.set(0));
+    READ_SYSCALLS.with(|n| n.set(0));
 }
 
 pub fn reader_readdir_steps() -> u64 {
@@ -41,6 +55,11 @@ pub fn reader_readdir_steps() -> u64 {
 
 pub fn reader_open_attempts() -> u64 {
     OPEN_ATTEMPTS.with(|n| n.get())
+}
+
+/// Test hook: `read` syscalls started on this thread. Not a product metric.
+pub fn reader_read_syscalls() -> u64 {
+    READ_SYSCALLS.with(|n| n.get())
 }
 
 /// Runs after the pre-open type check and before `openat`, so a test can swap in a FIFO.
@@ -56,12 +75,29 @@ pub fn set_reader_after_workspace_verify_hook(hook: Option<Arc<dyn Fn(&str) + Se
     AFTER_WORKSPACE_VERIFY.with(|slot| *slot.borrow_mut() = hook);
 }
 
+/// Test hook after a successful grant check and before the next open/read syscall.
+/// The Core/SQLite lock is not held. A test may wait here for another thread or
+/// another connection to finish revoke/pause. Inert unless a test sets it.
+pub fn set_reader_after_grant_before_syscall_hook(hook: Option<Arc<dyn Fn(&str) + Send + Sync>>) {
+    AFTER_GRANT_BEFORE_SYSCALL.with(|slot| *slot.borrow_mut() = hook);
+}
+
+/// Test hook inside the short admission section, immediately before the syscall.
+/// The admission lock is held. Do not call Core and do not wait for revoke/pause.
+pub fn set_reader_admitted_syscall_hook(hook: Option<Arc<dyn Fn(&str) + Send + Sync>>) {
+    ADMITTED_SYSCALL.with(|slot| *slot.borrow_mut() = hook);
+}
+
 fn note_readdir() {
     READDIR_STEPS.with(|n| n.set(n.get().saturating_add(1)));
 }
 
 fn note_open_attempt() {
     OPEN_ATTEMPTS.with(|n| n.set(n.get().saturating_add(1)));
+}
+
+fn note_read_syscall() {
+    READ_SYSCALLS.with(|n| n.set(n.get().saturating_add(1)));
 }
 
 fn run_before_open_hook(name: &str) {
@@ -76,6 +112,31 @@ fn run_after_workspace_verify_hook(file_rel: &str) {
     if let Some(hook) = hook {
         hook(file_rel);
     }
+}
+
+fn run_after_grant_before_syscall_hook(kind: &str) {
+    let hook = AFTER_GRANT_BEFORE_SYSCALL.with(|slot| slot.borrow().clone());
+    if let Some(hook) = hook {
+        hook(kind);
+    }
+}
+
+fn run_admitted_syscall_hook(kind: &str) {
+    let hook = ADMITTED_SYSCALL.with(|slot| slot.borrow().clone());
+    if let Some(hook) = hook {
+        hook(kind);
+    }
+}
+
+/// Check with the lock released (test hook may run), then recheck and run `op`
+/// under the short admission reservation.
+fn admit_syscall(gate: &IoGate<'_>, kind: &str, op: &mut dyn FnMut() -> Result<()>) -> Result<()> {
+    gate.check()?;
+    run_after_grant_before_syscall_hook(kind);
+    gate.admit(&mut || {
+        run_admitted_syscall_hook(kind);
+        op()
+    })
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -142,13 +203,12 @@ pub(crate) fn inspect_directory(
     rel_dir: &str,
     max_entries: u32,
     cancel: &CancelFlag,
-    grant_check: &dyn Fn() -> Result<()>,
+    gate: &IoGate<'_>,
 ) -> Result<InspectedDir> {
     ensure_supported()?;
-    grant_check()?;
-    let root_fd = reopen_root(root, expected)?;
+    let root_fd = reopen_root_admitted(root, expected, gate)?;
     let dev = root_dev(&root_fd)?;
-    let dir_fd = walk_dir(&root_fd, &dev, split_relative(rel_dir)?, grant_check)?;
+    let dir_fd = walk_dir(&root_fd, &dev, split_relative(rel_dir)?, gate)?;
     let mut children = Vec::new();
     let mut classified = 0_u32;
     let mut hit_entry_limit = false;
@@ -217,7 +277,7 @@ pub(crate) fn inspect_directory(
             children.push(ChildInspect::Rejected { name, reason: code });
             continue;
         }
-        children.push(inspect_one(&dir_fd, &name, dev.clone(), grant_check)?);
+        children.push(inspect_one(&dir_fd, &name, dev.clone(), gate)?);
     }
     children.sort_by(|a, b| child_name(a).cmp(child_name(b)));
     Ok(InspectedDir {
@@ -233,9 +293,10 @@ pub(crate) fn identify_relative(
     rel: &str,
 ) -> Result<DirIdentity> {
     ensure_supported()?;
+    let gate = grant::relaxed_io_gate();
     let root_fd = reopen_root(root, expected)?;
     let dev = root_dev(&root_fd)?;
-    let fd = walk_dir(&root_fd, &dev, split_relative(rel)?, &allow_grant)?;
+    let fd = walk_dir(&root_fd, &dev, split_relative(rel)?, &gate)?;
     let st = fstat(&fd)?;
     ensure_dir(&st)?;
     reject_alias(fd.as_raw_fd())?;
@@ -247,9 +308,8 @@ pub(crate) fn read_file(
     expected: &DirIdentity,
     rel_file: &str,
     max_bytes: u64,
-    grant_check: &dyn Fn() -> Result<()>,
+    gate: &IoGate<'_>,
 ) -> Result<ReadBytes> {
-    grant_check()?;
     ensure_supported()?;
     let parts = split_relative(rel_file)?;
     if parts.is_empty() {
@@ -263,20 +323,15 @@ pub(crate) fn read_file(
             return Err(CoreError::new(code, format!("refusing component {part}")));
         }
     }
-    let root_fd = reopen_root(root, expected)?;
+    let root_fd = reopen_root_admitted(root, expected, gate)?;
     let root_dev = root_dev(&root_fd)?;
     let (parent, file_name) = parts.split_at(parts.len() - 1);
-    let parent_fd = walk_dir(&root_fd, &root_dev, parent.to_vec(), grant_check)?;
-    let file_fd = open_child(&parent_fd, &file_name[0], false, grant_check)?;
+    let parent_fd = walk_dir(&root_fd, &root_dev, parent.to_vec(), gate)?;
+    let file_fd = open_child(&parent_fd, &file_name[0], false, gate)?;
     let st = fstat(&file_fd)?;
     classify_file(&st, &root_dev, &file_name[0])?;
     reject_alias(file_fd.as_raw_fd())?;
-    grant_check()?;
-    read_fd(file_fd, st.st_size, max_bytes)
-}
-
-fn allow_grant() -> Result<()> {
-    Ok(())
+    read_fd(file_fd, st.st_size, max_bytes, gate, rel_file)
 }
 
 const MAX_ANCESTORS: usize = 128;
@@ -323,9 +378,10 @@ fn open_scope(
     rel: &str,
     dir_expected: &DirIdentity,
 ) -> Result<(OwnedFd, DirIdentity)> {
+    let gate = grant::relaxed_io_gate();
     let root_fd = reopen_root(path, root_expected)?;
     let dev = root_dev(&root_fd)?;
-    let fd = walk_dir(&root_fd, &dev, split_relative(rel)?, &allow_grant)?;
+    let fd = walk_dir(&root_fd, &dev, split_relative(rel)?, &gate)?;
     let st = fstat(&fd)?;
     ensure_dir(&st)?;
     reject_alias(fd.as_raw_fd())?;
@@ -370,10 +426,9 @@ pub(crate) fn read_within_workspace(
     workspace_expected: &DirIdentity,
     file_rel: &str,
     max_bytes: u64,
-    grant_check: &dyn Fn() -> Result<()>,
+    gate: &IoGate<'_>,
 ) -> Result<ReadBytes> {
     ensure_supported()?;
-    grant_check()?;
     let parts = split_relative(file_rel)?;
     if parts.is_empty() {
         return Err(CoreError::new(
@@ -386,14 +441,9 @@ pub(crate) fn read_within_workspace(
             return Err(CoreError::new(code, format!("refusing component {part}")));
         }
     }
-    let root_fd = reopen_root(root, root_expected)?;
+    let root_fd = reopen_root_admitted(root, root_expected, gate)?;
     let root_dev = root_dev(&root_fd)?;
-    let ws_fd = walk_dir(
-        &root_fd,
-        &root_dev,
-        split_relative(workspace_rel)?,
-        grant_check,
-    )?;
+    let ws_fd = walk_dir(&root_fd, &root_dev, split_relative(workspace_rel)?, gate)?;
     let ws_st = fstat(&ws_fd)?;
     ensure_dir(&ws_st)?;
     if identity_of(&ws_st) != *workspace_expected {
@@ -404,33 +454,50 @@ pub(crate) fn read_within_workspace(
     }
     reject_alias(ws_fd.as_raw_fd())?;
     run_after_workspace_verify_hook(file_rel);
-    grant_check()?;
     let (parent, file_name) = parts.split_at(parts.len() - 1);
-    let parent_fd = walk_dir(&ws_fd, &root_dev, parent.to_vec(), grant_check)?;
-    let file_fd = open_child(&parent_fd, &file_name[0], false, grant_check)?;
+    let parent_fd = walk_dir(&ws_fd, &root_dev, parent.to_vec(), gate)?;
+    let file_fd = open_child(&parent_fd, &file_name[0], false, gate)?;
     let st = fstat(&file_fd)?;
     classify_file(&st, &root_dev, &file_name[0])?;
     reject_alias(file_fd.as_raw_fd())?;
-    grant_check()?;
-    read_fd(file_fd, st.st_size, max_bytes)
+    read_fd(file_fd, st.st_size, max_bytes, gate, file_rel)
 }
 
-fn read_fd(file_fd: OwnedFd, size: i64, max_bytes: u64) -> Result<ReadBytes> {
+fn read_fd(
+    file_fd: OwnedFd,
+    size: i64,
+    max_bytes: u64,
+    gate: &IoGate<'_>,
+    label: &str,
+) -> Result<ReadBytes> {
     let file_len = if size < 0 { 0 } else { size as u64 };
     let to_read = max_bytes.min(file_len) as usize;
     let mut file = std::fs::File::from(file_fd);
     let mut bytes = vec![0_u8; to_read];
     let mut filled = 0;
     while filled < to_read {
-        match file.read(&mut bytes[filled..]) {
-            Ok(0) => break,
-            Ok(n) => filled += n,
-            Err(err) if err.kind() == std::io::ErrorKind::Interrupted => continue,
-            Err(err) => {
-                return Err(CoreError::new(ErrorCode::Io, err.to_string()));
+        let mut n = 0_usize;
+        let end = (filled + READ_ADMISSION_CHUNK).min(to_read);
+        admit_syscall(gate, &format!("read:{label}"), &mut || {
+            note_read_syscall();
+            loop {
+                match file.read(&mut bytes[filled..end]) {
+                    Ok(got) => {
+                        n = got;
+                        return Ok(());
+                    }
+                    Err(err) if err.kind() == std::io::ErrorKind::Interrupted => continue,
+                    Err(err) => return Err(CoreError::new(ErrorCode::Io, err.to_string())),
+                }
             }
+        })?;
+        if n == 0 {
+            break;
         }
+        filled += n;
     }
+    // Publish boundary: a revoke that returned between chunks must not emit bytes.
+    gate.check()?;
     bytes.truncate(filled);
     if private_key_bytes(&bytes) {
         return Err(CoreError::new(
@@ -500,6 +567,25 @@ fn reopen_root(path: &Path, expected: &DirIdentity) -> Result<OwnedFd> {
     Ok(fd)
 }
 
+fn reopen_root_admitted(path: &Path, expected: &DirIdentity, gate: &IoGate<'_>) -> Result<OwnedFd> {
+    require_absolute_clean(path)?;
+    let mut opened = None;
+    admit_syscall(gate, "open:root", &mut || {
+        let fd = open_root(path)?;
+        let st = fstat(&fd)?;
+        ensure_dir(&st)?;
+        if identity_of(&st) != *expected {
+            return Err(CoreError::new(
+                ErrorCode::GrantIdentityMismatch,
+                "path no longer points at the authorized directory inode",
+            ));
+        }
+        opened = Some(fd);
+        Ok(())
+    })?;
+    opened.ok_or_else(|| CoreError::new(ErrorCode::Io, "root admission produced no descriptor"))
+}
+
 fn open_root(path: &Path) -> Result<OwnedFd> {
     let c = cstring_from_path(path)?;
     let mut st: libc::stat = unsafe { std::mem::zeroed() };
@@ -525,14 +611,14 @@ fn walk_dir(
     root: &OwnedFd,
     root_dev: &str,
     parts: Vec<String>,
-    grant_check: &dyn Fn() -> Result<()>,
+    gate: &IoGate<'_>,
 ) -> Result<OwnedFd> {
     let mut current = dup_fd(root)?;
     for part in parts {
         if let Some(code) = blocked_component(&part) {
             return Err(CoreError::new(code, format!("refusing component {part}")));
         }
-        let next = open_child(&current, &part, true, grant_check)?;
+        let next = open_child(&current, &part, true, gate)?;
         let st = fstat(&next)?;
         ensure_dir(&st)?;
         if identity_of(&st).dev != root_dev {
@@ -551,9 +637,9 @@ fn inspect_one(
     parent: &OwnedFd,
     name: &str,
     root_dev: String,
-    grant_check: &dyn Fn() -> Result<()>,
+    gate: &IoGate<'_>,
 ) -> Result<ChildInspect> {
-    match open_child(parent, name, false, grant_check) {
+    match open_child(parent, name, false, gate) {
         Err(err)
             if matches!(
                 err.code,
@@ -636,12 +722,7 @@ fn classify_file(st: &libc::stat, root_dev: &str, name: &str) -> Result<()> {
     Ok(())
 }
 
-fn open_child(
-    parent: &OwnedFd,
-    name: &str,
-    dir: bool,
-    grant_check: &dyn Fn() -> Result<()>,
-) -> Result<OwnedFd> {
+fn open_child(parent: &OwnedFd, name: &str, dir: bool, gate: &IoGate<'_>) -> Result<OwnedFd> {
     if name.is_empty()
         || name == "."
         || name == ".."
@@ -687,38 +768,43 @@ fn open_child(
         ));
     }
     run_before_open_hook(name);
-    grant_check()?;
-    note_open_attempt();
-    let mut flags = libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK;
-    if dir || is_dir(&lst) {
-        flags |= libc::O_DIRECTORY;
-    }
-    let fd = unsafe { libc::openat(parent.as_raw_fd(), c.as_ptr(), flags) };
-    if fd < 0 {
-        let err = last_errno();
-        if err == libc::EAGAIN || err == libc::ENXIO || err == libc::ENODEV {
+    let mut opened_fd = None;
+    let kind = format!("open:{name}");
+    admit_syscall(gate, &kind, &mut || {
+        note_open_attempt();
+        let mut flags = libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK;
+        if dir || is_dir(&lst) {
+            flags |= libc::O_DIRECTORY;
+        }
+        let fd = unsafe { libc::openat(parent.as_raw_fd(), c.as_ptr(), flags) };
+        if fd < 0 {
+            let err = last_errno();
+            if err == libc::EAGAIN || err == libc::ENXIO || err == libc::ENODEV {
+                return Err(CoreError::new(
+                    ErrorCode::SpecialFileRejected,
+                    format!("non-blocking open refused {name}"),
+                ));
+            }
+            return Err(map_open_errno(err, name));
+        }
+        let fd = unsafe { OwnedFd::from_raw_fd(fd) };
+        let opened = fstat(&fd)?;
+        if is_lnk(&opened) || is_special(&opened) || (dir && !is_dir(&opened)) {
             return Err(CoreError::new(
                 ErrorCode::SpecialFileRejected,
-                format!("non-blocking open refused {name}"),
+                format!("opened object for {name} failed type recheck"),
             ));
         }
-        return Err(map_open_errno(err, name));
-    }
-    let fd = unsafe { OwnedFd::from_raw_fd(fd) };
-    let opened = fstat(&fd)?;
-    if is_lnk(&opened) || is_special(&opened) || (dir && !is_dir(&opened)) {
-        return Err(CoreError::new(
-            ErrorCode::SpecialFileRejected,
-            format!("opened object for {name} failed type recheck"),
-        ));
-    }
-    if !dir && !is_dir(&opened) && !is_reg(&opened) {
-        return Err(CoreError::new(
-            ErrorCode::SpecialFileRejected,
-            format!("opened object for {name} is not a regular file"),
-        ));
-    }
-    Ok(fd)
+        if !dir && !is_dir(&opened) && !is_reg(&opened) {
+            return Err(CoreError::new(
+                ErrorCode::SpecialFileRejected,
+                format!("opened object for {name} is not a regular file"),
+            ));
+        }
+        opened_fd = Some(fd);
+        Ok(())
+    })?;
+    opened_fd.ok_or_else(|| CoreError::new(ErrorCode::Io, "open admission produced no descriptor"))
 }
 
 enum ListedName {

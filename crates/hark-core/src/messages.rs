@@ -126,12 +126,15 @@ impl Core {
         let _full = compose_rel(&ws.relative_path, relative_path)?;
         let bytes = read_checked(self, &root, &ws, relative_path, budget.max_file_bytes)?;
         let root_id = root.id.clone();
-        let source = self.with_tx(|tx| {
+        let source = self.with_immediate_tx(|tx| {
             let current = grant::load_root(tx, &root_id)?
                 .ok_or_else(|| CoreError::new(ErrorCode::NotFound, root_id.as_str()))?;
             grant::require_active(&current)?;
             insert_source(tx, &ws, relative_path, &bytes)
         })?;
+        // Publish boundary. A revoke/pause that has already returned must not
+        // be followed by file bytes, even if the source row was admitted earlier.
+        grant::require_active(&self.get_root(&root_id)?)?;
         let text = utf8_text(&bytes.bytes);
         Ok(FileRead {
             complete: !bytes.truncated && text.is_some(),
@@ -152,17 +155,22 @@ impl Core {
         grant::require_active(&root)?;
         let identity = root_identity(&root);
         let root_id = root.id.clone();
-        let grant_check = || {
-            let current = self.get_root(&root_id)?;
+        let check_id = root_id.clone();
+        let admit_id = root_id.clone();
+        let check = move || {
+            let current = self.get_root(&check_id)?;
             grant::require_active(&current)
         };
+        let admit =
+            move |op: &mut dyn FnMut() -> Result<()>| self.admit_active_io(&admit_id, || op());
+        let gate = grant::IoGate::new(&check, &admit);
         let listed = reader::inspect_directory(
             std::path::Path::new(&root.path),
             &identity,
             &ws.relative_path,
             budget.max_entries,
             cancel,
-            &grant_check,
+            &gate,
         )?;
         let mut sources = Vec::new();
         let mut skipped = Vec::new();
@@ -191,11 +199,11 @@ impl Core {
                 break;
             }
             let cap = budget.max_file_bytes.min(budget.max_total_bytes - total);
-            grant_check()?;
+            gate.check()?;
             match read_checked(self, &root, &ws, &name, cap) {
                 Ok(bytes) => {
                     total += bytes.bytes.len() as u64;
-                    let source = self.with_tx(|tx| {
+                    let source = self.with_immediate_tx(|tx| {
                         let current = grant::load_root(tx, &root_id)?
                             .ok_or_else(|| CoreError::new(ErrorCode::NotFound, root_id.as_str()))?;
                         grant::require_active(&current)?;
@@ -207,8 +215,8 @@ impl Core {
                 Err(err) => skipped.push(format!("{name}:{}", err.code_str())),
             }
         }
-        grant_check()?;
-        self.with_tx(|tx| {
+        gate.check()?;
+        self.with_immediate_tx(|tx| {
             let current = grant::load_root(tx, &root_id)?
                 .ok_or_else(|| CoreError::new(ErrorCode::NotFound, root_id.as_str()))?;
             grant::require_active(&current)?;
@@ -625,10 +633,16 @@ fn read_checked(
     max_bytes: u64,
 ) -> Result<ReadBytesOwned> {
     let root_id = root.id.clone();
-    let grant_check = || {
-        let current = core.get_root(&root_id)?;
+    let check_id = root_id.clone();
+    let admit_id = root_id;
+    let check = move || {
+        let current = core.get_root(&check_id)?;
         grant::require_active(&current)
     };
+    let admit = move |op: &mut dyn FnMut() -> crate::error::Result<()>| {
+        core.admit_active_io(&admit_id, || op())
+    };
+    let gate = grant::IoGate::new(&check, &admit);
     let ws_identity = DirIdentity {
         dev: ws.dev.clone(),
         ino: ws.ino.clone(),
@@ -640,7 +654,7 @@ fn read_checked(
         &ws_identity,
         file_rel,
         max_bytes,
-        &grant_check,
+        &gate,
     )?;
     if private_key_bytes(&read.bytes) {
         return Err(CoreError::new(
