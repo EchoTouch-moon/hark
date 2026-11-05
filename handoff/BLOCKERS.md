@@ -3,8 +3,10 @@
 ## F1 已在本会话本地实现，仍未产品放行
 
 - Core 库与 IPC v1 合同已有本机 `cargo test` / `cargo check` 证据，见 `handoff/EVIDENCE/r1/f1-core-limits.md`。
-- 这不关闭 F1 产品验收。主会话尚未审查 diff。Host 与 Desktop 未开始。
-- 早期 workflow 未能启动 child 的记录保留在 Git 历史。本次是新的 F1 writer，不是恢复一个不存在的 child session。
+- 主会话第一轮审查不放行：已有 22 项回归复跑通过，但额外复现别名重叠绕过、FIFO 阻塞、取消后不同模型开场仍可提交；还发现枚举预算与运行中撤权/Workspace fd 复验缺口。见 `handoff/EVIDENCE/r1/f1-parent-review.md`。Host 与 Desktop 未开始。
+- Workflow `2742fe5d-687b-487c-a216-906d501096b6` 的 child `9a5b3d9c-5c22-463a-a925-a8780488b83b` 在 2400000ms 总时限后失败。失败后核验 HEAD 仍为 `9c79f81`，tracked diff 为空，仅父会话审查记录未跟踪；没有返工通过证据，也未发现遗留 Core 编译进程。未消费的 follow-up 不能作为落实证据。
+- 已确认原 Grok 4.7 child 可 resume。恢复按同 subagent 协议分小切片：先修 FIFO 与实际枚举预算/取消，再处理物理隔离/撤权和开场收据；每段完成即返回，不在 child 内等待人工审查消耗执行时限。任何风险未解决前不得启动 Host。
+- 早期 workflow 未能启动 child 的记录保留在 Git 历史；与本次已运行 child 的超时区分。
 
 ## 仍阻塞或未验证
 
