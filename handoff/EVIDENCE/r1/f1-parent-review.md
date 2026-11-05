@@ -15,3 +15,10 @@
 
 ## 裁决
 **返工，尚不放行 Host。** 父子排除、Windows、Memory/FTS/网页 Reader 等不扩入本次。保持当前安全关闭与诚实未验状态；只修当前 Reader/scan/receipt 可达问题，更新证据与合同，再提交下一轮审查。
+
+## 第一段返工复核（HEAD 7db1958）
+父会话检查 FIFO/枚举 diff，并实际复跑 `cargo test --manifest-path crates/hark-core/Cargo.toml --offline -- --test-threads=8`：2 单元 + 20 磁盘 + 3 IPC，25 项全部通过。重新链接新库运行原父会话 writerless FIFO probe，实际立即返回 `starting_fifo_scan / returned=true`，不再卡在 open。
+
+#2：打开前拒绝特殊对象，O_NONBLOCK 打开后 fstat 复验，新增 regular→FIFO 可控竞态覆盖；本机此修复接受。#4：readdir/分类处已应用 entry/cancel 预算，初扫与 selective read 均传入，有实际工作计数负例；本机此修复接受。公开测试 hook/counter 非产品指标，后续可收敛为测试专用，不因此扩建运行基础设施。
+
+**仍阻塞：#1 物理别名重叠；#5 Workspace descriptor 与运行中撤权；#3 首次开场运行/模型/取消收据。** 接下来先修 #1/#5 同一目录读取边界，再修 #3。本段接受不代表 F1 整体或 R1 产品通过。
