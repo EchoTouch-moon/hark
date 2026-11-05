@@ -6,8 +6,8 @@
 |---|---|---|
 | F0 工程基线 | implemented | 用户批准；AGENTS、README、docs/r1/IMPLEMENTATION-PLAN.md |
 | F1 Core/Reader/SQLite | verified-local | 审查五项已在当前 Core 串行合入并有本机联合测试。#2/#4 resolved-local，见 `f1-reader-fifo-budget.md`。#1 与 #5 fd/物理范围 resolved-local，见 `f1-scope-repair.md`。#5 检查到 open/read 的短事务准入 resolved-local，见 `f1-revocation-admission.md`。#3 开场 run 绑定 resolved-local，见 `f1-opening-receipt.md` 与 `f1-core-integrated.md`。父会话已在 `0771ebe` 复跑 fmt/check/46 项测试通过，放行 F1 本机底座继续开发；不是产品 PASS |
-| F2 嵌入式 Pi Host | in-progress-isolated | 隔离无网络 SDK 构造/工具白名单/JSONL smoke 正在进行；正式 Core/Sidecar 接入、ContextPack、session-ref、credential 槽仍待实现。真实请求前须二次复查授权 |
-| F3 Tauri 集成底座 | pending | F1 本机底座已放行，可先独立搭 Rust/Tauri 壳与 Core IPC；正式 Sidecar 接入须消费 F2 证据，正式 UI 后续 agent 负责 |
+| F2 嵌入式 Pi Host | candidate-review-blocked | 隔离候选 `dev/r1-host-runtime` / `2b9ac8c`，主会话复跑 TS/SDK smoke/8 项 Host IPC/probe 通过；审查因 Grok 403 中断且有源码疑点待复核，不合入主线。真实 Rust 桥接/StepFun 未验 |
+| F3 Tauri 集成底座 | candidate-review-blocked | 隔离壳 `dev/r1-native-shell` / `ca0efb3`，主会话复跑 7 项服务测试与 check 通过；只读审查因 Grok 403 中断。正式 Sidecar、窗口交互、产品前端与安装包未验 |
 | R1-A/B/C/D 产品闭环 | blocked | 整 R1 未通过。见实施计划 DAG |
 | 真实项目/StepFun/搜索/用户验收 | unverified | 合成收据不是真实 StepFun。需要单独授权/凭据/真实交互 |
 | macOS 安装包 / Windows 实机 | unverified | 不以本机静态检查替代。Windows 安全读源码 fail-closed，未在 Windows 编译 |

@@ -1,5 +1,13 @@
 # Hark R1 阻塞与验证条件
 
+## 当前派发阻塞：Grok 额度 / 订阅 403
+
+- Workflow `d0946ef4-5bfd-4006-a0ba-4ff32b932de6` 的两个 Grok 4.7 high 审查均失败：`xai API error (403): You have run out of credits or need a Grok subscription`。Host reviewer `cfd78851-678e-4a88-9b14-5eb456d67901`；Native reviewer `e11922e9-815b-4d63-bcda-11d1066a362c`。外层 workflow complete 不代表审查通过，两个结果 `ok=false`。
+- 失败后已核验三个 worktree 均 clean：主线 `2dc8570`，Host `dev/r1-host-runtime` / `2b9ac8c`，Native `dev/r1-native-shell` / `ca0efb3`。无审查写入的 partial diff，未合并候选，未推远端，未切换模型或 CLI/前台协议。
+- 主会话已实际复跑：Native 服务 7 项 + cargo check；Host strict TS、SDK smoke 1 项、Host/IPC 8 项与 stdio probe，均通过。它们不等于代码审查、真实 StepFun、Rust↔Host 接通、窗口交互或安装验收。
+- 父会话源码发现仍待定向负例/修复：Host providerGate/currentAbort 跨 Workspace 共用；新 sourceVersion 却回退旧快照内容；EOF 后 active/pending/输出队列清理；新 Session 的非 compaction 衔接；代码硬拒绝 `stepfun`，与 PRD 指定模型的接入目标不符。详见 `handoff/EVIDENCE/r1/f2-f3-review-blocked.md`。不得将未完成 reviewer 的过程文字当最终裁决。
+- 恢复条件：用户恢复当前 xAI 路由额度/订阅后，通过原 subagent 协议继续 Grok 4.7 high，或由用户明确指定替代模型/范围。不要无修改循环重试，不擅自消耗其他 Provider。
+
 ## F1 本机五项已串行合入，仍未产品放行
 
 - Core 库与 IPC v1 合同已有本机 `cargo test` / `cargo check` 证据。早期 22 项记录见 `handoff/EVIDENCE/r1/f1-core-limits.md`。联合回归见 `handoff/EVIDENCE/r1/f1-core-integrated.md`。
