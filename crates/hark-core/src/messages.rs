@@ -149,14 +149,23 @@ impl Core {
             std::path::Path::new(&root.path),
             &identity,
             &ws.relative_path,
+            budget.max_entries,
+            cancel,
         )?;
         let mut sources = Vec::new();
         let mut skipped = Vec::new();
         let mut total = 0_u64;
-        for child in listed {
-            cancel.tick();
+        if listed.cancelled {
+            skipped.push("cancelled".to_string());
+        }
+        if listed.hit_entry_limit {
+            skipped.push("max_entries".to_string());
+        }
+        for child in listed.children {
             if cancel.is_cancelled() {
-                skipped.push("cancelled".to_string());
+                if !skipped.iter().any(|item| item == "cancelled") {
+                    skipped.push("cancelled".to_string());
+                }
                 break;
             }
             let reader::ChildInspect::File { name, .. } = child else {

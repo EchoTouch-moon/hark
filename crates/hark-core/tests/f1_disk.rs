@@ -3,6 +3,9 @@
 use std::fs;
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
 use hark_core::{
     AgentOpeningReceipt, CancelFlag, ConfirmImport, Core, CoreError, ErrorCode, ImportMode,
@@ -844,6 +847,173 @@ fn reauthorize_after_revoke_does_not_revive_old_workspace() {
         .read_workspace_file(&ws.id, "README.md", &budget())
         .is_err());
     cleanup(&root_path);
+}
+
+#[test]
+fn fifo_without_writer_does_not_block_scan_or_read() {
+    let mut db = Db::new();
+    let root_path = project("fifo");
+    fs::write(root_path.join("README.md"), "visible").unwrap();
+    mkfifo(&root_path.join("blocked.pipe"));
+    let root = db.core.authorize_directory(&root_path).unwrap();
+    let root_id = root.id.clone();
+    let db_path = db.path.clone();
+    let (tx, rx) = mpsc::channel();
+    let worker = thread::spawn(move || {
+        let core = Core::open(&db_path).unwrap();
+        let started = std::time::Instant::now();
+        let scan = core.run_initial_scan(&root_id, &budget(), &CancelFlag::new());
+        let _ = tx.send((started.elapsed(), scan));
+    });
+    let finished = rx.recv_timeout(Duration::from_secs(3));
+    assert!(
+        finished.is_ok(),
+        "run_initial_scan blocked on a FIFO with no writer"
+    );
+    let (elapsed, scan) = finished.unwrap();
+    assert!(elapsed < Duration::from_secs(3), "scan took {elapsed:?}");
+    let scan = scan.expect("scan should return");
+    assert!(
+        scan.ignored
+            .iter()
+            .any(|item| item.relative_path == "blocked.pipe"
+                && item.reason == "special_file_rejected"),
+        "ignored={:?}",
+        scan.ignored
+    );
+    worker.join().unwrap();
+    db.reopen();
+    let ws = confirm_single(&db.core, &root.id, &scan.id, false);
+    let read_started = std::time::Instant::now();
+    let read_err = db
+        .core
+        .read_workspace_file(&ws.id, "blocked.pipe", &budget())
+        .unwrap_err();
+    assert!(read_started.elapsed() < Duration::from_secs(2));
+    assert_code(&read_err, ErrorCode::SpecialFileRejected);
+    cleanup(&root_path);
+}
+
+#[test]
+fn raced_fifo_open_does_not_block() {
+    let db = Db::new();
+    let root_path = project("fifo-race");
+    let race = root_path.join("race.txt");
+    fs::write(&race, "regular-before-swap").unwrap();
+    let swap_at = race.clone();
+    struct ClearHook;
+    impl Drop for ClearHook {
+        fn drop(&mut self) {
+            hark_core::set_reader_before_open_hook(None);
+        }
+    }
+    let _clear = ClearHook;
+    hark_core::set_reader_before_open_hook(Some(std::sync::Arc::new(move |name| {
+        if name == "race.txt" {
+            let _ = fs::remove_file(&swap_at);
+            mkfifo(&swap_at);
+        }
+    })));
+    let root = db.core.authorize_directory(&root_path).unwrap();
+    let started = std::time::Instant::now();
+    let scan = db
+        .core
+        .run_initial_scan(&root.id, &budget(), &CancelFlag::new());
+    hark_core::set_reader_before_open_hook(None);
+    assert!(
+        started.elapsed() < Duration::from_secs(3),
+        "raced fifo open blocked"
+    );
+    let scan = scan.expect("scan should reject the swapped fifo");
+    assert!(
+        scan.ignored.iter().any(|item| {
+            item.relative_path == "race.txt" && item.reason == "special_file_rejected"
+        }),
+        "ignored={:?}",
+        scan.ignored
+    );
+    cleanup(&root_path);
+}
+
+#[test]
+fn enumeration_budget_and_cancel_stop_at_readdir_boundary() {
+    let db = Db::new();
+    let root_path = project("enum-budget");
+    for i in 0..80 {
+        fs::write(root_path.join(format!("f{i:03}.txt")), "x").unwrap();
+    }
+    let root = db.core.authorize_directory(&root_path).unwrap();
+    hark_core::reset_reader_work_counters();
+    let tiny = ScanBudget {
+        max_entries: 4,
+        max_depth: 1,
+        max_file_bytes: 32,
+        max_total_bytes: 64,
+    };
+    let limited = db
+        .core
+        .run_initial_scan(&root.id, &tiny, &CancelFlag::new())
+        .unwrap();
+    let readdir_steps = hark_core::reader_readdir_steps();
+    let open_attempts = hark_core::reader_open_attempts();
+    assert_eq!(limited.status, ScanStatus::Limited);
+    assert!(limited.limits_hit.iter().any(|item| item == "max_entries"));
+    assert!(
+        readdir_steps < 20,
+        "readdir walked the whole directory: steps={readdir_steps} files_seen={}",
+        limited.files_seen
+    );
+    assert!(
+        open_attempts <= 4,
+        "opened more than the entry budget: opens={open_attempts}"
+    );
+    assert!(limited.files_seen < 20);
+
+    hark_core::reset_reader_work_counters();
+    let cancel = CancelFlag::new();
+    cancel.arm_after_steps(1);
+    let cancelled = db
+        .core
+        .run_initial_scan(&root.id, &budget(), &cancel)
+        .unwrap();
+    assert_eq!(cancelled.status, ScanStatus::Cancelled);
+    assert!(
+        hark_core::reader_open_attempts() <= 1,
+        "cancel still opened the directory: opens={}",
+        hark_core::reader_open_attempts()
+    );
+    assert!(hark_core::reader_readdir_steps() < 20);
+
+    let scan = db
+        .core
+        .run_initial_scan(&root.id, &budget(), &CancelFlag::new())
+        .unwrap();
+    let ws = confirm_single(&db.core, &root.id, &scan.id, false);
+    hark_core::reset_reader_work_counters();
+    let tight = ScanBudget {
+        max_entries: 3,
+        max_depth: 1,
+        max_file_bytes: 32,
+        max_total_bytes: 64,
+    };
+    let report = db
+        .core
+        .selective_key_read(&ws.id, &tight, &CancelFlag::new())
+        .unwrap();
+    assert!(report.skipped.iter().any(|item| item == "max_entries"));
+    assert!(
+        hark_core::reader_open_attempts() <= 3,
+        "selective read opened past budget: opens={}",
+        hark_core::reader_open_attempts()
+    );
+    assert!(hark_core::reader_readdir_steps() < 20);
+    cleanup(&root_path);
+}
+
+fn mkfifo(path: &Path) {
+    let c = std::ffi::CString::new(path.to_str().unwrap()).unwrap();
+    let rc = unsafe { libc::mkfifo(c.as_ptr(), 0o644) };
+    assert_eq!(rc, 0, "mkfifo errno {}", std::io::Error::last_os_error());
 }
 
 #[test]

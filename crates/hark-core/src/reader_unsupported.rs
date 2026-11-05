@@ -42,11 +42,31 @@ pub(crate) fn relation(_path_a: &Path, _path_b: &Path) -> Result<Relation> {
     unsupported()
 }
 
+pub struct InspectedDir {
+    pub children: Vec<ChildInspect>,
+    pub hit_entry_limit: bool,
+    pub cancelled: bool,
+}
+
+pub fn reset_reader_work_counters() {}
+
+pub fn reader_readdir_steps() -> u64 {
+    0
+}
+
+pub fn reader_open_attempts() -> u64 {
+    0
+}
+
+pub fn set_reader_before_open_hook(_hook: Option<std::sync::Arc<dyn Fn(&str) + Send + Sync>>) {}
+
 pub(crate) fn inspect_directory(
     _root: &Path,
     _expected: &DirIdentity,
     _rel_dir: &str,
-) -> Result<Vec<ChildInspect>> {
+    _max_entries: u32,
+    _cancel: &crate::CancelFlag,
+) -> Result<InspectedDir> {
     unsupported()
 }
 

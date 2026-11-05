@@ -9,14 +9,58 @@
 //! Alias policy: Finder aliases (`kIsAlias`) are refused. Alias resolution APIs
 //! are never called. Windows has no safe implementation and fails closed.
 
+use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, CString};
 use std::io::Read;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::error::{CoreError, ErrorCode, Result};
 use crate::policy::{blocked_component, private_key_bytes, split_relative};
+use crate::CancelFlag;
+
+thread_local! {
+    static READDIR_STEPS: Cell<u64> = const { Cell::new(0) };
+    static OPEN_ATTEMPTS: Cell<u64> = const { Cell::new(0) };
+    static BEFORE_OPEN: RefCell<Option<Arc<dyn Fn(&str) + Send + Sync>>> = RefCell::new(None);
+}
+
+/// Test hook: counts `readdir` returns on this thread. Not a product metric.
+pub fn reset_reader_work_counters() {
+    READDIR_STEPS.with(|n| n.set(0));
+    OPEN_ATTEMPTS.with(|n| n.set(0));
+}
+
+pub fn reader_readdir_steps() -> u64 {
+    READDIR_STEPS.with(|n| n.get())
+}
+
+pub fn reader_open_attempts() -> u64 {
+    OPEN_ATTEMPTS.with(|n| n.get())
+}
+
+/// Runs after the pre-open type check and before `openat`, so a test can swap in a FIFO.
+/// Production callers leave this unset. Thread-local, so parallel tests do not share it.
+pub fn set_reader_before_open_hook(hook: Option<Arc<dyn Fn(&str) + Send + Sync>>) {
+    BEFORE_OPEN.with(|slot| *slot.borrow_mut() = hook);
+}
+
+fn note_readdir() {
+    READDIR_STEPS.with(|n| n.set(n.get().saturating_add(1)));
+}
+
+fn note_open_attempt() {
+    OPEN_ATTEMPTS.with(|n| n.set(n.get().saturating_add(1)));
+}
+
+fn run_before_open_hook(name: &str) {
+    let hook = BEFORE_OPEN.with(|slot| slot.borrow().clone());
+    if let Some(hook) = hook {
+        hook(name);
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct DirIdentity {
@@ -87,20 +131,74 @@ pub(crate) fn relation(path_a: &Path, path_b: &Path) -> Result<Relation> {
     Ok(Relation::Disjoint)
 }
 
+#[derive(Debug)]
+pub(crate) struct InspectedDir {
+    pub children: Vec<ChildInspect>,
+    pub hit_entry_limit: bool,
+    pub cancelled: bool,
+}
+
 pub(crate) fn inspect_directory(
     root: &Path,
     expected: &DirIdentity,
     rel_dir: &str,
-) -> Result<Vec<ChildInspect>> {
+    max_entries: u32,
+    cancel: &CancelFlag,
+) -> Result<InspectedDir> {
     ensure_supported()?;
     let root_fd = reopen_root(root, expected)?;
     let dev = root_dev(&root_fd)?;
     let dir_fd = walk_dir(&root_fd, &dev, split_relative(rel_dir)?)?;
-    let names = list_names(&dir_fd)?;
-    let mut out = Vec::with_capacity(names.len());
-    for listed in names {
+    let mut children = Vec::new();
+    let mut classified = 0_u32;
+    let mut hit_entry_limit = false;
+    let mut cancelled = cancel.is_cancelled();
+    if cancelled || max_entries == 0 {
+        return Ok(InspectedDir {
+            children,
+            hit_entry_limit: max_entries == 0,
+            cancelled,
+        });
+    }
+    let dup = dup_fd(&dir_fd)?;
+    let raw = dup.as_raw_fd();
+    std::mem::forget(dup);
+    let ptr = unsafe { libc::fdopendir(raw) };
+    if ptr.is_null() {
+        unsafe { libc::close(raw) };
+        return Err(CoreError::new(ErrorCode::Io, "fdopendir failed"));
+    }
+    let stream = DirStream(ptr);
+    loop {
+        if cancel.is_cancelled() {
+            cancelled = true;
+            break;
+        }
+        if classified >= max_entries {
+            hit_entry_limit = true;
+            break;
+        }
+        clear_errno();
+        let ent = unsafe { libc::readdir(stream.0) };
+        if ent.is_null() {
+            let err = last_errno();
+            if err != 0 {
+                return Err(CoreError::new(
+                    ErrorCode::Io,
+                    format!("readdir errno {err}"),
+                ));
+            }
+            break;
+        }
+        note_readdir();
+        let name = unsafe { CStr::from_ptr((*ent).d_name.as_ptr()) };
+        let listed = match String::from_utf8(name.to_bytes().to_vec()) {
+            Ok(text) => ListedName::Utf8(text),
+            Err(_) => ListedName::NonUtf8,
+        };
         let ListedName::Utf8(name) = listed else {
-            out.push(ChildInspect::Rejected {
+            classified += 1;
+            children.push(ChildInspect::Rejected {
                 name: "non-utf8".to_string(),
                 reason: ErrorCode::InvalidPath,
             });
@@ -109,14 +207,24 @@ pub(crate) fn inspect_directory(
         if name == "." || name == ".." {
             continue;
         }
+        cancel.tick();
+        if cancel.is_cancelled() {
+            cancelled = true;
+            break;
+        }
+        classified += 1;
         if let Some(code) = blocked_component(&name) {
-            out.push(ChildInspect::Rejected { name, reason: code });
+            children.push(ChildInspect::Rejected { name, reason: code });
             continue;
         }
-        out.push(inspect_one(&dir_fd, &name, dev.clone())?);
+        children.push(inspect_one(&dir_fd, &name, dev.clone())?);
     }
-    out.sort_by(|a, b| child_name(a).cmp(child_name(b)));
-    Ok(out)
+    children.sort_by(|a, b| child_name(a).cmp(child_name(b)));
+    Ok(InspectedDir {
+        children,
+        hit_entry_limit,
+        cancelled,
+    })
 }
 
 pub(crate) fn identify_relative(
@@ -320,10 +428,18 @@ fn walk_dir(root: &OwnedFd, root_dev: &str, parts: Vec<String>) -> Result<OwnedF
 
 fn inspect_one(parent: &OwnedFd, name: &str, root_dev: String) -> Result<ChildInspect> {
     match open_child(parent, name, false) {
-        Err(err) if err.code == ErrorCode::SymlinkRejected => {
+        Err(err)
+            if matches!(
+                err.code,
+                ErrorCode::SymlinkRejected
+                    | ErrorCode::SpecialFileRejected
+                    | ErrorCode::HardlinkRejected
+                    | ErrorCode::NotADirectory
+            ) =>
+        {
             return Ok(ChildInspect::Rejected {
                 name: name.to_string(),
-                reason: ErrorCode::SymlinkRejected,
+                reason: err.code,
             });
         }
         Err(err) => return Err(err),
@@ -427,53 +543,55 @@ fn open_child(parent: &OwnedFd, name: &str, dir: bool) -> Result<OwnedFd> {
             format!("refusing symlink component {name}"),
         ));
     }
-    let mut flags = libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
-    if dir {
+    if is_special(&lst) {
+        return Err(CoreError::new(
+            ErrorCode::SpecialFileRejected,
+            format!("refusing special file {name} before open"),
+        ));
+    }
+    if dir && !is_dir(&lst) {
+        return Err(CoreError::new(
+            ErrorCode::NotADirectory,
+            format!("refusing non-directory {name}"),
+        ));
+    }
+    run_before_open_hook(name);
+    note_open_attempt();
+    let mut flags = libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK;
+    if dir || is_dir(&lst) {
         flags |= libc::O_DIRECTORY;
     }
     let fd = unsafe { libc::openat(parent.as_raw_fd(), c.as_ptr(), flags) };
     if fd < 0 {
-        return Err(map_open_errno(last_errno(), name));
+        let err = last_errno();
+        if err == libc::EAGAIN || err == libc::ENXIO || err == libc::ENODEV {
+            return Err(CoreError::new(
+                ErrorCode::SpecialFileRejected,
+                format!("non-blocking open refused {name}"),
+            ));
+        }
+        return Err(map_open_errno(err, name));
     }
-    Ok(unsafe { OwnedFd::from_raw_fd(fd) })
+    let fd = unsafe { OwnedFd::from_raw_fd(fd) };
+    let opened = fstat(&fd)?;
+    if is_lnk(&opened) || is_special(&opened) || (dir && !is_dir(&opened)) {
+        return Err(CoreError::new(
+            ErrorCode::SpecialFileRejected,
+            format!("opened object for {name} failed type recheck"),
+        ));
+    }
+    if !dir && !is_dir(&opened) && !is_reg(&opened) {
+        return Err(CoreError::new(
+            ErrorCode::SpecialFileRejected,
+            format!("opened object for {name} is not a regular file"),
+        ));
+    }
+    Ok(fd)
 }
 
 enum ListedName {
     Utf8(String),
     NonUtf8,
-}
-
-fn list_names(dir: &OwnedFd) -> Result<Vec<ListedName>> {
-    let dup = dup_fd(dir)?;
-    let raw = dup.as_raw_fd();
-    std::mem::forget(dup);
-    let ptr = unsafe { libc::fdopendir(raw) };
-    if ptr.is_null() {
-        unsafe { libc::close(raw) };
-        return Err(CoreError::new(ErrorCode::Io, "fdopendir failed"));
-    }
-    let stream = DirStream(ptr);
-    let mut names = Vec::new();
-    loop {
-        clear_errno();
-        let ent = unsafe { libc::readdir(stream.0) };
-        if ent.is_null() {
-            let err = last_errno();
-            if err != 0 {
-                return Err(CoreError::new(
-                    ErrorCode::Io,
-                    format!("readdir errno {err}"),
-                ));
-            }
-            break;
-        }
-        let name = unsafe { CStr::from_ptr((*ent).d_name.as_ptr()) };
-        match String::from_utf8(name.to_bytes().to_vec()) {
-            Ok(text) => names.push(ListedName::Utf8(text)),
-            Err(_) => names.push(ListedName::NonUtf8),
-        }
-    }
-    Ok(names)
 }
 
 struct DirStream(*mut libc::DIR);
@@ -528,6 +646,14 @@ fn is_dir(st: &libc::stat) -> bool {
 
 fn is_reg(st: &libc::stat) -> bool {
     (st.st_mode & libc::S_IFMT) == libc::S_IFREG
+}
+
+fn is_special(st: &libc::stat) -> bool {
+    let mode = st.st_mode & libc::S_IFMT;
+    mode == libc::S_IFIFO
+        || mode == libc::S_IFSOCK
+        || mode == libc::S_IFCHR
+        || mode == libc::S_IFBLK
 }
 
 fn is_lnk(st: &libc::stat) -> bool {

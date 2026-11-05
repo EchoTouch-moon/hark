@@ -228,21 +228,23 @@ fn walk_scan(
             }
             continue;
         }
-        let children = reader::inspect_directory(root_path, identity, &rel)?;
-        for child in children {
-            cancel.tick();
-            if cancel.is_cancelled() {
-                cancelled = true;
-                stop = true;
-                break;
+        let remaining = budget.max_entries.saturating_sub(entries);
+        if remaining == 0 {
+            if !limits_hit.iter().any(|item| item == "max_entries") {
+                limits_hit.push("max_entries".to_string());
             }
-            if entries >= budget.max_entries {
-                if !limits_hit.contains(&"max_entries".to_string()) {
-                    limits_hit.push("max_entries".to_string());
-                }
-                stop = true;
-                break;
-            }
+            break;
+        }
+        let inspected = reader::inspect_directory(root_path, identity, &rel, remaining, cancel)?;
+        if inspected.cancelled {
+            cancelled = true;
+            stop = true;
+        }
+        if inspected.hit_entry_limit && !limits_hit.iter().any(|item| item == "max_entries") {
+            limits_hit.push("max_entries".to_string());
+            stop = true;
+        }
+        for child in inspected.children {
             entries += 1;
             match child {
                 ChildInspect::Rejected { name, reason } => {

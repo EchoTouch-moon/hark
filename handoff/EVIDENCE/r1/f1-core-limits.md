@@ -16,6 +16,13 @@
 - 真实 StepFun、搜索、私人项目、安装包、Windows 实机：未运行。
 - IPC sidecar 进程、stdio 实管道、Windows Job Object：只冻结了 codec/schema/队列门禁。
 
+## Reader 小切片（#2/#4）
+
+- 无 writer FIFO 与打开前检查后换成 FIFO 的扫描/读取在本机 3 秒内返回，并记 `special_file_rejected`。
+- `readdir`/`open` 计数证明 `max_entries` 与中途取消发生在枚举边界，不是只看最终 `files_seen`。
+- 命令与退出码见 `f1-reader-fifo-budget.md`。
+- #1/#3/#5 仍未修。
+
 ## 可恢复限制
 
 - Windows 安全读在源码中 fail-closed（`reader_unsupported.rs`）。本机没有编译 Windows target，不能把源码分支当成已验证。

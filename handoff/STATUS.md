@@ -5,8 +5,8 @@
 | 项目 | 状态 | 证据/下一步 |
 |---|---|---|
 | F0 工程基线 | implemented | 用户批准；AGENTS、README、docs/r1/IMPLEMENTATION-PLAN.md |
-| F1 Core/Reader/SQLite | verified-local | `crates/hark-core` 与 `contracts/ipc-v1.md`；本机 cargo test 22 项与 cargo check 通过。不是产品 PASS |
-| F2 嵌入式 Pi Host | pending | 等主会话放行 F1 后开始；无远程模型授权 |
+| F1 Core/Reader/SQLite | verified-local-partial | Core 库在本机测试。FIFO 阻塞与枚举预算已修，见 `handoff/EVIDENCE/r1/f1-reader-fifo-budget.md`。#1/#3/#5 仍未修。不是产品 PASS |
+| F2 嵌入式 Pi Host | blocked | #1 别名重叠、#3 取消后开场收据、#5 撤权/fd 复验未解决前不得开始 |
 | F3 Tauri 集成底座 | pending | F1+F2 之后；正式 UI 后续 agent 负责 |
 | R1-A/B/C/D 产品闭环 | pending | 见实施计划 DAG，未交付完整 R1 |
 | 真实项目/StepFun/搜索/用户验收 | unverified | 需要单独授权/凭据/真实交互 |

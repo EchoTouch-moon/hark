@@ -36,6 +36,10 @@ pub use messages::{
     AgentOpeningReceipt, ConversationEvent, FileRead, FirstMessage, OnboardingCheckpoint,
     SelectiveReadReport, SourceRef, WorkspaceOverview,
 };
+pub use reader::{
+    reader_open_attempts, reader_readdir_steps, reset_reader_work_counters,
+    set_reader_before_open_hook,
+};
 pub use scan::{CandidateRole, IgnoredEntry, InitialScan, ScanBudget, ScanCandidate, ScanStatus};
 pub use workspace::{
     ConfirmImport, ConfirmResult, ImportMode, ServiceGrant, ServiceGrantUpdate, ServiceKind,
