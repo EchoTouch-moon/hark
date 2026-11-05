@@ -27,3 +27,11 @@
 父会话复跑 2 单元 + 27 磁盘 + 3 IPC，32 项全通过；重新链接库运行原中间 alias/child 探针，实际 `nested_alias_authorized=false`。已检查物理祖先 dev/ino 关联与 Workspace fd 直接读路径，本机接受 #1 与 #5 中 fd 绑定部分。
 
 #5 尚有明确小窗口：reader::open_child 的 `grant_check()` 返回后释放 Core/SQLite 查询锁，随后才调用 `openat`；read_within_workspace 的读前检查返回后才调用 read_fd，read_fd 内多次 read 没有同一准入边界。另一线程/连接可在检查后提交撤权并返回，再被旧操作 open/read。已有同步测试在检查之前撤权，未覆盖检查已成功后的窗口，因此“撤权返回后不再新开/新读”的强声明仍不能成立。需要只在短 I/O 准入处协调授权状态变更，不能锁住整次扫描；补检查成功后与实际 open/read 之间的可控竞争证据。#3 由隔离 high lane 并行处理。
+
+## 撤权准入收口复核（HEAD 0b17b6b）
+父会话检查短 IMMEDIATE 事务与单 syscall/16 KiB 分段读边界，并复跑 `cargo test --manifest-path crates/hark-core/Cargo.toml --offline -- --test-threads=8`：2 单元 + 32 磁盘 + 3 IPC，37 项全通过；`cargo check --offline --tests` 退出 0。新增覆盖查询成功后撤权/暂停、第二段读及另一连接等待已准入 syscall 的同步竞争。本机这部分 #5 定向修复接受，不再要求重建权限平台。
+
+限制仍有效：已进入内核的单次 syscall 不能打断；SQLite busy 不等于撤权成功；最终远程发请求前仍须由未来 Host/桥接再次核验当前授权，不能从 Reader 局部测试推导外发通过。Windows/真实私人项目/安装包均未验。
+
+## 收据分支独立复核（c69ade2，尚待集成）
+父会话读 diff/最小 v2 迁移必要性并在隔离分支复跑：3 单元 + 20 磁盘 + 7 开场 + 3 IPC，33 项全通过。Core 绑定 run/provider/model/授权快照，取消/撤权/配置切换与旧 run 负例有覆盖。接受为待集成候选，不继承该分支旧 Reader 代码或旧 handoff 状态。合入最新 Core 后必须再跑联合回归；scope 与收据 API 的交界仍未验证。
