@@ -9,7 +9,7 @@
 - #1 物理别名重叠、#5 Workspace fd 绑定：resolved-local。证据 `handoff/EVIDENCE/r1/f1-scope-repair.md`。
 - #5 检查成功后到 open/read 的准入窗口：resolved-local。证据 `handoff/EVIDENCE/r1/f1-revocation-admission.md`。读侧仍用 `IoGate` + `admit_active_io` / `with_immediate_tx`。
 - #3 取消后开场收据：resolved-local。隔离提交 `c69ade2` 已 cherry-pick 进当前 Core，不带回该分支过期 Reader。证据 `handoff/EVIDENCE/r1/f1-opening-receipt.md` 与联合场景 `f1-core-integrated.md`。
-- 上述五项是本机联合证据下的 resolved-local，不是父会话放行，也不是 F1 产品通过。
+- 主会话已在集成提交 `0771ebe` 检查合并范围，并复跑 fmt/check/46 项测试通过；五项当前本机修复放行，允许后续底座开发。不是 F1 产品通过，跨平台/真实产品验收仍需后续证据。
 - 早期 workflow 未能启动 child 的记录保留在 Git 历史；与本次已运行 child 的超时区分。
 
 ## 仍阻塞或未验证
@@ -18,7 +18,7 @@
 - Windows 安全读未实现，源码 fail-closed。本机未安装/未编译 Windows target。恢复条件是 Windows 上的真实编译和目录负例。
 - 真实私人项目读取、付费 StepFun/搜索调用：未授权，unverified。合成 provider/model 与合成收据不是真实 StepFun。恢复条件为用户指定合法目录、系统凭据机制与发送范围。
 - UI 与整 R1 未通过。
-- F2 Pi Host 未开始。SDK scout 已指出缺工具白名单落地、ContextPack、session-ref、credential 槽；本切片不实现它们。实际发送前 Host 必须再次检查当前目录与模型授权，不能从 Reader 或开场局部测试推导外发通过。
+- F2 仅隔离无网络 SDK smoke 正在进行，未接真实 Core 目录/模型。SDK scout 已指出正式 Host 所需工具白名单、ContextPack、session-ref、credential 槽仍需实现与证据。实际发送前 Host 必须再次检查当前目录与模型授权，不能从 Reader 或开场局部测试推导外发通过。
 - 开场提交仍是延迟事务。与撤权写者重叠时可能返回 SQLite busy，而不是 `root_revoked`；busy 时不提交新开场。撤权已经返回之后，读侧与开场侧都拒绝。
 - 已经进入内核且不返回的单次 `read`/`openat` 不能被打断。另一连接最多等到现有 `busy_timeout`（5 s）；超时是 SQLite busy，不是撤权成功。
 - Pi JSONL、网页 Reader、FTS、记忆修订：未进入本切片。

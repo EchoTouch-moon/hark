@@ -6,6 +6,6 @@
 
 目标（非已实现）：Tauri UI → Rust Core（授权/受控 Reader/SQLite 单写入/生命周期）↔ TS Agent Host（锁版 Pi SDK、Workspace Session、显式工具）→ 已授权 StepFun/搜索。Pi JSONL 与 SQLite 业务权威分离。Host 在实际发送前必须再次检查当前授权。
 
-串行建设：Core → Host → Tauri 集成，见 `docs/r1/IMPLEMENTATION-PLAN.md`。实际状态以 `handoff/STATUS.md` 与 `handoff/EVIDENCE/r1/` 为准。五项审查修复是 resolved-local，不是父会话放行。历史 M0/M1 不继承为通过。
+串行建设：Core → Host → Tauri 集成，见 `docs/r1/IMPLEMENTATION-PLAN.md`。实际状态以 `handoff/STATUS.md` 与 `handoff/EVIDENCE/r1/` 为准。主会话已在 `0771ebe` 复跑 fmt/check/46 项测试通过，接受五项本机定向修复并放行 F1 底座继续开发；不等于 R1 产品验收。允许隔离的 SDK 无网络 smoke 与 Tauri/Core 壳独立推进，正式 Sidecar 接入仍串行消费两者证据。历史 M0/M1 不继承为通过。
 
 本地画布目标在新工作区未配置，本轮不扫描其他个人文件。

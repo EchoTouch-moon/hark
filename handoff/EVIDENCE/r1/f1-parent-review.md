@@ -35,3 +35,8 @@
 
 ## 收据分支独立复核（c69ade2，尚待集成）
 父会话读 diff/最小 v2 迁移必要性并在隔离分支复跑：3 单元 + 20 磁盘 + 7 开场 + 3 IPC，33 项全通过。Core 绑定 run/provider/model/授权快照，取消/撤权/配置切换与旧 run 负例有覆盖。接受为待集成候选，不继承该分支旧 Reader 代码或旧 handoff 状态。合入最新 Core 后必须再跑联合回归；scope 与收据 API 的交界仍未验证。
+
+## F1 集成最终本机复核（0771ebe）
+主会话已检查集成 diff，reader/grant/scan 与 v1 migration 相对 c60279b 无变化，未丢掉已验修复。实际复跑 `cargo fmt -- --check`、`cargo check --offline --tests` 与 `cargo test --offline -- --test-threads=8`，均退出 0：3 单元 + 32 磁盘 + 3 IPC + 8 开场，共 46 项通过，含同 Workspace 撤权/来源/开场联合负例。
+
+裁决：五项当前本机定向修复接受，**F1 本机工程底座放行**，允许继续 F2/F3 开发；不是产品阶段关闭，也不证明真实模型、私人项目、UI、Windows 或安装包通过。后续实际请求前再次核验授权、出处新鲜度与 Provider 兼容性仍是启用路径的交付条件。
