@@ -1,0 +1,26 @@
+//! Provisional engineering limits. Not a product close of PRD O-13.
+
+pub const SCHEMA_VERSION: i64 = 1;
+
+pub const MAX_FRAME_BYTES: usize = 1_048_576;
+pub const MAX_STREAM_QUEUE: usize = 64;
+pub const MAX_CONTROL_QUEUE: usize = 64;
+pub const DEFAULT_TIMEOUT_MS: u64 = 30_000;
+pub const MAX_TIMEOUT_MS: u64 = 120_000;
+
+pub const DEFAULT_MAX_ENTRIES: u32 = 2_000;
+pub const DEFAULT_MAX_DEPTH: u32 = 6;
+pub const DEFAULT_MAX_FILE_BYTES: u64 = 256 * 1024;
+pub const DEFAULT_MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024;
+
+pub const ABSOLUTE_MAX_ENTRIES: u32 = 20_000;
+pub const ABSOLUTE_MAX_DEPTH: u32 = 32;
+pub const ABSOLUTE_MAX_FILE_BYTES: u64 = 1_048_576;
+pub const ABSOLUTE_MAX_TOTAL_BYTES: u64 = 8 * 1_048_576;
+
+pub const MAX_EVENT_BODY_CHARS: usize = 16_000;
+pub const MAX_USER_MESSAGE_CHARS: usize = 32_000;
+pub const MAX_EXCERPT_CHARS: usize = 280;
+pub const MAX_IGNORED_RECORDS: usize = 200;
+pub const MAX_RELATIVE_PATH_CHARS: usize = 4_096;
+pub const ONBOARDING_GENERATION: i64 = 1;
