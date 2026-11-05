@@ -1,8 +1,15 @@
-# 当前状态（2026-11-03）
+# Hark R1 当前状态
 
-- 文档优先的重建版本：已整理，入口为 `README.md` 和 `tasks/REBUILD-PLAN.md`。
-- 产品目标与既有 MVP 产品合同、验收和安全文件已保留；原先位于其他分支的产品定位、开发计划和 DeepSeek 研究资料已复制为历史参考。
-- 旧前后端、实现测试和构建文件已从此版本移除；当前保留仅验证文档的 CI；未重建实现，不可运行。
-- 旧证据保留在 `handoff/EVIDENCE/`，仅证明其原记录所述历史，不能作为重建版本的通过证据。
-- GitHub：重建版本已经 PR #55 与必需检查合入 `master`；旧 PR 已关闭，已按本次授权清理旧分支。`bot/hearth-g0-contract` 因现有规则禁止删除而保留。具体数量以 GitHub 实时状态为准。
-- 原工作区未提交变更未触碰；GitHub 默认分支是否包含此版本，以 PR 实际合并状态为准。
+本文件为 R1 新状态；旧结论可在 Git 历史查阅，不继承为 R1 PASS。
+
+| 项目 | 状态 | 证据/下一步 |
+|---|---|---|
+| F0 工程基线 | implemented | 用户批准；AGENTS、README、docs/r1/IMPLEMENTATION-PLAN.md；新分支保留共同祖先 |
+| F1 Core/Reader/SQLite | pending | Grok 4.7 串行 writer；先最小合同与磁盘测试 |
+| F2 嵌入式 Pi Host | pending | F1 合同后开始；无远程模型授权 |
+| F3 Tauri 集成底座 | pending | F1+F2 交接后开始；正式 UI 后续 agent 负责 |
+| R1-A/B/C/D 产品闭环 | pending | 见实施计划 DAG，未交付完整 R1 |
+| 真实项目/StepFun/搜索/用户验收 | unverified | 需要单独授权/凭据/真实交互 |
+| macOS 安装包 / Windows 实机 | unverified | 不以本机静态检查替代 |
+
+PRD 六项微型验收包：CTX-01、MEM-11、SEARCH-01、WS-OVERLAP-01、ONBOARD-01、READER-01 当前均 pending，随切片更新实际覆盖。
