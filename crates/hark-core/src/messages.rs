@@ -123,9 +123,15 @@ impl Core {
         budget.validate()?;
         let (ws, root) = self.workspace_and_root(workspace_id)?;
         grant::require_active(&root)?;
-        let full = compose_rel(&ws.relative_path, relative_path)?;
-        let bytes = read_checked(&root, &ws, &full, budget.max_file_bytes)?;
-        let source = self.with_tx(|tx| insert_source(tx, &ws, relative_path, &bytes))?;
+        let _full = compose_rel(&ws.relative_path, relative_path)?;
+        let bytes = read_checked(self, &root, &ws, relative_path, budget.max_file_bytes)?;
+        let root_id = root.id.clone();
+        let source = self.with_tx(|tx| {
+            let current = grant::load_root(tx, &root_id)?
+                .ok_or_else(|| CoreError::new(ErrorCode::NotFound, root_id.as_str()))?;
+            grant::require_active(&current)?;
+            insert_source(tx, &ws, relative_path, &bytes)
+        })?;
         let text = utf8_text(&bytes.bytes);
         Ok(FileRead {
             complete: !bytes.truncated && text.is_some(),
@@ -145,12 +151,18 @@ impl Core {
         let (ws, root) = self.workspace_and_root(workspace_id)?;
         grant::require_active(&root)?;
         let identity = root_identity(&root);
+        let root_id = root.id.clone();
+        let grant_check = || {
+            let current = self.get_root(&root_id)?;
+            grant::require_active(&current)
+        };
         let listed = reader::inspect_directory(
             std::path::Path::new(&root.path),
             &identity,
             &ws.relative_path,
             budget.max_entries,
             cancel,
+            &grant_check,
         )?;
         let mut sources = Vec::new();
         let mut skipped = Vec::new();
@@ -179,21 +191,27 @@ impl Core {
                 break;
             }
             let cap = budget.max_file_bytes.min(budget.max_total_bytes - total);
-            let rel = if ws.relative_path.is_empty() {
-                name.clone()
-            } else {
-                format!("{}/{}", ws.relative_path, name)
-            };
-            match read_checked(&root, &ws, &rel, cap) {
+            grant_check()?;
+            match read_checked(self, &root, &ws, &name, cap) {
                 Ok(bytes) => {
                     total += bytes.bytes.len() as u64;
-                    let source = self.with_tx(|tx| insert_source(tx, &ws, &name, &bytes))?;
+                    let source = self.with_tx(|tx| {
+                        let current = grant::load_root(tx, &root_id)?
+                            .ok_or_else(|| CoreError::new(ErrorCode::NotFound, root_id.as_str()))?;
+                        grant::require_active(&current)?;
+                        insert_source(tx, &ws, &name, &bytes)
+                    })?;
                     sources.push(source);
                 }
+                Err(err) if grant_stopped(&err) => return Err(err),
                 Err(err) => skipped.push(format!("{name}:{}", err.code_str())),
             }
         }
+        grant_check()?;
         self.with_tx(|tx| {
+            let current = grant::load_root(tx, &root_id)?
+                .ok_or_else(|| CoreError::new(ErrorCode::NotFound, root_id.as_str()))?;
+            grant::require_active(&current)?;
             tx.execute(
                 "UPDATE onboarding_runs
                  SET selective_read_done = 1, state = 'reading', updated_at = ?1
@@ -210,9 +228,11 @@ impl Core {
     }
 
     pub fn list_source_refs(&self, workspace_id: &WorkspaceId) -> Result<Vec<SourceRef>> {
-        let (_ws, root) = self.workspace_and_root(workspace_id)?;
-        let available = root.status == RootStatus::Active;
-        self.with_conn(|conn| load_sources(conn, workspace_id, available))
+        self.with_conn(|conn| {
+            let root = root_for_workspace(conn, workspace_id)?;
+            let available = root.status == RootStatus::Active;
+            load_sources(conn, workspace_id, available)
+        })
     }
 
     pub fn get_source_ref(
@@ -265,6 +285,8 @@ impl Core {
             let ws = workspace::load_workspace(tx, workspace_id)?.ok_or_else(|| {
                 CoreError::new(ErrorCode::WorkspaceNotFound, workspace_id.as_str())
             })?;
+            let root = root_for_workspace(tx, workspace_id)?;
+            grant::require_active(&root)?;
             let checkpoint = load_checkpoint(tx, workspace_id)?;
             let sources = load_sources(tx, workspace_id, true)?;
             let body = build_local_card(&ws, &checkpoint, &sources);
@@ -588,29 +610,37 @@ struct ReadBytesOwned {
     truncated: bool,
 }
 
+fn grant_stopped(err: &CoreError) -> bool {
+    matches!(
+        err.code,
+        ErrorCode::RootRevoked | ErrorCode::RootPaused | ErrorCode::GrantIdentityMismatch
+    )
+}
+
 fn read_checked(
+    core: &Core,
     root: &AuthorizedRoot,
     ws: &Workspace,
-    full_rel: &str,
+    file_rel: &str,
     max_bytes: u64,
 ) -> Result<ReadBytesOwned> {
-    let identity = root_identity(root);
-    let current = reader::identify_relative(
+    let root_id = root.id.clone();
+    let grant_check = || {
+        let current = core.get_root(&root_id)?;
+        grant::require_active(&current)
+    };
+    let ws_identity = DirIdentity {
+        dev: ws.dev.clone(),
+        ino: ws.ino.clone(),
+    };
+    let read = reader::read_within_workspace(
         std::path::Path::new(&root.path),
-        &identity,
+        &root_identity(root),
         &ws.relative_path,
-    )?;
-    if current.dev != ws.dev || current.ino != ws.ino {
-        return Err(CoreError::new(
-            ErrorCode::GrantIdentityMismatch,
-            "workspace directory inode changed",
-        ));
-    }
-    let read = reader::read_file(
-        std::path::Path::new(&root.path),
-        &identity,
-        full_rel,
+        &ws_identity,
+        file_rel,
         max_bytes,
+        &grant_check,
     )?;
     if private_key_bytes(&read.bytes) {
         return Err(CoreError::new(

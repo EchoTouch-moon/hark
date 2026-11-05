@@ -25,6 +25,8 @@ thread_local! {
     static READDIR_STEPS: Cell<u64> = const { Cell::new(0) };
     static OPEN_ATTEMPTS: Cell<u64> = const { Cell::new(0) };
     static BEFORE_OPEN: RefCell<Option<Arc<dyn Fn(&str) + Send + Sync>>> = RefCell::new(None);
+    static AFTER_WORKSPACE_VERIFY: RefCell<Option<Arc<dyn Fn(&str) + Send + Sync>>> =
+        RefCell::new(None);
 }
 
 /// Test hook: counts `readdir` returns on this thread. Not a product metric.
@@ -47,6 +49,13 @@ pub fn set_reader_before_open_hook(hook: Option<Arc<dyn Fn(&str) + Send + Sync>>
     BEFORE_OPEN.with(|slot| *slot.borrow_mut() = hook);
 }
 
+/// Test hook: runs after a workspace directory inode is checked and before the
+/// file open that must use that same descriptor. Inert unless a test sets it.
+/// Not a product capability.
+pub fn set_reader_after_workspace_verify_hook(hook: Option<Arc<dyn Fn(&str) + Send + Sync>>) {
+    AFTER_WORKSPACE_VERIFY.with(|slot| *slot.borrow_mut() = hook);
+}
+
 fn note_readdir() {
     READDIR_STEPS.with(|n| n.set(n.get().saturating_add(1)));
 }
@@ -59,6 +68,13 @@ fn run_before_open_hook(name: &str) {
     let hook = BEFORE_OPEN.with(|slot| slot.borrow().clone());
     if let Some(hook) = hook {
         hook(name);
+    }
+}
+
+fn run_after_workspace_verify_hook(file_rel: &str) {
+    let hook = AFTER_WORKSPACE_VERIFY.with(|slot| slot.borrow().clone());
+    if let Some(hook) = hook {
+        hook(file_rel);
     }
 }
 
@@ -92,12 +108,6 @@ pub(crate) enum ChildInspect {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Relation {
-    Disjoint,
-    Overlap,
-}
-
 pub(crate) fn reader_capability() -> &'static str {
     if cfg!(windows) {
         "fail_closed"
@@ -119,18 +129,6 @@ pub(crate) fn identify_directory(path: &Path) -> Result<DirIdentity> {
     Ok(identity_of(&st))
 }
 
-pub(crate) fn relation(path_a: &Path, path_b: &Path) -> Result<Relation> {
-    let id_a = identify_directory(path_a)?;
-    let id_b = identify_directory(path_b)?;
-    if id_a == id_b {
-        return Ok(Relation::Overlap);
-    }
-    if nested(path_a, &id_a, path_b, &id_b)? || nested(path_b, &id_b, path_a, &id_a)? {
-        return Ok(Relation::Overlap);
-    }
-    Ok(Relation::Disjoint)
-}
-
 #[derive(Debug)]
 pub(crate) struct InspectedDir {
     pub children: Vec<ChildInspect>,
@@ -144,11 +142,13 @@ pub(crate) fn inspect_directory(
     rel_dir: &str,
     max_entries: u32,
     cancel: &CancelFlag,
+    grant_check: &dyn Fn() -> Result<()>,
 ) -> Result<InspectedDir> {
     ensure_supported()?;
+    grant_check()?;
     let root_fd = reopen_root(root, expected)?;
     let dev = root_dev(&root_fd)?;
-    let dir_fd = walk_dir(&root_fd, &dev, split_relative(rel_dir)?)?;
+    let dir_fd = walk_dir(&root_fd, &dev, split_relative(rel_dir)?, grant_check)?;
     let mut children = Vec::new();
     let mut classified = 0_u32;
     let mut hit_entry_limit = false;
@@ -217,7 +217,7 @@ pub(crate) fn inspect_directory(
             children.push(ChildInspect::Rejected { name, reason: code });
             continue;
         }
-        children.push(inspect_one(&dir_fd, &name, dev.clone())?);
+        children.push(inspect_one(&dir_fd, &name, dev.clone(), grant_check)?);
     }
     children.sort_by(|a, b| child_name(a).cmp(child_name(b)));
     Ok(InspectedDir {
@@ -235,7 +235,7 @@ pub(crate) fn identify_relative(
     ensure_supported()?;
     let root_fd = reopen_root(root, expected)?;
     let dev = root_dev(&root_fd)?;
-    let fd = walk_dir(&root_fd, &dev, split_relative(rel)?)?;
+    let fd = walk_dir(&root_fd, &dev, split_relative(rel)?, &allow_grant)?;
     let st = fstat(&fd)?;
     ensure_dir(&st)?;
     reject_alias(fd.as_raw_fd())?;
@@ -247,7 +247,9 @@ pub(crate) fn read_file(
     expected: &DirIdentity,
     rel_file: &str,
     max_bytes: u64,
+    grant_check: &dyn Fn() -> Result<()>,
 ) -> Result<ReadBytes> {
+    grant_check()?;
     ensure_supported()?;
     let parts = split_relative(rel_file)?;
     if parts.is_empty() {
@@ -264,12 +266,157 @@ pub(crate) fn read_file(
     let root_fd = reopen_root(root, expected)?;
     let root_dev = root_dev(&root_fd)?;
     let (parent, file_name) = parts.split_at(parts.len() - 1);
-    let parent_fd = walk_dir(&root_fd, &root_dev, parent.to_vec())?;
-    let file_fd = open_child(&parent_fd, &file_name[0], false)?;
+    let parent_fd = walk_dir(&root_fd, &root_dev, parent.to_vec(), grant_check)?;
+    let file_fd = open_child(&parent_fd, &file_name[0], false, grant_check)?;
     let st = fstat(&file_fd)?;
     classify_file(&st, &root_dev, &file_name[0])?;
     reject_alias(file_fd.as_raw_fd())?;
-    let file_len = if st.st_size < 0 { 0 } else { st.st_size as u64 };
+    grant_check()?;
+    read_fd(file_fd, st.st_size, max_bytes)
+}
+
+fn allow_grant() -> Result<()> {
+    Ok(())
+}
+
+const MAX_ANCESTORS: usize = 128;
+
+fn open_parent(dir: &OwnedFd) -> Result<OwnedFd> {
+    let name = CString::new("..").expect("dotdot");
+    let flags = libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
+    let fd = unsafe { libc::openat(dir.as_raw_fd(), name.as_ptr(), flags) };
+    if fd < 0 {
+        return Err(map_open_errno(last_errno(), ".."));
+    }
+    Ok(unsafe { OwnedFd::from_raw_fd(fd) })
+}
+
+/// Strict physical parents of `start`, rootward. Stops when `..` is the same inode.
+/// Does not use the caller path string, so intermediate symlinks such as `/var`
+/// do not hide nesting and are not themselves rejected.
+fn strict_ancestors(start: &OwnedFd) -> Result<Vec<DirIdentity>> {
+    let mut out = Vec::new();
+    let mut current = dup_fd(start)?;
+    for _ in 0..MAX_ANCESTORS {
+        let parent = open_parent(&current)?;
+        let parent_id = identity_of(&fstat(&parent)?);
+        let current_id = identity_of(&fstat(&current)?);
+        if parent_id == current_id {
+            return Ok(out);
+        }
+        out.push(parent_id);
+        current = parent;
+    }
+    Err(CoreError::new(
+        ErrorCode::Io,
+        "ancestor walk exceeded cap; cannot prove directory is disjoint",
+    ))
+}
+
+fn physically_nested(id: &DirIdentity, ancestors: &[DirIdentity], other: &DirIdentity) -> bool {
+    id == other || ancestors.iter().any(|ancestor| ancestor == other)
+}
+
+fn open_scope(
+    path: &Path,
+    root_expected: &DirIdentity,
+    rel: &str,
+    dir_expected: &DirIdentity,
+) -> Result<(OwnedFd, DirIdentity)> {
+    let root_fd = reopen_root(path, root_expected)?;
+    let dev = root_dev(&root_fd)?;
+    let fd = walk_dir(&root_fd, &dev, split_relative(rel)?, &allow_grant)?;
+    let st = fstat(&fd)?;
+    ensure_dir(&st)?;
+    reject_alias(fd.as_raw_fd())?;
+    let got = identity_of(&st);
+    if &got != dir_expected {
+        return Err(CoreError::new(
+            ErrorCode::GrantIdentityMismatch,
+            "stored directory inode does not match the opened scope",
+        ));
+    }
+    Ok((fd, got))
+}
+
+/// True when either opened scope is the other or a physical descendant.
+/// A path that cannot be reopened at its stored inode is an error, not disjoint.
+pub(crate) fn scopes_overlap(
+    path_a: &Path,
+    root_a: &DirIdentity,
+    rel_a: &str,
+    dir_a: &DirIdentity,
+    path_b: &Path,
+    root_b: &DirIdentity,
+    rel_b: &str,
+    dir_b: &DirIdentity,
+) -> Result<bool> {
+    if dir_a == dir_b {
+        return Ok(true);
+    }
+    let (fd_a, id_a) = open_scope(path_a, root_a, rel_a, dir_a)?;
+    let (fd_b, id_b) = open_scope(path_b, root_b, rel_b, dir_b)?;
+    let anc_a = strict_ancestors(&fd_a)?;
+    let anc_b = strict_ancestors(&fd_b)?;
+    Ok(physically_nested(&id_a, &anc_a, &id_b) || physically_nested(&id_b, &anc_b, &id_a))
+}
+
+/// Read `file_rel` from the workspace descriptor that was just identity-checked.
+/// Does not walk `workspace_rel` again from the root.
+pub(crate) fn read_within_workspace(
+    root: &Path,
+    root_expected: &DirIdentity,
+    workspace_rel: &str,
+    workspace_expected: &DirIdentity,
+    file_rel: &str,
+    max_bytes: u64,
+    grant_check: &dyn Fn() -> Result<()>,
+) -> Result<ReadBytes> {
+    ensure_supported()?;
+    grant_check()?;
+    let parts = split_relative(file_rel)?;
+    if parts.is_empty() {
+        return Err(CoreError::new(
+            ErrorCode::InvalidPath,
+            "refusing to read a directory as a file",
+        ));
+    }
+    for part in &parts {
+        if let Some(code) = blocked_component(part) {
+            return Err(CoreError::new(code, format!("refusing component {part}")));
+        }
+    }
+    let root_fd = reopen_root(root, root_expected)?;
+    let root_dev = root_dev(&root_fd)?;
+    let ws_fd = walk_dir(
+        &root_fd,
+        &root_dev,
+        split_relative(workspace_rel)?,
+        grant_check,
+    )?;
+    let ws_st = fstat(&ws_fd)?;
+    ensure_dir(&ws_st)?;
+    if identity_of(&ws_st) != *workspace_expected {
+        return Err(CoreError::new(
+            ErrorCode::GrantIdentityMismatch,
+            "workspace directory inode changed",
+        ));
+    }
+    reject_alias(ws_fd.as_raw_fd())?;
+    run_after_workspace_verify_hook(file_rel);
+    grant_check()?;
+    let (parent, file_name) = parts.split_at(parts.len() - 1);
+    let parent_fd = walk_dir(&ws_fd, &root_dev, parent.to_vec(), grant_check)?;
+    let file_fd = open_child(&parent_fd, &file_name[0], false, grant_check)?;
+    let st = fstat(&file_fd)?;
+    classify_file(&st, &root_dev, &file_name[0])?;
+    reject_alias(file_fd.as_raw_fd())?;
+    grant_check()?;
+    read_fd(file_fd, st.st_size, max_bytes)
+}
+
+fn read_fd(file_fd: OwnedFd, size: i64, max_bytes: u64) -> Result<ReadBytes> {
+    let file_len = if size < 0 { 0 } else { size as u64 };
     let to_read = max_bytes.min(file_len) as usize;
     let mut file = std::fs::File::from(file_fd);
     let mut bytes = vec![0_u8; to_read];
@@ -296,37 +443,6 @@ pub(crate) fn read_file(
         truncated: file_len > max_bytes,
         file_len,
     })
-}
-
-fn nested(
-    parent: &Path,
-    parent_id: &DirIdentity,
-    child: &Path,
-    child_id: &DirIdentity,
-) -> Result<bool> {
-    let parent_parts = path_components(parent)?;
-    let child_parts = path_components(child)?;
-    if child_parts.len() <= parent_parts.len() {
-        return Ok(false);
-    }
-    let prefix_ok = parent_parts
-        .iter()
-        .zip(child_parts.iter())
-        .all(|(a, b)| a.eq_ignore_ascii_case(b));
-    if !prefix_ok {
-        return Ok(false);
-    }
-    let suffix = child_parts[parent_parts.len()..].to_vec();
-    let root_fd = reopen_root(parent, parent_id)?;
-    let dev = root_dev(&root_fd)?;
-    match walk_dir(&root_fd, &dev, suffix) {
-        Ok(fd) => {
-            let st = fstat(&fd)?;
-            Ok(identity_of(&st).ino == child_id.ino && identity_of(&st).dev == child_id.dev)
-        }
-        Err(err) if err.code == ErrorCode::NotFound => Ok(false),
-        Err(err) => Err(err),
-    }
 }
 
 fn ensure_supported() -> Result<()> {
@@ -405,13 +521,18 @@ fn open_root(path: &Path) -> Result<OwnedFd> {
     Ok(unsafe { OwnedFd::from_raw_fd(fd) })
 }
 
-fn walk_dir(root: &OwnedFd, root_dev: &str, parts: Vec<String>) -> Result<OwnedFd> {
+fn walk_dir(
+    root: &OwnedFd,
+    root_dev: &str,
+    parts: Vec<String>,
+    grant_check: &dyn Fn() -> Result<()>,
+) -> Result<OwnedFd> {
     let mut current = dup_fd(root)?;
     for part in parts {
         if let Some(code) = blocked_component(&part) {
             return Err(CoreError::new(code, format!("refusing component {part}")));
         }
-        let next = open_child(&current, &part, true)?;
+        let next = open_child(&current, &part, true, grant_check)?;
         let st = fstat(&next)?;
         ensure_dir(&st)?;
         if identity_of(&st).dev != root_dev {
@@ -426,8 +547,13 @@ fn walk_dir(root: &OwnedFd, root_dev: &str, parts: Vec<String>) -> Result<OwnedF
     Ok(current)
 }
 
-fn inspect_one(parent: &OwnedFd, name: &str, root_dev: String) -> Result<ChildInspect> {
-    match open_child(parent, name, false) {
+fn inspect_one(
+    parent: &OwnedFd,
+    name: &str,
+    root_dev: String,
+    grant_check: &dyn Fn() -> Result<()>,
+) -> Result<ChildInspect> {
+    match open_child(parent, name, false, grant_check) {
         Err(err)
             if matches!(
                 err.code,
@@ -510,7 +636,12 @@ fn classify_file(st: &libc::stat, root_dev: &str, name: &str) -> Result<()> {
     Ok(())
 }
 
-fn open_child(parent: &OwnedFd, name: &str, dir: bool) -> Result<OwnedFd> {
+fn open_child(
+    parent: &OwnedFd,
+    name: &str,
+    dir: bool,
+    grant_check: &dyn Fn() -> Result<()>,
+) -> Result<OwnedFd> {
     if name.is_empty()
         || name == "."
         || name == ".."
@@ -556,6 +687,7 @@ fn open_child(parent: &OwnedFd, name: &str, dir: bool) -> Result<OwnedFd> {
         ));
     }
     run_before_open_hook(name);
+    grant_check()?;
     note_open_attempt();
     let mut flags = libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK;
     if dir || is_dir(&lst) {
@@ -750,28 +882,6 @@ fn clear_errno() {
     unsafe {
         *libc::__errno_location() = 0;
     }
-}
-
-fn path_components(path: &Path) -> Result<Vec<String>> {
-    let mut out = Vec::new();
-    for c in path.components() {
-        match c {
-            std::path::Component::Normal(name) => {
-                let text = name.to_str().ok_or_else(|| {
-                    CoreError::new(ErrorCode::InvalidPath, "non-utf8 path component")
-                })?;
-                out.push(text.to_string());
-            }
-            std::path::Component::RootDir | std::path::Component::Prefix(_) => {}
-            std::path::Component::ParentDir | std::path::Component::CurDir => {
-                return Err(CoreError::new(
-                    ErrorCode::PathEscape,
-                    "path contains . or ..",
-                ));
-            }
-        }
-    }
-    Ok(out)
 }
 
 fn child_name(child: &ChildInspect) -> &str {

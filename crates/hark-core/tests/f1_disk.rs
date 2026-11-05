@@ -3,7 +3,8 @@
 use std::fs;
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -1047,5 +1048,351 @@ fn selective_read_respects_file_and_total_budget() {
             || report.skipped.iter().any(|s| s.contains("max_total_bytes"))
     );
     assert!(report.sources.iter().all(|s| s.byte_len <= 24));
+    cleanup(&root_path);
+}
+
+struct ClearReaderHooks;
+impl Drop for ClearReaderHooks {
+    fn drop(&mut self) {
+        hark_core::set_reader_before_open_hook(None);
+        hark_core::set_reader_after_workspace_verify_hook(None);
+    }
+}
+
+fn confirm_relative(
+    core: &Core,
+    root: &hark_core::RootId,
+    scan: &hark_core::InitialScan,
+    relative: &str,
+) -> hark_core::Workspace {
+    let cand = scan
+        .candidates
+        .iter()
+        .find(|c| c.relative_path == relative)
+        .unwrap_or_else(|| panic!("missing candidate {relative}"));
+    let result = core
+        .confirm_import(&ConfirmImport {
+            root_id: root.clone(),
+            scan_id: scan.id.clone(),
+            mode: ImportMode::SelectedCandidates {
+                candidate_ids: vec![cand.id.clone()],
+            },
+            enable_model_initial_read: false,
+        })
+        .unwrap();
+    assert!(!result.replayed);
+    assert_eq!(result.workspaces.len(), 1);
+    result.workspaces.into_iter().next().unwrap()
+}
+
+#[test]
+fn alias_parent_child_authorize_is_overlap_refused() {
+    let db = Db::new();
+    let base = project("alias-nest");
+    let parent = base.join("parent");
+    fs::create_dir_all(parent.join("child")).unwrap();
+    fs::write(parent.join("child/README.md"), "inside").unwrap();
+    symlink(&parent, base.join("alias")).unwrap();
+
+    let root = db.core.authorize_directory(&parent).unwrap();
+    let via_alias = db
+        .core
+        .authorize_directory(&base.join("alias").join("child"))
+        .unwrap_err();
+    assert_code(&via_alias, ErrorCode::OverlapRefused);
+    assert!(via_alias
+        .to_string()
+        .contains("parent_child_exclusion_not_implemented"));
+    assert_eq!(db.core.list_roots().unwrap().len(), 1);
+
+    db.core.revoke_directory(&root.id).unwrap();
+    let child = db
+        .core
+        .authorize_directory(&base.join("alias").join("child"))
+        .unwrap();
+    let parent_again = db.core.authorize_directory(&parent).unwrap_err();
+    assert_code(&parent_again, ErrorCode::OverlapRefused);
+    assert!(parent_again
+        .to_string()
+        .contains("parent_child_exclusion_not_implemented"));
+    let _ = child;
+    cleanup(&base);
+}
+
+#[test]
+fn intermediate_directory_symlink_still_authorizes_a_real_final_component() {
+    let db = Db::new();
+    let base = project("alias-ok");
+    let real = base.join("real");
+    fs::create_dir_all(real.join("proj")).unwrap();
+    fs::write(real.join("proj/README.md"), "through-intermediate").unwrap();
+    symlink(&real, base.join("alias")).unwrap();
+    let root = db
+        .core
+        .authorize_directory(&base.join("alias").join("proj"))
+        .unwrap();
+    assert_eq!(root.status, hark_core::RootStatus::Active);
+    let sibling = base.join("other");
+    fs::create_dir(&sibling).unwrap();
+    db.core.authorize_directory(&sibling).unwrap();
+    cleanup(&base);
+}
+
+#[test]
+fn renamed_or_replaced_root_cannot_skip_workspace_nesting() {
+    let db = Db::new();
+    let base = project("stale-nest");
+    let parent = base.join("parent");
+    fs::create_dir_all(parent.join("child")).unwrap();
+    fs::write(parent.join("README.md"), "parent-body").unwrap();
+    fs::write(parent.join("child/README.md"), "child-body").unwrap();
+    let root = db.core.authorize_directory(&parent).unwrap();
+    let scan = db
+        .core
+        .run_initial_scan(&root.id, &budget(), &CancelFlag::new())
+        .unwrap();
+    let _ws = confirm_single(&db.core, &root.id, &scan.id, false);
+    let moved = base.join("parent_moved");
+    fs::rename(&parent, &moved).unwrap();
+    fs::create_dir(&parent).unwrap();
+    fs::write(parent.join("README.md"), CANARY).unwrap();
+
+    let nested = db
+        .core
+        .authorize_directory(&moved.join("child"))
+        .unwrap_err();
+    assert_code(&nested, ErrorCode::OverlapRefused);
+    assert!(nested
+        .to_string()
+        .contains("parent_child_exclusion_not_implemented"));
+    let replacement = db.core.authorize_directory(&parent).unwrap_err();
+    assert_code(&replacement, ErrorCode::OverlapRefused);
+
+    let other = project("stale-unrelated");
+    let unrelated = db.core.authorize_directory(&other).unwrap_err();
+    assert_code(&unrelated, ErrorCode::OverlapRefused);
+    assert_eq!(
+        db.core
+            .list_roots()
+            .unwrap()
+            .iter()
+            .filter(|r| r.status != hark_core::RootStatus::Revoked)
+            .count(),
+        1
+    );
+
+    db.core.revoke_directory(&root.id).unwrap();
+    db.core.authorize_directory(&other).unwrap();
+    db.core.authorize_directory(&moved).unwrap();
+    cleanup(&base);
+    cleanup(&other);
+}
+
+#[test]
+fn confirm_refuses_when_existing_workspace_cannot_be_proven_disjoint() {
+    let db = Db::new();
+    let base = project("confirm-nest");
+    let a = base.join("a");
+    let b = base.join("b");
+    fs::create_dir_all(&a).unwrap();
+    fs::create_dir_all(&b).unwrap();
+    fs::write(a.join("README.md"), "alpha").unwrap();
+    fs::write(b.join("README.md"), "beta").unwrap();
+    let root_a = db.core.authorize_directory(&a).unwrap();
+    let root_b = db.core.authorize_directory(&b).unwrap();
+    let scan_a = db
+        .core
+        .run_initial_scan(&root_a.id, &budget(), &CancelFlag::new())
+        .unwrap();
+    let _ws_a = confirm_single(&db.core, &root_a.id, &scan_a.id, false);
+    fs::rename(&a, b.join("moved_a")).unwrap();
+    let scan_b = db
+        .core
+        .run_initial_scan(&root_b.id, &budget(), &CancelFlag::new())
+        .unwrap();
+    let err = db
+        .core
+        .confirm_import(&ConfirmImport {
+            root_id: root_b.id,
+            scan_id: scan_b.id,
+            mode: ImportMode::SingleProject,
+            enable_model_initial_read: false,
+        })
+        .unwrap_err();
+    assert_code(&err, ErrorCode::OverlapRefused);
+    assert!(err
+        .to_string()
+        .contains("parent_child_exclusion_not_implemented"));
+    assert_eq!(db.core.list_workspaces().unwrap().len(), 1);
+    cleanup(&base);
+}
+
+#[test]
+fn swapped_workspace_between_verify_and_open_does_not_read_sibling() {
+    let db = Db::new();
+    let base = project("ws-swap");
+    let root_path = base.join("root");
+    fs::create_dir_all(root_path.join("proj_a/.git")).unwrap();
+    fs::create_dir_all(root_path.join("proj_b/.git")).unwrap();
+    fs::write(root_path.join("proj_a/README.md"), "safe-original").unwrap();
+    fs::write(root_path.join("proj_b/README.md"), CANARY).unwrap();
+    let root = db.core.authorize_directory(&root_path).unwrap();
+    let scan = db
+        .core
+        .run_initial_scan(&root.id, &budget(), &CancelFlag::new())
+        .unwrap();
+    let ws = confirm_relative(&db.core, &root.id, &scan, "proj_a");
+    let swap_root = root_path.clone();
+    let _clear = ClearReaderHooks;
+    hark_core::set_reader_after_workspace_verify_hook(Some(Arc::new(move |file| {
+        if file.ends_with("README.md") {
+            let live = swap_root.join("proj_a");
+            let held = swap_root.join("proj_a.held");
+            let sibling = swap_root.join("proj_b");
+            fs::rename(&live, &held).unwrap();
+            fs::rename(&sibling, &live).unwrap();
+        }
+    })));
+    let got = db
+        .core
+        .read_workspace_file(&ws.id, "README.md", &budget())
+        .unwrap();
+    let text = got.text.unwrap_or_default();
+    assert!(
+        !text.contains(CANARY),
+        "read sibling workspace after swap: {text}"
+    );
+    assert_eq!(text, "safe-original");
+    let stored = serde_json::to_string(&db.core.list_source_refs(&ws.id).unwrap()).unwrap();
+    assert!(!stored.contains(CANARY), "{stored}");
+    assert!(
+        stored.contains("safe-original") || got.source.excerpt.as_deref() == Some("safe-original")
+    );
+    cleanup(&base);
+}
+
+#[test]
+fn revoke_on_same_core_stops_later_reads_and_source_commits() {
+    let db = Db::new();
+    let root_path = project("revoke-same");
+    fs::write(root_path.join("AGENTS.md"), "agents-before-revoke").unwrap();
+    fs::write(root_path.join("ARCHITECTURE.md"), format!("arch-{CANARY}")).unwrap();
+    fs::write(root_path.join("README.md"), format!("readme-{CANARY}")).unwrap();
+    let root = db.core.authorize_directory(&root_path).unwrap();
+    let scan = db
+        .core
+        .run_initial_scan(&root.id, &budget(), &CancelFlag::new())
+        .unwrap();
+    let ws = confirm_single(&db.core, &root.id, &scan.id, false);
+    let (entered_tx, entered_rx) = mpsc::channel::<String>();
+    let (release_tx, release_rx) = mpsc::channel::<()>();
+    let release_rx = Arc::new(Mutex::new(release_rx));
+    let calls = Arc::new(AtomicU32::new(0));
+    let calls_hook = calls.clone();
+    let release_hook = release_rx.clone();
+    let core = &db.core;
+    let ws_id = ws.id.clone();
+    let root_id = root.id.clone();
+    let worker = thread::scope(|scope| {
+        let handle = scope.spawn(move || {
+            let _clear = ClearReaderHooks;
+            hark_core::set_reader_after_workspace_verify_hook(Some(Arc::new(move |file| {
+                let n = calls_hook.fetch_add(1, Ordering::SeqCst);
+                if n == 1 {
+                    let _ = entered_tx.send(file.to_string());
+                    let _ = release_hook
+                        .lock()
+                        .expect("release lock")
+                        .recv_timeout(Duration::from_secs(3));
+                }
+            })));
+            core.selective_key_read(&ws_id, &budget(), &CancelFlag::new())
+        });
+        let gated = entered_rx
+            .recv_timeout(Duration::from_secs(3))
+            .expect("selective read did not reach the second file");
+        assert!(gated.ends_with("ARCHITECTURE.md"), "gated={gated}");
+        core.revoke_directory(&root_id).unwrap();
+        release_tx.send(()).unwrap();
+        handle.join().unwrap()
+    });
+    let err = worker.expect_err("read continued as success after revoke");
+    assert_code(&err, ErrorCode::RootRevoked);
+    assert!(
+        calls.load(Ordering::SeqCst) <= 2,
+        "continued workspace reads after revoke: {}",
+        calls.load(Ordering::SeqCst)
+    );
+    let refs = db.core.list_source_refs(&ws.id).unwrap();
+    assert!(
+        refs.iter()
+            .all(|s| s.relative_path != "ARCHITECTURE.md" && s.relative_path != "README.md"),
+        "committed sources after revoke: {refs:?}"
+    );
+    let blob = serde_json::to_string(&refs).unwrap();
+    assert!(!blob.contains(CANARY), "{blob}");
+    assert!(refs
+        .iter()
+        .all(|s| !s.content_available && s.excerpt.is_none()));
+    if let Some(first) = refs.first() {
+        let one = db.core.get_source_ref(&ws.id, &first.id).unwrap();
+        assert!(!one.content_available);
+        assert!(one.excerpt.is_none());
+    }
+    let read_err = db
+        .core
+        .read_workspace_file(&ws.id, "AGENTS.md", &budget())
+        .unwrap_err();
+    assert_code(&read_err, ErrorCode::RootRevoked);
+    cleanup(&root_path);
+}
+
+#[test]
+fn revoke_from_reopened_core_stops_scan_opens_and_persist() {
+    let db = Db::new();
+    let root_path = project("revoke-reopen");
+    for i in 0..8 {
+        fs::write(root_path.join(format!("f{i:02}.txt")), "x").unwrap();
+    }
+    let root = db.core.authorize_directory(&root_path).unwrap();
+    let root_id = root.id.clone();
+    let db_path = db.path.clone();
+    let (entered_tx, entered_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let calls = Arc::new(AtomicU32::new(0));
+    let calls_hook = calls.clone();
+    let release_rx = Arc::new(Mutex::new(release_rx));
+    let worker = thread::spawn(move || {
+        let calls_after = calls_hook.clone();
+        let release_hook = release_rx.clone();
+        let _clear = ClearReaderHooks;
+        hark_core::set_reader_before_open_hook(Some(Arc::new(move |_name| {
+            let n = calls_hook.fetch_add(1, Ordering::SeqCst);
+            if n == 1 {
+                let _ = entered_tx.send(());
+                let _ = release_hook
+                    .lock()
+                    .expect("release lock")
+                    .recv_timeout(Duration::from_secs(3));
+            }
+        })));
+        let core = Core::open(&db_path).unwrap();
+        let result = core.run_initial_scan(&root_id, &budget(), &CancelFlag::new());
+        (result, calls_after.load(Ordering::SeqCst))
+    });
+    entered_rx
+        .recv_timeout(Duration::from_secs(3))
+        .expect("scan did not reach the second open");
+    db.core.revoke_directory(&root.id).unwrap();
+    release_tx.send(()).unwrap();
+    let (result, seen) = worker.join().unwrap();
+    let err = result.expect_err("scan persisted or succeeded after revoke");
+    assert_code(&err, ErrorCode::RootRevoked);
+    assert!(seen <= 2, "scan kept opening after revoke returned: {seen}");
+    let conn = rusqlite::Connection::open(&db.path).unwrap();
+    let scans: i64 = conn
+        .query_row("SELECT COUNT(*) FROM scan_sessions", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(scans, 0, "scan row committed after revoke");
     cleanup(&root_path);
 }

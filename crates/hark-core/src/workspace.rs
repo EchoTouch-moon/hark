@@ -193,10 +193,11 @@ impl Core {
                     "scan is partially confirmed; refusing to add workspaces",
                 ));
             }
+            let roots = grant::load_roots(tx)?;
             for path in &requested {
                 let ident =
                     reader::identify_relative(std::path::Path::new(&root.path), &identity, path)?;
-                refuse_against_existing(&existing, &root, path, &ident)?;
+                refuse_against_existing(&existing, &root, path, &ident, &roots)?;
             }
             let now = Utc::now().to_rfc3339();
             let mut created = Vec::new();
@@ -342,7 +343,12 @@ fn refuse_against_existing(
     root: &AuthorizedRoot,
     path: &str,
     ident: &DirIdentity,
+    roots: &[AuthorizedRoot],
 ) -> Result<()> {
+    let new_root_id = DirIdentity {
+        dev: root.dev.clone(),
+        ino: root.ino.clone(),
+    };
     for ws in existing {
         if ws.dev == ident.dev && ws.ino == ident.ino {
             return Err(CoreError::new(
@@ -356,25 +362,38 @@ fn refuse_against_existing(
                 "parent_child_exclusion_not_implemented: overlaps an existing workspace",
             ));
         }
-        if ws.root_id != root.id {
-            let other = load_root_path_from_workspace(ws);
-            if other.dev == ident.dev && other.ino == ident.ino {
-                return Err(CoreError::new(
-                    ErrorCode::OverlapRefused,
-                    "parent_child_exclusion_not_implemented: cross-root inode overlap",
-                ));
-            }
+        let Some(other_root) = roots.iter().find(|item| item.id == ws.root_id) else {
+            return Err(CoreError::new(
+                ErrorCode::OverlapRefused,
+                "parent_child_exclusion_not_implemented: cannot prove disjoint (missing root)",
+            ));
+        };
+        if other_root.status == RootStatus::Revoked {
+            continue;
         }
+        let other_root_id = DirIdentity {
+            dev: other_root.dev.clone(),
+            ino: other_root.ino.clone(),
+        };
+        let ws_id = DirIdentity {
+            dev: ws.dev.clone(),
+            ino: ws.ino.clone(),
+        };
+        grant::refuse_if_scope_overlaps(
+            reader::scopes_overlap(
+                std::path::Path::new(&root.path),
+                &new_root_id,
+                path,
+                ident,
+                std::path::Path::new(&other_root.path),
+                &other_root_id,
+                &ws.relative_path,
+                &ws_id,
+            ),
+            "parent_child_exclusion_not_implemented: workspace scope is not physically disjoint",
+        )?;
     }
-    let _ = RootStatus::Active;
     Ok(())
-}
-
-fn load_root_path_from_workspace(ws: &Workspace) -> DirIdentity {
-    DirIdentity {
-        dev: ws.dev.clone(),
-        ino: ws.ino.clone(),
-    }
 }
 
 fn insert_workspace(

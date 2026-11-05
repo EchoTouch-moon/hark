@@ -86,7 +86,7 @@ workspace、run、source、message、root 由 Core 发放。Host 可以生成 `r
 
 `path_escape` `symlink_rejected` `hardlink_rejected` `alias_rejected` `alias_check_failed` `cross_device_rejected` `sensitive_path` `artifact_path` `reader_unsupported_platform` `root_paused` `root_revoked` `grant_identity_mismatch` `overlap_refused` `budget_rejected` `cancelled` `scan_not_confirmable` `cross_workspace_ref` `model_not_authorized` `model_receipt_rejected` `provider_mismatch` `frame_too_large` `invalid_frame` `queue_overflow` `timeout` `workspace_mismatch` `run_mismatch` `correlation_rejected`
 
-`overlap_refused` 的 detail 包含 `parent_child_exclusion_not_implemented`。这表示父子排除未实现，不是 AT-05 通过。
+`overlap_refused` 的 detail 包含 `parent_child_exclusion_not_implemented`。这表示父子排除未实现，不是 AT-05 通过。重叠按已打开目录的 dev/ino 祖先链判断，不按调用方路径字符串前缀。macOS 的 `/var`、`/tmp` 这类中间系统别名不会被单独禁止。已有非撤销授权或 Workspace 无法按存储 inode 重新打开时，不能当成不相交；新的授权或确认返回 `overlap_refused`，直到该授权被撤销。
 
 ## 7. 明确未实现
 
@@ -95,3 +95,5 @@ workspace、run、source、message、root 由 Core 发放。Host 可以生成 `r
 - 真实模型、搜索、网页 Reader、FTS、记忆表、Observer
 - macOS security-scoped bookmark。授权路径被替换或改名后 fail closed，不跟随新 inode
 - Windows 安全读。该平台 `reader_capability = fail_closed`
+- 父子 Workspace 排除流程。当前只拒绝无法证明不相交的范围
+- 取消后的开场收据/模型一致性（审查项 #3）仍未修

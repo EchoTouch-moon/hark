@@ -166,12 +166,23 @@ impl Core {
             dev: root.dev.clone(),
             ino: root.ino.clone(),
         };
+        let root_id = root_id.clone();
+        let grant_check = || {
+            let current = self.get_root(&root_id)?;
+            grant::require_active(&current)
+        };
         // Re-open before walking so a replaced path cannot be scanned under the old grant.
+        grant_check()?;
         let _ = reader::identify_relative(std::path::Path::new(&root.path), &identity, "")?;
-        let walked = walk_scan(&root, &identity, budget, cancel)?;
-        let root_now = self.get_root(root_id)?;
-        grant::require_active(&root_now)?;
-        self.with_tx(|tx| persist_scan(tx, &root_now, budget, &walked))
+        let walked = walk_scan(&root, &identity, budget, cancel, &grant_check)?;
+        // Status is re-read inside the write transaction so a revoke that has
+        // already returned cannot be followed by a successful scan commit.
+        self.with_tx(|tx| {
+            let root_now = grant::load_root(tx, &root_id)?
+                .ok_or_else(|| CoreError::new(ErrorCode::NotFound, root_id.as_str()))?;
+            grant::require_active(&root_now)?;
+            persist_scan(tx, &root_now, budget, &walked)
+        })
     }
 
     pub fn get_scan(&self, scan_id: &ScanId) -> Result<InitialScan> {
@@ -194,6 +205,7 @@ fn walk_scan(
     identity: &reader::DirIdentity,
     budget: &ScanBudget,
     cancel: &CancelFlag,
+    grant_check: &dyn Fn() -> Result<()>,
 ) -> Result<Walked> {
     let root_path = std::path::Path::new(&root.path);
     let mut facts: BTreeMap<String, DirFacts> = BTreeMap::new();
@@ -235,7 +247,9 @@ fn walk_scan(
             }
             break;
         }
-        let inspected = reader::inspect_directory(root_path, identity, &rel, remaining, cancel)?;
+        grant_check()?;
+        let inspected =
+            reader::inspect_directory(root_path, identity, &rel, remaining, cancel, grant_check)?;
         if inspected.cancelled {
             cancelled = true;
             stop = true;
@@ -296,6 +310,7 @@ fn walk_scan(
                             budget,
                             &mut total_read,
                             &mut limits_hit,
+                            grant_check,
                         ) {
                             Ok(Some(flag)) => {
                                 facts.entry(String::new()).or_default().evidence.push(flag);
@@ -349,6 +364,7 @@ fn read_manifest(
     budget: &ScanBudget,
     total_read: &mut u64,
     limits_hit: &mut Vec<String>,
+    grant_check: &dyn Fn() -> Result<()>,
 ) -> Result<Option<String>> {
     if *total_read >= budget.max_total_bytes {
         if !limits_hit.iter().any(|s| s == "max_total_bytes") {
@@ -358,7 +374,7 @@ fn read_manifest(
     }
     let remaining = budget.max_total_bytes - *total_read;
     let cap = budget.max_file_bytes.min(remaining);
-    let read = reader::read_file(root, identity, name, cap)?;
+    let read = reader::read_file(root, identity, name, cap, grant_check)?;
     *total_read += read.bytes.len() as u64;
     if read.truncated {
         if !limits_hit.iter().any(|s| s == "max_file_bytes") {

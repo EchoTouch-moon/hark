@@ -24,21 +24,11 @@ pub(crate) enum ChildInspect {
     Rejected { name: String, reason: ErrorCode },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Relation {
-    Disjoint,
-    Overlap,
-}
-
 pub(crate) fn reader_capability() -> &'static str {
     "fail_closed"
 }
 
 pub(crate) fn identify_directory(_path: &Path) -> Result<DirIdentity> {
-    unsupported()
-}
-
-pub(crate) fn relation(_path_a: &Path, _path_b: &Path) -> Result<Relation> {
     unsupported()
 }
 
@@ -60,12 +50,18 @@ pub fn reader_open_attempts() -> u64 {
 
 pub fn set_reader_before_open_hook(_hook: Option<std::sync::Arc<dyn Fn(&str) + Send + Sync>>) {}
 
+pub fn set_reader_after_workspace_verify_hook(
+    _hook: Option<std::sync::Arc<dyn Fn(&str) + Send + Sync>>,
+) {
+}
+
 pub(crate) fn inspect_directory(
     _root: &Path,
     _expected: &DirIdentity,
     _rel_dir: &str,
     _max_entries: u32,
     _cancel: &crate::CancelFlag,
+    _grant_check: &dyn Fn() -> Result<()>,
 ) -> Result<InspectedDir> {
     unsupported()
 }
@@ -83,6 +79,32 @@ pub(crate) fn read_file(
     _expected: &DirIdentity,
     _rel_file: &str,
     _max_bytes: u64,
+    _grant_check: &dyn Fn() -> Result<()>,
+) -> Result<ReadBytes> {
+    unsupported()
+}
+
+pub(crate) fn scopes_overlap(
+    _path_a: &Path,
+    _root_a: &DirIdentity,
+    _rel_a: &str,
+    _dir_a: &DirIdentity,
+    _path_b: &Path,
+    _root_b: &DirIdentity,
+    _rel_b: &str,
+    _dir_b: &DirIdentity,
+) -> Result<bool> {
+    unsupported()
+}
+
+pub(crate) fn read_within_workspace(
+    _root: &Path,
+    _root_expected: &DirIdentity,
+    _workspace_rel: &str,
+    _workspace_expected: &DirIdentity,
+    _file_rel: &str,
+    _max_bytes: u64,
+    _grant_check: &dyn Fn() -> Result<()>,
 ) -> Result<ReadBytes> {
     unsupported()
 }

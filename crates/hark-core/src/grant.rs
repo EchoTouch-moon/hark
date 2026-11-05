@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{CoreError, ErrorCode, Result};
 use crate::ids::RootId;
-use crate::reader::{self, Relation};
+use crate::reader::{self, DirIdentity};
 use crate::Core;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -70,22 +70,44 @@ impl Core {
                         "parent_child_exclusion_not_implemented: same inode as an existing grant",
                     ));
                 }
-                let other = Path::new(&root.path);
-                match reader::relation(other, Path::new(&stored)) {
-                    Ok(Relation::Disjoint) => {}
-                    Ok(Relation::Overlap) => {
-                        return Err(CoreError::new(
-                            ErrorCode::OverlapRefused,
-                            "parent_child_exclusion_not_implemented: overlapping authorized roots",
-                        ));
-                    }
-                    Err(err)
-                        if err.code == ErrorCode::GrantIdentityMismatch
-                            || err.code == ErrorCode::NotFound =>
-                    {
-                        // Stale grant does not prove a live overlap. Reads on it already fail closed.
-                    }
-                    Err(err) => return Err(err),
+                let other_id = DirIdentity {
+                    dev: root.dev.clone(),
+                    ino: root.ino.clone(),
+                };
+                refuse_if_scope_overlaps(
+                    reader::scopes_overlap(
+                        Path::new(&stored),
+                        &identity,
+                        "",
+                        &identity,
+                        Path::new(&root.path),
+                        &other_id,
+                        "",
+                        &other_id,
+                    ),
+                    "parent_child_exclusion_not_implemented: overlapping authorized roots",
+                )?;
+                for scope in load_workspace_scopes(tx)?
+                    .into_iter()
+                    .filter(|scope| scope.root_id == root.id.as_str())
+                {
+                    let ws_id = DirIdentity {
+                        dev: scope.dev,
+                        ino: scope.ino,
+                    };
+                    refuse_if_scope_overlaps(
+                        reader::scopes_overlap(
+                            Path::new(&stored),
+                            &identity,
+                            "",
+                            &identity,
+                            Path::new(&root.path),
+                            &other_id,
+                            &scope.relative_path,
+                            &ws_id,
+                        ),
+                        "parent_child_exclusion_not_implemented: overlaps an existing workspace",
+                    )?;
                 }
             }
             let id = RootId::new();
@@ -175,6 +197,64 @@ pub(crate) fn require_active(root: &AuthorizedRoot) -> Result<()> {
         RootStatus::Paused => Err(CoreError::new(ErrorCode::RootPaused, root.id.as_str())),
         RootStatus::Revoked => Err(CoreError::new(ErrorCode::RootRevoked, root.id.as_str())),
     }
+}
+
+/// Overlap, or an error that does not prove the scopes are disjoint, both refuse.
+/// A missing or replaced grant is not treated as disjoint.
+pub(crate) fn refuse_if_scope_overlaps(result: Result<bool>, detail: &str) -> Result<()> {
+    match result {
+        Ok(false) => Ok(()),
+        Ok(true) => Err(CoreError::new(ErrorCode::OverlapRefused, detail)),
+        Err(err) if unproven_scope(&err) => Err(CoreError::new(
+            ErrorCode::OverlapRefused,
+            format!(
+                "parent_child_exclusion_not_implemented: cannot prove disjoint ({}); {detail}",
+                err.code_str()
+            ),
+        )),
+        Err(err) => Err(err),
+    }
+}
+
+fn unproven_scope(err: &CoreError) -> bool {
+    matches!(
+        err.code,
+        ErrorCode::NotFound
+            | ErrorCode::GrantIdentityMismatch
+            | ErrorCode::SymlinkRejected
+            | ErrorCode::AccessDenied
+            | ErrorCode::AliasRejected
+            | ErrorCode::AliasCheckFailed
+            | ErrorCode::NotADirectory
+            | ErrorCode::PathEscape
+            | ErrorCode::InvalidPath
+            | ErrorCode::CrossDeviceRejected
+            | ErrorCode::SpecialFileRejected
+    )
+}
+
+struct WorkspaceScope {
+    root_id: String,
+    relative_path: String,
+    dev: String,
+    ino: String,
+}
+
+fn load_workspace_scopes(conn: &rusqlite::Connection) -> Result<Vec<WorkspaceScope>> {
+    let mut stmt = conn.prepare("SELECT root_id, relative_path, dev, ino FROM workspaces")?;
+    let rows = stmt.query_map([], |row| {
+        Ok(WorkspaceScope {
+            root_id: row.get(0)?,
+            relative_path: row.get(1)?,
+            dev: row.get(2)?,
+            ino: row.get(3)?,
+        })
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row?);
+    }
+    Ok(out)
 }
 
 pub(crate) fn load_root(
