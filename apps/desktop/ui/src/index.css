@@ -1,0 +1,201 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --canvas-day: #f7f4ee;
+  --canvas-night: #0d0d10;
+  --surface-day: rgba(255, 253, 249, 0.72);
+  --surface-night: rgba(22, 22, 26, 0.74);
+  --text-day: #23211e;
+  --text-night: #f0ece4;
+  --muted-day: #6b6760;
+  --muted-night: #9f9a92;
+  --ember-core: #e88e47;
+  --ember-soft: #f1bb7c;
+  --focus-ring: #c27537;
+  --semantic-error: #b74a46;
+  --semantic-success: #3d8068;
+  --content-max: 800px;
+  --inspector-width: 410px;
+  --corner-sm: 10px;
+  --corner-md: 16px;
+  --motion-fast: 160ms;
+  --motion-normal: 220ms;
+
+  --canvas: var(--canvas-day);
+  --surface: var(--surface-day);
+  --surface-solid: #fcfaf6;
+  --surface-elevated: rgba(255, 254, 251, 0.88);
+  --text-primary: var(--text-day);
+  --text-muted: var(--muted-day);
+  --border-subtle: rgba(35, 33, 30, 0.075);
+  --border-strong: rgba(35, 33, 30, 0.14);
+  --shadow-hearth: 0 24px 64px -20px rgba(35, 33, 30, 0.08), 0 4px 16px -4px rgba(35, 33, 30, 0.03);
+  --shadow-composer: 0 20px 50px -12px rgba(232, 142, 71, 0.12), 0 8px 24px -6px rgba(35, 33, 30, 0.06);
+}
+
+.dark {
+  --canvas: var(--canvas-night);
+  --surface: var(--surface-night);
+  --surface-solid: #151519;
+  --surface-elevated: rgba(28, 28, 34, 0.88);
+  --text-primary: var(--text-night);
+  --text-muted: var(--muted-night);
+  --border-subtle: rgba(240, 236, 228, 0.08);
+  --border-strong: rgba(240, 236, 228, 0.15);
+  --shadow-hearth: 0 28px 72px -20px rgba(0, 0, 0, 0.55), 0 4px 20px -4px rgba(0, 0, 0, 0.35);
+  --shadow-composer: 0 22px 54px -12px rgba(232, 142, 71, 0.16), 0 8px 28px -6px rgba(0, 0, 0, 0.65);
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--canvas);
+    color: var(--text-primary);
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 280ms cubic-bezier(0.16, 1, 0.3, 1), color 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-serif-narrative {
+    font-family: "Noto Serif SC", "Songti SC", Georgia, serif;
+  }
+}
+
+.hearth-surface {
+  background: var(--surface);
+  backdrop-filter: blur(24px) saturate(135%);
+  -webkit-backdrop-filter: blur(24px) saturate(135%);
+  box-shadow: var(--shadow-hearth);
+}
+
+.hearth-composer-shell {
+  background: var(--surface-elevated);
+  backdrop-filter: blur(28px) saturate(145%);
+  -webkit-backdrop-filter: blur(28px) saturate(145%);
+  box-shadow: var(--shadow-composer);
+}
+
+@keyframes ember-breathe-primary {
+  0%, 100% {
+    transform: translate3d(-50%, 0, 0) scale(1);
+    opacity: 0.78;
+  }
+  50% {
+    transform: translate3d(-50%, -14px, 0) scale(1.06);
+    opacity: 0.96;
+  }
+}
+
+@keyframes ember-breathe-secondary {
+  0%, 100% {
+    transform: translate3d(-44%, 0, 0) scale(1.02) rotate(-2deg);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(-54%, -22px, 0) scale(0.95) rotate(2deg);
+    opacity: 0.84;
+  }
+}
+
+@keyframes ember-pulse-once {
+  0% {
+    transform: translate3d(-50%, 0, 0) scale(0.94);
+    opacity: 0.65;
+  }
+  45% {
+    transform: translate3d(-50%, -10px, 0) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0) scale(1);
+    opacity: 0.82;
+  }
+}
+
+@keyframes hearth-fade-up {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes hearth-slide-in-right {
+  0% {
+    opacity: 0;
+    transform: translate3d(28px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes hearth-pop-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.animate-hearth-fade-up {
+  animation: hearth-fade-up 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-hearth-slide-right {
+  animation: hearth-slide-in-right 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-hearth-pop {
+  animation: hearth-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ember-breathing {
+  animation: ember-breathe-primary 8.5s ease-in-out infinite;
+}
+
+.ember-breathing-secondary {
+  animation: ember-breathe-secondary 11s ease-in-out infinite;
+}
+
+.ember-transient-spread {
+  animation: ember-pulse-once 950ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ember-breathing,
+  .ember-breathing-secondary,
+  .ember-transient-spread,
+  .animate-hearth-fade-up,
+  .animate-hearth-slide-right,
+  .animate-hearth-pop {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.pause-motion .ember-breathing,
+.pause-motion .ember-breathing-secondary,
+.pause-motion .ember-transient-spread,
+.pause-motion .animate-hearth-fade-up,
+.pause-motion .animate-hearth-slide-right,
+.pause-motion .animate-hearth-pop {
+  animation: none !important;
+  transition: none !important;
+}

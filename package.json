@@ -6,10 +6,14 @@
     "node": ">=22.19.0"
   },
   "workspaces": [
-    "packages/agent-host"
+    "packages/agent-host",
+    "apps/desktop/ui"
   ],
   "scripts": {
     "typecheck": "npm run typecheck -w @hark/agent-host",
+    "typecheck:ui": "npm run typecheck -w @hark/desktop-ui",
+    "test:ui": "npm run test -w @hark/desktop-ui",
+    "build:ui": "npm run build -w @hark/desktop-ui",
     "test:pi-sdk-smoke": "npm run test:pi-sdk-smoke -w @hark/agent-host",
     "test:host": "npm run test:host -w @hark/agent-host",
     "test:stepfun-live-check": "npm run test:stepfun-live-check -w @hark/agent-host",

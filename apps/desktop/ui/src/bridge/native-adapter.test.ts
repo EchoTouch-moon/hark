@@ -1,0 +1,425 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import type { HarkBridge, HarkUIError } from "./HarkBridge.ts";
+import {
+  buildConfirmArgs,
+  createTauriHarkBridge,
+  encodePreviewId,
+  mapConversationEvent,
+  mapScanToPreview,
+  parseInvokeError,
+  selectBridge,
+  toUiError,
+  type AuthorizedRoot,
+  type ConversationEventDto,
+  type InitialScan,
+  type InvokeFn,
+  type NativeWorkspace,
+  type PickTicket,
+  type ShellSnapshotDto,
+  type SourceRefDto,
+} from "./native-adapter.ts";
+
+const ROOT = "root_0123456789abcdef0123456789abcdef";
+const SCAN = "scan_0123456789abcdef0123456789abcdef";
+const CAND = "cand_0123456789abcdef0123456789abcdef";
+const WS = "ws_0123456789abcdef0123456789abcdef";
+const CONV = "conv_0123456789abcdef0123456789abcdef";
+const SRC = "src_0123456789abcdef0123456789abcdef";
+const MSG = "msg_0123456789abcdef0123456789abcdef";
+
+function workspace(): NativeWorkspace {
+  return {
+    id: WS,
+    rootId: ROOT,
+    agentId: "agt_0123456789abcdef0123456789abcdef",
+    conversationId: CONV,
+    relativePath: "",
+    dev: "1",
+    ino: "2",
+    displayName: "炉心样本",
+    status: "active",
+    createdAt: "2026-11-06T00:00:00Z",
+  };
+}
+
+function snapshot(): ShellSnapshotDto {
+  return {
+    roots: [root()],
+    workspaces: [workspace()],
+    readerCapability: "unix_openat_nofollow_finder_alias",
+    remoteModelTransport: "closed_no_approved_key",
+    sidecar: {
+      connected: false,
+      transport: "not_started",
+      windowsJobObject: "unverified_no_sidecar",
+      reason: "未配置",
+    },
+    notes: ["本地发现卡不是模型分析。"],
+  };
+}
+
+function root(): AuthorizedRoot {
+  return {
+    id: ROOT,
+    path: "/tmp/hark-sample",
+    dev: "1",
+    ino: "2",
+    status: "active",
+    createdAt: "2026-11-06T00:00:00Z",
+    updatedAt: "2026-11-06T00:00:00Z",
+  };
+}
+
+function scan(): InitialScan {
+  return {
+    id: SCAN,
+    rootId: ROOT,
+    status: "completed",
+    coverage: "complete",
+    limitsHit: [],
+    ignored: [{ relativePath: "target", reason: "artifact" }],
+    candidates: [
+      {
+        id: CAND,
+        relativePath: "",
+        role: "single_root",
+        evidence: ["Cargo.toml"],
+        suggested: true,
+      },
+    ],
+    defaultSingleProject: true,
+    filesSeen: 4,
+    dirsSeen: 2,
+    createdAt: "2026-11-06T00:00:01Z",
+    finishedAt: "2026-11-06T00:00:02Z",
+  };
+}
+
+function ticket(): PickTicket {
+  return {
+    pickToken: "pick_token_only",
+    displayName: "hark-sample",
+    expiresAtUnixMs: 1,
+    directoryRead: "local_readonly",
+    remoteModel: "closed",
+  };
+}
+
+function source(): SourceRefDto {
+  return {
+    id: SRC,
+    workspaceId: WS,
+    relativePath: "README.md",
+    contentSha256: "abc",
+    byteLen: 12,
+    truncated: true,
+    binary: false,
+    excerpt: "hello excerpt",
+    observedAt: "2026-11-06T00:01:00Z",
+    contentAvailable: true,
+  };
+}
+
+function recorder(handlers: Record<string, (args?: Record<string, unknown>) => unknown>): {
+  invoke: InvokeFn;
+  calls: Array<{ cmd: string; args?: Record<string, unknown> }>;
+} {
+  const calls: Array<{ cmd: string; args?: Record<string, unknown> }> = [];
+  const invoke: InvokeFn = async <T,>(cmd: string, args?: Record<string, unknown>): Promise<T> => {
+    calls.push({ cmd, args });
+    const handler = handlers[cmd];
+    if (!handler) {
+      throw { code: "unexpected_command", detail: cmd };
+    }
+    return handler(args) as T;
+  };
+  return { invoke, calls };
+}
+
+function poisonPreview(): HarkBridge {
+  return new Proxy({} as HarkBridge, {
+    get() {
+      return () => {
+        throw new Error("dev preview must not be called");
+      };
+    },
+  });
+}
+
+test("strict host failure does not fall back to dev preview", async () => {
+  const { invoke, calls } = recorder({
+    shell_snapshot: () => {
+      throw { code: "sqlite", detail: "disk" };
+    },
+  });
+  const bridge = selectBridge({
+    mode: "strict_tauri_ipc",
+    hostAvailable: true,
+    invoke,
+    devPreview: poisonPreview(),
+    unavailable: poisonPreview(),
+  });
+  await assert.rejects(() => bridge.getAppSnapshot(), (err: unknown) => {
+    const ui = err as HarkUIError;
+    assert.equal(ui.details?.nativeCode, "sqlite");
+    assert.equal(ui.message.includes("disk"), true);
+    return true;
+  });
+  assert.deepEqual(calls.map((call) => call.cmd), ["shell_snapshot"]);
+});
+
+test("strict without a host does not invoke and does not use preview", async () => {
+  let invoked = false;
+  const bridge = selectBridge({
+    mode: "strict_tauri_ipc",
+    hostAvailable: false,
+    invoke: async <T,>(): Promise<T> => {
+      invoked = true;
+      return undefined as T;
+    },
+    devPreview: poisonPreview(),
+    unavailable: {
+      async getAppSnapshot() {
+        throw { code: "SIDECAR_UNAVAILABLE", message: "no host", retryable: true };
+      },
+    } as unknown as HarkBridge,
+  });
+  await assert.rejects(() => bridge.getAppSnapshot());
+  assert.equal(invoked, false);
+});
+
+test("dev preview is only selected explicitly", () => {
+  const preview = { tag: "preview" } as unknown as HarkBridge;
+  const selected = selectBridge({
+    mode: "dev_preview_synthetic",
+    hostAvailable: true,
+    invoke: async <T,>(): Promise<T> => undefined as T,
+    devPreview: preview,
+    unavailable: poisonPreview(),
+  });
+  assert.equal(selected, preview);
+});
+
+test("picker flow sends token only and never a path", async () => {
+  const { invoke, calls } = recorder({
+    pick_directory: () => ticket(),
+    authorize_picked: () => root(),
+    scan_root: () => scan(),
+  });
+  const bridge = createTauriHarkBridge(invoke);
+  const preview = await bridge.pickAndScan?.();
+  assert.equal(preview?.previewId, encodePreviewId(ROOT, SCAN));
+  assert.equal(calls[0]?.cmd, "pick_directory");
+  assert.equal(JSON.stringify(calls[1]?.args), JSON.stringify({ request: { pickToken: "pick_token_only" } }));
+  assert.equal(JSON.stringify(calls[2]?.args), JSON.stringify({ rootId: ROOT }));
+  assert.equal(JSON.stringify(calls).includes("/tmp/hark-sample"), false);
+  assert.equal(preview?.scanStatus, "ready");
+  assert.equal(preview?.candidates[0]?.selectable, true);
+});
+
+test("path preview does not invoke", async () => {
+  const { invoke, calls } = recorder({});
+  const bridge = createTauriHarkBridge(invoke);
+  await assert.rejects(() => bridge.previewRoot("/Users/private/project"), (err: unknown) => {
+    assert.equal((err as HarkUIError).details?.nativeCode, "path_read_closed");
+    return true;
+  });
+  assert.equal(calls.length, 0);
+});
+
+test("confirm body is root scan and selection only", () => {
+  const args = buildConfirmArgs({
+    requestId: "req-should-not-pass",
+    previewId: encodePreviewId(ROOT, SCAN),
+    selectedCandidateIds: [CAND],
+    importMode: "multiple",
+    enableModelInitialRead: true,
+    enableWebSearch: true,
+    customExcludedPaths: ["secret"],
+    nativeSelection: "selected",
+  });
+  assert.deepEqual(args, {
+    request: {
+      rootId: ROOT,
+      scanId: SCAN,
+      selection: { kind: "selected", candidateIds: [CAND] },
+    },
+  });
+  const single = buildConfirmArgs({
+    requestId: "nope",
+    previewId: encodePreviewId(ROOT, SCAN),
+    selectedCandidateIds: [CAND],
+    importMode: "single",
+    enableModelInitialRead: true,
+    enableWebSearch: false,
+    nativeSelection: "single",
+  });
+  assert.deepEqual(single.request.selection, { kind: "single" });
+});
+
+test("confirm without nativeSelection is refused before invoke", async () => {
+  const { invoke, calls } = recorder({});
+  const bridge = createTauriHarkBridge(invoke);
+  await assert.rejects(() =>
+    bridge.confirmImport({
+      requestId: "x",
+      previewId: encodePreviewId(ROOT, SCAN),
+      selectedCandidateIds: [CAND],
+      importMode: "single",
+      enableModelInitialRead: true,
+      enableWebSearch: false,
+    }),
+  );
+  assert.equal(calls.length, 0);
+});
+
+test("read failure does not commit a card or fall back", async () => {
+  const { invoke, calls } = recorder({
+    selective_key_read: () => {
+      throw { code: "root_paused", detail: "目录已暂停" };
+    },
+    commit_local_scan_card: () => {
+      throw new Error("must not commit");
+    },
+  });
+  const bridge = createTauriHarkBridge(invoke);
+  const recognize = bridge.continueLocalRecognition;
+  if (!recognize) {
+    throw new Error("continueLocalRecognition missing");
+  }
+  await assert.rejects(() => recognize(WS));
+  assert.deepEqual(calls.map((call) => call.cmd), ["selective_key_read"]);
+});
+
+test("local scan card is not disguised as model understanding", () => {
+  const event: ConversationEventDto = {
+    id: MSG,
+    workspaceId: WS,
+    conversationId: CONV,
+    kind: "local_scan_card",
+    body: "本地只读初扫（尚未进行模型推理）。",
+    presentation: "expanded",
+    sourceIds: [SRC],
+    createdAt: "2026-11-06T00:02:00Z",
+  };
+  const message = mapConversationEvent(event, [source()], false);
+  assert.equal(message.kind, "local_scan_card");
+  assert.equal(message.openingData, undefined);
+  assert.equal(message.localScanData?.modelAuthRequired, true);
+  assert.equal(message.localScanData?.detectedLanguages[0], "未做模型识别");
+  assert.equal(message.localScanData?.keyManifests[0], "README.md");
+  assert.equal(message.content.includes("尚未进行模型推理"), true);
+});
+
+test("source ref detail uses the returned excerpt and does not imply a path read", async () => {
+  const hidden: SourceRefDto = { ...source(), contentAvailable: false, excerpt: "hidden" };
+  const { invoke, calls } = recorder({
+    list_source_refs: () => [hidden],
+    get_source_ref: () => hidden,
+  });
+  const bridge = createTauriHarkBridge(invoke);
+  await bridge.listWorkspaceEvidence(WS);
+  const detail = await bridge.getEvidence(SRC);
+  assert.equal(detail.excerpt, "");
+  assert.equal(detail.availability, "restricted");
+  assert.equal(calls.some((call) => call.cmd === "read_workspace_file"), false);
+  assert.deepEqual(calls[1]?.args, { request: { workspaceId: WS, sourceId: SRC } });
+});
+
+test("startAgentTurn does not invoke or emit a completed run", async () => {
+  const { invoke, calls } = recorder({});
+  const bridge = createTauriHarkBridge(invoke);
+  const events: string[] = [];
+  await assert.rejects(
+    () =>
+      bridge.startAgentTurn(
+        {
+          requestId: "req_0123456789abcdef0123456789abcdef",
+          workspaceId: WS,
+          conversationId: CONV,
+          userPrompt: "你好",
+        },
+        (event) => events.push(event.type),
+      ),
+    (err: unknown) => {
+      assert.equal((err as HarkUIError).code, "MODEL_NOT_CONFIGURED");
+      return true;
+    },
+  );
+  assert.equal(calls.length, 0);
+  assert.deepEqual(events, []);
+});
+
+test("snapshot load uses shell_snapshot and list_workspaces and does not mark the model configured", async () => {
+  const { invoke, calls } = recorder({
+    shell_snapshot: () => snapshot(),
+    list_workspaces: () => [workspace()],
+  });
+  const bridge = createTauriHarkBridge(invoke);
+  const app = await bridge.getAppSnapshot();
+  assert.deepEqual(calls.map((call) => call.cmd), ["shell_snapshot", "list_workspaces"]);
+  assert.equal(app.runtime.stepFunConfigured, false);
+  assert.equal(app.runtime.piSidecarStatus, "unavailable");
+  assert.equal(app.currentWorkspaceId, WS);
+  assert.equal(app.workspaces[0]?.observerState, "unavailable");
+  assert.equal(app.attentionItems.length, 0);
+});
+
+test("unfinished surfaces do not invoke", async () => {
+  const { invoke, calls } = recorder({});
+  const bridge = createTauriHarkBridge(invoke);
+  await assert.rejects(() => bridge.searchWorkspaceMemory({ workspaceId: WS, query: "火" }));
+  await assert.rejects(() =>
+    bridge.createChildWorkspace({
+      requestId: "x",
+      parentWorkspaceId: WS,
+      relativeSubPath: "crates",
+      suggestedName: "child",
+      excludeFromParent: true,
+      retainParentHistoryRef: true,
+    }),
+  );
+  await assert.rejects(() => bridge.setWorkspacePermissions({
+    requestId: "x",
+    workspaceId: WS,
+    expectedRevision: 1,
+    modelPermission: "enabled",
+  }));
+  assert.equal(calls.length, 0);
+});
+
+test("hide and quit call the real commands", async () => {
+  const { invoke, calls } = recorder({
+    hide_window: () => undefined,
+    quit_app: () => undefined,
+  });
+  const bridge = createTauriHarkBridge(invoke);
+  const hideWindow = bridge.hideWindow;
+  const quitApp = bridge.quitApp;
+  if (!hideWindow || !quitApp) {
+    throw new Error("hideWindow or quitApp missing");
+  }
+  await hideWindow();
+  await quitApp();
+  assert.deepEqual(calls.map((call) => call.cmd), ["hide_window", "quit_app"]);
+});
+
+test("invoke error object and string shapes do not become success", () => {
+  assert.deepEqual(parseInvokeError({ code: "pick_expired", detail: "过期" }), {
+    code: "pick_expired",
+    detail: "过期",
+  });
+  assert.equal(parseInvokeError('{"code":"pick_not_found","detail":"无"}').code, "pick_not_found");
+  const ui = toUiError({ code: "read_already_running", detail: "已在读取" });
+  assert.equal(ui.code, "RUN_ALREADY_ACTIVE");
+  assert.equal(ui.retryable, true);
+  assert.equal("persistenceVerified" in ui, false);
+});
+
+test("scan mapping keeps ignored paths as display only", () => {
+  const preview = mapScanToPreview(ticket(), root(), scan());
+  assert.equal(preview.recommendedMode, "single");
+  assert.deepEqual(preview.defaultExcludedPaths, ["target"]);
+  assert.equal(preview.readOnlyBoundaryNote.includes("pickToken"), true);
+});

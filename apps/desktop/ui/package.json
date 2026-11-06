@@ -1,0 +1,31 @@
+{
+  "name": "@hark/desktop-ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "dev": "vite --port=1420 --host=127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types --test src/bridge/native-adapter.test.ts src/bridge/schemas.test.ts"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "4.3.4",
+    "@tauri-apps/api": "2.12.4",
+    "lucide-react": "0.546.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.12",
+    "@types/react-dom": "19.1.9",
+    "@vitejs/plugin-react": "6.2.1",
+    "tailwindcss": "4.3.4",
+    "typescript": "5.8.3",
+    "vite": "8.3.6"
+  }
+}

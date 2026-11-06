@@ -1,95 +1,18 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Hark R1 开发入口</title>
-    <link rel="stylesheet" href="app.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hark · 桌面对话炉心 (R1 Frontend)</title>
+    <meta name="description" content="Hark R1 桌面个人 Agent 前端：以对话为炉心，围绕真实本地项目空间、证据溯源、结构化观点与记忆折页共同思考的桌面空间。" />
+    <meta property="og:title" content="Hark · 桌面对话炉心 (R1 Frontend)" />
+    <meta property="og:description" content="Hark R1 桌面个人 Agent 前端：以对话为炉心，围绕真实本地项目空间、证据溯源、结构化观点与记忆折页共同思考的桌面空间。" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
-    <main>
-      <header>
-        <p class="eyebrow">开发入口 · 不是正式产品界面</p>
-        <h1>Hark R1 本地目录确认</h1>
-        <p>
-          目录读取和远程模型是两种许可。未配置可信 Sidecar 时不启动 Node、不读 Key、不写开场。
-        </p>
-      </header>
-
-      <section class="notice" id="model-note">
-        远程模型授权关闭。没有已批准的凭据来源，本壳不会读取全局 Pi key，也不会伪造开场。
-      </section>
-
-      <section>
-        <h2>1. 选择目录</h2>
-        <p>按钮会打开系统文件夹对话框。自动化测试不走这里，而走 Rust 的受控入口。不要用它打开私人目录。</p>
-        <button id="pick" type="button">选择目录（仅本地初扫）</button>
-        <p id="pick-summary">尚未选择。</p>
-      </section>
-
-      <section>
-        <h2>2. 授权并扫描候选</h2>
-        <button id="authorize-scan" type="button">用 token 授权并初扫</button>
-        <button id="cancel-scan" type="button">取消进行中的初扫</button>
-        <p>同一目录已有进行中的初扫时，再次扫描返回 scan_already_running。这次没有开始，也不会取消原来的那一次。</p>
-        <div id="candidates"></div>
-      </section>
-
-      <section>
-        <h2>3. 确认后才建 Workspace</h2>
-        <button id="confirm-single" type="button">确认整个目录为单项目</button>
-        <button id="confirm-selected" type="button">确认勾选的候选</button>
-        <p>确认只提交 rootId、scanId 和 candidateId。不能提交路径、success 或 approved。</p>
-      </section>
-
-      <section>
-        <h2>4. 本地发现卡与恢复</h2>
-        <label>当前 workspace <input id="workspace-id" type="text" readonly /></label>
-        <div class="row">
-          <button id="read" type="button">选择性读取</button>
-          <button id="card" type="button">写入本地发现卡</button>
-          <button id="refresh" type="button">刷新 / 重启后恢复</button>
-          <button id="cancel-onboarding" type="button">取消认识</button>
-          <button id="retry-onboarding" type="button">重试认识</button>
-        </div>
-        <p>同一工作区已有进行中的选择性读取时，再次读取返回 read_already_running。这次没有开始，也不会取消原来的那一次。</p>
-        <label>本地备注 <input id="note" type="text" maxlength="400" /></label>
-        <button id="note-save" type="button">追加本地备注</button>
-        <p id="analysis-label">尚未有本地发现。</p>
-        <pre id="conversation"></pre>
-      </section>
-
-      <section>
-        <h2>目录授权</h2>
-        <label>当前 root <input id="root-id" type="text" readonly /></label>
-        <div class="row">
-          <button id="pause" type="button">暂停</button>
-          <button id="resume" type="button">恢复</button>
-          <button id="revoke" type="button">撤销</button>
-        </div>
-      </section>
-
-      <section>
-        <h2>证据与未知范围</h2>
-        <pre id="evidence"></pre>
-      </section>
-
-      <section>
-        <h2>窗口</h2>
-        <div class="row">
-          <button id="hide" type="button">隐藏到托盘</button>
-          <button id="quit" type="button">完全退出</button>
-        </div>
-        <p id="sidecar">Sidecar：尚未查询。</p>
-        <button id="opening" type="button">开始已配置的首次开场</button>
-        <p>这个按钮只提交 workspaceId。不能提交路径、Key、success 或 approved。没有可信配置时会失败，不会启动进程。</p>
-      </section>
-
-      <section>
-        <h2>最近结果</h2>
-        <pre id="log"></pre>
-      </section>
-    </main>
-    <script src="app.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+
