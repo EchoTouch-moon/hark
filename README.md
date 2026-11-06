@@ -29,10 +29,10 @@ npm run dev -w @hark/desktop-ui
 # 终端2：启动Tauri开发窗口
 cargo run --manifest-path apps/desktop/Cargo.toml -p hark-desktop
 ```
-直接 `cargo run` 不会代为执行Tauri CLI的 `beforeDevCommand`；不能只开Native就假定Vite已启动。这是开发入口，不是安装包。默认模型关闭；普通聊天Native接线已实现并通过合成transport联合测试，页面模型配置与workspace启用尚待补齐。未完成功能不回退为预览数据。不要为测试选择私人vault。尚无本轮窗口点击验收。
+直接 `cargo run` 不会代为执行Tauri CLI的 `beforeDevCommand`；不能只开Native就假定Vite已启动。这是开发入口，不是安装包。默认模型关闭；普通聊天Native接线与页面模型配置已实现。桌面「应用设置」填写新Key并选择「仅本次运行保存」，再到「工作空间设置」启用模型后主动发送。Key重启需重填，Workspace授权会保留；保存不自动测试。未完成功能不回退为预览数据。不要为测试选择私人vault。尚无本轮窗口点击验收。
 
 ## StepFun 当前接入
-正确套餐接口为 `https://api.stepfun.com/step_plan/v1/messages`、模型 `step-3.7-flash`，直接HTTP已实测200/OK；现正接入PiSDK的anthropic-messages协议。SDK流式/工具与桌面模型闭环尚未通过。
+正确套餐接口为 `https://api.stepfun.com/step_plan/v1/messages`、模型 `step-3.7-flash`，直接HTTP曾实测200/OK。PiSDK anthropic-messages驱动与页面配置已接入，合成流式/工具回归通过；用户新Key下的真实应用闭环尚未验证。详见 [MODEL-SESSION](docs/r1/MODEL-SESSION.md)。
 
 旧独立验收脚本使用通用API，不适用于此次套餐，不再扩建。原3次真实调用许可已用完，Key已撤销；不要重新运行旧脚本。后续真实请求需单独批准，不自动使用聊天历史Key或全局凭据。
 

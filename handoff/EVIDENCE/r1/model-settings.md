@@ -11,7 +11,7 @@
 5. 重启应用后 Key 消失，需要重填。工作空间授权还在，但没有 Key 时不能发送，也不会去找全局凭据。
 6. 「清除」只清本次运行的 Key 并停掉 sidecar。
 
-父会话合入后需要重新构建并重启桌面。这次没有停正在运行的主线 Vite 或桌面。
+子任务未停原主线进程。父会话已合入a8deffb，并实际重跑Host/UI类型、Host14+2、UI24、SDKsmoke1、Native18、UI build与桌面build，全部exit0。随后仅终止已核对为自身旧桌面的进程，启动新构建，3秒后仍存活，NSRunningApplication激活返回true，Vite仍HTTP200。入口已交用户；未用真实Key或发真实请求，未声称控件点击/真实模型成功。
 
 ## 验证
 

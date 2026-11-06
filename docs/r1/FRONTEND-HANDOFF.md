@@ -1,6 +1,6 @@
 # F3 Native shell handoff
 
-当前状态：用户React前端已迁入，普通聊天已贯通HarkBridge→Native→Node/PiSDK→Core（合成transport）。主会话复跑Core56/Native17/UI23、UI和桌面构建通过；Vite HTTP200、Tauri进程已启动并激活到前台。没有Native控件点击/截图验收，不是真实模型或安装包/Windows通过。默认模型仍关闭，页面模型配置与workspace启用是下一步。
+当前状态：用户React前端已迁入，普通聊天已贯通HarkBridge→Native→Node/PiSDK→Core（合成transport）。主会话复跑Core56/Native17/UI23、UI和桌面构建通过；Vite HTTP200、Tauri进程已启动并激活到前台。没有Native控件点击/截图验收，不是真实模型或安装包/Windows通过。默认模型仍关闭，页面模型配置与workspace启用已合入a8deffb；主会话复跑Host14+2/UI24/Native18、构建并重启桌面。用户可在应用设置填本次运行Key，再在工作空间设置启用后主动发送；真实API体验仍未验证。详见MODEL-SESSION.md。
 
 普通聊天入口：`start_agent_turn({request:{requestId,workspaceId,conversationId,userPrompt},onEvent:Channel})` → `{runId,acceptedUserMessage}`；`get_agent_turn` / `cancel_agent_turn` 的request为 `{workspaceId,runId}`。Channel在invoke前创建，完成事件仅在Core提交成功后带persistenceVerified=true。Core原始register/commit依旧不暴露WebView。详见CONVERSATION-HANDOFF.md。
 
