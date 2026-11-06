@@ -562,8 +562,20 @@ impl Core {
 
     /// Persist the Host-accepted `sessionRef` inside the existing onboarding
     /// evidence object. Scan metadata already stored there is preserved.
+    /// A Core-issued current run may replace the business reference of an
+    /// ended run. The same run cannot change sessionRef here.
     pub fn bind_opening_session(&self, binding: &SessionBinding) -> Result<SessionBinding> {
         self.with_tx(|tx| bind_session_tx(tx, binding))
+    }
+
+    /// Explicit compaction fallback for the current opening run only.
+    /// Not a chat API. Does not delete Pi JSONL, conversation history, or
+    /// revive an ended run.
+    pub fn replace_opening_session_for_compaction(
+        &self,
+        binding: &SessionBinding,
+    ) -> Result<SessionBinding> {
+        self.with_tx(|tx| replace_session_for_compaction_tx(tx, binding))
     }
 
     pub fn opening_session_binding(
@@ -1211,13 +1223,21 @@ fn bind_session_tx(
     }
     if let Some(existing) = evidence.get("sessionBinding") {
         if let Ok(previous) = serde_json::from_value::<SessionBinding>(existing.clone()) {
-            if previous.session_ref == binding.session_ref && previous.run_id == binding.run_id {
-                return Ok(previous);
+            if previous.run_id == binding.run_id {
+                if previous.session_ref == binding.session_ref {
+                    return Ok(previous);
+                }
+                return Err(CoreError::new(
+                    ErrorCode::CorrelationRejected,
+                    "same opening run cannot replace sessionRef",
+                ));
             }
-            return Err(CoreError::new(
-                ErrorCode::CorrelationRejected,
-                "opening run already has a different sessionRef",
-            ));
+            // Requested run is already Core's current run. Keep the ended run's
+            // pointer in evidence, but do not make it active again.
+            retire_session_binding(&mut evidence, &previous);
+            if let Some(obj) = evidence.as_object_mut() {
+                obj.remove("sessionBindingReason");
+            }
         }
     }
     let stored = SessionBinding {
@@ -1237,6 +1257,101 @@ fn bind_session_tx(
         ],
     )?;
     Ok(stored)
+}
+
+fn replace_session_for_compaction_tx(
+    tx: &rusqlite::Transaction<'_>,
+    binding: &SessionBinding,
+) -> Result<SessionBinding> {
+    if !session_ref_shape(&binding.session_ref) {
+        return Err(CoreError::new(
+            ErrorCode::CorrelationRejected,
+            "sessionRef is not a pi session id",
+        ));
+    }
+    let ws = workspace::load_workspace(tx, &binding.workspace_id)?.ok_or_else(|| {
+        CoreError::new(ErrorCode::WorkspaceNotFound, binding.workspace_id.as_str())
+    })?;
+    if ws.conversation_id.as_str() != binding.conversation_id.as_str() {
+        return Err(CoreError::new(
+            ErrorCode::CorrelationRejected,
+            "session binding conversation does not belong to this workspace",
+        ));
+    }
+    let checkpoint = load_checkpoint(tx, &binding.workspace_id)?;
+    match checkpoint.active_run_id.as_ref() {
+        Some(active) if active.as_str() == binding.run_id.as_str() => {}
+        _ => {
+            return Err(CoreError::new(
+                ErrorCode::RunMismatch,
+                "compaction session replacement run is not the current opening run",
+            ));
+        }
+    }
+    let raw: String = tx.query_row(
+        "SELECT evidence_json FROM onboarding_runs WHERE workspace_id = ?1 AND generation = ?2",
+        params![binding.workspace_id.as_str(), ONBOARDING_GENERATION],
+        |row| row.get(0),
+    )?;
+    let mut evidence: serde_json::Value =
+        serde_json::from_str(&raw).unwrap_or_else(|_| serde_json::json!({}));
+    if !evidence.is_object() {
+        evidence = serde_json::json!({});
+    }
+    let Some(existing) = evidence.get("sessionBinding").cloned() else {
+        return Err(CoreError::new(
+            ErrorCode::CorrelationRejected,
+            "compaction replacement requires the current run session binding",
+        ));
+    };
+    let previous = serde_json::from_value::<SessionBinding>(existing).map_err(|_| {
+        CoreError::new(
+            ErrorCode::CorrelationRejected,
+            "compaction replacement requires the current run session binding",
+        )
+    })?;
+    if previous.run_id != binding.run_id {
+        return Err(CoreError::new(
+            ErrorCode::CorrelationRejected,
+            "compaction replacement requires the current run session binding",
+        ));
+    }
+    if previous.session_ref == binding.session_ref {
+        return Ok(previous);
+    }
+    retire_session_binding(&mut evidence, &previous);
+    let stored = SessionBinding {
+        workspace_id: binding.workspace_id.clone(),
+        conversation_id: binding.conversation_id.clone(),
+        run_id: binding.run_id.clone(),
+        session_ref: binding.session_ref.clone(),
+        bound_at: Utc::now().to_rfc3339(),
+    };
+    evidence["sessionBinding"] = serde_json::to_value(&stored)?;
+    evidence["sessionBindingReason"] = serde_json::json!("compaction-fallback");
+    tx.execute(
+        "UPDATE onboarding_runs SET evidence_json = ?1 WHERE workspace_id = ?2 AND generation = ?3",
+        params![
+            evidence.to_string(),
+            binding.workspace_id.as_str(),
+            ONBOARDING_GENERATION
+        ],
+    )?;
+    Ok(stored)
+}
+
+fn retire_session_binding(evidence: &mut serde_json::Value, previous: &SessionBinding) {
+    let Some(obj) = evidence.as_object_mut() else {
+        return;
+    };
+    let slot = obj
+        .entry("retiredSessionBindings")
+        .or_insert_with(|| serde_json::json!([]));
+    if let Some(arr) = slot.as_array_mut() {
+        if let Ok(value) = serde_json::to_value(previous) {
+            arr.push(value);
+        }
+    }
 }
 
 fn load_session_binding(

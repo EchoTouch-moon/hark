@@ -4,7 +4,7 @@
 
 Host 不调用 Pi CLI。stdout 只写 NDJSON。模型可见工具只有 `workspace.read_file` 与 `workspace.overview`。一个 Host 进程同时只跑一个 run。每次 provider 请求前反向 overview。Rust 用当前 Core 授权构造 `authorization.current`，Core `enabled` 映射 Host `active`。`stream.delta` 只是候选。合法 `stream.done` 后 Rust 用本轮真实读取收据调用 `commit_agent_opening`，成功才折叠本地卡。opening 的 `userMessageId` 缺省，不向 Hark 插入虚假用户消息。没有 Memory Engine，Context Pack 标 empty。显式 stepfun 槽可以按 OpenAI-completions 形状构造，真实协议未验证。
 
-Native shell 目录选择仍走短时 picker token。未配置 Sidecar 时 `connected=false`，不读 Key，不发请求。已配置的开发 Node 路径只来自 Rust，不接受前端任意命令。macOS 用进程组关闭 stdin、SIGTERM、SIGKILL 和 wait。Windows 没有 Job Object，Sidecar 默认关闭。
+Native shell 目录选择仍走短时 picker token。未配置 Sidecar 时 `connected=false`，不读 Key，不发请求。已配置的开发 Node 路径只来自 Rust，不接受前端任意命令。macOS 用进程组关闭 stdin、SIGTERM、SIGKILL、`waitpid(WNOHANG)` 和有界 stop。worker 与 `sidecar_status` 读同一份状态。stdout frame ingress 上限 64，过载关闭受影响 run。Windows 没有 Job Object，Sidecar 默认关闭。
 
 当前未实现或未通过：正式产品 UI、窗口点击/托盘人工验收、常规连续对话 run、真实 StepFun、搜索、记忆修订、FTS、Observer、网页 Reader、安装包、Windows 实机、整 R1。父子目录排除（AT-05）未实现。已进入内核的单次 read 不能被本切片打断。合成 scripted transport 不是 StepFun。
 

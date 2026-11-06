@@ -8,3 +8,10 @@ F1 Core 仍未产品放行。父会话审查原文仍在 `f1-parent-review.md`�
 - 文档冲突按段落保留 F1 与两边修复，没有整文件覆盖 parent-review 或 AGENTS。
 - Unix 上真实 Node + Pi SDK 1.5.0 + Core stdio 已跑通首次开场：合成目录 README 字节、Core 收据、sessionBinding 重启、取消/撤权/超时/跨 run、进程组清理。transport 是 scripted，不是 StepFun。
 - 未配置时不启动 Sidecar。Windows Job Object 未实现，Sidecar 默认关闭。常规对话 run、Memory、搜索、安装包、窗口点击未做。
+
+## Bridge 生命周期收口
+
+- 取消后重试不再被旧 sessionBinding 挡住。同 run 仍不能任意换 session。compaction 有显式 Core 路径，不扩 chat。
+- EOF/kill/关 stdin 后 `sidecar_status` 与 snapshot 为 `connected=false`，不依赖手动 stop 刷新。
+- Rust frame ingress cap=64，真实 Node flood 证明，不是只新建队列类。停滞 worker 的 stop 有界，超时不报 `exited=true`。
+- 不是整 R1，不是窗口交互，不是 StepFun。证据 `handoff/EVIDENCE/r1/f4-bridge-lifecycle-fix.md`。

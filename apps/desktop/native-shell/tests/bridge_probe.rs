@@ -35,6 +35,8 @@ fn node_bin() -> PathBuf {
 fn pid_alive(pid: u32) -> bool {
     Command::new("kill")
         .args(["-0", &pid.to_string()])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .status()
         .map(|status| status.success())
         .unwrap_or(false)
@@ -274,6 +276,7 @@ fn revoke_cancel_timeout_budget_and_mismatch_do_not_commit() {
         let shell = &revoked.shell;
         let ws = workspace_id.clone();
         let handle = scope.spawn(move || shell.run_configured_opening(&ws));
+        let _release_hook = ReleaseOnDrop(Arc::clone(&gate));
         let (lock, cv) = &*gate;
         let mut hit = lock.lock().unwrap();
         let start = Instant::now();
@@ -385,6 +388,15 @@ fn protocol_negatives_and_process_cleanup_are_real_stdio() {
     let pid = shell.sidecar_pid().unwrap();
     shell.close_sidecar_stdin().unwrap();
     let start = Instant::now();
+    while shell.sidecar_status().connected && start.elapsed() < Duration::from_secs(5) {
+        thread::sleep(Duration::from_millis(30));
+    }
+    assert!(
+        !shell.sidecar_status().connected,
+        "status stayed connected after stdin close: {:?}",
+        shell.sidecar_status()
+    );
+    assert!(!shell.snapshot().unwrap().sidecar.connected);
     while pid_alive(pid) && start.elapsed() < Duration::from_secs(5) {
         thread::sleep(Duration::from_millis(30));
     }
@@ -397,6 +409,15 @@ fn protocol_negatives_and_process_cleanup_are_real_stdio() {
     assert_ne!(restarted, pid);
     shell.kill_sidecar_child().unwrap();
     let start = Instant::now();
+    while shell.sidecar_status().connected && start.elapsed() < Duration::from_secs(5) {
+        thread::sleep(Duration::from_millis(20));
+    }
+    assert!(
+        !shell.sidecar_status().connected,
+        "status stayed connected after kill: {:?}",
+        shell.sidecar_status()
+    );
+    assert!(!shell.snapshot().unwrap().sidecar.connected);
     while pid_alive(restarted) && start.elapsed() < Duration::from_secs(3) {
         thread::sleep(Duration::from_millis(20));
     }
@@ -414,4 +435,154 @@ fn protocol_negatives_and_process_cleanup_are_real_stdio() {
     drop(shell);
     thread::sleep(Duration::from_millis(200));
     assert!(!pid_alive(dropped), "drop left a managed sidecar process");
+}
+
+struct ReleaseOnDrop(Arc<(Mutex<bool>, Condvar)>);
+
+impl Drop for ReleaseOnDrop {
+    fn drop(&mut self) {
+        if let Ok(mut held) = self.0 .0.lock() {
+            *held = false;
+        }
+        self.0 .1.notify_all();
+    }
+}
+
+#[test]
+fn cancel_retry_rebinds_current_run_without_deleting_session_files() {
+    let scripted = r#"{"responses":[{"kind":"hold","untilAbort":true},{"kind":"tool_call","name":"workspace.read_file","arguments":{"relativePath":"README.md"}},{"kind":"text","text":"Retry opening after cancel. Not StepFun."}]}"#;
+    let ready = ready("retry-bind", scripted, 60_000);
+    let ws = ready.workspace_id.clone();
+    thread::scope(|scope| {
+        let shell = &ready.shell;
+        let ws_for_run = ws.clone();
+        let handle = scope.spawn(move || shell.run_configured_opening(&ws_for_run));
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_secs(40)
+            && (shell.opening_session_binding(&ws).unwrap().is_none()
+                || scripted_count(&shell.sidecar_stderr()) == 0)
+        {
+            thread::sleep(Duration::from_millis(40));
+        }
+        let first = shell
+            .opening_session_binding(&ws)
+            .unwrap()
+            .expect("run.start did not bind before cancel");
+        assert!(scripted_count(&shell.sidecar_stderr()) >= 1);
+        shell.cancel_onboarding(&ws).unwrap();
+        let err = handle.join().unwrap().unwrap_err();
+        assert_eq!(err.code, "cancelled");
+        let run_a = first.run_id.as_str().to_string();
+        let session_a = first.session_ref.clone();
+        let session_dir = ready.app_data.join("sessions").join(&ws);
+        let before: Vec<_> = fs::read_dir(&session_dir)
+            .unwrap()
+            .map(|item| item.unwrap().path())
+            .collect();
+        assert!(!before.is_empty(), "pi session files missing before retry");
+        shell.retry_onboarding(&ws).unwrap();
+        let result = shell.run_configured_opening(&ws).unwrap();
+        assert!(result.committed);
+        assert_ne!(result.run_id, run_a);
+        let bound = shell.opening_session_binding(&ws).unwrap().unwrap();
+        assert_eq!(bound.run_id.as_str(), result.run_id);
+        assert!(bound.session_ref.starts_with("pi:"));
+        assert_ne!(bound.run_id.as_str(), run_a);
+        for path in &before {
+            assert!(path.exists(), "retry deleted {}", path.display());
+        }
+        assert!(
+            fs::read_to_string(session_dir.join("index.json"))
+                .unwrap()
+                .contains(&session_a)
+                || before.iter().any(|path| path.exists()),
+            "old session reference disappeared"
+        );
+        assert_eq!(opening_count(shell, &ws), 1);
+        assert_eq!(user_count(shell, &ws), 0);
+        let checkpoint = shell.onboarding(&ws).unwrap();
+        assert_eq!(
+            checkpoint.active_run_id.as_ref().map(|id| id.as_str()),
+            Some(result.run_id.as_str())
+        );
+        assert_no_key(&shell.sidecar_stderr());
+        let stop = shell.stop_sidecar().unwrap();
+        assert!(!stop.group_alive);
+        assert!(stop.worker_stopped, "{stop:?}");
+    });
+}
+
+#[test]
+fn stalled_hook_stop_is_bounded_and_refuses_revival() {
+    let scripted = r#"{"responses":[{"kind":"tool_call","name":"workspace.read_file","arguments":{"relativePath":"README.md"}},{"kind":"text","text":"should-not-commit"}]}"#;
+    let ready = ready("stop-bound", scripted, 45_000);
+    let gate = Arc::new((Mutex::new(false), Condvar::new()));
+    let hook_gate = Arc::clone(&gate);
+    ready
+        .shell
+        .set_before_tool_reply_hook(Some(Arc::new(move |_| {
+            let (lock, cv) = &*hook_gate;
+            let mut held = lock.lock().unwrap();
+            *held = true;
+            cv.notify_all();
+            while *held {
+                held = cv.wait(held).unwrap();
+            }
+        })));
+    let ws = ready.workspace_id.clone();
+    let pid = ready.shell.sidecar_pid().expect("node pid");
+    thread::scope(|scope| {
+        let shell = &ready.shell;
+        let ws_for_run = ws.clone();
+        let handle = scope.spawn(move || shell.run_configured_opening(&ws_for_run));
+        let _release = ReleaseOnDrop(Arc::clone(&gate));
+        let (lock, cv) = &*gate;
+        let mut held = lock.lock().unwrap();
+        let start = Instant::now();
+        while !*held && start.elapsed() < Duration::from_secs(40) {
+            let (next, timeout) = cv.wait_timeout(held, Duration::from_secs(1)).unwrap();
+            held = next;
+            if timeout.timed_out() && !*held && start.elapsed() >= Duration::from_secs(40) {
+                break;
+            }
+        }
+        assert!(*held, "tool hook did not run");
+        drop(held);
+        let started = Instant::now();
+        let report = shell.stop_sidecar().unwrap();
+        assert!(
+            started.elapsed() < Duration::from_secs(12),
+            "stop was not bounded: {:?}",
+            started.elapsed()
+        );
+        assert!(!report.worker_stopped, "{report:?}");
+        assert!(!report.exited, "{report:?}");
+        assert!(!report.group_alive, "{report:?}");
+        assert!(!pid_alive(pid));
+        assert!(!shell.sidecar_status().connected);
+        assert!(!shell.snapshot().unwrap().sidecar.connected);
+        let err = shell.start_configured_sidecar().unwrap_err();
+        assert_eq!(err.code, "sidecar_stop_incomplete");
+        *gate.0.lock().unwrap() = false;
+        gate.1.notify_all();
+        let err = handle.join().unwrap().unwrap_err();
+        assert_ne!(err.code, "ok");
+    });
+    let start = Instant::now();
+    loop {
+        match ready.shell.start_configured_sidecar() {
+            Ok(_) => break,
+            Err(err)
+                if err.code == "sidecar_stop_incomplete"
+                    && start.elapsed() < Duration::from_secs(5) =>
+            {
+                thread::sleep(Duration::from_millis(30));
+            }
+            Err(err) => panic!("worker was not reaped: {err}"),
+        }
+    }
+    let stop = ready.shell.stop_sidecar().unwrap();
+    assert!(stop.worker_stopped, "{stop:?}");
+    assert!(!stop.group_alive);
+    assert!(!ready.shell.sidecar_status().connected);
 }

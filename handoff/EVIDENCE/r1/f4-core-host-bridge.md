@@ -35,3 +35,5 @@ README 字节与 Core source sha256 在测试内比对。transport 是本地 scr
 ## 未验
 
 窗口点击、托盘、安装包、Windows、真实模型、常规对话 run、Memory/FTS/搜索。Node 是本机预装开发路径，不证明可安装无预装运行时。
+
+父会话随后复现取消后重绑、状态源和有界 stop/队列缺口。本机收口见 `f4-bridge-lifecycle-fix.md`，不把本节原 PASS 当成那些缺口已覆盖。

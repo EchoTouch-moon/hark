@@ -19,6 +19,8 @@ pub struct StopReport {
     pub group_alive: bool,
     pub exited: bool,
     pub forced_kill: bool,
+    /// Rust worker joined. Process-only reports leave this false.
+    pub worker_stopped: bool,
 }
 
 pub struct SpawnedSidecar {
@@ -138,6 +140,7 @@ impl SpawnedSidecar {
                         group_alive: true,
                         exited: false,
                         forced_kill: false,
+                        worker_stopped: false,
                     },
                 },
                 stdout,
@@ -194,6 +197,7 @@ impl SpawnedSidecar {
             group_alive: group_alive(self.pgid),
             exited: exited || !group_alive(self.pgid),
             forced_kill: forced,
+            worker_stopped: false,
         };
         self.last.clone()
     }
@@ -296,5 +300,24 @@ fn libc_kill() -> i32 {
     #[cfg(not(unix))]
     {
         9
+    }
+}
+
+pub(crate) fn process_group_alive(pgid: u32) -> bool {
+    group_alive(pgid)
+}
+
+pub(crate) fn reap_pid(pid: u32) {
+    #[cfg(unix)]
+    if pid != 0 {
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_millis(400) {
+            let mut status = 0;
+            let rc = unsafe { libc::waitpid(pid as i32, &mut status, libc::WNOHANG) };
+            if rc == pid as i32 || rc < 0 {
+                return;
+            }
+            thread::sleep(Duration::from_millis(20));
+        }
     }
 }

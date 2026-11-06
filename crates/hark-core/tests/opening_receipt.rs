@@ -1098,3 +1098,196 @@ fn session_binding_lives_in_onboarding_evidence_and_is_not_a_grant() {
     assert!(evidence.contains("sessionBinding"), "{evidence}");
     cleanup(&fx.root_path);
 }
+
+#[test]
+fn ended_run_binding_rejects_current_run_until_replacement_is_allowed() {
+    let mut fx = ready("session-rebind");
+    let run_a = fx.run_id.clone();
+    let session_a = "pi:01234567-89ab-cdef-0123-456789abcdef".to_string();
+    let session_b = "pi:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa".to_string();
+    let binding_a = hark_core::SessionBinding {
+        workspace_id: fx.ws.id.clone(),
+        conversation_id: fx.ws.conversation_id.clone(),
+        run_id: run_a.clone(),
+        session_ref: session_a.clone(),
+        bound_at: "caller-clock".to_string(),
+    };
+    let stored_a = fx.db.core.bind_opening_session(&binding_a).unwrap();
+    let events_before = fx.db.core.list_conversation(&fx.ws.id).unwrap();
+    fx.db.core.cancel_onboarding(&fx.ws.id).unwrap();
+    fx.db.core.retry_onboarding(&fx.ws.id).unwrap();
+    let run_b = issue_run(&fx.db.core, &fx.ws.id);
+    assert_ne!(run_b, run_a);
+    let same_ref = hark_core::SessionBinding {
+        run_id: run_b.clone(),
+        session_ref: session_a.clone(),
+        bound_at: "caller-clock".to_string(),
+        ..binding_a.clone()
+    };
+    let rebound = fx
+        .db
+        .core
+        .bind_opening_session(&same_ref)
+        .expect("current run must replace an ended run binding with the same sessionRef");
+    assert_eq!(rebound.run_id, run_b);
+    assert_eq!(rebound.session_ref, session_a);
+    assert_ne!(rebound.bound_at, stored_a.bound_at);
+    let replay = fx.db.core.bind_opening_session(&same_ref).unwrap();
+    assert_eq!(replay.bound_at, rebound.bound_at);
+    let swapped = hark_core::SessionBinding {
+        session_ref: session_b.clone(),
+        ..same_ref.clone()
+    };
+    assert_eq!(
+        fx.db.core.bind_opening_session(&swapped).unwrap_err().code,
+        ErrorCode::CorrelationRejected
+    );
+    let stale = hark_core::SessionBinding {
+        run_id: run_a.clone(),
+        session_ref: session_b.clone(),
+        ..binding_a.clone()
+    };
+    assert_eq!(
+        fx.db.core.bind_opening_session(&stale).unwrap_err().code,
+        ErrorCode::RunMismatch
+    );
+    assert_eq!(
+        fx.db
+            .core
+            .onboarding(&fx.ws.id)
+            .unwrap()
+            .active_run_id
+            .as_ref(),
+        Some(&run_b)
+    );
+    assert_eq!(
+        fx.db.core.list_conversation(&fx.ws.id).unwrap().len(),
+        events_before.len()
+    );
+    assert!(fx
+        .db
+        .core
+        .list_conversation(&fx.ws.id)
+        .unwrap()
+        .iter()
+        .all(|event| event.kind != "user_message"));
+    let compacted = fx
+        .db
+        .core
+        .replace_opening_session_for_compaction(&swapped)
+        .unwrap();
+    assert_eq!(compacted.session_ref, session_b);
+    assert_eq!(compacted.run_id, run_b);
+    let compact_replay = fx
+        .db
+        .core
+        .replace_opening_session_for_compaction(&swapped)
+        .unwrap();
+    assert_eq!(compact_replay.bound_at, compacted.bound_at);
+    assert_eq!(
+        fx.db
+            .core
+            .bind_opening_session(&hark_core::SessionBinding {
+                session_ref: session_a.clone(),
+                ..swapped.clone()
+            })
+            .unwrap_err()
+            .code,
+        ErrorCode::CorrelationRejected
+    );
+    assert_eq!(
+        fx.db
+            .core
+            .replace_opening_session_for_compaction(&stale)
+            .unwrap_err()
+            .code,
+        ErrorCode::RunMismatch
+    );
+    let late = fx
+        .db
+        .core
+        .commit_agent_opening(&receipt(
+            &fx.ws.id,
+            &run_a,
+            "stepfun",
+            "expected-model",
+            true,
+            "old run must not revive",
+            vec![fx.source_id.clone()],
+        ))
+        .unwrap_err();
+    assert_eq!(late.code, ErrorCode::RunMismatch, "{late}");
+    fx.db.reopen();
+    let loaded = fx
+        .db
+        .core
+        .opening_session_binding(&fx.ws.id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(loaded.session_ref, session_b);
+    assert_eq!(loaded.run_id, run_b);
+    let conn = rusqlite::Connection::open(&fx.db.path).unwrap();
+    let evidence: String = conn
+        .query_row(
+            "SELECT evidence_json FROM onboarding_runs WHERE workspace_id = ?1",
+            [fx.ws.id.as_str()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(evidence.contains("scanId"), "{evidence}");
+    assert!(evidence.contains(&session_a), "{evidence}");
+    assert!(evidence.contains("retiredSessionBindings"), "{evidence}");
+    assert!(evidence.contains("compaction-fallback"), "{evidence}");
+    cleanup(&fx.root_path);
+
+    let fx = ready("session-rebind-new-ref");
+    let run_a = fx.run_id.clone();
+    let old_ref = "pi:11111111-1111-1111-1111-111111111111".to_string();
+    let new_ref = "pi:22222222-2222-2222-2222-222222222222".to_string();
+    fx.db
+        .core
+        .bind_opening_session(&hark_core::SessionBinding {
+            workspace_id: fx.ws.id.clone(),
+            conversation_id: fx.ws.conversation_id.clone(),
+            run_id: run_a.clone(),
+            session_ref: old_ref,
+            bound_at: "caller-clock".to_string(),
+        })
+        .unwrap();
+    fx.db.core.cancel_onboarding(&fx.ws.id).unwrap();
+    fx.db.core.retry_onboarding(&fx.ws.id).unwrap();
+    let run_b = issue_run(&fx.db.core, &fx.ws.id);
+    let stored = fx
+        .db
+        .core
+        .bind_opening_session(&hark_core::SessionBinding {
+            workspace_id: fx.ws.id.clone(),
+            conversation_id: fx.ws.conversation_id.clone(),
+            run_id: run_b.clone(),
+            session_ref: new_ref.clone(),
+            bound_at: "caller-clock".to_string(),
+        })
+        .unwrap();
+    assert_eq!(stored.run_id, run_b);
+    assert_eq!(stored.session_ref, new_ref);
+    assert_eq!(
+        fx.db
+            .core
+            .onboarding(&fx.ws.id)
+            .unwrap()
+            .active_run_id
+            .as_ref(),
+        Some(&run_b)
+    );
+    let forged = fx
+        .db
+        .core
+        .bind_opening_session(&hark_core::SessionBinding {
+            run_id: RunId::new(),
+            session_ref: "pi:33333333-3333-3333-3333-333333333333".to_string(),
+            ..stored.clone()
+        })
+        .unwrap_err();
+    assert_eq!(forged.code, ErrorCode::RunMismatch, "{forged}");
+    cleanup(&fx.root_path);
+}

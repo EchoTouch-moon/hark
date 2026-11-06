@@ -17,3 +17,5 @@
 - SidecarSupervisor.stop 在 5 秒 reply timeout 后仍无条件 JoinHandle.join，可能突破文档有界退出承诺；请对停滞 reader/worker 做受控有界验证，不能记录超时后继续无界等。已进入内核的文件 syscall 不可打断应保持限制，不因此令 UI quit 无限等待。
 
 本轮只收口新桥接代码的重试/状态/资源边界；不扩 Observer、常规对话、Memory、Windows 或真实模型 Gate。修复后复跑受影响回归，再决定接受此本机接线切片。
+
+后续本机修复记录见 `f4-bridge-lifecycle-fix.md`。本文件保留复核当时的缺口，不改写成已通过。

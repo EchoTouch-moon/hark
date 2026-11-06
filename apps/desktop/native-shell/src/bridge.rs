@@ -5,7 +5,9 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{
+    self, Receiver, RecvTimeoutError, Sender, SyncSender, TryRecvError, TrySendError,
+};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -24,6 +26,11 @@ use crate::seam::SidecarStatus;
 const MAX_READS_DEFAULT: u32 = 8;
 const MAX_READ_BYTES: u64 = 256 * 1024;
 const HOST_TEXT_CAP: usize = 65_536;
+/// stdout → worker frame cap. Same number as the IPC control queue.
+/// Overflow closes the affected run and pipe; it is not a second bus.
+pub const FRAME_INGRESS_CAP: usize = hark_core::MAX_CONTROL_QUEUE;
+const STOP_REPLY_WAIT: Duration = Duration::from_secs(5);
+const STOP_JOIN_WAIT: Duration = Duration::from_secs(2);
 pub const OPENING_INTERNAL_INSTRUCTION: &str = "Internal first-read instruction for the initial opening run only. Use workspace.overview and workspace.read_file. This text is not a stored Hark user message, not an L0/L1 container, and not evidence of a user decision. There is no memory engine.";
 
 #[derive(Debug, Clone)]
@@ -78,11 +85,11 @@ struct Hooks {
     model: Mutex<String>,
 }
 
-enum Inbox {
-    Frame(Frame),
+#[derive(Debug)]
+enum IngressNote {
     Eof,
     Protocol(#[allow(dead_code)] String),
-    Cmd(Command),
+    Overflow,
 }
 
 enum Command {
@@ -133,9 +140,12 @@ pub struct SidecarSupervisor {
     core: Arc<Core>,
     config: Mutex<Option<DevSidecarConfig>>,
     slot: Mutex<Option<ProviderSlot>>,
-    cmd_tx: Mutex<Option<Sender<Inbox>>>,
+    cmd_tx: Mutex<Option<Sender<Command>>>,
     worker: Mutex<Option<JoinHandle<()>>>,
-    status: Mutex<SidecarStatus>,
+    zombie: Mutex<Option<JoinHandle<()>>>,
+    status: Arc<Mutex<SidecarStatus>>,
+    worker_done: Arc<AtomicBool>,
+    stop_requested: Arc<AtomicBool>,
     stderr: Arc<Mutex<String>>,
     pgid: Arc<AtomicU32>,
     pid: Arc<AtomicU32>,
@@ -151,7 +161,10 @@ impl SidecarSupervisor {
             slot: Mutex::new(None),
             cmd_tx: Mutex::new(None),
             worker: Mutex::new(None),
-            status: Mutex::new(disconnected("sidecar_not_configured")),
+            zombie: Mutex::new(None),
+            status: Arc::new(Mutex::new(disconnected("sidecar_not_configured"))),
+            worker_done: Arc::new(AtomicBool::new(true)),
+            stop_requested: Arc::new(AtomicBool::new(false)),
             stderr: Arc::new(Mutex::new(String::new())),
             pgid: Arc::new(AtomicU32::new(0)),
             pid: Arc::new(AtomicU32::new(0)),
@@ -261,6 +274,14 @@ impl SidecarSupervisor {
                     "sidecar already started",
                 ));
             }
+            if !self.reap_finished_worker() {
+                return Err(ShellError::new(
+                    "sidecar_stop_incomplete",
+                    "previous worker has not exited; refusing to revive the same core task",
+                ));
+            }
+            self.stop_requested.store(false, Ordering::SeqCst);
+            self.worker_done.store(false, Ordering::SeqCst);
             let config = self
                 .config
                 .lock()
@@ -299,44 +320,45 @@ impl SidecarSupervisor {
             )?;
             self.pid.store(proc.pid, Ordering::SeqCst);
             self.pgid.store(proc.pgid, Ordering::SeqCst);
-            let (tx, rx) = mpsc::channel();
-            let tx_reader = tx.clone();
-            thread::spawn(move || read_stdout(stdout, tx_reader));
+            let (cmd_tx, cmd_rx) = mpsc::channel();
+            let (frame_tx, frame_rx, note_tx, note_rx) = open_frame_ingress();
+            spawn_stdout_reader(stdout, frame_tx, note_tx);
             let core = Arc::clone(&self.core);
             let hooks = Arc::clone(&self.hooks);
-            let status = Arc::new(Mutex::new(SidecarStatus {
-                connected: true,
-                transport: "stdio",
-                windows_job_object: "not_applicable_unix_process_group",
-                reason: "Node sidecar started. Model transport is the explicit scripted slot, not StepFun.",
-            }));
-            let status_for_worker = Arc::clone(&status);
+            let status_for_worker = Arc::clone(&self.status);
             let pgid = Arc::clone(&self.pgid);
             let pid = Arc::clone(&self.pid);
             let stderr_out = Arc::clone(&self.stderr);
+            let worker_done = Arc::clone(&self.worker_done);
+            let stop_requested = Arc::clone(&self.stop_requested);
             let handle = thread::spawn(move || {
                 worker(
                     proc,
                     core,
-                    rx,
+                    cmd_rx,
+                    frame_rx,
+                    note_rx,
                     hooks,
                     slot.scripted,
                     status_for_worker,
                     stderr_out,
                     pgid,
                     pid,
+                    worker_done,
+                    stop_requested,
                 );
             });
             *self
                 .cmd_tx
                 .lock()
-                .map_err(|_| ShellError::new("lock_poisoned", "cmd"))? = Some(tx.clone());
+                .map_err(|_| ShellError::new("lock_poisoned", "cmd"))? = Some(cmd_tx.clone());
             *self
                 .worker
                 .lock()
                 .map_err(|_| ShellError::new("lock_poisoned", "worker"))? = Some(handle);
             let (ready_tx, ready_rx) = mpsc::channel();
-            tx.send(Inbox::Cmd(Command::WaitReady { reply: ready_tx }))
+            cmd_tx
+                .send(Command::WaitReady { reply: ready_tx })
                 .map_err(|_| {
                     ShellError::new("sidecar_not_connected", "worker exited before ready")
                 })?;
@@ -359,53 +381,54 @@ impl SidecarSupervisor {
                     ));
                 }
             }
-            let published = status
-                .lock()
-                .map(|slot| slot.clone())
-                .unwrap_or_else(|_| disconnected("lock_poisoned"));
-            *self
-                .status
-                .lock()
-                .map_err(|_| ShellError::new("lock_poisoned", "status"))? = published.clone();
+            let published = self.status();
+            if !published.connected {
+                let _ = self.stop();
+                return Err(ShellError::new("sidecar_not_connected", published.reason));
+            }
             Ok(published)
         }
     }
 
     pub fn opening(&self, workspace_id: &str) -> Result<OpeningBridgeResult, ShellError> {
         let (reply_tx, reply_rx) = mpsc::channel();
-        self.send(Inbox::Cmd(Command::Opening {
+        self.send(Command::Opening {
             workspace_id: workspace_id.to_string(),
             reply: reply_tx,
-        }))?;
+        })?;
         reply_rx
             .recv_timeout(Duration::from_secs(120))
             .map_err(|_| ShellError::new("timeout", "opening bridge timed out"))?
     }
 
     pub fn cancel(&self, workspace_id: &str) -> Result<(), ShellError> {
-        self.send(Inbox::Cmd(Command::Cancel {
+        self.send(Command::Cancel {
             workspace_id: workspace_id.to_string(),
-        }))
+        })
     }
 
     pub fn close_stdin(&self) -> Result<(), ShellError> {
-        self.send(Inbox::Cmd(Command::CloseStdin))
+        self.send(Command::CloseStdin)
     }
 
     pub fn kill_child(&self) -> Result<(), ShellError> {
-        self.send(Inbox::Cmd(Command::KillChild))
+        self.send(Command::KillChild)
     }
 
     pub fn probe_protocol(&self) -> Result<ProtocolProbe, ShellError> {
         let (reply_tx, reply_rx) = mpsc::channel();
-        self.send(Inbox::Cmd(Command::Probe { reply: reply_tx }))?;
+        self.send(Command::Probe { reply: reply_tx })?;
         reply_rx
             .recv_timeout(Duration::from_secs(15))
             .map_err(|_| ShellError::new("timeout", "protocol probe timed out"))?
     }
 
     pub fn stop(&self) -> Result<StopReport, ShellError> {
-        force_kill(self.pgid.load(Ordering::SeqCst));
+        self.stop_requested.store(true, Ordering::SeqCst);
+        let pgid = self.pgid.load(Ordering::SeqCst);
+        let pid = self.pid.load(Ordering::SeqCst);
+        force_kill(pgid);
+        process_kill_pid(pid);
         let tx = self
             .cmd_tx
             .lock()
@@ -413,44 +436,103 @@ impl SidecarSupervisor {
             .take();
         if let Some(tx) = tx {
             let (reply_tx, reply_rx) = mpsc::channel();
-            let _ = tx.send(Inbox::Cmd(Command::Stop { reply: reply_tx }));
-            if let Ok(report) = reply_rx.recv_timeout(Duration::from_secs(5)) {
-                *self
-                    .last_stop
-                    .lock()
-                    .map_err(|_| ShellError::new("lock_poisoned", "stop"))? = Some(report);
+            let _ = tx.send(Command::Stop { reply: reply_tx });
+            let deadline = Instant::now() + STOP_REPLY_WAIT;
+            loop {
+                if self.worker_done.load(Ordering::SeqCst) {
+                    if let Ok(report) = reply_rx.try_recv() {
+                        *self
+                            .last_stop
+                            .lock()
+                            .map_err(|_| ShellError::new("lock_poisoned", "stop"))? = Some(report);
+                    }
+                    break;
+                }
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                if remaining.is_zero() {
+                    break;
+                }
+                match reply_rx.recv_timeout(remaining.min(Duration::from_millis(50))) {
+                    Ok(report) => {
+                        *self
+                            .last_stop
+                            .lock()
+                            .map_err(|_| ShellError::new("lock_poisoned", "stop"))? = Some(report);
+                        break;
+                    }
+                    Err(RecvTimeoutError::Disconnected) => break,
+                    Err(RecvTimeoutError::Timeout) => {}
+                }
             }
         }
-        if let Some(handle) = self
+        let handle = self
             .worker
             .lock()
             .map_err(|_| ShellError::new("lock_poisoned", "worker"))?
-            .take()
-        {
-            let _ = handle.join();
-        }
-        force_kill(self.pgid.load(Ordering::SeqCst));
+            .take();
+        let worker_stopped = if let Some(handle) = handle {
+            match join_within(handle, STOP_JOIN_WAIT) {
+                Ok(()) => true,
+                Err(waiter) => {
+                    if self.worker_done.load(Ordering::SeqCst) {
+                        let _ = waiter.join();
+                        true
+                    } else {
+                        *self
+                            .zombie
+                            .lock()
+                            .map_err(|_| ShellError::new("lock_poisoned", "zombie"))? =
+                            Some(waiter);
+                        false
+                    }
+                }
+            }
+        } else {
+            self.reap_finished_worker()
+        };
+        force_kill(pgid);
+        process_kill_pid(pid);
+        crate::process::reap_pid(pid);
         self.pid.store(0, Ordering::SeqCst);
         self.pgid.store(0, Ordering::SeqCst);
+        let reason = if worker_stopped {
+            "stopped"
+        } else {
+            "stop_timeout"
+        };
         *self
             .status
             .lock()
-            .map_err(|_| ShellError::new("lock_poisoned", "status"))? = disconnected("stopped");
-        Ok(self
+            .map_err(|_| ShellError::new("lock_poisoned", "status"))? = disconnected(reason);
+        let group_alive = crate::process::process_group_alive(pgid);
+        let mut report = self
             .last_stop
             .lock()
             .ok()
             .and_then(|slot| slot.clone())
             .unwrap_or(StopReport {
-                pid: 0,
-                pgid: 0,
-                group_alive: false,
-                exited: true,
-                forced_kill: false,
-            }))
+                pid,
+                pgid,
+                group_alive,
+                exited: false,
+                forced_kill: pid != 0,
+                worker_stopped: false,
+            });
+        report.group_alive = group_alive;
+        report.worker_stopped = worker_stopped;
+        report.pid = pid;
+        report.pgid = pgid;
+        if !worker_stopped || group_alive {
+            report.exited = false;
+        }
+        *self
+            .last_stop
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "stop"))? = Some(report.clone());
+        Ok(report)
     }
 
-    fn send(&self, msg: Inbox) -> Result<(), ShellError> {
+    fn send(&self, msg: Command) -> Result<(), ShellError> {
         let guard = self
             .cmd_tx
             .lock()
@@ -460,6 +542,24 @@ impl SidecarSupervisor {
             .ok_or_else(|| ShellError::new("sidecar_not_connected", "sidecar is not started"))?;
         tx.send(msg)
             .map_err(|_| ShellError::new("sidecar_not_connected", "sidecar worker is gone"))
+    }
+
+    /// True when no previous worker is still inside a Core call or test hook.
+    fn reap_finished_worker(&self) -> bool {
+        let mut slot = match self.zombie.lock() {
+            Ok(slot) => slot,
+            Err(_) => return false,
+        };
+        if slot.is_none() {
+            return true;
+        }
+        if self.worker_done.load(Ordering::SeqCst) {
+            if let Some(handle) = slot.take() {
+                let _ = handle.join();
+            }
+            return true;
+        }
+        false
     }
 }
 
@@ -633,47 +733,138 @@ fn spawn_args(config: &DevSidecarConfig) -> Vec<String> {
     args
 }
 
-fn read_stdout(mut stdout: std::process::ChildStdout, tx: Sender<Inbox>) {
+fn open_frame_ingress() -> (
+    SyncSender<Frame>,
+    Receiver<Frame>,
+    Sender<IngressNote>,
+    Receiver<IngressNote>,
+) {
+    let (frames, frame_rx) = mpsc::sync_channel(FRAME_INGRESS_CAP);
+    let (notes, note_rx) = mpsc::channel();
+    (frames, frame_rx, notes, note_rx)
+}
+
+fn spawn_stdout_reader(
+    stdout: std::process::ChildStdout,
+    frames: SyncSender<Frame>,
+    notes: Sender<IngressNote>,
+) {
+    thread::spawn(move || read_stdout(stdout, frames, notes));
+}
+
+fn read_stdout(
+    mut stdout: std::process::ChildStdout,
+    frames: SyncSender<Frame>,
+    notes: Sender<IngressNote>,
+) {
     let mut parser = NdjsonParser::new();
     let mut buf = [0_u8; 8192];
     loop {
         match std::io::Read::read(&mut stdout, &mut buf) {
             Ok(0) => {
-                let _ = tx.send(Inbox::Eof);
+                let _ = notes.send(IngressNote::Eof);
                 break;
             }
             Err(_) => {
-                let _ = tx.send(Inbox::Protocol("stdout read failed".to_string()));
-                let _ = tx.send(Inbox::Eof);
+                let _ = notes.send(IngressNote::Protocol("stdout read failed".to_string()));
+                let _ = notes.send(IngressNote::Eof);
                 break;
             }
             Ok(n) => match parser.push(&buf[..n]) {
-                Ok(frames) => {
-                    for frame in frames {
-                        if tx.send(Inbox::Frame(frame)).is_err() {
-                            return;
+                Ok(parsed) => {
+                    for frame in parsed {
+                        match frames.try_send(frame) {
+                            Ok(()) => {}
+                            Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {
+                                let _ = notes.send(IngressNote::Overflow);
+                                drop(stdout);
+                                return;
+                            }
                         }
                     }
                 }
                 Err(err) => {
-                    let _ = tx.send(Inbox::Protocol(err.detail));
+                    let _ = notes.send(IngressNote::Protocol(err.detail));
                 }
             },
         }
     }
 }
 
+enum Wake {
+    Command(Command),
+    Frame(Frame),
+    Note(IngressNote),
+    Idle,
+    Closed,
+}
+
+fn poll_bridge(
+    cmd_rx: &Receiver<Command>,
+    frame_rx: &Receiver<Frame>,
+    note_rx: &Receiver<IngressNote>,
+) -> Wake {
+    match cmd_rx.try_recv() {
+        Ok(cmd) => return Wake::Command(cmd),
+        Err(TryRecvError::Disconnected) => return Wake::Closed,
+        Err(TryRecvError::Empty) => {}
+    }
+    match note_rx.try_recv() {
+        Ok(note) => return Wake::Note(note),
+        Err(TryRecvError::Disconnected) => return Wake::Note(IngressNote::Eof),
+        Err(TryRecvError::Empty) => {}
+    }
+    match frame_rx.try_recv() {
+        Ok(frame) => return Wake::Frame(frame),
+        Err(TryRecvError::Disconnected) => return Wake::Note(IngressNote::Eof),
+        Err(TryRecvError::Empty) => {}
+    }
+    match cmd_rx.recv_timeout(Duration::from_millis(40)) {
+        Ok(cmd) => Wake::Command(cmd),
+        Err(RecvTimeoutError::Timeout) => Wake::Idle,
+        Err(RecvTimeoutError::Disconnected) => Wake::Closed,
+    }
+}
+
+fn join_within(handle: JoinHandle<()>, timeout: Duration) -> Result<(), JoinHandle<()>> {
+    let (tx, rx) = mpsc::channel();
+    let waiter = thread::spawn(move || {
+        let _ = handle.join();
+        let _ = tx.send(());
+    });
+    match rx.recv_timeout(timeout) {
+        Ok(()) => {
+            let _ = waiter.join();
+            Ok(())
+        }
+        Err(_) => Err(waiter),
+    }
+}
+
+struct WorkerFinished(Arc<AtomicBool>);
+
+impl Drop for WorkerFinished {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
+}
+
 fn worker(
     mut proc: SpawnedSidecar,
     core: Arc<Core>,
-    rx: Receiver<Inbox>,
+    cmd_rx: Receiver<Command>,
+    frame_rx: Receiver<Frame>,
+    note_rx: Receiver<IngressNote>,
     hooks: Arc<Hooks>,
     scripted: bool,
     status: Arc<Mutex<SidecarStatus>>,
     stderr_out: Arc<Mutex<String>>,
     pgid: Arc<AtomicU32>,
     pid: Arc<AtomicU32>,
+    worker_done: Arc<AtomicBool>,
+    stop_requested: Arc<AtomicBool>,
 ) {
+    let _finished = WorkerFinished(worker_done);
     let _ = stderr_out;
     let mut ready = false;
     let mut ready_waiters: Vec<Sender<Result<(), ShellError>>> = Vec::new();
@@ -690,11 +881,11 @@ fn worker(
         {
             // Keep waiting for commands; host.ready timeout fails an opening below.
         }
-        let msg = rx.recv_timeout(Duration::from_millis(40));
-        match msg {
-            Ok(Inbox::Frame(frame)) => {
+        match poll_bridge(&cmd_rx, &frame_rx, &note_rx) {
+            Wake::Frame(frame) => {
                 if frame.method == "host.ready" && frame.kind == FrameKind::Request {
                     ready = true;
+                    publish_connected(&status);
                     let _ = reply_ready(&mut proc, &frame);
                     for waiter in ready_waiters.drain(..) {
                         let _ = waiter.send(Ok(()));
@@ -724,18 +915,42 @@ fn worker(
                     }
                 }
             }
-            Ok(Inbox::Eof) | Ok(Inbox::Protocol(_)) => {
-                fail_active(
+            Wake::Note(IngressNote::Overflow) => {
+                let _ = shutdown_sidecar(
+                    &mut proc,
                     &mut active,
-                    ShellError::new("sidecar_eof", "sidecar stdout closed before a core commit"),
+                    &mut pending,
+                    &mut ready_waiters,
+                    &status,
+                    &pgid,
+                    &pid,
+                    ShellError::new(
+                        "queue_overflow",
+                        format!(
+                            "stdout frame ingress exceeded {FRAME_INGRESS_CAP}; closing the affected run and pipe"
+                        ),
+                    ),
                 );
-                let report = proc.stop();
-                pgid.store(0, Ordering::SeqCst);
-                pid.store(0, Ordering::SeqCst);
-                publish_stopped(&status, &report);
+                if let Ok(mut slot) = status.lock() {
+                    slot.connected = false;
+                    slot.reason = "stdout frame ingress full; run and pipe closed";
+                }
                 break;
             }
-            Ok(Inbox::Cmd(command)) => match command {
+            Wake::Note(IngressNote::Eof) | Wake::Note(IngressNote::Protocol(_)) => {
+                let _ = shutdown_sidecar(
+                    &mut proc,
+                    &mut active,
+                    &mut pending,
+                    &mut ready_waiters,
+                    &status,
+                    &pgid,
+                    &pid,
+                    ShellError::new("sidecar_eof", "sidecar stdout closed before a core commit"),
+                );
+                break;
+            }
+            Wake::Command(command) => match command {
                 Command::Opening {
                     workspace_id,
                     reply,
@@ -804,24 +1019,39 @@ fn worker(
                             "probe refused while a run is active",
                         ))
                     } else {
-                        run_probe(&mut proc, &rx, &mut seen)
+                        run_probe(&mut proc, &cmd_rx, &frame_rx, &note_rx, &mut seen)
                     };
                     let _ = reply.send(result);
                 }
                 Command::Stop { reply } => {
-                    fail_active(
+                    let report = shutdown_sidecar(
+                        &mut proc,
                         &mut active,
+                        &mut pending,
+                        &mut ready_waiters,
+                        &status,
+                        &pgid,
+                        &pid,
                         ShellError::new("cancelled", "sidecar stop before core commit"),
                     );
-                    let report = proc.stop();
-                    pgid.store(0, Ordering::SeqCst);
-                    pid.store(0, Ordering::SeqCst);
-                    publish_stopped(&status, &report);
                     let _ = reply.send(report);
                     break;
                 }
             },
-            Err(mpsc::RecvTimeoutError::Timeout) => {
+            Wake::Idle => {
+                if stop_requested.load(Ordering::SeqCst) {
+                    let _ = shutdown_sidecar(
+                        &mut proc,
+                        &mut active,
+                        &mut pending,
+                        &mut ready_waiters,
+                        &status,
+                        &pgid,
+                        &pid,
+                        ShellError::new("cancelled", "sidecar stop before core commit"),
+                    );
+                    break;
+                }
                 if let Some(Command::Opening {
                     workspace_id,
                     reply,
@@ -849,16 +1079,56 @@ fn worker(
                     }
                 }
             }
-            Err(mpsc::RecvTimeoutError::Disconnected) => {
-                fail_active(
+            Wake::Closed => {
+                let _ = shutdown_sidecar(
+                    &mut proc,
                     &mut active,
+                    &mut pending,
+                    &mut ready_waiters,
+                    &status,
+                    &pgid,
+                    &pid,
                     ShellError::new("sidecar_closed", "bridge channel closed"),
                 );
-                let report = proc.stop();
-                publish_stopped(&status, &report);
                 break;
             }
         }
+    }
+}
+
+fn shutdown_sidecar(
+    proc: &mut SpawnedSidecar,
+    active: &mut Option<Active>,
+    pending: &mut Option<Command>,
+    ready_waiters: &mut Vec<Sender<Result<(), ShellError>>>,
+    status: &Mutex<SidecarStatus>,
+    pgid: &AtomicU32,
+    pid: &AtomicU32,
+    err: ShellError,
+) -> StopReport {
+    if let Some(Command::Opening { reply, .. }) = pending.take() {
+        let _ = reply.send(Err(err.clone()));
+    }
+    for waiter in ready_waiters.drain(..) {
+        let _ = waiter.send(Err(err.clone()));
+    }
+    fail_active(active, err);
+    let report = proc.stop();
+    pgid.store(0, Ordering::SeqCst);
+    pid.store(0, Ordering::SeqCst);
+    publish_stopped(status, &report);
+    report
+}
+
+fn publish_connected(status: &Mutex<SidecarStatus>) {
+    if let Ok(mut slot) = status.lock() {
+        *slot = SidecarStatus {
+            connected: true,
+            transport: "stdio",
+            windows_job_object: "not_applicable_unix_process_group",
+            reason:
+                "Node sidecar ready. Model transport is the explicit scripted slot, not StepFun.",
+        };
     }
 }
 
@@ -1128,16 +1398,18 @@ fn handle_frame(
         }
         return None;
     }
-    if frame.reply_to.as_deref() != Some(run.request_id.as_str()) && frame.kind != FrameKind::Error
-    {
-        let _ = send_error(
-            proc,
-            frame,
-            &run.workspace_id,
-            &run.run_id,
-            "correlation_rejected",
-            "reply does not match the opening request",
-        );
+    if frame.reply_to.as_deref() != Some(run.request_id.as_str()) {
+        if frame.kind != FrameKind::Error {
+            let _ = send_error(
+                proc,
+                frame,
+                &run.workspace_id,
+                &run.run_id,
+                "correlation_rejected",
+                "reply does not match the opening request",
+            );
+        }
+        // A late error for run.cancel or the previous run must not fail the current run.
         return None;
     }
     if run.cancelled || run.timed_out {
@@ -1193,7 +1465,12 @@ fn handle_frame(
             session_ref: session_ref.to_string(),
             bound_at: String::new(),
         };
-        if let Err(err) = core.bind_opening_session(&binding) {
+        let policy = frame
+            .payload
+            .get("contextPolicy")
+            .and_then(|item| item.as_str())
+            .unwrap_or("");
+        if let Err(err) = bind_reported_session(core, &binding, policy) {
             return Some(finish_run(run, Err(err.into())));
         }
         run.session_ref = Some(session_ref.to_string());
@@ -1626,7 +1903,9 @@ fn current_source_ids(core: &Core, workspace_id: &WorkspaceId) -> Result<Vec<Str
 
 fn run_probe(
     proc: &mut SpawnedSidecar,
-    rx: &Receiver<Inbox>,
+    cmd_rx: &Receiver<Command>,
+    frame_rx: &Receiver<Frame>,
+    note_rx: &Receiver<IngressNote>,
     seen: &mut HashSet<String>,
 ) -> Result<ProtocolProbe, ShellError> {
     let id = RequestId::new().as_str().to_string();
@@ -1695,8 +1974,8 @@ fn run_probe(
     let mut cross = false;
     let mut unknown_rejected = false;
     while start.elapsed() < Duration::from_secs(8) {
-        match rx.recv_timeout(Duration::from_millis(100)) {
-            Ok(Inbox::Frame(frame)) => {
+        match poll_bridge(cmd_rx, frame_rx, note_rx) {
+            Wake::Frame(frame) => {
                 let code = frame
                     .error
                     .as_ref()
@@ -1720,13 +1999,12 @@ fn run_probe(
                     break;
                 }
             }
-            Ok(Inbox::Cmd(Command::Stop { reply })) => {
+            Wake::Command(Command::Stop { reply }) => {
                 let _ = reply.send(proc.stop());
                 return Err(ShellError::new("cancelled", "stopped during probe"));
             }
-            Ok(_) => {}
-            Err(mpsc::RecvTimeoutError::Timeout) => {}
-            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            Wake::Command(_) | Wake::Idle | Wake::Note(IngressNote::Protocol(_)) => {}
+            Wake::Note(_) | Wake::Closed => break,
         }
     }
     Ok(ProtocolProbe {
@@ -1835,6 +2113,24 @@ fn write_frame(proc: &mut SpawnedSidecar, frame: &Frame) -> Result<(), ShellErro
     proc.write_frame(&bytes)
 }
 
+fn bind_reported_session(
+    core: &Core,
+    binding: &SessionBinding,
+    policy: &str,
+) -> Result<SessionBinding, hark_core::CoreError> {
+    if policy == "new-session-compaction-fallback" {
+        match core.replace_opening_session_for_compaction(binding) {
+            Ok(stored) => return Ok(stored),
+            Err(err)
+                if err
+                    .detail
+                    .contains("requires the current run session binding") => {}
+            Err(err) => return Err(err),
+        }
+    }
+    core.bind_opening_session(binding)
+}
+
 fn session_ref_ok(value: &str) -> bool {
     let Some(rest) = value.strip_prefix("pi:") else {
         return false;
@@ -1873,5 +2169,102 @@ pub fn process_kill_pid(pid: u32) {
         unsafe {
             libc::kill(pid as i32, libc::SIGKILL);
         }
+    }
+}
+
+#[cfg(test)]
+mod ingress_tests {
+    use super::*;
+    use std::process::Stdio;
+
+    fn flood_frame() -> Frame {
+        Frame {
+            v: 1,
+            kind: FrameKind::Event,
+            id: "evt_0123456789abcdef0123456789abcdef".to_string(),
+            reply_to: None,
+            workspace_id: None,
+            run_id: None,
+            method: "stream.delta".to_string(),
+            deadline_unix_ms: None,
+            payload: json!({"text": "x"}),
+            error: None,
+        }
+    }
+
+    struct KillOnDrop(Option<std::process::Child>);
+    impl Drop for KillOnDrop {
+        fn drop(&mut self) {
+            if let Some(child) = self.0.as_mut() {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+        }
+    }
+
+    #[test]
+    fn stdout_reader_caps_a_real_child_and_does_not_block() {
+        let node = PathBuf::from("/usr/local/bin/node");
+        assert!(node.is_file(), "dev node binary missing");
+        let bytes = encode_frame(&flood_frame()).unwrap();
+        let tmp = tempfile::tempdir().unwrap();
+        let frame_path = tmp.path().join("frame.ndjson");
+        fs::write(&frame_path, &bytes).unwrap();
+        let mut child = std::process::Command::new(&node)
+            .arg("-e")
+            .arg("const fs=require('fs'); const line=fs.readFileSync(process.argv[1]); for (let i=0;i<200;i++) process.stdout.write(line);")
+            .arg(&frame_path)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let stdout = child.stdout.take().unwrap();
+        let mut guard = KillOnDrop(Some(child));
+        let (frames, frame_rx, notes, note_rx) = open_frame_ingress();
+        let reader = thread::spawn(move || read_stdout(stdout, frames, notes));
+        let note = note_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("reader blocked or did not signal overflow");
+        assert!(matches!(note, IngressNote::Overflow), "{note:?}");
+        let start = Instant::now();
+        let mut exited = false;
+        while start.elapsed() < Duration::from_secs(5) {
+            if guard.0.as_mut().unwrap().try_wait().unwrap().is_some() {
+                exited = true;
+                break;
+            }
+            thread::sleep(Duration::from_millis(20));
+        }
+        assert!(
+            exited,
+            "flood child stayed blocked after ingress closed the pipe"
+        );
+        let mut queued = 0;
+        while frame_rx.try_recv().is_ok() {
+            queued += 1;
+        }
+        assert_eq!(queued, FRAME_INGRESS_CAP, "ingress accepted {queued}");
+        reader.join().expect("reader thread");
+        assert!(start.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn full_frame_ingress_does_not_block_a_cancel_command() {
+        let (frames, _frame_rx, _notes, _note_rx) = open_frame_ingress();
+        let sample = flood_frame();
+        for _ in 0..FRAME_INGRESS_CAP {
+            frames.try_send(sample.clone()).unwrap();
+        }
+        assert!(frames.try_send(sample).is_err());
+        let (cmd_tx, cmd_rx) = mpsc::channel();
+        let started = Instant::now();
+        cmd_tx
+            .send(super::Command::Cancel {
+                workspace_id: "ws".to_string(),
+            })
+            .unwrap();
+        let cmd = cmd_rx.recv_timeout(Duration::from_millis(200)).unwrap();
+        assert!(matches!(cmd, super::Command::Cancel { .. }));
+        assert!(started.elapsed() < Duration::from_millis(200));
     }
 }

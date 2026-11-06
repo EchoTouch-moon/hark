@@ -39,7 +39,7 @@
 - 首次开场的 authorization 由 Rust 从当前 Core 构造。Host 仍不写 SQLite。常规连续对话 run 仍 pending。
 - StepFun endpoint、流式、工具调用和计费仍 unverified。显式 `providerId: stepfun` 不再被型号字符串拒绝，但没有启用配置、凭据和 `allowRemote` 时仍然关闭。`faux` 仍拒绝，不是 fallback。本轮只用合成 Key 和拦截 transport 看 OpenAI-completions 形状，没有联网。真实协议未臆造。
 - Pi 1.5.0 `ModelRuntime.create` 没有 `authContext`。生产收口是：刷新前给 `google-vertex` 注册字面 closed key，并在加载 SDK 前只拒绝已知凭据路径。这不是全量 fs monkeypatch，也不证明所有未来 SDK 探测都已关闭。
-- 队列上限由 sidecar 使用的同一 codec 单测证明。拉起的 stdio probe 现在会在活动 run 上关闭 stdin，并暂停 stdout 后要求子进程在 3 秒内退出。没有把 OS pipe 故意堵满到内核容量。进程内 Writable 停住 write callback，证明不会空转续发。
+- Rust stdout→worker ingress cap 现为合同控制队列 64，由生产 `read_stdout` 加真实 Node 子进程 flood 证明；满载关闭 run/管道，stop/cancel 不走这条满队列。没有把活动 Pi run 灌满 64 帧，不能据此称整份 IPC 合同已由实机会话灌满。Node SideQueues 单测仍在。Host stdio probe 仍会关 stdin 并暂停 stdout。没有把 OS pipe 堵到内核容量。
 - 自动 compaction 关闭。遇到无法证明不含旧事实的 compaction/branch summary 时，Host 新建官方 Session，不把旧摘要当当前来源。
 - sessionRef 存在 onboarding evidence_json，不是新授权表。Unix 进程组已有本机证据。Windows Job Object 仍未实现。
 - 开场提交仍是延迟事务。与撤权写者重叠时可能返回 SQLite busy，而不是 `root_revoked`；busy 时不提交新开场。撤权已经返回之后，读侧与开场侧都拒绝。

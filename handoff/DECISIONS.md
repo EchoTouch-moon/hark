@@ -67,3 +67,5 @@
 - 不新增 migration。`onboarding_runs.evidence_json` 已按 workspace+generation 持久化，并已有 scan 元数据。typed `sessionBinding`（workspace、conversation、run、sessionRef）作为业务引用写入同一对象，不覆盖 scanId，也不成为授权权威。授权仍是 service grant、root 状态和 Core 发放的 active run。跨 session 查询或唯一约束不是本切片验收，所以不加列、不建 agent/session 平台。
 - `run.start.userMessageId` 对 `purpose: opening` 必须缺省。conversation 仍要求真实已存 `msg_` id。不为对齐 DTO 向 Hark 插入虚假用户发言。首轮 `userText` 是内部初读指令。Pi JSONL 仍可能把该指令记成 session prompt；那不是 Hark `user_message`。
 - 开发 Node 路径只来自 Rust `DevSidecarConfig`，不注册为前端命令。合成模型许可只走 `dev_set_synthetic_model_grant`，不进入 Tauri IPC。未配置时 `connected=false`，不读 Key，不发请求。Windows 无 Job Object 时拒绝启动。
+- 已结束 opening run 的当前 `sessionBinding` 可被 Core 新发放的 run 替换。同 run 不能任意换 session。compaction 新 session 只走显式 `replace_opening_session_for_compaction`，不扩常规对话，不删 Pi JSONL，不复活旧 run。
+- Sidecar 状态只有一份 `Arc`。stdout frame ingress 上限等于 IPC control queue 64；过载关闭受影响 run 和管道。`stop`/`Drop` 有界；worker 未结束时返回 timeout，不允许并发复活同一任务。已 SIGKILL 的子进程用 `waitpid(WNOHANG)` 回收。已进入内核的单次 syscall 仍不可打断。
