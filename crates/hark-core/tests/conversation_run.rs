@@ -821,7 +821,7 @@ fn v2_nonempty_database_upgrades_without_loss() {
     drop(conn);
 
     let core = Core::open(&path).unwrap();
-    assert_eq!(core.schema_version().unwrap(), 3);
+    assert_eq!(core.schema_version().unwrap(), 4);
     let ws = WorkspaceId::from_trusted("ws_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string());
     let conv = ConversationId::from_trusted("conv_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string());
     let events = core.list_conversation(&ws).unwrap();

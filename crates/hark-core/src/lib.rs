@@ -10,7 +10,9 @@ mod grant;
 mod ids;
 mod ipc;
 mod limits;
+mod memory;
 mod messages;
+mod opinion;
 mod policy;
 #[cfg(unix)]
 mod reader;
@@ -18,6 +20,8 @@ mod reader;
 #[path = "reader_unsupported.rs"]
 mod reader;
 mod scan;
+mod search;
+mod support;
 mod workspace;
 
 pub use conversation::{
@@ -37,9 +41,18 @@ pub use limits::{
     DEFAULT_TIMEOUT_MS, MAX_CONTROL_QUEUE, MAX_FRAME_BYTES, MAX_STREAM_QUEUE, MAX_TIMEOUT_MS,
     SCHEMA_VERSION,
 };
+pub use memory::{
+    MemoryCallContext, MemoryCaller, MemoryChangeProposal, MemoryNote, MemoryNoteKind,
+    MemoryOperation, MemoryReceipt, MemoryRevisionEntry, OUTCOME_COMMITTED, OUTCOME_CONFLICT,
+    OUTCOME_NEEDS_CLARIFICATION, OUTCOME_NOOP, OUTCOME_REVERTED,
+};
 pub use messages::{
     AgentOpeningReceipt, ConversationEvent, FileRead, FirstMessage, OnboardingCheckpoint,
     SelectiveReadReport, SessionBinding, SourceRef, WorkspaceOverview,
+};
+pub use opinion::{
+    OpinionChangeProposal, OpinionFeedbackAction, OpinionFeedbackInput, OpinionReceipt,
+    OpinionRevisionEntry, OpinionView,
 };
 pub use reader::{
     reader_open_attempts, reader_read_syscalls, reader_readdir_steps, reset_reader_work_counters,
@@ -47,6 +60,7 @@ pub use reader::{
     set_reader_after_workspace_verify_hook, set_reader_before_open_hook,
 };
 pub use scan::{CandidateRole, IgnoredEntry, InitialScan, ScanBudget, ScanCandidate, ScanStatus};
+pub use search::{MemorySearchInput, MemorySearchItem, MemorySearchPage};
 pub use workspace::{
     ConfirmImport, ConfirmResult, ImportMode, ServiceGrant, ServiceGrantUpdate, ServiceKind,
     ServiceStatus, Workspace,

@@ -736,6 +736,16 @@ fn insert_source(
             now,
         ],
     )?;
+    if let Some(excerpt) = excerpt.as_deref() {
+        crate::search::project_source(
+            tx,
+            id.as_str(),
+            ws.id.as_str(),
+            relative_path,
+            excerpt,
+            &now,
+        )?;
+    }
     Ok(SourceRef {
         id,
         workspace_id: ws.id.clone(),
@@ -814,6 +824,15 @@ pub(crate) fn insert_event(
             now,
             seq,
         ],
+    )?;
+    crate::search::project_event(
+        tx,
+        id.as_str(),
+        ws.id.as_str(),
+        ws.conversation_id.as_str(),
+        kind,
+        body,
+        &now,
     )?;
     Ok(ConversationEvent {
         id,

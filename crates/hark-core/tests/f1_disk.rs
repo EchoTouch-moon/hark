@@ -85,9 +85,14 @@ fn confirm_single(
 #[test]
 fn migration_is_current_and_lists_only_current_tables() {
     let db = Db::new();
-    assert_eq!(db.core.schema_version().unwrap(), 3);
+    assert_eq!(db.core.schema_version().unwrap(), 4);
     db.core.schema_version().unwrap();
     let mut tables = db.core.schema_tables().unwrap();
+    assert!(
+        tables.iter().any(|name| name == "memory_search_fts"),
+        "fts projection missing: {tables:?}"
+    );
+    tables.retain(|name| !name.starts_with("memory_search_fts"));
     tables.sort();
     assert_eq!(
         tables,
@@ -96,18 +101,27 @@ fn migration_is_current_and_lists_only_current_tables() {
             "conversation_events",
             "conversation_runs",
             "conversations",
+            "memory_revisions",
+            "memory_search_docs",
+            "memory_write_receipts",
             "onboarding_runs",
+            "opinion_feedback",
+            "opinion_revisions",
+            "opinions",
             "scan_candidates",
             "scan_sessions",
             "schema_migrations",
             "service_grants",
             "source_refs",
+            "workspace_memories",
             "workspaces",
         ]
     );
     let again = Core::open(&db.path).unwrap();
-    assert_eq!(again.schema_version().unwrap(), 3);
-    assert_eq!(again.schema_tables().unwrap().len(), tables.len());
+    assert_eq!(again.schema_version().unwrap(), 4);
+    let mut again_tables = again.schema_tables().unwrap();
+    again_tables.retain(|name| !name.starts_with("memory_search_fts"));
+    assert_eq!(again_tables.len(), tables.len());
 }
 
 #[test]

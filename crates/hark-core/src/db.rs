@@ -13,6 +13,8 @@ const MIGRATION_V2: &str = include_str!("../migrations/0002_opening_run.sql");
 const MIGRATION_V2_NAME: &str = "0002_opening_run";
 const MIGRATION_V3: &str = include_str!("../migrations/0003_conversation_run.sql");
 const MIGRATION_V3_NAME: &str = "0003_conversation_run";
+const MIGRATION_V4: &str = include_str!("../migrations/0004_memory.sql");
+const MIGRATION_V4_NAME: &str = "0004_memory";
 
 pub(crate) fn open_path(path: &Path) -> Result<Core> {
     let conn = Connection::open(path)?;
@@ -61,7 +63,7 @@ pub(crate) fn migrate(core: &Core) -> Result<()> {
             Some(v) if (1..SCHEMA_VERSION).contains(&v) => apply_upgrades_from(tx, v),
             Some(v) => Err(CoreError::new(
                 ErrorCode::MigrationFailed,
-                format!("unsupported schema version {v}; this library applies v1 through v3"),
+                format!("unsupported schema version {v}; this library applies v1 through v4"),
             )),
         }
     })
@@ -70,7 +72,8 @@ pub(crate) fn migrate(core: &Core) -> Result<()> {
 fn apply_fresh(tx: &Transaction<'_>) -> Result<()> {
     apply_version(tx, 1, MIGRATION_V1_NAME, MIGRATION_V1)?;
     apply_version(tx, 2, MIGRATION_V2_NAME, MIGRATION_V2)?;
-    apply_conversation_v3(tx)
+    apply_conversation_v3(tx)?;
+    apply_memory_v4(tx)
 }
 
 fn apply_upgrades_from(tx: &Transaction<'_>, version: i64) -> Result<()> {
@@ -80,6 +83,41 @@ fn apply_upgrades_from(tx: &Transaction<'_>, version: i64) -> Result<()> {
     if version < 3 {
         apply_conversation_v3(tx)?;
     }
+    if version < 4 {
+        apply_memory_v4(tx)?;
+    }
+    Ok(())
+}
+
+fn apply_memory_v4(tx: &Transaction<'_>) -> Result<()> {
+    let events_before = scalar_count(tx, "SELECT COUNT(*) FROM conversation_events")?;
+    let sources_before = scalar_count(tx, "SELECT COUNT(*) FROM source_refs")?;
+    tx.execute_batch(MIGRATION_V4)?;
+    crate::search::backfill_existing(tx)?;
+    let events_after = scalar_count(tx, "SELECT COUNT(*) FROM conversation_events")?;
+    let sources_after = scalar_count(tx, "SELECT COUNT(*) FROM source_refs")?;
+    if events_before != events_after || sources_before != sources_after {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            format!(
+                "refusing memory migration: events {events_before}->{events_after}, sources {sources_before}->{sources_after}"
+            ),
+        ));
+    }
+    let fts = scalar_count(
+        tx,
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'memory_search_fts'",
+    )?;
+    if fts != 1 {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            "memory_search_fts missing after v4",
+        ));
+    }
+    tx.execute(
+        "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?1, ?2, ?3)",
+        rusqlite::params![4_i64, MIGRATION_V4_NAME, Utc::now().to_rfc3339()],
+    )?;
     Ok(())
 }
 
@@ -382,7 +420,7 @@ mod tests {
         drop(conn);
 
         let core = open_path(&path).unwrap();
-        assert_eq!(schema_version(&core).unwrap(), 3);
+        assert_eq!(schema_version(&core).unwrap(), 4);
         let columns = core
             .with_conn(|conn| {
                 let mut stmt = conn.prepare("PRAGMA table_info(onboarding_runs)")?;
@@ -405,7 +443,7 @@ mod tests {
             assert!(columns.iter().any(|name| name == required), "{required}");
         }
         let again = open_path(&path).unwrap();
-        assert_eq!(schema_version(&again).unwrap(), 3);
+        assert_eq!(schema_version(&again).unwrap(), 4);
         let runs: i64 = again
             .with_conn(|conn| {
                 conn.query_row(
