@@ -97,6 +97,15 @@ export const readFileResultSchema = z
   })
   .strict();
 
+export const STEPFUN_PROVIDER_ID = "stepfun";
+export const STEPFUN_MODEL_ID = "step-3.7-flash";
+export const STEPFUN_BASE_URL = "https://api.stepfun.com/step_plan";
+export const STEPFUN_WIRE = "anthropic-messages" as const;
+/** Dedicated child env. Node must delete it before any other credential scrub. */
+export const SESSION_KEY_ENV = "HARK_SESSION_PROVIDER_KEY";
+
+const providerWireSchema = z.enum(["openai-completions", "anthropic-messages"]);
+
 export const providerConfigSchema = z
   .object({
     enabled: z.boolean(),
@@ -104,13 +113,64 @@ export const providerConfigSchema = z
     modelId: z.string().min(1).max(128),
     baseUrl: z.string().url().max(256),
     apiKey: z.string().min(1).max(512),
-    wire: z.literal("openai-completions"),
+    wire: providerWireSchema,
     allowRemote: z.boolean(),
     stepFunCompatible: z.literal(false).optional(),
   })
   .strict();
 
 export type ProviderConfig = z.infer<typeof providerConfigSchema>;
+
+/** On-disk slot. The product file must not contain apiKey. */
+export const providerFileSchema = z
+  .object({
+    enabled: z.boolean(),
+    providerId: z.string().min(1).max(64),
+    modelId: z.string().min(1).max(128),
+    baseUrl: z.string().url().max(256),
+    apiKey: z.string().min(1).max(512).optional(),
+    wire: providerWireSchema,
+    allowRemote: z.boolean(),
+    stepFunCompatible: z.literal(false).optional(),
+    keyStorage: z.literal("process-memory").optional(),
+    authenticated: z.literal(false).optional(),
+  })
+  .strict();
+
+export function takeSessionProviderKey(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const value = env[SESSION_KEY_ENV];
+  delete env[SESSION_KEY_ENV];
+  if (!value) return undefined;
+  return value;
+}
+
+export function providerConfigFromFile(raw: unknown, sessionKey: string | undefined): ProviderConfig {
+  const file = providerFileSchema.parse(raw);
+  if (file.wire === "anthropic-messages") {
+    if (file.apiKey) throw new Error("provider file must not contain a key");
+    if (
+      file.providerId !== STEPFUN_PROVIDER_ID ||
+      file.modelId !== STEPFUN_MODEL_ID ||
+      file.baseUrl !== STEPFUN_BASE_URL ||
+      file.allowRemote !== true
+    ) {
+      throw new Error("anthropic-messages file is not the fixed StepFun plan package");
+    }
+    if (!sessionKey) throw new Error("session key was not injected");
+  }
+  const apiKey = file.apiKey ?? sessionKey;
+  if (!apiKey) throw new Error("provider key was not injected");
+  return providerConfigSchema.parse({
+    enabled: file.enabled,
+    providerId: file.providerId,
+    modelId: file.modelId,
+    baseUrl: file.baseUrl,
+    apiKey,
+    wire: file.wire,
+    allowRemote: file.allowRemote,
+    ...(file.stepFunCompatible === false ? { stepFunCompatible: false as const } : {}),
+  });
+}
 
 export const scriptedTransportSchema = z
   .object({

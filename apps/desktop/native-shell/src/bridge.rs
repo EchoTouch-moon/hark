@@ -169,6 +169,7 @@ struct Hooks {
     timeout_ms: AtomicU64,
     provider: Mutex<String>,
     model: Mutex<String>,
+    scripted: AtomicBool,
 }
 
 #[derive(Debug)]
@@ -283,6 +284,7 @@ impl SidecarSupervisor {
                 timeout_ms: AtomicU64::new(60_000),
                 provider: Mutex::new(String::new()),
                 model: Mutex::new(String::new()),
+                scripted: AtomicBool::new(true),
             }),
             last_stop: Mutex::new(None),
         }
@@ -337,7 +339,37 @@ impl SidecarSupervisor {
                 "stop the sidecar before changing its config",
             ));
         }
-        let slot = validate_config(&config)?;
+        let slot = validate_config(&config, None)?;
+        *self
+            .slot
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "slot"))? = Some(slot);
+        *self
+            .config
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "config"))? = Some(config);
+        *self
+            .status
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "status"))? =
+            disconnected("configured_not_started");
+        Ok(())
+    }
+
+    /// In-memory session key. The provider file must already be keyless metadata.
+    pub fn configure_session(&self, config: DevSidecarConfig, secret: &str) -> Result<(), ShellError> {
+        if self
+            .worker
+            .lock()
+            .map(|slot| slot.is_some())
+            .unwrap_or(true)
+        {
+            return Err(ShellError::new(
+                "sidecar_running",
+                "stop the sidecar before changing its config",
+            ));
+        }
+        let slot = validate_config(&config, Some(secret))?;
         *self
             .slot
             .lock()
@@ -418,12 +450,14 @@ impl SidecarSupervisor {
             if let Ok(mut model) = self.hooks.model.lock() {
                 *model = slot.model.clone();
             }
+            self.hooks.scripted.store(slot.scripted, Ordering::SeqCst);
             let (proc, stdout) = SpawnedSidecar::spawn(
                 &config.node_path,
                 &args,
                 &config.working_dir,
                 &fake_home,
                 &slot.secret,
+                !slot.scripted,
                 Arc::clone(&self.stderr),
             )?;
             self.pid.store(proc.pid, Ordering::SeqCst);
@@ -720,7 +754,7 @@ fn disconnected(reason: &'static str) -> SidecarStatus {
     }
 }
 
-fn validate_config(config: &DevSidecarConfig) -> Result<ProviderSlot, ShellError> {
+fn validate_config(config: &DevSidecarConfig, session_secret: Option<&str>) -> Result<ProviderSlot, ShellError> {
     let node = safe_file(&config.node_path, "node")?;
     let entry = safe_file(&config.host_entry, "host entry")?;
     if entry.file_name().and_then(|name| name.to_str()) != Some("sidecar.ts") {
@@ -738,7 +772,7 @@ fn validate_config(config: &DevSidecarConfig) -> Result<ProviderSlot, ShellError
             "provider config must stay inside app-data",
         ));
     }
-    if let Some(scripted) = &config.scripted_transport_path {
+    let scripted = if let Some(scripted) = &config.scripted_transport_path {
         let scripted = safe_file(scripted, "scripted transport")?;
         if !scripted.starts_with(&app_data) {
             return Err(ShellError::new(
@@ -746,12 +780,10 @@ fn validate_config(config: &DevSidecarConfig) -> Result<ProviderSlot, ShellError
                 "scripted transport must stay inside app-data",
             ));
         }
+        true
     } else {
-        return Err(ShellError::new(
-            "sidecar_transport_closed",
-            "this slice only starts with an explicit scripted transport. Remote StepFun stays closed.",
-        ));
-    }
+        false
+    };
     if config.run_timeout_ms == 0 || config.run_timeout_ms > 120_000 {
         return Err(ShellError::new(
             "sidecar_config",
@@ -785,23 +817,7 @@ fn validate_config(config: &DevSidecarConfig) -> Result<ProviderSlot, ShellError
         .get("wire")
         .and_then(|item| item.as_str())
         .unwrap_or("");
-    let secret = value
-        .get("apiKey")
-        .and_then(|item| item.as_str())
-        .unwrap_or("")
-        .to_string();
-    if !enabled
-        || allow_remote
-        || wire != "openai-completions"
-        || provider.is_empty()
-        || model.is_empty()
-        || secret.is_empty()
-    {
-        return Err(ShellError::new(
-            "sidecar_transport_closed",
-            "provider slot must be enabled, non-remote, openai-completions, with an explicit synthetic key",
-        ));
-    }
+    let file_secret = value.get("apiKey").and_then(|item| item.as_str()).unwrap_or("");
     if provider == "faux" || model == "faux" {
         return Err(ShellError::new("sidecar_config", "faux is not a provider"));
     }
@@ -811,11 +827,49 @@ fn validate_config(config: &DevSidecarConfig) -> Result<ProviderSlot, ShellError
             "host entry is not an absolute trusted file",
         ));
     }
+    if scripted {
+        if !enabled || allow_remote || wire != "openai-completions" || provider.is_empty() || model.is_empty() || file_secret.is_empty()
+        {
+            return Err(ShellError::new(
+                "sidecar_transport_closed",
+                "provider slot must be enabled, non-remote, openai-completions, with an explicit synthetic key",
+            ));
+        }
+        return Ok(ProviderSlot {
+            provider,
+            model,
+            secret: file_secret.to_string(),
+            scripted: true,
+        });
+    }
+    let base = value.get("baseUrl").and_then(|item| item.as_str()).unwrap_or("");
+    if file_secret.is_empty() == false || raw.contains("apiKey") {
+        return Err(ShellError::new(
+            "secret_material_rejected",
+            "session provider file must not contain a key",
+        ));
+    }
+    let secret = session_secret.unwrap_or("");
+    if !enabled
+        || !allow_remote
+        || wire != "anthropic-messages"
+        || provider != "stepfun"
+        || model != "step-3.7-flash"
+        || base != "https://api.stepfun.com/step_plan"
+        || secret.len() < 8
+        || secret.len() > 512
+        || raw.contains(secret)
+    {
+        return Err(ShellError::new(
+            "sidecar_transport_closed",
+            "session slot must be the fixed StepFun plan package with an in-memory key",
+        ));
+    }
     Ok(ProviderSlot {
         provider,
         model,
-        secret,
-        scripted: true,
+        secret: secret.to_string(),
+        scripted: false,
     })
 }
 
@@ -1027,7 +1081,7 @@ fn worker(
             Wake::Frame(frame) => {
                 if frame.method == "host.ready" && frame.kind == FrameKind::Request {
                     ready = true;
-                    publish_connected(&status);
+                    publish_connected(&status, scripted);
                     let _ = reply_ready(&mut proc, &frame);
                     for waiter in ready_waiters.drain(..) {
                         let _ = waiter.send(Ok(()));
@@ -1278,14 +1332,17 @@ fn shutdown_sidecar(
     report
 }
 
-fn publish_connected(status: &Mutex<SidecarStatus>) {
+fn publish_connected(status: &Mutex<SidecarStatus>, scripted: bool) {
     if let Ok(mut slot) = status.lock() {
         *slot = SidecarStatus {
             connected: true,
             transport: "stdio",
             windows_job_object: "not_applicable_unix_process_group",
-            reason:
-                "Node sidecar ready. Model transport is the explicit scripted slot, not StepFun.",
+            reason: if scripted {
+                "Node sidecar ready. Model transport is the explicit scripted slot, not StepFun."
+            } else {
+                "Node sidecar ready. StepFun key is process memory only and is not authenticated."
+            },
         };
     }
 }
@@ -1688,7 +1745,12 @@ fn handle_frame(
         if run.purpose == "conversation" {
             commit_conversation_done(core, run, frame);
         } else {
-            let _ = commit_done(core, run, frame);
+            let transport = if hooks.scripted.load(Ordering::SeqCst) {
+                "scripted"
+            } else {
+                "stepfun_session"
+            };
+            let _ = commit_done(core, run, frame, transport);
         }
         return true;
     }
@@ -1867,6 +1929,7 @@ fn commit_done(
     core: &Core,
     run: &mut Active,
     frame: &Frame,
+    transport: &'static str,
 ) -> Result<OpeningBridgeResult, ShellError> {
     if run.cancelled || run.timed_out || run.session_ref.is_none() {
         return finish_run(
@@ -1954,7 +2017,7 @@ fn commit_done(
         folded_local_card: stored.folded_local_card,
         replayed: stored.replayed,
         node_pid: run.node_pid,
-        transport: "scripted",
+        transport,
         step_fun: "unverified",
     };
     finish_run(run, Ok(result))

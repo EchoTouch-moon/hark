@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -64,10 +66,119 @@ pub const FRONTEND_COMMANDS: &[&str] = &[
     "hide_window",
     "quit_app",
     "shell_snapshot",
+    "configure_stepfun_session",
+    "clear_stepfun_session",
+    "stepfun_session_status",
+    "set_model_grant",
 ];
 
 pub fn business_db_path(app_data_dir: &Path) -> PathBuf {
     app_data_dir.join("hark-r1").join("business.sqlite")
+}
+
+fn app_data_dir_of(db_path: &Path) -> PathBuf {
+    if db_path.file_name().and_then(|name| name.to_str()) == Some("business.sqlite") {
+        if let Some(parent) = db_path.parent() {
+            if parent.file_name().and_then(|name| name.to_str()) == Some("hark-r1") {
+                if let Some(app) = parent.parent() {
+                    return app.to_path_buf();
+                }
+            }
+            return parent.to_path_buf();
+        }
+    }
+    db_path.parent().unwrap_or(db_path).to_path_buf()
+}
+
+fn accept_session_key(value: &str) -> Result<(), ShellError> {
+    if value.len() < 8
+        || value.len() > 512
+        || value
+            .chars()
+            .any(|ch| ch.is_control() || ch.is_whitespace() || ch == '/' || ch == '\\')
+    {
+        return Err(ShellError::new(
+            "session_key_rejected",
+            "key must be a single token for this run",
+        ));
+    }
+    Ok(())
+}
+
+fn wipe_key(slot: &mut Option<String>) {
+    if let Some(value) = slot.take() {
+        let mut bytes = value.into_bytes();
+        for byte in &mut bytes {
+            *byte = 0;
+        }
+        drop(bytes);
+    }
+}
+
+fn dev_repo_root() -> Result<PathBuf, ShellError> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+    let canon = root.canonicalize().map_err(|_| {
+        ShellError::new("dev_runtime_missing", "repo root missing; packaging is not done")
+    })?;
+    if !canon.join("packages/agent-host/src/sidecar.ts").is_file() {
+        return Err(ShellError::new(
+            "dev_runtime_missing",
+            "packaging is not done; sidecar.ts is dev-only",
+        ));
+    }
+    Ok(canon)
+}
+
+fn dev_node22() -> Result<PathBuf, ShellError> {
+    for candidate in ["/usr/local/bin/node", "/opt/homebrew/bin/node"] {
+        let path = PathBuf::from(candidate);
+        if !path.is_file() {
+            continue;
+        }
+        let Ok(output) = Command::new(&path).arg("-v").output() else {
+            continue;
+        };
+        let text = String::from_utf8_lossy(&output.stdout);
+        if text.trim().starts_with("v22.") {
+            return Ok(path);
+        }
+    }
+    Err(ShellError::new(
+        "dev_runtime_missing",
+        "packaging is not done. This session path is dev-only and needs Node 22.",
+    ))
+}
+
+fn write_keyless_slot(path: &Path) -> Result<(), ShellError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| ShellError::new("io", err.to_string()))?;
+    }
+    let body = serde_json::json!({
+        "enabled": true,
+        "providerId": STEPFUN_PROVIDER,
+        "modelId": STEPFUN_MODEL,
+        "baseUrl": STEPFUN_BASE,
+        "wire": "anthropic-messages",
+        "allowRemote": true,
+        "keyStorage": "process-memory",
+        "authenticated": false
+    });
+    let text = serde_json::to_string(&body).map_err(|err| ShellError::new("io", err.to_string()))?;
+    if text.contains("apiKey") {
+        return Err(ShellError::new(
+            "secret_material_rejected",
+            "metadata writer refused a key field",
+        ));
+    }
+    let tmp = path.with_extension("json.tmp");
+    fs::write(&tmp, &text).map_err(|err| ShellError::new("io", err.to_string()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&tmp, fs::Permissions::from_mode(0o600));
+    }
+    fs::rename(&tmp, path).map_err(|err| ShellError::new("io", err.to_string()))?;
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -118,6 +229,40 @@ pub struct OpeningRequest {
     pub workspace_id: String,
 }
 
+/// Frontend sends only the key. Paths, model, and endpoint are not fields.
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StepFunKeyRequest {
+    pub api_key: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ModelGrantRequest {
+    pub workspace_id: String,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StepFunSessionStatus {
+    pub configured: bool,
+    /// Saving a key does not call the model and does not prove the key works.
+    pub authenticated: bool,
+    pub provider: &'static str,
+    pub model: &'static str,
+    pub base_url: &'static str,
+    pub wire: &'static str,
+    pub dev_only: bool,
+    pub packaging: &'static str,
+    pub sidecar_connected: bool,
+    pub restart_requires_key: bool,
+}
+
+const STEPFUN_PROVIDER: &str = "stepfun";
+const STEPFUN_MODEL: &str = "step-3.7-flash";
+const STEPFUN_BASE: &str = "https://api.stepfun.com/step_plan";
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Selection {
@@ -164,6 +309,8 @@ pub struct NativeShell {
     read_hold: Mutex<Option<TaskHold>>,
     clock_unix_ms: Arc<dyn Fn() -> u64 + Send + Sync>,
     quit_requested: AtomicBool,
+    app_data_dir: PathBuf,
+    session_key: Mutex<Option<String>>,
 }
 
 type TaskHold = Arc<dyn Fn() + Send + Sync>;
@@ -193,6 +340,8 @@ impl NativeShell {
             read_hold: Mutex::new(None),
             clock_unix_ms: Arc::new(clock_unix_ms),
             quit_requested: AtomicBool::new(false),
+            app_data_dir: app_data_dir_of(db_path),
+            session_key: Mutex::new(None),
         })
     }
 
@@ -210,14 +359,27 @@ impl NativeShell {
             roots: self.core.list_roots()?,
             workspaces: self.core.list_workspaces()?,
             reader_capability: self.core.reader_capability().to_string(),
-            remote_model_transport: "closed_no_approved_key",
+            remote_model_transport: if self.session_key_present() {
+                "stepfun_session_memory"
+            } else {
+                "closed_no_approved_key"
+            },
             sidecar: self.sidecar.status(),
-            notes: vec![
-                "目录读取与远程模型是两种许可。",
-                "未配置时不启动 Sidecar、不读 Key、不写开场，也不伪造普通聊天回复。",
-                "本地发现卡不是模型分析。开场只在 Core 提交成功后折叠。",
-                "Windows 未实现 Job Object 时 Sidecar 默认关闭。",
-            ],
+            notes: if self.session_key_present() {
+                vec![
+                    "目录读取与远程模型是两种许可。",
+                    "StepFun Key 只在本次运行内存。重启后要重新填写，不会读取全局凭据。",
+                    "保存不表示 Key 已认证，也不会自动发请求。",
+                    "打包未做。这条模型路径是 dev-only。",
+                ]
+            } else {
+                vec![
+                    "目录读取与远程模型是两种许可。",
+                    "未配置时不启动 Sidecar、不读 Key、不写开场，也不伪造普通聊天回复。",
+                    "本地发现卡不是模型分析。开场只在 Core 提交成功后折叠。",
+                    "Windows 未实现 Job Object 时 Sidecar 默认关闭。",
+                ]
+            },
         })
     }
 
@@ -544,6 +706,114 @@ impl NativeShell {
     /// Trusted process config. Not a Tauri command and not a frontend path.
     pub fn configure_dev_sidecar(&self, config: DevSidecarConfig) -> Result<(), ShellError> {
         self.sidecar.configure(config)
+    }
+
+    /// Store a run-only key, write keyless metadata, and start the dev sidecar.
+    /// This does not call the model and does not authorize every workspace.
+    pub fn configure_stepfun_session(&self, api_key: &str) -> Result<StepFunSessionStatus, ShellError> {
+        accept_session_key(api_key)?;
+        let repo = dev_repo_root()?;
+        let node = dev_node22()?;
+        let slot_path = self.provider_slot_path();
+        write_keyless_slot(&slot_path)?;
+        {
+            let mut guard = self
+                .session_key
+                .lock()
+                .map_err(|_| ShellError::new("lock_poisoned", "session key"))?;
+            wipe_key(&mut guard);
+            *guard = Some(api_key.to_string());
+        }
+        if self.sidecar.status().connected || self.sidecar.pid().is_some() {
+            let _ = self.sidecar.stop();
+        }
+        let config = DevSidecarConfig {
+            node_path: node,
+            host_entry: repo.join("packages/agent-host/src/sidecar.ts"),
+            app_data_dir: self.app_data_dir.clone(),
+            working_dir: repo,
+            provider_config_path: slot_path,
+            scripted_transport_path: None,
+            run_timeout_ms: 60_000,
+        };
+        if let Err(err) = self.sidecar.configure_session(config, api_key) {
+            self.rollback_session();
+            return Err(err);
+        }
+        if let Err(err) = self.sidecar.start() {
+            self.rollback_session();
+            return Err(ShellError::new(
+                err.code,
+                "sidecar did not become ready. No model request was sent.",
+            ));
+        }
+        self.session_status()
+    }
+
+    pub fn clear_stepfun_session(&self) -> Result<StepFunSessionStatus, ShellError> {
+        self.rollback_session();
+        self.session_status()
+    }
+
+    pub fn stepfun_session_status(&self) -> Result<StepFunSessionStatus, ShellError> {
+        self.session_status()
+    }
+
+    /// Enable or disable the model grant for one workspace. Does not read or send the key.
+    pub fn set_model_grant(&self, workspace_id: &str, enabled: bool) -> Result<ServiceGrant, ShellError> {
+        Ok(self.core.set_service_grant(&ServiceGrantUpdate {
+            workspace_id: parse_workspace(workspace_id)?,
+            service: ServiceKind::Model,
+            status: if enabled {
+                ServiceStatus::Enabled
+            } else {
+                ServiceStatus::Disabled
+            },
+            provider: if enabled {
+                Some(STEPFUN_PROVIDER.to_string())
+            } else {
+                None
+            },
+            model: if enabled {
+                Some(STEPFUN_MODEL.to_string())
+            } else {
+                None
+            },
+        })?)
+    }
+
+    fn provider_slot_path(&self) -> PathBuf {
+        self.app_data_dir.join("hark-r1").join("provider-slot.json")
+    }
+
+    fn session_key_present(&self) -> bool {
+        self.session_key
+            .lock()
+            .map(|guard| guard.is_some())
+            .unwrap_or(false)
+    }
+
+    fn session_status(&self) -> Result<StepFunSessionStatus, ShellError> {
+        Ok(StepFunSessionStatus {
+            configured: self.session_key_present(),
+            authenticated: false,
+            provider: STEPFUN_PROVIDER,
+            model: STEPFUN_MODEL,
+            base_url: STEPFUN_BASE,
+            wire: "anthropic-messages",
+            dev_only: true,
+            packaging: "not_packaged",
+            sidecar_connected: self.sidecar.status().connected,
+            restart_requires_key: true,
+        })
+    }
+
+    fn rollback_session(&self) {
+        if let Ok(mut guard) = self.session_key.lock() {
+            wipe_key(&mut guard);
+        }
+        let _ = fs::remove_file(self.provider_slot_path());
+        let _ = self.sidecar.stop();
     }
 
     pub fn start_configured_sidecar(&self) -> Result<SidecarStatus, ShellError> {

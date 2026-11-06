@@ -136,7 +136,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
             ? "multiple"
             : "single",
         nativeSelection: native ? nativeSelection : undefined,
-        enableModelInitialRead: native ? false : stepFunConfigured ? enableModelInitialRead : false,
+        enableModelInitialRead: stepFunConfigured ? enableModelInitialRead : false,
         enableWebSearch: native ? false : enableWebSearch,
         customExcludedPaths: native ? undefined : preview.defaultExcludedPaths,
       });
@@ -423,8 +423,8 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
         <label className="flex items-start gap-3 p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-solid)]/70 cursor-pointer hover:border-[var(--border-strong)] transition-colors">
           <input
             type="checkbox"
-            checked={!native && stepFunConfigured && enableModelInitialRead}
-            disabled={native || !stepFunConfigured}
+            checked={stepFunConfigured && enableModelInitialRead}
+            disabled={!stepFunConfigured}
             onChange={(e) => setEnableModelInitialRead(e.target.checked)}
             className="mt-0.5 rounded border-[var(--border-strong)] accent-[#c27537]"
           />
@@ -432,17 +432,15 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
             <div className="flex items-center gap-1.5 font-medium text-[var(--text-primary)]">
               <Cpu className="w-3.5 h-3.5 text-[#e88e47]" />
               <span>
-                {native
-                  ? "模型初读由壳固定关闭。这里不能拨成已配置或已批准。"
-                  : "允许将必要项目片段发送给已配置 StepFun，完成首次智能理解与主动开场"}
+                {stepFunConfigured
+                  ? "允许将必要项目片段发送给已配置 StepFun，调用已有开场入口。不会另建欢迎流程，也不会在保存 Key 时自动发送。"
+                  : "先在设置里填写本次运行的 Key，才能开启初读。这里不能把模型标成已认证。"}
               </span>
             </div>
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-              {native
-                ? "未配置模型时等待。确认后只做选择性读取和 local_scan_card，不把这张卡当成模型理解。"
-                : stepFunConfigured
-                  ? "授权后 normal 连续对话无需逐轮弹窗审阅完整 Prompt；若取消勾选，将仅生成本地结构扫描卡片（local_scan_card）。"
-                  : "当前尚未配置 StepFun 服务凭据，本次导入将仅执行本地只读扫描，后续可在设置中启用。"}
+              {stepFunConfigured
+                ? "勾选后确认导入会调用已有开场入口。不勾选则只做选择性读取和 local_scan_card。"
+                : "当前尚未配置本次运行的 StepFun Key。本次导入只做本地只读扫描，不会读取全局凭据。"}
             </p>
           </div>
         </label>

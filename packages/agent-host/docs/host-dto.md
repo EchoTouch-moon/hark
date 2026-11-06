@@ -57,7 +57,11 @@ Tool result: `relativePath`, `text`, optional `sourceId`, optional `unavailable`
 
 Not an IPC method. Process config only.
 
-`enabled`, `providerId`, `modelId`, `baseUrl`, `apiKey`, `wire: "openai-completions"`, `allowRemote`. `faux` is rejected and is not a fallback. `stepFunCompatible: true` is rejected; that flag is not a protocol acceptance. An explicit `providerId: "stepfun"` is not renamed and is not string-rejected. It stays closed unless this slot is enabled and supplies the model, base URL, `wire`, and credential. No ambient key is read. Remote send still requires `allowRemote`. The guard refuses any URL other than the configured `chat/completions` endpoint and sets `redirect: "error"`. StepFun's real endpoint, stream, tool dialect, and billing are unverified. A synthetic key plus an injected fetch only proves the OpenAI-completions request shape. Scripted local fetch is a dev probe, not product intelligence.
+`enabled`, `providerId`, `modelId`, `baseUrl`, `apiKey`, `wire`, `allowRemote`. `wire` is explicit: `openai-completions` or `anthropic-messages`. `faux` is rejected and is not a fallback. `stepFunCompatible: true` is rejected. No ambient key is read. Remote send still requires `allowRemote` and an injected fetch. The guard refuses any URL other than the configured endpoint and sets `redirect: "error"`.
+
+OpenAI wire still targets `chat/completions` under the configured base. The product StepFun slot is fixed: provider `stepfun`, model `step-3.7-flash`, base `https://api.stepfun.com/step_plan`, wire `anthropic-messages`. Pi 1.5.0's anthropic `streamSimple` posts `/v1/messages?beta=true` onto that base. The on-disk file for that slot has no `apiKey`. Native keeps the key in process memory and passes `HARK_SESSION_PROVIDER_KEY` only as a child env; the sidecar deletes that env before scrubbing other credentials. Saving the key does not call the model and does not mean the key is authenticated. Packaging is not done; the Node 22 sidecar path is dev-only.
+
+Anthropic tool names cannot contain dots. The wire uses `workspace_read_file` and `workspace_overview`. Execution still maps those calls to Core `workspace.read_file` and `workspace.overview`. The agent loop is the existing Pi session, not a handwritten tool loop.
 
 ## Host run.start response
 

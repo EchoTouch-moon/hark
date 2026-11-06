@@ -479,13 +479,52 @@ test("unfinished surfaces do not invoke", async () => {
       retainParentHistoryRef: true,
     }),
   );
-  await assert.rejects(() => bridge.setWorkspacePermissions({
+  await assert.rejects(() => bridge.searchWorkspaceMemory({ workspaceId: WS, query: "火" }));
+  await assert.rejects(() =>
+    bridge.setWorkspacePermissions({
+      requestId: "x",
+      workspaceId: WS,
+      expectedRevision: 1,
+      searchPermission: "enabled",
+    }),
+  );
+  assert.equal(calls.length, 0);
+});
+
+test("model grant uses the existing set_model_grant command and does not send a key", async () => {
+  const { invoke, calls } = recorder({
+    set_model_grant: () => ({
+      id: "grn_0123456789abcdef0123456789abcdef",
+      workspaceId: WS,
+      service: "model",
+      status: "enabled",
+      provider: "stepfun",
+      model: "step-3.7-flash",
+      updatedAt: "2026-11-06T00:00:00Z",
+    }),
+    service_grants: () => [
+      {
+        id: "grn_0123456789abcdef0123456789abcdef",
+        workspaceId: WS,
+        service: "model",
+        status: "enabled",
+        provider: "stepfun",
+        model: "step-3.7-flash",
+        updatedAt: "2026-11-06T00:00:00Z",
+      },
+    ],
+  });
+  const bridge = createTauriHarkBridge(invoke);
+  const saved = await bridge.setWorkspacePermissions({
     requestId: "x",
     workspaceId: WS,
     expectedRevision: 1,
     modelPermission: "enabled",
-  }));
-  assert.equal(calls.length, 0);
+  });
+  assert.equal(saved.modelPermission, "enabled");
+  assert.equal(calls[0]?.cmd, "set_model_grant");
+  assert.equal(JSON.stringify(calls[0]?.args).includes("apiKey"), false);
+  assert.equal(JSON.stringify(calls[0]?.args).includes("node"), false);
 });
 
 test("hide and quit call the real commands", async () => {

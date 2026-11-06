@@ -12,6 +12,9 @@ use std::time::{Duration, Instant};
 
 use crate::error::ShellError;
 
+/// Must match packages/agent-host SESSION_KEY_ENV. Never put this value in argv.
+pub const SESSION_KEY_ENV: &str = "HARK_SESSION_PROVIDER_KEY";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StopReport {
     pub pid: u32,
@@ -43,11 +46,12 @@ impl SpawnedSidecar {
         working_dir: &Path,
         fake_home: &Path,
         secret: &str,
+        inject_session_key: bool,
         stderr_tail: Arc<Mutex<String>>,
     ) -> Result<(Self, std::process::ChildStdout), ShellError> {
         #[cfg(not(unix))]
         {
-            let _ = (node_path, args, working_dir, fake_home, secret, stderr_tail);
+            let _ = (node_path, args, working_dir, fake_home, secret, inject_session_key, stderr_tail);
             return Err(ShellError::new(
                 "sidecar_disabled_windows",
                 "Windows Job Object is not implemented. Sidecar stays off. EOF is not a safe process-tree stop.",
@@ -63,11 +67,17 @@ impl SpawnedSidecar {
                 .stderr(Stdio::piped())
                 .env_remove("OPENAI_API_KEY")
                 .env_remove("STEPFUN_API_KEY")
+                .env_remove("ANTHROPIC_API_KEY")
                 .env_remove("GOOGLE_APPLICATION_CREDENTIALS")
                 .env_remove("AWS_ACCESS_KEY_ID")
                 .env_remove("AWS_SECRET_ACCESS_KEY")
                 .env_remove("PI_API_KEY")
+                .env_remove(SESSION_KEY_ENV)
                 .env("HOME", fake_home);
+            // Not argv. Node deletes this env before loading the host.
+            if inject_session_key {
+                cmd.env(SESSION_KEY_ENV, secret);
+            }
             // New process group so stop can signal the tree, not this test process.
             #[allow(unused_unsafe)]
             unsafe {

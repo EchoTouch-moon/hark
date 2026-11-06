@@ -485,4 +485,23 @@ export interface HarkBridge {
   pauseDirectory?(rootId: string): Promise<void>;
   resumeDirectory?(rootId: string): Promise<void>;
   revokeDirectory?(rootId: string): Promise<void>;
+  /** Run-only key. Saving does not call the model or authorize workspaces. */
+  configureStepFunSession?(apiKey: string): Promise<StepFunSessionStatus>;
+  clearStepFunSession?(): Promise<StepFunSessionStatus>;
+  stepFunSessionStatus?(): Promise<StepFunSessionStatus>;
+  /** Existing opening entry. Only after the user explicitly asks for a first read. */
+  startConfiguredOpening?(workspaceId: WorkspaceId): Promise<void>;
+}
+
+export interface StepFunSessionStatus {
+  configured: boolean;
+  authenticated: boolean;
+  provider: string;
+  model: string;
+  baseUrl: string;
+  wire: string;
+  devOnly: boolean;
+  packaging: string;
+  sidecarConnected: boolean;
+  restartRequiresKey: boolean;
 }

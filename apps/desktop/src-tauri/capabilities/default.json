@@ -35,6 +35,10 @@
     "allow-cancel-agent-turn",
     "allow-hide-window",
     "allow-quit-app",
-    "allow-shell-snapshot"
+    "allow-shell-snapshot",
+    "allow-configure-stepfun-session",
+    "allow-clear-stepfun-session",
+    "allow-stepfun-session-status",
+    "allow-set-model-grant"
   ]
 }

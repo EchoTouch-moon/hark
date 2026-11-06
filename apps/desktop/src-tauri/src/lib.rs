@@ -1,7 +1,7 @@
 use hark_native_shell::{
     decide_window_close, AgentTurnRef, AgentTurnRequest, AuthorizeRequest, ConfirmRequest,
-    NativeShell, OpeningRequest, ShellError, SourceRefRequest, TurnProgress, UserMessageRequest,
-    WindowCloseDecision,
+    ModelGrantRequest, NativeShell, OpeningRequest, ShellError, SourceRefRequest, StepFunKeyRequest,
+    TurnProgress, UserMessageRequest, WindowCloseDecision,
 };
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
@@ -253,6 +253,36 @@ fn shell_snapshot(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+fn configure_stepfun_session(
+    shell: tauri::State<'_, NativeShell>,
+    request: StepFunKeyRequest,
+) -> Result<hark_native_shell::StepFunSessionStatus, ShellError> {
+    shell.configure_stepfun_session(&request.api_key)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn clear_stepfun_session(
+    shell: tauri::State<'_, NativeShell>,
+) -> Result<hark_native_shell::StepFunSessionStatus, ShellError> {
+    shell.clear_stepfun_session()
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn stepfun_session_status(
+    shell: tauri::State<'_, NativeShell>,
+) -> Result<hark_native_shell::StepFunSessionStatus, ShellError> {
+    shell.stepfun_session_status()
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn set_model_grant(
+    shell: tauri::State<'_, NativeShell>,
+    request: ModelGrantRequest,
+) -> Result<hark_native_shell::ServiceGrant, ShellError> {
+    shell.set_model_grant(&request.workspace_id, request.enabled)
+}
+
+#[tauri::command(rename_all = "camelCase")]
 fn hide_window(app: tauri::AppHandle) -> Result<(), ShellError> {
     let window = app
         .get_webview_window("main")
@@ -365,7 +395,11 @@ pub fn run() {
             cancel_agent_turn,
             shell_snapshot,
             hide_window,
-            quit_app
+            quit_app,
+            configure_stepfun_session,
+            clear_stepfun_session,
+            stepfun_session_status,
+            set_model_grant
         ])
         .run(tauri::generate_context!())
         .expect("hark desktop failed to start");

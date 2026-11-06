@@ -35,6 +35,10 @@ fn main() {
             "hide_window",
             "quit_app",
             "shell_snapshot",
+            "configure_stepfun_session",
+            "clear_stepfun_session",
+            "stepfun_session_status",
+            "set_model_grant",
         ]));
     tauri_build::try_build(attributes).expect("failed to run tauri-build");
 }

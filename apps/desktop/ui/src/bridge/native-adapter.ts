@@ -307,6 +307,8 @@ function mapNativeCode(code: string): HarkErrorCode {
     case "model_not_authorized":
     case "model_not_configured":
     case "sidecar_not_configured":
+    case "session_key_rejected":
+    case "dev_runtime_missing":
       return "MODEL_NOT_CONFIGURED";
     case "sidecar_not_connected":
       return "SIDECAR_UNAVAILABLE";
@@ -998,8 +1000,15 @@ export function createTauriHarkBridge(
         observerState: "unavailable" as const,
       };
     },
-    async setWorkspacePermissions() {
-      throw unavailable("修改模型、搜索或观察授权");
+    async setWorkspacePermissions(input) {
+      const extra = input.searchPermission !== undefined || input.observerState !== undefined || input.excludedPaths !== undefined;
+      if (extra || (input.modelPermission !== "enabled" && input.modelPermission !== "disabled")) {
+        throw unavailable("搜索、观察或路径授权");
+      }
+      await call("set_model_grant", {
+        request: { workspaceId: input.workspaceId, enabled: input.modelPermission === "enabled" },
+      });
+      return this.getWorkspacePermissions(input.workspaceId);
     },
     async getNarrativeState(workspaceId) {
       const overview = await call<WorkspaceOverviewDto>("workspace_overview", { workspaceId });
@@ -1031,6 +1040,18 @@ export function createTauriHarkBridge(
     },
     async revokeDirectory(rootId) {
       await call<AuthorizedRoot>("revoke_directory", { rootId });
+    },
+    async configureStepFunSession(apiKey) {
+      return call("configure_stepfun_session", { request: { apiKey } });
+    },
+    async clearStepFunSession() {
+      return call("clear_stepfun_session");
+    },
+    async stepFunSessionStatus() {
+      return call("stepfun_session_status");
+    },
+    async startConfiguredOpening(workspaceId) {
+      await call("start_configured_opening", { request: { workspaceId } });
     },
   };
 

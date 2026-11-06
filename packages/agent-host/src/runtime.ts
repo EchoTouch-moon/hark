@@ -583,7 +583,7 @@ export class HostRuntime {
         manager.appendMessage({
           role: "assistant",
           content: [{ type: "text", text: message.text }],
-          api: "openai-completions",
+          api: this.providerConfig?.wire === "anthropic-messages" ? "anthropic-messages" : "openai-completions",
           provider: run.payload.provider,
           model: run.payload.model,
           stopReason: "stop",

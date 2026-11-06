@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { loadProviderConfig, loadScriptedTransport, HostRuntime } from "./runtime.ts";
+import { providerConfigFromFile } from "./dto.ts";
+import { loadScriptedTransport, HostRuntime } from "./runtime.ts";
 import { redactText } from "./ipc.ts";
 
 function arg(name: string, argv: readonly string[]): string | undefined {
@@ -9,12 +10,12 @@ function arg(name: string, argv: readonly string[]): string | undefined {
   return argv[index + 1];
 }
 
-export async function runSidecarMain(argv: readonly string[]): Promise<void> {
+export async function runSidecarMain(argv: readonly string[], sessionKey?: string): Promise<void> {
   const appData = arg("--app-data", argv);
   if (!appData) throw new Error("--app-data is required");
   const providerPath = arg("--provider-config", argv);
   const scriptPath = arg("--scripted-transport", argv);
-  const provider = providerPath ? loadProviderConfig(JSON.parse(readFileSync(providerPath, "utf8"))) : null;
+  const provider = providerPath ? providerConfigFromFile(JSON.parse(readFileSync(providerPath, "utf8")), sessionKey) : null;
   const scripted = scriptPath ? loadScriptedTransport(JSON.parse(readFileSync(scriptPath, "utf8"))) : null;
   if (scriptPath && !scriptPath.startsWith(`${path.resolve(appData)}${path.sep}`)) {
     throw new Error("scripted transport must stay inside app-data");

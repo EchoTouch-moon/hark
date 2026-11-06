@@ -1,8 +1,9 @@
-import { createAssistantMessageEventStream, createProvider, type AssistantMessage, type Message, type Model, type Provider, type TranscriptContext } from "@earendil-works/pi-ai";
-import { streamSimple } from "@earendil-works/pi-ai/api/openai-completions";
+import { createAssistantMessageEventStream, createProvider, type AssistantMessage, type AssistantMessageEvent, type Message, type Model, type Provider, type TranscriptContext } from "@earendil-works/pi-ai";
+import { streamSimple as anthropicStreamSimple } from "@earendil-works/pi-ai/api/anthropic-messages";
+import { streamSimple as openaiStreamSimple } from "@earendil-works/pi-ai/api/openai-completions";
 import { normalizeContext } from "@earendil-works/pi-ai/utils/transcript";
 import { applyContextPack, renderContextPack } from "./context-pack.ts";
-import type { ProviderConfig } from "./dto.ts";
+import { STEPFUN_BASE_URL, STEPFUN_MODEL_ID, STEPFUN_PROVIDER_ID, type ProviderConfig } from "./dto.ts";
 
 export interface ProviderGate {
   cancelled: boolean;
@@ -31,18 +32,88 @@ const ZERO_USAGE = {
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 };
 
+const TO_WIRE: Record<string, string> = {
+  "workspace.read_file": "workspace_read_file",
+  "workspace.overview": "workspace_overview",
+};
+const FROM_WIRE: Record<string, string> = {
+  workspace_read_file: "workspace.read_file",
+  workspace_overview: "workspace.overview",
+};
+
 export function assertProviderSlot(config: ProviderConfig): void {
   if (config.providerId === "faux" || config.modelId === "faux") {
     throw new Error("faux is not a product provider and is not a fallback");
   }
-  if (config.wire !== "openai-completions") {
-    throw new Error("only an explicit openai-completions constructor is implemented");
+  if (config.wire === "openai-completions") return;
+  if (config.wire !== "anthropic-messages") {
+    throw new Error("wire must be an explicit constructor");
+  }
+  if (
+    config.providerId !== STEPFUN_PROVIDER_ID ||
+    config.modelId !== STEPFUN_MODEL_ID ||
+    config.baseUrl !== STEPFUN_BASE_URL
+  ) {
+    throw new Error("anthropic-messages slot is the fixed StepFun plan package");
   }
 }
 
 export function endpointOf(config: ProviderConfig): string {
+  if (config.wire === "anthropic-messages") {
+    // Pi 1.5.0 anthropic beta client posts `/v1/messages?beta=true` onto baseUrl with no extra slash.
+    return `${config.baseUrl.replace(/\/+$/, "")}/v1/messages?beta=true`;
+  }
   const base = config.baseUrl.endsWith("/") ? config.baseUrl : `${config.baseUrl}/`;
   return new URL("chat/completions", base).toString();
+}
+
+function wireTool(name: string): string {
+  return TO_WIRE[name] ?? name;
+}
+
+function coreTool(name: string): string {
+  return FROM_WIRE[name] ?? name;
+}
+
+function mapMessagesForWire(messages: Message[]): Message[] {
+  return messages.map((message) => {
+    if (message.role === "system") {
+      const content = typeof message.content === "string"
+        ? message.content.replaceAll("workspace.read_file", "workspace_read_file").replaceAll("workspace.overview", "workspace_overview")
+        : message.content;
+      return {
+        ...message,
+        content,
+        ...(message.toolsAdded ? { toolsAdded: message.toolsAdded.map((tool) => ({ ...tool, name: wireTool(tool.name) })) } : {}),
+        ...(message.toolsRemoved ? { toolsRemoved: message.toolsRemoved.map((tool) => ({ ...tool, name: wireTool(tool.name) })) } : {}),
+      };
+    }
+    if (message.role === "assistant") {
+      return {
+        ...message,
+        content: message.content.map((block) => (block.type === "toolCall" ? { ...block, name: wireTool(block.name) } : block)),
+      };
+    }
+    if (message.role === "toolResult") {
+      return { ...message, toolName: wireTool(message.toolName) };
+    }
+    return message;
+  });
+}
+
+function restoreCoreToolNames(message: AssistantMessage | undefined): void {
+  if (!message) return;
+  for (const block of message.content) {
+    if (block.type === "toolCall") block.name = coreTool(block.name);
+  }
+}
+
+function restoreEvent(event: AssistantMessageEvent): AssistantMessageEvent {
+  if ("partial" in event) restoreCoreToolNames(event.partial);
+  if (event.type === "toolcall_end") event.toolCall.name = coreTool(event.toolCall.name);
+  if (event.type === "done") restoreCoreToolNames(event.message);
+  if (event.type === "error") restoreCoreToolNames(event.error);
+  return event;
 }
 
 export function createGuardedFetch(options: TransportOptions): typeof fetch {
@@ -66,46 +137,66 @@ export function createGuardedFetch(options: TransportOptions): typeof fetch {
   };
 }
 
+function failMessage(current: Model<"openai-completions"> | Model<"anthropic-messages">, message: string): AssistantMessage {
+  return {
+    role: "assistant",
+    content: [{ type: "text", text: "" }],
+    api: current.api,
+    provider: current.provider,
+    model: current.id,
+    stopReason: "error",
+    errorMessage: message,
+    timestamp: Date.now(),
+    usage: ZERO_USAGE,
+  };
+}
+
+async function preparedMessages(options: TransportOptions, gate: ProviderGate, context: TranscriptContext, streamOptions?: { apiKey?: string }): Promise<Message[]> {
+  if (gate.closed || gate.cancelled) throw new Error("run cancelled before provider send");
+  if (gate.backpressured) throw new Error("stdout backpressure refused the provider send");
+  if (gate.timedOut) throw new Error("run timed out before provider send");
+  if (streamOptions?.apiKey !== options.config.apiKey) {
+    throw new Error("provider key was not the explicit injection");
+  }
+  const fresh = await gate.recheck();
+  if (!fresh) throw new Error("authorization recheck refused the provider send");
+  if (gate.failPack) throw new Error("context pack failed closed");
+  const pack = renderContextPack(
+    {
+      contextPackRevision: fresh.revision,
+      sourceVersion: fresh.sourceVersion,
+      empty: fresh.empty,
+      ...(fresh.identity ? { identity: fresh.identity } : {}),
+      ...(fresh.overview ? { overview: fresh.overview } : {}),
+    },
+    fresh.stale || gate.hookThrew,
+  );
+  const messages = applyContextPack(context.messages as Message[], pack);
+  return options.config.wire === "anthropic-messages" ? mapMessagesForWire(messages) : messages;
+}
+
 export function createExplicitProvider(options: TransportOptions, gate: ProviderGate): Provider {
   assertProviderSlot(options.config);
-  const model: Model<"openai-completions"> = {
+  const fetchImpl = createGuardedFetch(options);
+  const wire = options.config.wire;
+  const model = {
     id: options.config.modelId,
     name: options.config.modelId,
-    api: "openai-completions",
+    api: wire,
     provider: options.config.providerId,
     baseUrl: options.config.baseUrl,
-    input: ["text"],
+    input: ["text" as const],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     reasoning: false,
     contextWindow: 128000,
     maxTokens: 4096,
   };
-  const fetchImpl = createGuardedFetch(options);
-  const send = (current: Model<"openai-completions">, context: TranscriptContext, streamOptions?: { signal?: AbortSignal; apiKey?: string }) => {
+  const send = (current: Model<"openai-completions"> | Model<"anthropic-messages">, context: TranscriptContext, streamOptions?: { signal?: AbortSignal; apiKey?: string }) => {
     const stream = createAssistantMessageEventStream();
     void (async () => {
       try {
-        if (gate.closed || gate.cancelled) throw new Error("run cancelled before provider send");
-        if (gate.backpressured) throw new Error("stdout backpressure refused the provider send");
-        if (gate.timedOut) throw new Error("run timed out before provider send");
-        if (streamOptions?.apiKey !== options.config.apiKey) {
-          throw new Error("provider key was not the explicit injection");
-        }
-        const fresh = await gate.recheck();
-        if (!fresh) throw new Error("authorization recheck refused the provider send");
-        if (gate.failPack) throw new Error("context pack failed closed");
-        const pack = renderContextPack(
-          {
-            contextPackRevision: fresh.revision,
-            sourceVersion: fresh.sourceVersion,
-            empty: fresh.empty,
-            ...(fresh.identity ? { identity: fresh.identity } : {}),
-            ...(fresh.overview ? { overview: fresh.overview } : {}),
-          },
-          fresh.stale || gate.hookThrew,
-        );
-        const messages = applyContextPack(context.messages as Message[], pack);
-        const inner = streamSimple(current, normalizeContext({ messages }), {
+        const messages = await preparedMessages(options, gate, context, streamOptions);
+        const streamOptionsForSdk = {
           apiKey: options.config.apiKey,
           fetch: fetchImpl,
           ...(streamOptions?.signal ? { signal: streamOptions.signal } : {}),
@@ -114,32 +205,56 @@ export function createExplicitProvider(options: TransportOptions, gate: Provider
             gate.notePayload(JSON.stringify(payload));
             return payload;
           },
-        });
+        };
+        const inner = wire === "anthropic-messages"
+          ? anthropicStreamSimple(current as Model<"anthropic-messages">, normalizeContext({ messages }), streamOptionsForSdk)
+          : openaiStreamSimple(current as Model<"openai-completions">, normalizeContext({ messages }), streamOptionsForSdk);
         let terminal = false;
         for await (const event of inner) {
           if (event.type === "done" || event.type === "error") terminal = true;
-          stream.push(event);
+          stream.push(wire === "anthropic-messages" ? restoreEvent(event) : event);
         }
-        if (!terminal) stream.end(await inner.result());
+        if (!terminal) {
+          const result = await inner.result();
+          if (wire === "anthropic-messages") restoreCoreToolNames(result);
+          stream.end(result);
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "provider send refused";
-        const failed: AssistantMessage = {
-          role: "assistant",
-          content: [{ type: "text", text: "" }],
-          api: current.api,
-          provider: current.provider,
-          model: current.id,
-          stopReason: "error",
-          errorMessage: message,
-          timestamp: Date.now(),
-          usage: ZERO_USAGE,
-        };
+        const failed = failMessage(current, message);
         stream.push({ type: "error", reason: "error", error: failed });
         stream.end(failed);
       }
     })();
     return stream;
   };
+  if (wire === "anthropic-messages") {
+    const anthropicModel = model as Model<"anthropic-messages">;
+    const anthropicSend = send as (current: Model<"anthropic-messages">, context: TranscriptContext, streamOptions?: { signal?: AbortSignal; apiKey?: string }) => ReturnType<typeof send>;
+    return createProvider({
+      id: options.config.providerId,
+      name: options.config.providerId,
+      baseUrl: options.config.baseUrl,
+      auth: {
+        apiKey: {
+          name: "explicit-injection",
+          async resolve({ credential }) {
+            if (!credential?.key || credential.key !== options.config.apiKey) return undefined;
+            return { auth: { apiKey: credential.key }, source: "explicit-injection" };
+          },
+        },
+      },
+      models: [anthropicModel],
+      api: {
+        "anthropic-messages": {
+          stream: anthropicSend,
+          streamSimple: anthropicSend,
+        },
+      },
+    });
+  }
+  const openaiModel = model as Model<"openai-completions">;
+  const openaiSend = send as (current: Model<"openai-completions">, context: TranscriptContext, streamOptions?: { signal?: AbortSignal; apiKey?: string }) => ReturnType<typeof send>;
   return createProvider({
     id: options.config.providerId,
     name: options.config.providerId,
@@ -153,11 +268,11 @@ export function createExplicitProvider(options: TransportOptions, gate: Provider
         },
       },
     },
-    models: [model],
+    models: [openaiModel],
     api: {
       "openai-completions": {
-        stream: send,
-        streamSimple: send,
+        stream: openaiSend,
+        streamSimple: openaiSend,
       },
     },
   });

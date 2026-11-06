@@ -240,7 +240,7 @@ export const AppShell: React.FC = () => {
   const explainModelWait = () => {
     setActiveError({
       code: "MODEL_NOT_CONFIGURED",
-      message: "模型未配置。没有前端开关可以批准模型、搜索或伪造开场。",
+      message: "模型未配置。请在设置里填写本次运行的 Key，并在工作空间里单独启用模型。不会读取全局凭据。",
       retryable: false,
     });
   };
@@ -297,6 +297,15 @@ export const AppShell: React.FC = () => {
           throw asUiError(new Error("选择性读取未接线"));
         }
         await bridge.continueLocalRecognition(res.focusedWorkspaceId);
+        if (input.enableModelInitialRead && bridge.startConfiguredOpening) {
+          await bridge.setWorkspacePermissions({
+            requestId: `req-open-${Date.now()}`,
+            workspaceId: res.focusedWorkspaceId,
+            expectedRevision: 1,
+            modelPermission: "enabled",
+          });
+          await bridge.startConfiguredOpening(res.focusedWorkspaceId);
+        }
       }
       const list = await bridge.listWorkspaces();
       setWorkspaces(list);
@@ -989,6 +998,7 @@ export const AppShell: React.FC = () => {
         workspace={currentWorkspaceDetail}
         onUpdatePermissions={handleUpdateWorkspacePermissions}
         onClose={() => setShowWorkspaceSettings(false)}
+        nativeLocked={bridgeMode === "strict_tauri_ipc"}
       />
 
       {/* FE-13 · AppSettings 应用设置与运行状态 */}
@@ -1006,6 +1016,22 @@ export const AppShell: React.FC = () => {
           void handleHideWindow();
         }}
         nativeLocked={bridgeMode === "strict_tauri_ipc"}
+        onSaveStepFunKey={
+          bridge.configureStepFunSession
+            ? async (apiKey) => {
+                await bridge.configureStepFunSession?.(apiKey);
+                await syncAppSnapshot(currentWorkspaceId);
+              }
+            : undefined
+        }
+        onClearStepFunKey={
+          bridge.clearStepFunSession
+            ? async () => {
+                await bridge.clearStepFunSession?.();
+                await syncAppSnapshot(currentWorkspaceId);
+              }
+            : undefined
+        }
         onClose={() => setShowAppSettings(false)}
       />
     </div>

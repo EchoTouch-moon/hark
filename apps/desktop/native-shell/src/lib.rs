@@ -24,7 +24,8 @@ pub use lifecycle::{decide_window_close, WindowCloseDecision};
 pub use process::StopReport;
 pub use seam::{sidecar_status, IssuedOpeningRun, NotConnectedHost, OpeningHost, SidecarStatus};
 pub use service::{
-    business_db_path, AuthorizeRequest, ConfirmRequest, IdRequest, NativeShell, OpeningRequest,
-    PickTicket, Selection, ShellSnapshot, SourceRefRequest, UserMessageRequest, WorkspaceRef,
-    CONTROLLED_PICK_ENTRY, FRONTEND_COMMANDS, PICK_TTL_MS,
+    business_db_path, AuthorizeRequest, ConfirmRequest, IdRequest, ModelGrantRequest, NativeShell,
+    OpeningRequest, PickTicket, Selection, ShellSnapshot, SourceRefRequest, StepFunKeyRequest,
+    StepFunSessionStatus, UserMessageRequest, WorkspaceRef, CONTROLLED_PICK_ENTRY, FRONTEND_COMMANDS,
+    PICK_TTL_MS,
 };

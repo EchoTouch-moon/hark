@@ -191,12 +191,12 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
                   StepFun 模型连续对话与片段分析授权 ({summary.modelPermission})
                 </div>
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  启用后正常连续对话不逐轮弹出完整 Prompt 审阅；撤销后立即停止远程模型发送。
+                  只授权这一个工作空间。填写 Key 不会打开其他工作空间。暂停或撤销目录后，已有检查会拦住发送。重启后 Key 要重填，授权会保留。
                 </p>
               </div>
               <button
                 type="button"
-                disabled={saving || nativeLocked}
+                disabled={saving}
                 onClick={() => handleTogglePermission("modelPermission", summary.modelPermission)}
                 data-testid="toggle-model-permission-btn"
                 className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap shrink-0 ${

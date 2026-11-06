@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   X,
   Sun,
@@ -39,6 +39,8 @@ interface AppSettingsProps {
   onClose: () => void;
   nativeLocked?: boolean;
   nativeStatusNote?: string;
+  onSaveStepFunKey?: (apiKey: string) => Promise<void>;
+  onClearStepFunKey?: () => Promise<void>;
 }
 
 /**
@@ -63,8 +65,45 @@ export const AppSettings: React.FC<AppSettingsProps> = ({
   onClose,
   nativeLocked = false,
   nativeStatusNote,
+  onSaveStepFunKey,
+  onClearStepFunKey,
 }) => {
+  const [keyDraft, setKeyDraft] = useState("");
+  const [keyBusy, setKeyBusy] = useState(false);
+  const [keyNote, setKeyNote] = useState("");
   if (!isOpen) return null;
+
+  const saveKey = async () => {
+    if (!onSaveStepFunKey) return;
+    const next = keyDraft.trim();
+    if (!next) return;
+    setKeyBusy(true);
+    setKeyNote("");
+    try {
+      await onSaveStepFunKey(next);
+      setKeyDraft("");
+      setKeyNote("已保存在本次运行内存。这不表示 Key 已认证，也没有发送请求。重启后需要重填。");
+    } catch (err) {
+      setKeyNote(err instanceof Error ? err.message : "保存失败。没有发送模型请求。");
+    } finally {
+      setKeyBusy(false);
+    }
+  };
+
+  const clearKey = async () => {
+    if (!onClearStepFunKey) return;
+    setKeyBusy(true);
+    setKeyNote("");
+    try {
+      await onClearStepFunKey();
+      setKeyDraft("");
+      setKeyNote("已清除本次运行的 Key。工作空间授权仍保留，重启后也不会去找全局凭据。");
+    } catch (err) {
+      setKeyNote(err instanceof Error ? err.message : "清除失败。");
+    } finally {
+      setKeyBusy(false);
+    }
+  };
 
   return (
     <div
@@ -270,21 +309,60 @@ export const AppSettings: React.FC<AppSettingsProps> = ({
                     {runtime.stepFunConfigured ? "已配置" : "未配置"}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  disabled={nativeLocked}
-                  data-testid="toggle-stepfun-config-btn"
-                  onClick={() =>
-                    onUpdateRuntime({
-                      stepFunConfigured: !runtime.stepFunConfigured,
-                    })
-                  }
-                  className="w-full px-2.5 py-1.5 rounded-md border border-[var(--border-strong)] bg-[var(--surface-solid)] text-xs font-medium hover:border-[#e88e47] transition-colors"
-                >
-                  {runtime.stepFunConfigured
-                    ? "模拟未配置 StepFun (MODEL_NOT_CONFIGURED)"
-                    : "恢复 StepFun 已配置状态"}
-                </button>
+                {onSaveStepFunKey ? (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                      固定套餐 stepfun / step-3.7-flash。Key 只留在本次运行内存，不写入本地存储。保存本身不发请求，也不给所有工作空间授权。
+                    </p>
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={keyDraft}
+                      disabled={keyBusy}
+                      data-testid="stepfun-key-input"
+                      placeholder="本次运行的 StepFun Key"
+                      onChange={(event) => setKeyDraft(event.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-md border border-[var(--border-strong)] bg-[var(--surface-solid)] text-xs"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={keyBusy || keyDraft.trim().length === 0}
+                        data-testid="save-stepfun-key-btn"
+                        onClick={() => void saveKey()}
+                        className="flex-1 px-2.5 py-1.5 rounded-md border border-[var(--border-strong)] bg-[var(--surface-solid)] text-xs font-medium hover:border-[#e88e47]"
+                      >
+                        仅本次运行保存
+                      </button>
+                      <button
+                        type="button"
+                        disabled={keyBusy}
+                        data-testid="clear-stepfun-key-btn"
+                        onClick={() => void clearKey()}
+                        className="px-2.5 py-1.5 rounded-md border border-[var(--border-strong)] text-xs"
+                      >
+                        清除
+                      </button>
+                    </div>
+                    {keyNote ? <p className="text-[11px] text-[var(--text-muted)]">{keyNote}</p> : null}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={nativeLocked}
+                    data-testid="toggle-stepfun-config-btn"
+                    onClick={() =>
+                      onUpdateRuntime({
+                        stepFunConfigured: !runtime.stepFunConfigured,
+                      })
+                    }
+                    className="w-full px-2.5 py-1.5 rounded-md border border-[var(--border-strong)] bg-[var(--surface-solid)] text-xs font-medium hover:border-[#e88e47] transition-colors"
+                  >
+                    {runtime.stepFunConfigured
+                      ? "模拟未配置 StepFun (MODEL_NOT_CONFIGURED)"
+                      : "恢复 StepFun 已配置状态"}
+                  </button>
+                )}
               </div>
             </div>
 
