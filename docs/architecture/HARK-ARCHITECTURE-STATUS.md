@@ -8,7 +8,7 @@ Native shell 目录选择仍走短时 picker token。未配置 Sidecar 时 `conn
 
 当前未实现或未通过：正式产品 UI、窗口点击/托盘人工验收、常规连续对话 run、真实 StepFun、搜索、记忆修订、FTS、Observer、网页 Reader、安装包、Windows 实机、整 R1。父子目录排除（AT-05）未实现。已进入内核的单次 read 不能被本切片打断。合成 scripted transport 不是 StepFun。
 
-主会话已在 `9f9bb01` 定向复核并复跑 Core48、Native16项通过，接受真实本地磁盘/SQLite/Node+PiSDK/stdio 首次开场底座；模型transport仍为合成SSE。独立StepFun验收脚本已合入，Key argv/摘要链接/预算的18项离线安全测试经主会话复跑通过，等待用户TTY隐藏输入Key亲启。用户仅批准国内step-3.7-flash最多3次、≤512输出tokens、纯合成材料与临时进程env凭据；尚无真实请求，不自动启用产品模型。
+主会话已在 `9f9bb01` 定向复核并复跑 Core48、Native16项通过，接受真实本地磁盘/SQLite/Node+PiSDK/stdio 首次开场底座；模型transport仍为合成SSE。StepFun套餐 `/step_plan/v1/messages` 的直接HTTP基础文本已实际200/OK（step-3.7-flash，输入21/输出130tokens）；通用API两次402不代表套餐不可用。原3次许可已耗尽，Key已撤销。现有Host仍只接openai-completions，下一切片复用PiSDK的anthropic-messages支持套餐；SDK流式/工具与桌面真实闭环尚未通过。不再扩建独立验收/额度脚本，优先产品接线与常规连续对话。
 
 目标（非已实现）：Tauri UI → Rust Core ↔ TS Agent Host → 已授权 StepFun/搜索。Pi JSONL 与 SQLite 业务权威分离。
 

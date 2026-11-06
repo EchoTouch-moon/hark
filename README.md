@@ -20,12 +20,10 @@ cargo run --manifest-path apps/desktop/Cargo.toml -p hark-desktop
 ```
 桌面命令是开发启动，不是安装包。默认模型关闭；不要为测试选择私人 vault。前端接入见 [FRONTEND-HANDOFF](docs/r1/FRONTEND-HANDOFF.md)。
 
-## 一次有界 StepFun 验收
-仅用户已批准的国内 `step-3.7-flash`、纯合成材料、最多3次请求、每次输出≤512tokens；Key在本地TTY隐藏输入，不要贴到聊天/参数。脚本尚未用真实Key运行。
-```bash
-bash scripts/stepfun-live-check.sh
-```
-先读 [STEPFUN-LIVE-CHECK](docs/r1/STEPFUN-LIVE-CHECK.md)。失败后保留脱敏摘要并停下，不自动重试、切域名或改模型。这个独立SDK/Provider测试不等于应用已接通真实项目/模型，也不授予后台调用许可。
+## StepFun 当前接入
+正确套餐接口为 `https://api.stepfun.com/step_plan/v1/messages`、模型 `step-3.7-flash`，直接HTTP已实测200/OK；现正接入PiSDK的anthropic-messages协议。SDK流式/工具与桌面模型闭环尚未通过。
+
+旧独立验收脚本使用通用API，不适用于此次套餐，不再扩建。原3次真实调用许可已用完，Key已撤销；不要重新运行旧脚本。后续真实请求需单独批准，不自动使用聊天历史Key或全局凭据。
 
 ## 历史参考
 旧 `docs/01-PRD.md`、`docs/04-CONTRACTS.md`、`docs/05-SECURITY.md`、`docs/mvp/`、`tasks/REBUILD-PLAN.md`、`tasks/manifest.json` 与旧 handoff/证据保留研究价值，不是新 R1 的施工基线或验收通过记录。不要求旧 Schema、接口与 fixture 服务兼容。

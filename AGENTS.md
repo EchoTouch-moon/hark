@@ -23,6 +23,7 @@
 - 最多两个子 agent 并发，核心合同与 migration 串行；一个工作区同一时刻一个 writer。子 agent 不改 AGENTS.md，环境发现返回主会话统一维护。
 
 ## 开发与证据
+用户最新要求：不再扩大安全问题或额外建设验收/预算/Gate框架。仅修当前功能实际触及的必要问题，优先最短可运行产品闭环，不取消既有安全红线。
 READ 任务 → 最小接口/测试 → 实现 → 局部测试/类型检查 → 状态/证据 → 本地小提交。连续修复最多三次，仍失败写 blocker 与恢复命令。安全缺陷不得静默放行。
 维护 `handoff/STATUS.md`、`DECISIONS.md`、`BLOCKERS.md`、`MORNING-REPORT.md`、脱敏 `EVIDENCE/` 和 `docs/architecture/HARK-ARCHITECTURE-STATUS.md`。新状态明确为 R1，不继承旧通过项；文档区分 implemented / unverified / blocked / deferred。
 本地架构画布只在配置存在、可达且不触及上述禁止目录时同步；不扫描个人笔记，不把个人路径写入仓库。缺配置不阻塞开发。
@@ -34,5 +35,6 @@ READ 任务 → 最小接口/测试 → 实现 → 局部测试/类型检查 →
 - 本机 macOS 合成磁盘测试已验证 `/var` 系统路径别名可用打开目录的 dev/ino 物理祖先判重；默认 SQLite journal 下另一 Core 连接可见已提交撤权，短 `BEGIN IMMEDIATE` 可协调 I/O 准入与撤权。未改变 WAL，不能据此宣称 Windows 或远程外发验收通过。
 - Pi `1.5.0` 宿主不声明 chord 依赖，本地 pi-subagents 旧启动检查会误拒绝。已获用户批准定向修复 runner 检查，局部测试 7/7、typecheck 与宿主 alias 解析通过；重载后已通过原协议实际运行 Grok child，不再是当前启动阻塞。
 - 本机开发命令分为两个 Rust manifest：Core 使用 `crates/hark-core/Cargo.toml`，Native/Tauri 使用 `apps/desktop/Cargo.toml`（包 `hark-native-shell` / `hark-desktop`）；JS使用根npm workspace。已实跑 Core48、Native16、Host14与SDK smoke。桌面通过 `cargo run --manifest-path apps/desktop/Cargo.toml -p hark-desktop` 开发启动，不是自含运行时安装包。
-- 有界StepFun脚本离线安全测试18项已在本机Node22通过，包装器PTY验证使用本机python3。真实运行必须用户本地TTY亲启，不能由agent/CI代输Key或自动调用；授权细节见handoff/DECISIONS.md。
+- 有界StepFun脚本离线测试18项已在本机Node22通过，包装器PTY验证使用本机python3。该脚本后续扩建已被用户叫停，不再建设续测/额度平台。真实请求须单独批准；用户后续曾明确批准主会话直接做一次套餐接口测试，3次总预算现已用完，Key已撤销，不得继续使用。
+- 已实测StepFun套餐 `https://api.stepfun.com/step_plan/v1/messages` 的anthropic-messages格式，模型step-3.7-flash：HTTP200/OK、输入21输出130tokens。通用 `/v1/chat/completions` 的HTTP402不代表套餐不可用。实际SDK的baseUrl拼接须以当前锁版源码/离线请求捕获验证，不能把直接HTTP成功写成PiSDK/流式/工具通过。
 - 本轮 SDK smoke 精确锁 `@earendil-works/pi-coding-agent`/`pi-ai` `1.5.0`，`npm run typecheck` 与 `npm run test:pi-sdk-smoke` 在 Node `v22.23.2` 实测通过。`noTools: "builtin"` 不移除注册表中的内置工具；使用纯名字 allowlist 并核验 all/active/callable。无网络 faux 不是 StepFun 验收；SDK 的 ADC fileExists 探测被测试 guard 拒绝，生产 Host 仍需显式收口环境凭据来源。

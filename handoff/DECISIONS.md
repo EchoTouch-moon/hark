@@ -70,12 +70,14 @@
 - 已结束 opening run 的当前 `sessionBinding` 可被 Core 新发放的 run 替换。同 run 不能任意换 session。compaction 新 session 只走显式 `replace_opening_session_for_compaction`，不扩常规对话，不删 Pi JSONL，不复活旧 run。
 - Sidecar 状态只有一份 `Arc`。stdout frame ingress 上限等于 IPC control queue 64；过载关闭受影响 run 和管道。`stop`/`Drop` 有界；worker 未结束时返回 timeout，不允许并发复活同一任务。已 SIGKILL 的子进程用 `waitpid(WNOHANG)` 回收。已进入内核的单次 syscall 仍不可打断。
 
-## 下一阶段 StepFun 真实验收授权（尚未执行）
+## StepFun 真实验收授权与结果（已结束，Key已撤销）
 
 用户已单独批准下一阶段只做 StepFun 真实验收，边界如下。本段 bridge 返工没有使用该许可：未读任何真实 Key，未发任何真实请求，未加 live 脚本，也未从父进程环境查找 Key。
 
 - 模型只允许 `step-3.7-flash`。最多 3 次真实模型请求。每次输出上限 512 tokens。用户后续已确认国内平台，唯一目标为 `https://api.stepfun.com/v1/chat/completions`，不自动改用国际域名或其他模型。
-- 用户亲启首次请求返回HTTP402，已用1次；再次默认启动被已有摘要拦下，0次发送。用户表示计费已处理。续测只可使用剩余2次，直接Tool请求→流式最终回复，不另加单独text请求，不覆盖原402证据。任何额外预算需用户另行批准。
+- 历史：首次脚本请求通用API返回402，重复默认启动被已有摘要拦下、0次发送。拟建2次续测模式后被用户叫停，任务已停止且未留diff；不再建设该脚本。
+- 最终实际记录：通用API又一次402；用户指出套餐 `/step_plan/v1/messages`，明确批准最后1次测试，messages格式实际200/OK。合计3次预算用完，用户已撤销Key。套餐基础文本可用；先前不能把通用API的402直接归因用户套餐余额。SDK/流式/Tool仍未实际验证。
+- 用户要求不再扩大安全问题。下一步复用PiSDK已有anthropic-messages能力对齐套餐协议，然后做常规连续对话，不新造quota/审批/安全Gate；既有权限和只读边界仍有效。
 - 只发送合成材料。不读取真实私人项目或私人目录。
 - Key 只由后续独立验收进程的临时环境变量提供。不粘贴到聊天，不读取现有全局 Key，不写入源码、SQLite、JSONL 或证据。
 - 该许可不扩大为后台自动调用、搜索、通知，或其他模型/次数/材料范围。用户会在后续本地独立脚本中隐藏输入 Key；当前进程不得代为查找。
