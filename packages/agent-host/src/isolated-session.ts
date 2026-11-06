@@ -3,6 +3,7 @@ import type { FauxProviderHandle, Model } from "@earendil-works/pi-ai";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
+import { closeBuiltinCredentialProbes } from "./credentials/close-runtime.ts";
 import { createEmptyResourceLoader } from "./empty-resource-loader.ts";
 import { createMemoryCredentialStore } from "./memory-credentials.ts";
 import { SMOKE_TOOL_NAME, createSmokeNoopTool } from "./smoke-tool.ts";
@@ -46,9 +47,8 @@ function assertInside(parent: string, child: string, label: string): void {
 
 /**
  * Runtime that does not read global auth/models and does not start a network catalog refresh.
- * `registerNativeProvider` still schedules an offline availability refresh. That refresh can
- * `fileExists` the Vertex ADC path through Pi's default auth context. It must not be treated as
- * a network call, and callers that need a hard deny should gate filesystem access outside the SDK.
+ * `ModelRuntime.create` has no authContext argument. Before any native provider refresh, Vertex is
+ * given a literal closed key so its inherited ADC file probe does not run.
  */
 export async function createIsolatedModelRuntime(faux: FauxProviderHandle): Promise<ModelRuntime> {
   const runtime = await ModelRuntime.create({
@@ -57,6 +57,7 @@ export async function createIsolatedModelRuntime(faux: FauxProviderHandle): Prom
     allowModelNetwork: false,
     refreshOnCreate: false,
   });
+  await closeBuiltinCredentialProbes(runtime);
   runtime.registerNativeProvider(faux.provider);
   return runtime;
 }

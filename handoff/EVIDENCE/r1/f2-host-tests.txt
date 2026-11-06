@@ -1,0 +1,6 @@
+npm run test:host
+# tests 13
+# pass 13
+# fail 0
+# includes: second workspace busy, changed revision without body, target handoff, explicit stepfun slot, stdin EOF abort
+host tests exit 0

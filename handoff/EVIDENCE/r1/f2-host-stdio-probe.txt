@@ -1,0 +1,2 @@
+{"stdioProbe":"passed","queueBoundary":"unit-same-codec","activeClose":"stdin-end-and-paused-stdout","stepFun":"unverified","coreBridge":"not-connected"}
+stdio probe exit 0

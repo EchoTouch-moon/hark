@@ -1,0 +1,26 @@
+{
+  "productName": "Hark R1 Dev",
+  "version": "0.1.0",
+  "identifier": "dev.hark.r1.native-shell",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Hark R1 开发入口",
+        "width": 980,
+        "height": 760,
+        "resizable": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": false
+  }
+}

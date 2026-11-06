@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["native-shell", "src-tauri"]
+
+[workspace.package]
+edition = "2021"
+license = "UNLICENSED"
+publish = false
+version = "0.1.0"

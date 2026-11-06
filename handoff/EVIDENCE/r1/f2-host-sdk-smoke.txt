@@ -1,0 +1,6 @@
+TAP version 13
+# {"piSdk":"1.5.0","provider":"faux","fauxIsNotStepFun":true,"providerHttpPayload":"untested","networkAttempts":0,"spawnAttempts":0,"piGlobalProbes":0,"vaultProbes":0,"projectDiscoveryReads":0,"ambientAdcDeniedWithoutOpen":0,"extensionExecuted":false,"jsonlRestoredWithoutReinjection":true}
+# tests 1
+# pass 1
+# fail 0
+sdk smoke exit 0

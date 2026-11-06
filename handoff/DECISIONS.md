@@ -37,8 +37,27 @@
 
 行为：`mark_analyzing` 由 Core 发放并持久化当前 run，并快照模型授权与目录版本。确认页初读开关只保存意向，不 enabled、也不 wildcard。未同时配置明确 Provider 与 Model 不能开始真实 run。`commit_agent_opening` 的 success 不是完成状态。伪 run、跨 workspace、不同 Provider/Model、取消、目录/模型撤权或暂停、配置切换（含切回）以及空证据都拒绝。失败不折叠本地卡，也不把 `model_analyzed` 置真。显式 retry 清除旧绑定；之后新的 `mark_analyzing` 才发新 run。已提交开场重放返回原消息。空证据的最小策略是：成功开场必须引用至少一条本 workspace 的 source，且目录授权仍为 active。不解析正文，不把本地卡伪装成模型分析。
 
+## F3 Native shell（实现选择，不是产品验收）
+
+- 目录选择结果只在 Rust 里保存 120 秒、单次使用的 `pick_` token。确认命令不接受路径。`enable_model_initial_read` 固定 false。没有 `set_service_grant`、`mark_analyzing` 或 `commit_agent_opening` 命令。
+- Dialog 插件只给 Rust picker 使用，capability 不授予 `dialog:*` / `fs:*` / `shell:*` / `core:default`。应用命令权限由 `tauri-build` 2.7.4 的 `AppManifest::commands` 生成；构建脚本必须列出命令名，否则 capability 在编译前找不到 `allow-*`。
+- SQLite 放在 Tauri `app_data_dir`，不放进被授权的项目目录。关闭按钮隐藏窗口；只有显式 quit 才退出。没有 sidecar，因此不建进程框架，Windows Job Object 标未验证。
+- 开发 UI 只是中文测试表单。frontend-design skill 已读，但不做产品视觉，也不加外部署名链接。
+- 同一 root/workspace 的进行中扫描或读取不覆盖取消标志。同一把 map 锁里若 key 已占用则返回 `scan_already_running` / `read_already_running`。拒绝重复后单 key 只有一条，结束时按 Arc 指针删除自己的条目，不建 generation 表。busy 不是成功，也不是没任务。
+
 ## 串行集成（不是产品验收）
 
 - 当前 Core 保留读侧物理范围、fd 绑定、FIFO、预算和短事务 I/O 准入。开场 lane 只带入 schema v2、run 绑定和开场负例。不把 `c69ade2` 的 base Reader 或旧 handoff 状态合进来。
 - 来源目录撤权后，读侧与开场侧使用同一 `require_active` 结果：不再新读，摘录不可用，旧 receipt 不折叠、不创建开场。开场写路径不改成整次扫描锁，也不新建权限表。它仍是延迟事务；重叠撤权可能 busy。Host 发送前必须再查当前授权。
-- F2 的工具白名单落地、ContextPack、session-ref、credential 槽本轮不实现。
+- 串行集成当时没有实现 F2 工具白名单、ContextPack、session-ref 和 credential 槽。随后的 Host worktree 单独实现了这些运行时边界，见下一节。那不是当时 Core 提交的一部分。
+
+## F2 Host 实现选择（不是产品验收，也不是 Rust 接通）
+
+- 不新增 IPC method。每次 provider 请求前复用反向 `workspace.overview`，要求 `tool.result` 带可信 authorization 对象。形状冻结在 `packages/agent-host/docs/host-dto.md`。`current` 必须由调用方给出，Host 不按模型名填 true。启动快照不是发送许可。
+- `ModelRuntime.create` 没有 `authContext`。在任何 native refresh 之前用 `registerProvider("google-vertex", { apiKey: "hark-closed-ambient" })` 跳过继承的 ADC `fileExists`。Sidecar 入口在 import SDK 前只拒绝 ADC、`~/.aws`、`~/.pi/agent` 凭据文件和私人 vault 路径，普通 session 文件仍走原 fs。
+- 远程 Provider 默认关闭。显式配置必须给出 provider、model、baseUrl、apiKey 和 `wire: "openai-completions"`。没有该配置或未 enabled 时不发送，也不读环境凭据。`faux` 与 `stepFunCompatible: true` 拒绝。faux 不是产品 fallback。`providerId: stepfun` 保持原名，可进入显式槽，但不把 OpenAI-completions 构造器说成已验证的 StepFun 协议。非配置 URL 拒绝，注入 fetch 使用 `redirect: "error"`。
+- Host 进程同一时刻只接受一个活跃 run。另一个 Workspace 的 `run.start` 返回已有错误码 `correlation_rejected`，message 含 `host busy`。不新增 IPC 错误码，不建队列或多 worker。被拒绝的 run 不改写当前 gate。结束后可重试，Session 仍按 Workspace 保存。
+- overview 若给出新的 revision 或 sourceVersion，但没有非空 `overviewText`，发送前失败关闭。不把 run.start 的旧 identity/overview 贴上新版本。有新正文时只用该正文，不保留旧 identity。
+- 旧 compaction 或 branch summary 不能可靠过滤时，不改 SessionManager，改为官方新 Session。任何新创建的 Session 都可以有一次最多 10 条的近期消息衔接。`handoffId` 只相对目标 Session 去重。原 Session 恢复不重复灌入。另一个新 Session 不因工作空间里已经出现过同一个 id 而被跳过。
+- `context_with_system` 异常会被 SDK 吞掉。真正的发送边界在 provider stream：重新核对授权并重建当前 pack；重建失败则不调用 fetch。
+- Host 返回 `pi:<sessionId>`。不发放 Core `conv_` id，不写业务库。

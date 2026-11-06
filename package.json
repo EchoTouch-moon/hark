@@ -10,6 +10,8 @@
   ],
   "scripts": {
     "typecheck": "npm run typecheck -w @hark/agent-host",
-    "test:pi-sdk-smoke": "npm run test:pi-sdk-smoke -w @hark/agent-host"
+    "test:pi-sdk-smoke": "npm run test:pi-sdk-smoke -w @hark/agent-host",
+    "test:host": "npm run test:host -w @hark/agent-host",
+    "probe:host-stdio": "npm run probe:host-stdio -w @hark/agent-host"
   }
 }

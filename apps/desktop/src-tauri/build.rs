@@ -1,0 +1,36 @@
+fn main() {
+    // Keep this list aligned with hark_native_shell::FRONTEND_COMMANDS.
+    // tauri-build 2.7.4 only emits allow-<command> after the names are declared here.
+    let attributes =
+        tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&[
+            "pick_directory",
+            "authorize_picked",
+            "list_roots",
+            "pause_directory",
+            "resume_directory",
+            "revoke_directory",
+            "scan_root",
+            "cancel_scan",
+            "get_scan",
+            "confirm_import",
+            "list_workspaces",
+            "get_workspace",
+            "selective_key_read",
+            "cancel_read",
+            "list_source_refs",
+            "get_source_ref",
+            "workspace_overview",
+            "commit_local_scan_card",
+            "list_conversation",
+            "append_user_message",
+            "onboarding",
+            "cancel_onboarding",
+            "retry_onboarding",
+            "service_grants",
+            "sidecar_status",
+            "hide_window",
+            "quit_app",
+            "shell_snapshot",
+        ]));
+    tauri_build::try_build(attributes).expect("failed to run tauri-build");
+}

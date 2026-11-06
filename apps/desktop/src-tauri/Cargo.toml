@@ -1,0 +1,24 @@
+[package]
+name = "hark-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Tauri 2 shell for the Hark native development entry"
+
+[lib]
+name = "hark_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "hark-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = "=2.7.4"
+
+[dependencies]
+hark-native-shell = { path = "../native-shell" }
+serde = { version = "1", features = ["derive"] }
+tauri = { version = "=2.12.5", features = ["tray-icon"] }
+tauri-plugin-dialog = "=2.8.4"
