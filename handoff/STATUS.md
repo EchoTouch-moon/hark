@@ -15,7 +15,8 @@
 | 用户React前端迁入 | verified-local | 已合入3c6289a，原目录不动；主会话复跑UI类型/21测试/build、Host类型与Tauri check通过。默认strict真实适配，已接picker→确认→卡片/对话/来源与隐藏/退出；未跑Native窗口点击，不冒称产品体验通过 |
 | 开发窗口启动 | running-local | 已实际启动Vite，127.0.0.1:1420返回200；新构建Tauri进程存活并通过NSRunningApplication激活到前台。不是截图/DOM/控件点击验收；见desktop-startup.md |
 | 模型配置与workspace启用 | verified-local | a8deffb已合入：页面本次运行Key、固定StepFun套餐anthropic协议、现有service_grants启用/禁用；保存不fetch、配置不等于已认证。主会话复跑Host14+2/UI24/SDKsmoke1/Native18与build通过，随后重启并激活新桌面；见model-settings.md |
-| 记忆/观点/反馈/检索 Core | in-progress | 用户要求继续实现未接后端；正于隔离分支开发独立记忆与观点修订、反馈/撤销及FTS5查询，复用现有来源。Native/Host/UI接线待Core接口落地；不把独立Core开发标为R1-B或用户验收通过 |
+| 记忆/观点/反馈/检索 Core | verified-local | 已合入3dfc540+a4b1e92，v4独立记忆/观点修订、反馈/撤销及FTS5；否定/疑问/条件摘录决定修正。主会话复跑Core69及Native check通过。仍需Native/Host/UI接线，不当R1-B产品通过 |
+| 认知后端 Native/Host/UI | in-progress | 正接记忆/观点提议与recall工具、观点读写反馈/撤销、来源与历史检索；替换现有unavailable/空列表，不加新框架或真实模型测试 |
 | R1-A 当前下一步 | awaiting-user-model | 入口与管道均已接，用户需在桌面填新Key并为Workspace启用后主动发送，才可验证真实体验。原Key已撤销，本会话未用新Key或发请求；Memory/搜索/Observer等仍未实现 |
 | macOS 安装包 / Windows 实机 | unverified | 不以本机静态检查替代。Windows 安全读源码 fail-closed，未在 Windows 编译 |
 | AT-05 / 父子排除 | blocked | 重叠拒绝不是排除流程。不得标通过 |
