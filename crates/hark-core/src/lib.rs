@@ -22,7 +22,7 @@ mod workspace;
 
 pub use conversation::{
     ConversationCommit, ConversationRun, ConversationRunStart, ConversationTurn,
-    StartedConversationRun,
+    OrdinarySessionHint, StartedConversationRun,
 };
 pub use error::{CoreError, ErrorCode};
 pub use grant::{AuthorizedRoot, RootStatus};

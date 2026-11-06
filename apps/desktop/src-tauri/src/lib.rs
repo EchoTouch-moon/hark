@@ -1,6 +1,7 @@
 use hark_native_shell::{
-    decide_window_close, AuthorizeRequest, ConfirmRequest, NativeShell, OpeningRequest, ShellError,
-    SourceRefRequest, UserMessageRequest, WindowCloseDecision,
+    decide_window_close, AgentTurnRef, AgentTurnRequest, AuthorizeRequest, ConfirmRequest,
+    NativeShell, OpeningRequest, ShellError, SourceRefRequest, TurnProgress, UserMessageRequest,
+    WindowCloseDecision,
 };
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
@@ -216,6 +217,34 @@ fn start_configured_opening(
     shell.run_configured_opening(&request.workspace_id)
 }
 
+#[tauri::command(rename_all = "camelCase", async)]
+fn start_agent_turn(
+    shell: tauri::State<'_, NativeShell>,
+    request: AgentTurnRequest,
+    on_event: tauri::ipc::Channel<hark_native_shell::RunStreamEvent>,
+) -> Result<hark_native_shell::AgentTurnAccepted, ShellError> {
+    let progress = TurnProgress::new(move |event| {
+        let _ = on_event.send(event);
+    });
+    shell.start_agent_turn(request, progress)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn get_agent_turn(
+    shell: tauri::State<'_, NativeShell>,
+    request: AgentTurnRef,
+) -> Result<hark_native_shell::AgentTurnStatus, ShellError> {
+    shell.agent_turn_status(&request.workspace_id, &request.run_id)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn cancel_agent_turn(
+    shell: tauri::State<'_, NativeShell>,
+    request: AgentTurnRef,
+) -> Result<hark_native_shell::AgentTurnStatus, ShellError> {
+    shell.cancel_agent_turn(&request.workspace_id, &request.run_id)
+}
+
 #[tauri::command(rename_all = "camelCase")]
 fn shell_snapshot(
     shell: tauri::State<'_, NativeShell>,
@@ -331,6 +360,9 @@ pub fn run() {
             service_grants,
             sidecar_status,
             start_configured_opening,
+            start_agent_turn,
+            get_agent_turn,
+            cancel_agent_turn,
             shell_snapshot,
             hide_window,
             quit_app

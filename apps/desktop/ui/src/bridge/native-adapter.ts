@@ -14,6 +14,8 @@ import type {
   OnboardingStage,
   RootCandidate,
   RootPreview,
+  RunStatus,
+  RunStreamEvent,
   RuntimeStatus,
   ServicePermission,
   WorkspaceDetail,
@@ -26,6 +28,9 @@ import type {
  */
 
 export type InvokeFn = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
+
+/** Created before invoke so a per-turn Channel can deliver events early. */
+export type TurnChannelFactory = (onEvent: (event: RunStreamEvent) => void) => unknown;
 
 export interface NativeShellError {
   code: string;
@@ -301,10 +306,16 @@ function mapNativeCode(code: string): HarkErrorCode {
       return "SCOPE_DENIED";
     case "model_not_authorized":
     case "model_not_configured":
+    case "sidecar_not_configured":
       return "MODEL_NOT_CONFIGURED";
+    case "sidecar_not_connected":
+      return "SIDECAR_UNAVAILABLE";
     case "scan_already_running":
     case "read_already_running":
+    case "run_already_active":
       return "RUN_ALREADY_ACTIVE";
+    case "invalid_message":
+      return "SCOPE_DENIED";
     case "source_ref_not_found":
     case "cross_workspace_ref":
       return "SOURCE_UNREADABLE";
@@ -324,9 +335,12 @@ function retryableNative(code: string): boolean {
   return (
     code === "scan_already_running" ||
     code === "read_already_running" ||
+    code === "run_already_active" ||
     code === "invoke_rejected" ||
     code === "sqlite" ||
-    code === "io"
+    code === "io" ||
+    code === "timeout" ||
+    code === "persistence_unknown"
   );
 }
 
@@ -442,7 +456,7 @@ function describeCheckpoint(checkpoint: OnboardingCheckpointDto): string {
     checkpoint.modelStatus === "disabled" ||
     checkpoint.modelStatus === "unavailable"
   ) {
-    return "本地发现卡不是模型理解。模型未配置，开场等待。普通聊天本轮没有 Native 接口，不会伪造回复。";
+    return "本地发现卡不是模型理解。模型未配置，开场等待。默认壳没有已批准的模型，普通聊天失败时不会伪造回复。";
   }
   if (checkpoint.selectiveReadDone && !checkpoint.modelAnalyzed) {
     return "选择性读取已完成。若本地卡尚未出现，需要 commit_local_scan_card 的真实返回，而不是前端补一张卡。";
@@ -649,12 +663,75 @@ export function mapAppSnapshot(snapshot: ShellSnapshotDto, workspaces: NativeWor
   };
 }
 
-export function createTauriHarkBridge(invoke: InvokeFn): HarkBridge {
+export interface AgentTurnStatusDto {
+  runId: string;
+  workspaceId: string;
+  conversationId: string;
+  state: RunStatus["state"] | string;
+  persistedAssistantMessageId?: string;
+  latestError?: { code: string; message: string; retryable: boolean };
+}
+
+const TURN_STATES = ["running", "completed", "cancelled", "failed", "persistence_unknown"] as const;
+
+function isTurnState(value: string): value is RunStatus["state"] {
+  return (TURN_STATES as readonly string[]).includes(value);
+}
+
+export function mapAgentTurnStatus(
+  status: AgentTurnStatusDto,
+  fallbackConversationId?: string,
+): RunStatus {
+  return {
+    runId: status.runId,
+    workspaceId: status.workspaceId,
+    conversationId: status.conversationId || fallbackConversationId || "",
+    state: isTurnState(status.state) ? status.state : "persistence_unknown",
+    ...(status.persistedAssistantMessageId
+      ? { persistedAssistantMessageId: status.persistedAssistantMessageId }
+      : {}),
+    ...(status.latestError
+      ? {
+          latestError: uiError(
+            mapNativeCode(status.latestError.code),
+            status.latestError.message,
+            status.latestError.retryable,
+            { nativeCode: status.latestError.code },
+          ),
+        }
+      : {}),
+  };
+}
+
+function assertTurnInput(input: {
+  requestId: string;
+  workspaceId: string;
+  conversationId: string;
+  userPrompt: string;
+}): void {
+  const requestId = input.requestId.trim();
+  if (!requestId || requestId.length > 128 || /[\u0000-\u001f]/.test(requestId)) {
+    throw uiError("SCOPE_DENIED", "requestId 不能作为幂等键。不会开始回合。", false);
+  }
+  if (!isHarkId(input.workspaceId, "ws") || !isHarkId(input.conversationId, "conv")) {
+    throw uiError("WORKSPACE_NOT_FOUND", "workspaceId 或 conversationId 不是 Core id。", false);
+  }
+  if (!input.userPrompt.trim()) {
+    throw uiError("SCOPE_DENIED", "userPrompt 为空。不会伪造回复。", false);
+  }
+}
+
+export function createTauriHarkBridge(
+  invoke: InvokeFn,
+  options?: { turnChannel?: TurnChannelFactory },
+): HarkBridge {
+  const turnChannel = options?.turnChannel;
   const cache = {
     roots: [] as AuthorizedRoot[],
     workspaces: [] as NativeWorkspace[],
     snapshot: null as ShellSnapshotDto | null,
     focusWorkspaceId: undefined as string | undefined,
+    runs: new Map<string, { workspaceId: string; conversationId: string }>(),
   };
 
   const call = async <T>(cmd: string, args?: Record<string, unknown>): Promise<T> => {
@@ -806,19 +883,78 @@ export function createTauriHarkBridge(invoke: InvokeFn): HarkBridge {
         messages: events.map((event) => mapConversationEvent(event, sources, checkpoint.modelAnalyzed)),
       };
     },
-    async startAgentTurn() {
-      throw uiError(
-        "MODEL_NOT_CONFIGURED",
-        "普通聊天 Native 接口本轮尚未接通。不会伪造回复，不会发出 runCompleted，也不会标记 persistenceVerified。未来绑定使用稳定 requestId 与 user_message，本轮只保留接口。",
-        false,
-        { feature: "startAgentTurn" },
-      );
+    async startAgentTurn(input, onEvent) {
+      assertTurnInput(input);
+      if (!turnChannel) {
+        throw uiError(
+          "SIDECAR_UNAVAILABLE",
+          "Turn channel 未绑定。不会伪造流式事件，也不会把候选标成已保存。",
+          false,
+        );
+      }
+      const events: RunStreamEvent[] = [];
+      const channel = turnChannel((event) => {
+        events.push(event);
+        onEvent(event);
+      });
+      const result = await call<{
+        runId: string;
+        acceptedUserMessage: ConversationEventDto;
+      }>("start_agent_turn", {
+        request: {
+          requestId: input.requestId.trim(),
+          workspaceId: input.workspaceId,
+          conversationId: input.conversationId,
+          userPrompt: input.userPrompt,
+        },
+        onEvent: channel,
+      });
+      if (!isHarkId(result.runId, "run")) {
+        throw uiError("CONNECTION_LOST", "start_agent_turn 没有返回 Core runId。不会补造完成事件。", true);
+      }
+      cache.runs.set(result.runId, {
+        workspaceId: input.workspaceId,
+        conversationId: input.conversationId,
+      });
+      if (events.some((event) => event.type === "run_completed" && event.payload.persistenceVerified !== true)) {
+        throw uiError(
+          "CONNECTION_LOST",
+          "run_completed 没有 persistenceVerified。不会把候选当已保存。",
+          true,
+        );
+      }
+      return {
+        runId: result.runId,
+        acceptedUserMessage: mapConversationEvent(result.acceptedUserMessage, [], false),
+      };
     },
-    async getRunStatus() {
-      throw unavailable("对话 run 状态");
+    async getRunStatus(runId) {
+      const owned = cache.runs.get(runId);
+      if (!owned) {
+        throw uiError(
+          "CONNECTION_LOST",
+          "没有这个 run 的 workspace 归属。不会猜测 workspace，也不会把候选当完成。",
+          true,
+        );
+      }
+      const status = await call<AgentTurnStatusDto>("get_agent_turn", {
+        request: { workspaceId: owned.workspaceId, runId },
+      });
+      return mapAgentTurnStatus(status, owned.conversationId);
     },
-    async cancelAgentTurn() {
-      throw unavailable("取消模型回复");
+    async cancelAgentTurn(runId) {
+      const owned = cache.runs.get(runId);
+      if (!owned) {
+        throw uiError(
+          "CONNECTION_LOST",
+          "没有这个 run 的 workspace 归属。不会猜测 workspace 来取消。",
+          true,
+        );
+      }
+      const status = await call<AgentTurnStatusDto>("cancel_agent_turn", {
+        request: { workspaceId: owned.workspaceId, runId },
+      });
+      return mapAgentTurnStatus(status, owned.conversationId);
     },
     async getOpinion() {
       throw unavailable("观点");
@@ -907,6 +1043,7 @@ export function selectBridge(input: {
   invoke: InvokeFn;
   devPreview: HarkBridge;
   unavailable: HarkBridge;
+  turnChannel?: TurnChannelFactory;
 }): HarkBridge {
   if (input.mode === "dev_preview_synthetic") {
     return input.devPreview;
@@ -914,5 +1051,5 @@ export function selectBridge(input: {
   if (!input.hostAvailable) {
     return input.unavailable;
   }
-  return createTauriHarkBridge(input.invoke);
+  return createTauriHarkBridge(input.invoke, { turnChannel: input.turnChannel });
 }

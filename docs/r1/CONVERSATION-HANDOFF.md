@@ -1,8 +1,8 @@
 # 普通连续对话 Core 对接
 
-状态：`implemented-local` 只覆盖 Rust Core 的普通回合存储。不是 Native 接线，不是 WebView 命令，不是 Pi SDK 流，不是真实 StepFun，不是安装包。
+状态：Core 存储仍是 `implemented-local`。Native 已加一条受信普通回合路径，证据在 `handoff/EVIDENCE/r1/conversation-native.md`。那不是真实 StepFun，不是安装包，也没有 Native 点击验收。默认壳的远程传输仍是 `closed_no_approved_key`，UI 发送键保持关闭，失败时不伪造助手回复。
 
-后续 Native 只消费本文和 `hark_core::Core`。不要把下面的受信方法加进 `FRONTEND_COMMANDS`、Tauri command 或 capability。WebView 仍只能 `append_user_message`（本地备注）和 `list_conversation`（只读恢复）。
+WebView 只增加三个薄命令：`start_agent_turn`、`get_agent_turn`、`cancel_agent_turn`。入参只有 `requestId/workspaceId/conversationId/userPrompt`，或查询/取消用的 `workspaceId+runId`。不要把下面的 Core 受信方法加进 `FRONTEND_COMMANDS`、Tauri command 或 capability。前端不能传 `success`、`provider`、`sessionRef` 或完成状态。
 
 ## 为什么要 v3
 
@@ -52,6 +52,14 @@ start_conversation_run({
 | `cancelled` | `cancelled` |
 | `failed` | `failed`，`error_code` 由 Native 填 `latestError` |
 | 不存储 | `persistence_unknown` 只属于 Native：提交 RPC 结果未知时使用。Core 错误表示确定没提交；已有 `assistant_message_id` 就是 completed |
+
+## Native 薄路径
+
+进程内顺序不变：`start_conversation_run` → `run.start purpose=conversation` → `register_conversation_run` → `stream.done` 之后才 `commit_conversation_message`。`userMessageId` 和 prompt 都来自 Core 已存原文。近期历史包含普通 `agent_message`，不把当前 user 再注入一次。`sessionRef` 复用同 workspace 已有 Pi 会话；新 ref 只写当前普通 run，不写回 opening 绑定。空 `source_ids` 允许。给出的 source 仍必须同 workspace。
+
+进度是单次 `TurnProgress` callback，Tauri 用该次 invoke 的 `Channel<RunStreamEvent>` 转发 `run_started/text_delta/run_completed/run_cancelled/run_failed`。不是新的全局事件总线。Channel 在 invoke 前创建。只有 Core 提交成功才发 `run_completed` 且 `persistenceVerified=true`。提交结果未知先查 Core，不把 candidate 当 done。取消/失败保留用户原文。同一 `requestId` 不重复调用模型。
+
+Sidecar 未连接时 `start_agent_turn` 直接失败，不先写假回复。默认没有已批准 Key，不新增模型配置 UI 或 Key 存储。
 
 ## 不要暴露给 WebView
 

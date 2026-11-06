@@ -11,7 +11,8 @@ mod seam;
 mod service;
 
 pub use bridge::{
-    DevSidecarConfig, OpeningBridgeResult, ProtocolProbe, OPENING_INTERNAL_INSTRUCTION,
+    AgentTurnAccepted, AgentTurnRef, AgentTurnRequest, AgentTurnStatus, DevSidecarConfig,
+    OpeningBridgeResult, ProtocolProbe, RunStreamEvent, TurnProgress, OPENING_INTERNAL_INSTRUCTION,
 };
 pub use error::ShellError;
 pub use hark_core::{

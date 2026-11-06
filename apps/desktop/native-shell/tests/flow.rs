@@ -6,9 +6,10 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use hark_native_shell::{
-    business_db_path, decide_window_close, sidecar_status, AuthorizeRequest, ConfirmRequest,
-    NativeShell, NotConnectedHost, OpeningHost, Selection, SourceRefRequest, UserMessageRequest,
-    WindowCloseDecision, WorkspaceRef, CONTROLLED_PICK_ENTRY, FRONTEND_COMMANDS, PICK_TTL_MS,
+    business_db_path, decide_window_close, sidecar_status, AgentTurnRef, AgentTurnRequest,
+    AuthorizeRequest, ConfirmRequest, NativeShell, NotConnectedHost, OpeningHost, Selection,
+    SourceRefRequest, UserMessageRequest, WindowCloseDecision, WorkspaceRef, CONTROLLED_PICK_ENTRY,
+    FRONTEND_COMMANDS, PICK_TTL_MS,
 };
 
 fn synth_project(root: &Path) {
@@ -50,6 +51,11 @@ fn command_surface_rejects_path_success_and_model_completion() {
         "authorize_directory",
         "set_service_grant",
         "commit_agent_opening",
+        "start_conversation_run",
+        "register_conversation_run",
+        "commit_conversation_message",
+        "fail_conversation_run",
+        "cancel_conversation_run",
         "mark_analyzing",
         "record_model_unavailable",
         "read_workspace_file",
@@ -88,6 +94,18 @@ fn command_surface_rejects_path_success_and_model_completion() {
         r#"{"workspaceId":"ws_x","text":"hi","completed":true}"#
     )
     .is_err());
+    assert!(serde_json::from_str::<AgentTurnRequest>(
+        r#"{"requestId":"req-1","workspaceId":"ws_x","conversationId":"conv_x","userPrompt":"hi","success":true}"#
+    )
+    .is_err());
+    assert!(serde_json::from_str::<AgentTurnRequest>(
+        r#"{"requestId":"req-1","workspaceId":"ws_x","conversationId":"conv_x","userPrompt":"hi","sessionRef":"pi:x","provider":"stepfun"}"#
+    )
+    .is_err());
+    assert!(serde_json::from_str::<AgentTurnRef>(
+        r#"{"workspaceId":"ws_x","runId":"run_x","approved":true}"#
+    )
+    .is_err());
     assert!(serde_json::from_str::<SourceRefRequest>(
         r#"{"workspaceId":"ws_x","sourceId":"src_x","path":"/tmp"}"#
     )
@@ -108,6 +126,8 @@ fn command_surface_rejects_path_success_and_model_completion() {
         assert_ne!(permission, "core:default");
         for closed in [
             "commit-agent-opening",
+            "commit-conversation-message",
+            "register-conversation-run",
             "set-service-grant",
             "authorize-directory",
             "mark-analyzing",

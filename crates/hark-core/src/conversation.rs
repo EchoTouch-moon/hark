@@ -81,6 +81,15 @@ pub struct ConversationTurn {
     pub replayed: bool,
 }
 
+/// Latest Pi session stored on an ordinary run. Not the opening binding.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrdinarySessionHint {
+    pub run_id: RunId,
+    pub session_ref: String,
+    pub updated_at: String,
+}
+
 struct AuthSnap {
     provider: String,
     model: String,
@@ -220,6 +229,45 @@ impl Core {
                 )),
                 Some(row) => Ok(Some(started(conn, &row, true)?)),
             }
+        })
+    }
+
+    /// Newest ordinary `sessionRef` for this workspace. Does not read or write
+    /// the opening binding, and does not create a table.
+    pub fn latest_ordinary_session(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> Result<Option<OrdinarySessionHint>> {
+        self.with_conn(|conn| {
+            if workspace::load_workspace(conn, workspace_id)?.is_none() {
+                return Err(CoreError::new(
+                    ErrorCode::WorkspaceNotFound,
+                    workspace_id.as_str(),
+                ));
+            }
+            let found = conn
+                .query_row(
+                    "SELECT id, session_ref, updated_at FROM conversation_runs
+                     WHERE workspace_id = ?1 AND session_ref IS NOT NULL
+                     ORDER BY updated_at DESC, id DESC
+                     LIMIT 1",
+                    params![workspace_id.as_str()],
+                    |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                        ))
+                    },
+                )
+                .optional()?;
+            Ok(
+                found.map(|(id, session_ref, updated_at)| OrdinarySessionHint {
+                    run_id: RunId::from_trusted(id),
+                    session_ref,
+                    updated_at,
+                }),
+            )
         })
     }
 }

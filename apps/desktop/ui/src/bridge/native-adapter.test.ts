@@ -327,27 +327,126 @@ test("source ref detail uses the returned excerpt and does not imply a path read
   assert.deepEqual(calls[1]?.args, { request: { workspaceId: WS, sourceId: SRC } });
 });
 
-test("startAgentTurn does not invoke or emit a completed run", async () => {
+const RUN = "run_0123456789abcdef0123456789abcdef";
+
+function turnInput(prompt = "你好") {
+  return {
+    requestId: "req-turn-1",
+    workspaceId: WS,
+    conversationId: CONV,
+    userPrompt: prompt,
+  };
+}
+
+function acceptedMessage() {
+  return {
+    id: MSG,
+    workspaceId: WS,
+    conversationId: CONV,
+    kind: "user_message",
+    body: "你好",
+    presentation: "normal",
+    sourceIds: [],
+    createdAt: "2026-11-06T00:03:00Z",
+  };
+}
+
+test("startAgentTurn rejects empty input before invoke and does not invent completion", async () => {
   const { invoke, calls } = recorder({});
-  const bridge = createTauriHarkBridge(invoke);
+  const bridge = createTauriHarkBridge(invoke, {
+    turnChannel: (onEvent) => ({ kind: "channel", onEvent }),
+  });
+  const events: string[] = [];
+  await assert.rejects(() => bridge.startAgentTurn(turnInput("  "), (event) => events.push(event.type)));
+  await assert.rejects(() =>
+    bridge.startAgentTurn({ ...turnInput(), workspaceId: "not-an-id" }, (event) => events.push(event.type)),
+  );
+  assert.equal(calls.length, 0);
+  assert.deepEqual(events, []);
+});
+
+test("startAgentTurn creates the channel before invoke and does not mark an unverified run done", async () => {
+  let handler: ((event: import("./HarkBridge.ts").RunStreamEvent) => void) | null = null;
+  let channelSeen = false;
+  const { invoke, calls } = recorder({
+    start_agent_turn: () => {
+      channelSeen = handler !== null;
+      handler?.({
+        schemaVersion: "hark.ui.v1",
+        workspaceId: WS,
+        conversationId: CONV,
+        runId: RUN,
+        seq: 1,
+        type: "run_started",
+        payload: {},
+      });
+      return { runId: RUN, acceptedUserMessage: acceptedMessage() };
+    },
+    get_agent_turn: () => ({
+      runId: RUN,
+      workspaceId: WS,
+      conversationId: CONV,
+      state: "running",
+    }),
+    cancel_agent_turn: () => ({
+      runId: RUN,
+      workspaceId: WS,
+      conversationId: CONV,
+      state: "cancelled",
+    }),
+  });
+  const bridge = createTauriHarkBridge(invoke, {
+    turnChannel: (onEvent) => {
+      handler = onEvent;
+      return { kind: "test-channel" };
+    },
+  });
+  const events: string[] = [];
+  const started = await bridge.startAgentTurn(turnInput(), (event) => events.push(event.type));
+  assert.equal(channelSeen, true);
+  assert.equal(calls[0]?.cmd, "start_agent_turn");
+  assert.equal((calls[0]?.args?.onEvent as { kind?: string } | undefined)?.kind, "test-channel");
+  assert.deepEqual(calls[0]?.args?.request, {
+    requestId: "req-turn-1",
+    workspaceId: WS,
+    conversationId: CONV,
+    userPrompt: "你好",
+  });
+  assert.equal(started.runId, RUN);
+  assert.equal(started.acceptedUserMessage.role, "user");
+  assert.equal(started.acceptedUserMessage.content, "你好");
+  assert.deepEqual(events, ["run_started"]);
+  assert.equal(events.includes("run_completed"), false);
+  const status = await bridge.getRunStatus(RUN);
+  assert.equal(status.state, "running");
+  assert.deepEqual(calls[1]?.args, { request: { workspaceId: WS, runId: RUN } });
+  const cancelled = await bridge.cancelAgentTurn(RUN);
+  assert.equal(cancelled.state, "cancelled");
+  await assert.rejects(() => bridge.getRunStatus("run_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+  assert.equal(calls.some((call) => call.cmd === "get_agent_turn" && (call.args?.request as { runId?: string })?.runId === "run_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), false);
+});
+
+test("startAgentTurn maps an unconfigured sidecar without emitting completion", async () => {
+  const { invoke, calls } = recorder({
+    start_agent_turn: () => {
+      throw { code: "model_not_configured", detail: "sidecar is not connected" };
+    },
+  });
+  const bridge = createTauriHarkBridge(invoke, {
+    turnChannel: (onEvent) => {
+      void onEvent;
+      return { kind: "test-channel" };
+    },
+  });
   const events: string[] = [];
   await assert.rejects(
-    () =>
-      bridge.startAgentTurn(
-        {
-          requestId: "req_0123456789abcdef0123456789abcdef",
-          workspaceId: WS,
-          conversationId: CONV,
-          userPrompt: "你好",
-        },
-        (event) => events.push(event.type),
-      ),
+    () => bridge.startAgentTurn(turnInput(), (event) => events.push(event.type)),
     (err: unknown) => {
       assert.equal((err as HarkUIError).code, "MODEL_NOT_CONFIGURED");
       return true;
     },
   );
-  assert.equal(calls.length, 0);
+  assert.equal(calls.length, 1);
   assert.deepEqual(events, []);
 });
 

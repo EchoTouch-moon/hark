@@ -13,10 +13,11 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use hark_core::{
-    encode_frame, AgentOpeningReceipt, Core, ErrorId, Frame, FrameKind, NdjsonParser, RequestId,
-    RootStatus, RunId, ServiceKind, ServiceStatus, SessionBinding, SourceId, WorkspaceId,
+    encode_frame, AgentOpeningReceipt, ConversationCommit, ConversationEvent, ConversationRunStart,
+    Core, ErrorId, Frame, FrameKind, NdjsonParser, RequestId, RootStatus, RunId, ServiceKind,
+    ServiceStatus, SessionBinding, SourceId, WorkspaceId,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::error::ShellError;
@@ -68,6 +69,91 @@ pub struct ProtocolProbe {
     pub scripted_invocations: u32,
 }
 
+/// Frontend turn input. No success, provider, sessionRef, or completion flag.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AgentTurnRequest {
+    pub request_id: String,
+    pub workspace_id: String,
+    pub conversation_id: String,
+    pub user_prompt: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AgentTurnRef {
+    pub workspace_id: String,
+    pub run_id: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentTurnAccepted {
+    pub run_id: String,
+    pub accepted_user_message: ConversationEvent,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TurnErrorBody {
+    pub code: String,
+    pub message: String,
+    pub retryable: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentTurnStatus {
+    pub run_id: String,
+    pub workspace_id: String,
+    pub conversation_id: String,
+    pub state: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub persisted_assistant_message_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_error: Option<TurnErrorBody>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunStreamPayload {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delta: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub persisted_message_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub persistence_verified: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<TurnErrorBody>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunStreamEvent {
+    pub schema_version: &'static str,
+    pub workspace_id: String,
+    pub conversation_id: String,
+    pub run_id: String,
+    pub seq: u64,
+    #[serde(rename = "type")]
+    pub event_type: &'static str,
+    pub payload: RunStreamPayload,
+}
+
+/// Per-turn progress. Not a process-wide event bus.
+#[derive(Clone)]
+pub struct TurnProgress(Arc<dyn Fn(RunStreamEvent) + Send + Sync>);
+
+impl TurnProgress {
+    pub fn new(callback: impl Fn(RunStreamEvent) + Send + Sync + 'static) -> Self {
+        Self(Arc::new(callback))
+    }
+
+    fn emit(&self, event: RunStreamEvent) {
+        (self.0)(event);
+    }
+}
+
 #[derive(Clone)]
 struct ProviderSlot {
     provider: String,
@@ -97,8 +183,20 @@ enum Command {
         workspace_id: String,
         reply: Sender<Result<OpeningBridgeResult, ShellError>>,
     },
+    Conversation {
+        request_id: String,
+        workspace_id: String,
+        conversation_id: String,
+        user_prompt: String,
+        progress: TurnProgress,
+        reply: Sender<Result<AgentTurnAccepted, ShellError>>,
+    },
     Cancel {
         workspace_id: String,
+    },
+    CancelTurn {
+        workspace_id: String,
+        run_id: String,
     },
     CloseStdin,
     KillChild,
@@ -115,9 +213,19 @@ enum Command {
 
 struct Active {
     reply: Option<Sender<Result<OpeningBridgeResult, ShellError>>>,
+    purpose: &'static str,
+    client_request_id: String,
+    user_message_id: Option<String>,
+    user_text: String,
+    handoff_id: Option<String>,
+    recent_messages: Vec<Value>,
+    seq: u64,
+    progress: Option<TurnProgress>,
+    accepted_event: Option<ConversationEvent>,
     workspace_id: String,
     conversation_id: String,
     run_id: String,
+    /// Host frame id. Not the HarkBridge requestId.
     request_id: String,
     provider: String,
     model: String,
@@ -404,6 +512,40 @@ impl SidecarSupervisor {
     pub fn cancel(&self, workspace_id: &str) -> Result<(), ShellError> {
         self.send(Command::Cancel {
             workspace_id: workspace_id.to_string(),
+        })
+    }
+
+    /// Accept an ordinary turn. The model stream continues on this worker and
+    /// reports through `progress`. A missing sidecar does not invent a reply.
+    pub fn conversation(
+        &self,
+        request: AgentTurnRequest,
+        progress: TurnProgress,
+    ) -> Result<AgentTurnAccepted, ShellError> {
+        if !self.status().connected {
+            return Err(ShellError::new(
+                "model_not_configured",
+                "sidecar is not connected. No agent reply was invented.",
+            ));
+        }
+        let (reply_tx, reply_rx) = mpsc::channel();
+        self.send(Command::Conversation {
+            request_id: request.request_id,
+            workspace_id: request.workspace_id,
+            conversation_id: request.conversation_id,
+            user_prompt: request.user_prompt,
+            progress,
+            reply: reply_tx,
+        })?;
+        reply_rx
+            .recv_timeout(Duration::from_secs(30))
+            .map_err(|_| ShellError::new("timeout", "conversation accept timed out"))?
+    }
+
+    pub fn cancel_turn(&self, workspace_id: &str, run_id: &str) -> Result<(), ShellError> {
+        self.send(Command::CancelTurn {
+            workspace_id: workspace_id.to_string(),
+            run_id: run_id.to_string(),
         })
     }
 
@@ -890,27 +1032,15 @@ fn worker(
                     for waiter in ready_waiters.drain(..) {
                         let _ = waiter.send(Ok(()));
                     }
-                    if let Some(Command::Opening {
-                        workspace_id,
-                        reply,
-                    }) = pending.take()
-                    {
+                    if let Some(command) = pending.take() {
                         let pid = proc.pid;
-                        active = begin_opening(
-                            &mut proc,
-                            &core,
-                            &hooks,
-                            &mut seen,
-                            workspace_id,
-                            reply,
-                            pid,
-                            transport,
-                        );
+                        active =
+                            launch(&mut proc, &core, &hooks, &mut seen, command, pid, transport);
                     }
                     continue;
                 }
                 if let Some(run) = active.as_mut() {
-                    if handle_frame(&mut proc, &core, &hooks, run, &frame, &mut seen).is_some() {
+                    if handle_frame(&mut proc, &core, &hooks, run, &frame, &mut seen) {
                         active = None;
                     }
                 }
@@ -918,6 +1048,7 @@ fn worker(
             Wake::Note(IngressNote::Overflow) => {
                 let _ = shutdown_sidecar(
                     &mut proc,
+                    &core,
                     &mut active,
                     &mut pending,
                     &mut ready_waiters,
@@ -940,6 +1071,7 @@ fn worker(
             Wake::Note(IngressNote::Eof) | Wake::Note(IngressNote::Protocol(_)) => {
                 let _ = shutdown_sidecar(
                     &mut proc,
+                    &core,
                     &mut active,
                     &mut pending,
                     &mut ready_waiters,
@@ -967,13 +1099,54 @@ fn worker(
                         });
                     } else {
                         let pid = proc.pid;
-                        active = begin_opening(
+                        active = launch(
                             &mut proc,
                             &core,
                             &hooks,
                             &mut seen,
+                            Command::Opening {
+                                workspace_id,
+                                reply,
+                            },
+                            pid,
+                            transport,
+                        );
+                    }
+                }
+                Command::Conversation {
+                    request_id,
+                    workspace_id,
+                    conversation_id,
+                    user_prompt,
+                    progress,
+                    reply,
+                } => {
+                    if let Some(run) = active.as_ref() {
+                        reply_busy_or_same(run, &request_id, &workspace_id, reply);
+                    } else if !ready {
+                        pending = Some(Command::Conversation {
+                            request_id,
                             workspace_id,
+                            conversation_id,
+                            user_prompt,
+                            progress,
                             reply,
+                        });
+                    } else {
+                        let pid = proc.pid;
+                        active = launch(
+                            &mut proc,
+                            &core,
+                            &hooks,
+                            &mut seen,
+                            Command::Conversation {
+                                request_id,
+                                workspace_id,
+                                conversation_id,
+                                user_prompt,
+                                progress,
+                                reply,
+                            },
                             pid,
                             transport,
                         );
@@ -981,7 +1154,7 @@ fn worker(
                 }
                 Command::Cancel { workspace_id } => {
                     if let Some(run) = active.as_mut() {
-                        if run.workspace_id == workspace_id {
+                        if run.purpose == "opening" && run.workspace_id == workspace_id {
                             run.cancelled = true;
                             let _ = send_cancel(&mut proc, run);
                             finish_active(
@@ -993,6 +1166,12 @@ fn worker(
                             );
                         }
                     }
+                }
+                Command::CancelTurn {
+                    workspace_id,
+                    run_id,
+                } => {
+                    cancel_live_turn(&mut proc, &core, &mut active, &workspace_id, &run_id);
                 }
                 Command::CloseStdin => {
                     proc.close_stdin();
@@ -1026,6 +1205,7 @@ fn worker(
                 Command::Stop { reply } => {
                     let report = shutdown_sidecar(
                         &mut proc,
+                        &core,
                         &mut active,
                         &mut pending,
                         &mut ready_waiters,
@@ -1042,6 +1222,7 @@ fn worker(
                 if stop_requested.load(Ordering::SeqCst) {
                     let _ = shutdown_sidecar(
                         &mut proc,
+                        &core,
                         &mut active,
                         &mut pending,
                         &mut ready_waiters,
@@ -1052,36 +1233,13 @@ fn worker(
                     );
                     break;
                 }
-                if let Some(Command::Opening {
-                    workspace_id,
-                    reply,
-                }) = pending.take()
-                {
-                    if started.elapsed() > Duration::from_secs(15) {
-                        let _ = reply.send(Err(ShellError::new("timeout", "host.ready timed out")));
-                        let _ = workspace_id;
-                    } else {
-                        pending = Some(Command::Opening {
-                            workspace_id,
-                            reply,
-                        });
-                    }
-                }
-                if let Some(run) = active.as_mut() {
-                    if !run.finished && now_ms() > run.deadline {
-                        run.timed_out = true;
-                        run.cancelled = true;
-                        let _ = send_cancel(&mut proc, run);
-                        finish_active(
-                            &mut active,
-                            Err(ShellError::new("timeout", "opening deadline exceeded")),
-                        );
-                    }
-                }
+                expire_pending(&mut pending, started);
+                expire_active(&mut proc, &core, &mut active);
             }
             Wake::Closed => {
                 let _ = shutdown_sidecar(
                     &mut proc,
+                    &core,
                     &mut active,
                     &mut pending,
                     &mut ready_waiters,
@@ -1098,6 +1256,7 @@ fn worker(
 
 fn shutdown_sidecar(
     proc: &mut SpawnedSidecar,
+    core: &Core,
     active: &mut Option<Active>,
     pending: &mut Option<Command>,
     ready_waiters: &mut Vec<Sender<Result<(), ShellError>>>,
@@ -1106,12 +1265,11 @@ fn shutdown_sidecar(
     pid: &AtomicU32,
     err: ShellError,
 ) -> StopReport {
-    if let Some(Command::Opening { reply, .. }) = pending.take() {
-        let _ = reply.send(Err(err.clone()));
-    }
+    fail_pending(pending, err.clone());
     for waiter in ready_waiters.drain(..) {
         let _ = waiter.send(Err(err.clone()));
     }
+    fail_live(core, active, err.clone());
     fail_active(active, err);
     let report = proc.stop();
     pgid.store(0, Ordering::SeqCst);
@@ -1252,6 +1410,15 @@ fn prepare_opening(
     let _ = max_reads;
     Ok(Active {
         reply: None,
+        purpose: "opening",
+        client_request_id: String::new(),
+        user_message_id: None,
+        user_text: String::new(),
+        handoff_id: None,
+        recent_messages: Vec::new(),
+        seq: 0,
+        progress: None,
+        accepted_event: None,
         workspace_id: workspace_id.as_str().to_string(),
         conversation_id: ws.conversation_id.as_str().to_string(),
         run_id: run_id.as_str().to_string(),
@@ -1278,7 +1445,7 @@ fn prepare_opening(
 
 fn run_start_frame(active: &Active, core: &Core) -> Result<Frame, ShellError> {
     let workspace_id = WorkspaceId::parse(&active.workspace_id)?;
-    let auth = current_authorization(core, &workspace_id, &active.run_id)?;
+    let auth = current_authorization(core, &workspace_id, &active.run_id, active.purpose)?;
     if auth.get("current").and_then(|item| item.as_bool()) != Some(true) {
         return Err(ShellError::new(
             "model_not_authorized",
@@ -1286,10 +1453,15 @@ fn run_start_frame(active: &Active, core: &Core) -> Result<Frame, ShellError> {
         ));
     }
     let (revision, source_version, overview) = context_facts(core, &workspace_id)?;
+    let user_text = if active.purpose == "conversation" {
+        active.user_text.as_str()
+    } else {
+        OPENING_INTERNAL_INSTRUCTION
+    };
     let mut payload = json!({
         "provider": active.provider,
         "model": active.model,
-        "purpose": "opening",
+        "purpose": active.purpose,
         "authorization": auth,
         "contextSnapshot": {
             "contextPackRevision": revision,
@@ -1298,13 +1470,20 @@ fn run_start_frame(active: &Active, core: &Core) -> Result<Frame, ShellError> {
             "identity": "memory-engine-absent",
             "overview": overview,
         },
-        "userText": OPENING_INTERNAL_INSTRUCTION,
+        "userText": user_text,
         "sessionRef": active.session_ref,
-        "handoffId": Value::Null,
+        "handoffId": active.handoff_id,
         "syntheticCore": false,
     });
-    // Opening omits userMessageId. Do not invent a msg_ id.
-    payload.as_object_mut().unwrap().remove("userMessageId");
+    let object = payload.as_object_mut().unwrap();
+    if active.purpose == "conversation" {
+        object.insert("userMessageId".to_string(), json!(active.user_message_id));
+        object.insert("recentMessages".to_string(), json!(active.recent_messages));
+    } else {
+        // Opening omits userMessageId. Do not invent a msg_ id.
+        object.remove("userMessageId");
+        object.insert("handoffId".to_string(), Value::Null);
+    }
     Ok(Frame {
         v: 1,
         kind: FrameKind::Request,
@@ -1326,16 +1505,17 @@ fn handle_frame(
     run: &mut Active,
     frame: &Frame,
     seen: &mut HashSet<String>,
-) -> Option<Result<OpeningBridgeResult, ShellError>> {
+) -> bool {
     if run.finished {
-        return None;
+        return false;
     }
     if now_ms() > run.deadline {
         run.timed_out = true;
-        return Some(finish_run(
+        return close_turn(
+            core,
             run,
-            Err(ShellError::new("timeout", "late frame after deadline")),
-        ));
+            ShellError::new("timeout", "late frame after deadline"),
+        );
     }
     if frame.workspace_id.as_deref() != Some(run.workspace_id.as_str())
         && frame.method != "host.ready"
@@ -1348,7 +1528,7 @@ fn handle_frame(
             "workspace_mismatch",
             "cross-workspace frame rejected",
         );
-        return None;
+        return false;
     }
     if frame.run_id.as_deref() != Some(run.run_id.as_str()) && frame.kind != FrameKind::Response {
         let _ = send_error(
@@ -1359,7 +1539,7 @@ fn handle_frame(
             "run_mismatch",
             "cross-run frame rejected",
         );
-        return None;
+        return false;
     }
     if frame.kind == FrameKind::Request {
         if !seen.insert(frame.id.clone()) {
@@ -1371,7 +1551,7 @@ fn handle_frame(
                 "correlation_rejected",
                 "duplicate request id",
             );
-            return None;
+            return false;
         }
         if run.cancelled || run.timed_out {
             let _ = send_error(
@@ -1382,7 +1562,7 @@ fn handle_frame(
                 "cancelled",
                 "late request after cancel",
             );
-            return None;
+            return false;
         }
         if frame.method == "tool.request" {
             let _ = answer_tool(proc, core, hooks, run, frame);
@@ -1396,7 +1576,7 @@ fn handle_frame(
                 "unsupported host request",
             );
         }
-        return None;
+        return false;
     }
     if frame.reply_to.as_deref() != Some(run.request_id.as_str()) {
         if frame.kind != FrameKind::Error {
@@ -1406,17 +1586,18 @@ fn handle_frame(
                 &run.workspace_id,
                 &run.run_id,
                 "correlation_rejected",
-                "reply does not match the opening request",
+                "reply does not match the active request",
             );
         }
         // A late error for run.cancel or the previous run must not fail the current run.
-        return None;
+        return false;
     }
     if run.cancelled || run.timed_out {
-        return Some(finish_run(
+        return close_turn(
+            core,
             run,
-            Err(ShellError::new("cancelled", "late success frame ignored")),
-        ));
+            ShellError::new("cancelled", "late success frame ignored"),
+        );
     }
     if frame.kind == FrameKind::Error {
         let code = frame
@@ -1424,10 +1605,12 @@ fn handle_frame(
             .as_ref()
             .map(|item| item.code.as_str())
             .unwrap_or("invalid_frame");
-        return Some(finish_run(
-            run,
-            Err(ShellError::new(code, "host rejected the opening run")),
-        ));
+        let detail = if run.purpose == "conversation" {
+            "host rejected the conversation run"
+        } else {
+            "host rejected the opening run"
+        };
+        return close_turn(core, run, ShellError::new(code, detail));
     }
     if frame.method == "run.start" && frame.kind == FrameKind::Response {
         let accepted = frame
@@ -1446,13 +1629,20 @@ fn handle_frame(
             .and_then(|item| item.as_bool())
             .unwrap_or(true);
         if !accepted || committed_by_host || !session_ref_ok(session_ref) {
-            return Some(finish_run(
+            return close_turn(
+                core,
                 run,
-                Err(ShellError::new(
+                ShellError::new(
                     "correlation_rejected",
                     "host acceptance is not a core commit",
-                )),
-            ));
+                ),
+            );
+        }
+        if run.purpose == "conversation" {
+            return match register_ordinary_session(core, run, session_ref) {
+                Ok(()) => false,
+                Err(err) => close_turn(core, run, err),
+            };
         }
         let binding = SessionBinding {
             workspace_id: WorkspaceId::parse(&run.workspace_id)
@@ -1471,21 +1661,38 @@ fn handle_frame(
             .and_then(|item| item.as_str())
             .unwrap_or("");
         if let Err(err) = bind_reported_session(core, &binding, policy) {
-            return Some(finish_run(run, Err(err.into())));
+            return close_turn(core, run, err.into());
         }
         run.session_ref = Some(session_ref.to_string());
-        return None;
+        return false;
     }
     if frame.method == "stream.delta" {
         if let Some(text) = frame.payload.get("text").and_then(|item| item.as_str()) {
             run.candidate.push_str(text);
+            if run.purpose == "conversation" {
+                emit_event(
+                    run,
+                    "text_delta",
+                    RunStreamPayload {
+                        delta: Some(text.to_string()),
+                        persisted_message_id: None,
+                        persistence_verified: None,
+                        error: None,
+                    },
+                );
+            }
         }
-        return None;
+        return false;
     }
     if frame.method == "stream.done" {
-        return Some(commit_done(core, run, frame));
+        if run.purpose == "conversation" {
+            commit_conversation_done(core, run, frame);
+        } else {
+            let _ = commit_done(core, run, frame);
+        }
+        return true;
     }
-    None
+    false
 }
 
 fn answer_tool(
@@ -1512,7 +1719,7 @@ fn answer_tool(
         .and_then(|item| item.as_str())
         .unwrap_or("");
     let workspace_id = WorkspaceId::parse(&run.workspace_id)?;
-    let auth = current_authorization(core, &workspace_id, &run.run_id)?;
+    let auth = current_authorization(core, &workspace_id, &run.run_id, run.purpose)?;
     let current = auth
         .get("current")
         .and_then(|item| item.as_bool())
@@ -1687,7 +1894,7 @@ fn commit_done(
         );
     }
     let workspace_id = WorkspaceId::parse(&run.workspace_id)?;
-    let auth = current_authorization(core, &workspace_id, &run.run_id)?;
+    let auth = current_authorization(core, &workspace_id, &run.run_id, run.purpose)?;
     if auth.get("current").and_then(|item| item.as_bool()) != Some(true)
         || auth.get("rootId").and_then(|item| item.as_str()) != Some(run.root_id.as_str())
         || auth.get("rootUpdatedAt").and_then(|item| item.as_str())
@@ -1775,10 +1982,825 @@ fn fail_active(active: &mut Option<Active>, err: ShellError) {
     finish_active(active, Err(err));
 }
 
+fn launch(
+    proc: &mut SpawnedSidecar,
+    core: &Core,
+    hooks: &Hooks,
+    seen: &mut HashSet<String>,
+    command: Command,
+    pid: u32,
+    transport: &'static str,
+) -> Option<Active> {
+    match command {
+        Command::Opening {
+            workspace_id,
+            reply,
+        } => begin_opening(proc, core, hooks, seen, workspace_id, reply, pid, transport),
+        Command::Conversation {
+            request_id,
+            workspace_id,
+            conversation_id,
+            user_prompt,
+            progress,
+            reply,
+        } => begin_conversation(
+            proc,
+            core,
+            hooks,
+            seen,
+            request_id,
+            workspace_id,
+            conversation_id,
+            user_prompt,
+            progress,
+            reply,
+            pid,
+        ),
+        Command::Cancel { .. }
+        | Command::CancelTurn { .. }
+        | Command::CloseStdin
+        | Command::KillChild
+        | Command::WaitReady { .. }
+        | Command::Probe { .. }
+        | Command::Stop { .. } => None,
+    }
+}
+
+fn begin_conversation(
+    proc: &mut SpawnedSidecar,
+    core: &Core,
+    hooks: &Hooks,
+    seen: &mut HashSet<String>,
+    request_id: String,
+    workspace_id: String,
+    conversation_id: String,
+    user_prompt: String,
+    progress: TurnProgress,
+    reply: Sender<Result<AgentTurnAccepted, ShellError>>,
+    pid: u32,
+) -> Option<Active> {
+    match prepare_conversation(
+        core,
+        hooks,
+        request_id,
+        workspace_id,
+        conversation_id,
+        user_prompt,
+        progress,
+    ) {
+        Ok(PreparedTurn::Replay(accepted)) => {
+            let _ = reply.send(Ok(accepted));
+            None
+        }
+        Ok(PreparedTurn::Live(mut active)) => {
+            active.node_pid = pid;
+            emit_event(
+                &mut active,
+                "run_started",
+                RunStreamPayload {
+                    delta: None,
+                    persisted_message_id: None,
+                    persistence_verified: None,
+                    error: None,
+                },
+            );
+            let started = match run_start_frame(&active, core) {
+                Ok(frame) => {
+                    seen.insert(frame.id.clone());
+                    write_frame(proc, &frame)
+                }
+                Err(err) => Err(err),
+            };
+            match started {
+                Ok(()) => {
+                    let accepted = accepted_from(&active);
+                    let _ = reply.send(Ok(accepted));
+                    Some(active)
+                }
+                Err(err) => {
+                    settle_conversation_failure(core, &mut active, &err.code, &err.detail);
+                    let _ = reply.send(Err(err));
+                    None
+                }
+            }
+        }
+        Err(err) => {
+            let _ = reply.send(Err(err));
+            None
+        }
+    }
+}
+
+enum PreparedTurn {
+    Replay(AgentTurnAccepted),
+    Live(Active),
+}
+
+fn prepare_conversation(
+    core: &Core,
+    hooks: &Hooks,
+    request_id: String,
+    workspace_id: String,
+    conversation_id: String,
+    user_prompt: String,
+    progress: TurnProgress,
+) -> Result<PreparedTurn, ShellError> {
+    let prompt = user_prompt.trim();
+    if prompt.is_empty() {
+        return Err(ShellError::new("invalid_message", "user prompt empty"));
+    }
+    if prompt.chars().count() > 16_000 {
+        return Err(ShellError::new(
+            "invalid_message",
+            "user prompt exceeds the host userText cap",
+        ));
+    }
+    let workspace_id = WorkspaceId::parse(&workspace_id)
+        .map_err(|_| ShellError::new("invalid_id", "workspace id"))?;
+    let conversation_id = hark_core::ConversationId::parse(&conversation_id)
+        .map_err(|_| ShellError::new("invalid_id", "conversation id"))?;
+    let expected_provider = hooks
+        .provider
+        .lock()
+        .map(|slot| slot.clone())
+        .unwrap_or_default();
+    let expected_model = hooks
+        .model
+        .lock()
+        .map(|slot| slot.clone())
+        .unwrap_or_default();
+    let grant = core.get_service_grant(&workspace_id, ServiceKind::Model)?;
+    let provider = grant.provider.clone().unwrap_or_default();
+    let model = grant.model.clone().unwrap_or_default();
+    if grant.status != ServiceStatus::Enabled
+        || provider.is_empty()
+        || model.is_empty()
+        || provider != expected_provider
+        || model != expected_model
+    {
+        return Err(ShellError::new(
+            "model_not_authorized",
+            "core grant does not match the explicit sidecar slot",
+        ));
+    }
+    let started = core.start_conversation_run(&ConversationRunStart {
+        request_id,
+        workspace_id: workspace_id.clone(),
+        conversation_id,
+        user_message_id: None,
+        user_text: Some(prompt.to_string()),
+    })?;
+    let accepted = AgentTurnAccepted {
+        run_id: started.run.id.as_str().to_string(),
+        accepted_user_message: started.accepted_user_message.clone(),
+    };
+    if started.replayed {
+        emit_replay(&progress, &started.run);
+        return Ok(PreparedTurn::Replay(accepted));
+    }
+    if let Ok(current) = core.get_conversation_run(&workspace_id, &started.run.id) {
+        if current.state == "cancelled" || current.state == "failed" {
+            emit_replay(&progress, &current);
+            return Ok(PreparedTurn::Replay(accepted));
+        }
+    }
+    let ws = core.get_workspace(&workspace_id)?;
+    let root = core.get_root(&ws.root_id)?;
+    let (recent_messages, handoff_id) = recent_messages(
+        core,
+        &workspace_id,
+        started.accepted_user_message.id.as_str(),
+    )?;
+    let timeout = hooks.timeout_ms.load(Ordering::SeqCst).clamp(1, 120_000);
+    Ok(PreparedTurn::Live(Active {
+        reply: None,
+        purpose: "conversation",
+        client_request_id: started.run.request_id.clone(),
+        user_message_id: Some(started.accepted_user_message.id.as_str().to_string()),
+        user_text: started.accepted_user_message.body.clone(),
+        handoff_id,
+        recent_messages,
+        seq: 0,
+        progress: Some(progress),
+        accepted_event: Some(started.accepted_user_message),
+        workspace_id: workspace_id.as_str().to_string(),
+        conversation_id: ws.conversation_id.as_str().to_string(),
+        run_id: started.run.id.as_str().to_string(),
+        request_id: RequestId::new().as_str().to_string(),
+        provider,
+        model,
+        root_id: root.id.as_str().to_string(),
+        root_updated_at: started.run.root_updated_at,
+        grant_updated_at: started.run.grant_updated_at,
+        deadline: now_ms().saturating_add(timeout),
+        session_ref: conversation_session_ref(core, &workspace_id)?,
+        receipts: Vec::new(),
+        bytes: 0,
+        reads: 0,
+        candidate: String::new(),
+        cancelled: false,
+        timed_out: false,
+        finished: false,
+        node_pid: 0,
+    }))
+}
+
+fn conversation_session_ref(
+    core: &Core,
+    workspace_id: &WorkspaceId,
+) -> Result<Option<String>, ShellError> {
+    if let Some(hint) = core.latest_ordinary_session(workspace_id)? {
+        if session_ref_ok(&hint.session_ref) {
+            return Ok(Some(hint.session_ref));
+        }
+    }
+    Ok(core
+        .opening_session_binding(workspace_id)?
+        .filter(|item| session_ref_ok(&item.session_ref))
+        .map(|item| item.session_ref))
+}
+
+fn recent_messages(
+    core: &Core,
+    workspace_id: &WorkspaceId,
+    current_user_id: &str,
+) -> Result<(Vec<Value>, Option<String>), ShellError> {
+    let events = core.list_conversation(workspace_id)?;
+    let mut items = Vec::new();
+    for event in events {
+        if event.id.as_str() == current_user_id {
+            continue;
+        }
+        let role = match event.kind.as_str() {
+            "user_message" => "user",
+            "agent_message" | "agent_opening_message" => "assistant",
+            _ => continue,
+        };
+        let text: String = event.body.chars().take(4000).collect();
+        if text.is_empty() {
+            continue;
+        }
+        items.push(json!({
+            "messageId": event.id.as_str(),
+            "role": role,
+            "text": text,
+            "createdAtUnixMs": 0,
+        }));
+    }
+    if items.len() > 10 {
+        items = items.split_off(items.len() - 10);
+    }
+    let handoff_id = items
+        .last()
+        .and_then(|item| item.get("messageId"))
+        .and_then(|item| item.as_str())
+        .map(|id| format!("ord-{id}"));
+    Ok((items, handoff_id))
+}
+
+fn emit_replay(progress: &TurnProgress, run: &hark_core::ConversationRun) {
+    let base = |seq, event_type, payload| RunStreamEvent {
+        schema_version: "hark.ui.v1",
+        workspace_id: run.workspace_id.as_str().to_string(),
+        conversation_id: run.conversation_id.as_str().to_string(),
+        run_id: run.id.as_str().to_string(),
+        seq,
+        event_type,
+        payload,
+    };
+    let started = RunStreamPayload {
+        delta: None,
+        persisted_message_id: None,
+        persistence_verified: None,
+        error: None,
+    };
+    match run.state.as_str() {
+        "committed" => {
+            progress.emit(base(1, "run_started", started));
+            progress.emit(base(
+                2,
+                "run_completed",
+                RunStreamPayload {
+                    delta: None,
+                    persisted_message_id: run
+                        .assistant_message_id
+                        .as_ref()
+                        .map(|id| id.as_str().to_string()),
+                    persistence_verified: Some(true),
+                    error: None,
+                },
+            ));
+        }
+        "cancelled" => {
+            progress.emit(base(1, "run_started", started));
+            progress.emit(base(
+                2,
+                "run_cancelled",
+                RunStreamPayload {
+                    delta: None,
+                    persisted_message_id: None,
+                    persistence_verified: Some(false),
+                    error: None,
+                },
+            ));
+        }
+        "failed" => {
+            progress.emit(base(1, "run_started", started.clone()));
+            progress.emit(base(
+                2,
+                "run_failed",
+                RunStreamPayload {
+                    delta: None,
+                    persisted_message_id: None,
+                    persistence_verified: Some(false),
+                    error: Some(turn_error(
+                        run.error_code.as_deref().unwrap_or("failed"),
+                        "stored failure replayed without calling the model",
+                        false,
+                    )),
+                },
+            ));
+        }
+        _ => {}
+    }
+}
+
+fn accepted_from(active: &Active) -> AgentTurnAccepted {
+    AgentTurnAccepted {
+        run_id: active.run_id.clone(),
+        accepted_user_message: active
+            .accepted_event
+            .clone()
+            .unwrap_or_else(|| ConversationEvent {
+                id: hark_core::MessageId::from_trusted(
+                    active.user_message_id.clone().unwrap_or_default(),
+                ),
+                workspace_id: WorkspaceId::from_trusted(active.workspace_id.clone()),
+                conversation_id: active.conversation_id.clone(),
+                kind: "user_message".to_string(),
+                generation: None,
+                body: active.user_text.clone(),
+                presentation: "normal".to_string(),
+                source_ids: Vec::new(),
+                created_at: String::new(),
+            }),
+    }
+}
+
+fn reply_busy_or_same(
+    run: &Active,
+    request_id: &str,
+    workspace_id: &str,
+    reply: Sender<Result<AgentTurnAccepted, ShellError>>,
+) {
+    if run.purpose == "conversation"
+        && run.client_request_id == request_id
+        && run.workspace_id == workspace_id
+    {
+        if run.accepted_event.is_some() {
+            let _ = reply.send(Ok(accepted_from(run)));
+            return;
+        }
+    }
+    let _ = reply.send(Err(ShellError::new(
+        "run_already_active",
+        "host busy: one run is active",
+    )));
+}
+
+fn expire_pending(pending: &mut Option<Command>, started: Instant) {
+    if started.elapsed() <= Duration::from_secs(15) {
+        return;
+    }
+    if matches!(
+        pending,
+        Some(Command::Opening { .. } | Command::Conversation { .. })
+    ) {
+        fail_pending(pending, ShellError::new("timeout", "host.ready timed out"));
+    }
+}
+
+fn expire_active(proc: &mut SpawnedSidecar, core: &Core, active: &mut Option<Active>) {
+    let expired = active
+        .as_ref()
+        .is_some_and(|run| !run.finished && now_ms() > run.deadline);
+    if !expired {
+        return;
+    }
+    if let Some(run) = active.as_mut() {
+        run.timed_out = true;
+        run.cancelled = true;
+        let _ = send_cancel(proc, run);
+        if run.purpose == "conversation" {
+            settle_conversation_failure(core, run, "timeout", "conversation deadline exceeded");
+        }
+    }
+    if active
+        .as_ref()
+        .is_some_and(|run| run.purpose != "conversation")
+    {
+        finish_active(
+            active,
+            Err(ShellError::new("timeout", "opening deadline exceeded")),
+        );
+    } else {
+        *active = None;
+    }
+}
+
+fn fail_pending(pending: &mut Option<Command>, err: ShellError) {
+    match pending.take() {
+        Some(Command::Opening { reply, .. }) => {
+            let _ = reply.send(Err(err));
+        }
+        Some(Command::Conversation { reply, .. }) => {
+            let _ = reply.send(Err(err));
+        }
+        Some(other) => {
+            *pending = Some(other);
+        }
+        None => {}
+    }
+}
+
+fn fail_live(core: &Core, active: &mut Option<Active>, err: ShellError) {
+    let Some(run) = active.as_mut() else {
+        return;
+    };
+    if run.purpose == "conversation" && !run.finished {
+        settle_conversation_failure(core, run, &err.code, &err.detail);
+    }
+}
+
+fn cancel_live_turn(
+    proc: &mut SpawnedSidecar,
+    core: &Core,
+    active: &mut Option<Active>,
+    workspace_id: &str,
+    run_id: &str,
+) {
+    let matches = active.as_ref().is_some_and(|run| {
+        run.purpose == "conversation"
+            && run.workspace_id == workspace_id
+            && run.run_id == run_id
+            && !run.finished
+    });
+    if !matches {
+        return;
+    }
+    if let Some(run) = active.as_mut() {
+        run.cancelled = true;
+        let _ = send_cancel(proc, run);
+        match (
+            WorkspaceId::parse(&run.workspace_id),
+            RunId::parse(&run.run_id),
+        ) {
+            (Ok(ws), Ok(id)) => match core.cancel_conversation_run(&ws, &id) {
+                Ok(_) => emit_cancelled(run),
+                Err(_) => {
+                    settle_conversation_failure(core, run, "cancelled", "cancel after commit")
+                }
+            },
+            _ => settle_conversation_failure(core, run, "invalid_id", "cancel ids"),
+        }
+        run.finished = true;
+    }
+    *active = None;
+}
+
+fn close_turn(core: &Core, run: &mut Active, err: ShellError) -> bool {
+    if run.purpose == "conversation" {
+        settle_conversation_failure(core, run, &err.code, &err.detail);
+        return true;
+    }
+    let _ = finish_run(run, Err(err));
+    true
+}
+
+fn register_ordinary_session(
+    core: &Core,
+    run: &mut Active,
+    session_ref: &str,
+) -> Result<(), ShellError> {
+    let workspace_id = WorkspaceId::parse(&run.workspace_id)?;
+    let run_id = RunId::parse(&run.run_id)?;
+    core.register_conversation_run(&workspace_id, &run_id, Some(session_ref))?;
+    run.session_ref = Some(session_ref.to_string());
+    Ok(())
+}
+
+fn commit_conversation_done(core: &Core, run: &mut Active, frame: &Frame) {
+    if run.finished {
+        return;
+    }
+    if run.cancelled || run.timed_out || run.session_ref.is_none() {
+        settle_conversation_failure(
+            core,
+            run,
+            "model_receipt_rejected",
+            "stream end is not a commit without a live session",
+        );
+        return;
+    }
+    let text = frame
+        .payload
+        .get("text")
+        .and_then(|item| item.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if text.is_empty() {
+        settle_conversation_failure(
+            core,
+            run,
+            "model_receipt_rejected",
+            "empty stream is not an assistant message",
+        );
+        return;
+    }
+    let Ok(workspace_id) = WorkspaceId::parse(&run.workspace_id) else {
+        settle_conversation_failure(core, run, "invalid_id", "workspace id");
+        return;
+    };
+    let Ok(run_id) = RunId::parse(&run.run_id) else {
+        settle_conversation_failure(core, run, "invalid_id", "run id");
+        return;
+    };
+    match current_authorization(core, &workspace_id, &run.run_id, "conversation") {
+        Ok(auth) if authorization_matches(run, &auth) => {}
+        Ok(_) => {
+            settle_conversation_failure(
+                core,
+                run,
+                "model_not_authorized",
+                "authorization changed before commit",
+            );
+            return;
+        }
+        Err(err) => {
+            settle_conversation_failure(core, run, &err.code, &err.detail);
+            return;
+        }
+    }
+    let mut source_ids = Vec::new();
+    for id in &run.receipts {
+        match SourceId::parse(id) {
+            Ok(source_id) => source_ids.push(source_id),
+            Err(_) => {
+                settle_conversation_failure(
+                    core,
+                    run,
+                    "model_receipt_rejected",
+                    "receipt source id invalid",
+                );
+                return;
+            }
+        }
+    }
+    let commit = ConversationCommit {
+        workspace_id,
+        run_id,
+        receipt_id: format!("conv-{}", run.run_id),
+        provider: run.provider.clone(),
+        model: run.model.clone(),
+        body: text,
+        source_ids,
+    };
+    match core.commit_conversation_message(&commit) {
+        Ok(turn) => {
+            emit_completed(run, Some(turn.assistant_message.id.as_str().to_string()));
+            run.finished = true;
+        }
+        Err(err) => {
+            settle_conversation_failure(core, run, err.code_str(), &err.detail);
+        }
+    }
+}
+
+fn authorization_matches(run: &Active, auth: &Value) -> bool {
+    auth.get("current").and_then(|item| item.as_bool()) == Some(true)
+        && auth.get("rootId").and_then(|item| item.as_str()) == Some(run.root_id.as_str())
+        && auth.get("rootUpdatedAt").and_then(|item| item.as_str())
+            == Some(run.root_updated_at.as_str())
+        && auth.get("grantUpdatedAt").and_then(|item| item.as_str())
+            == Some(run.grant_updated_at.as_str())
+}
+
+fn settle_conversation_failure(core: &Core, run: &mut Active, code: &str, detail: &str) {
+    if run.finished {
+        return;
+    }
+    match query_ordinary(core, run) {
+        OrdinaryView::Committed(message_id) => emit_completed(run, message_id),
+        OrdinaryView::Cancelled => emit_cancelled(run),
+        OrdinaryView::Failed(error_code) => {
+            emit_failed(run, error_code.as_deref().unwrap_or(code), detail, false)
+        }
+        OrdinaryView::Open => {
+            if let (Ok(ws), Ok(id)) = (
+                WorkspaceId::parse(&run.workspace_id),
+                RunId::parse(&run.run_id),
+            ) {
+                let _ = core.fail_conversation_run(&ws, &id, &fail_reason(code));
+            }
+            emit_failed(run, code, detail, retryable_code(code));
+        }
+        OrdinaryView::Unknown => emit_failed(
+            run,
+            "persistence_unknown",
+            "Core query failed. Candidate text was not treated as done.",
+            true,
+        ),
+    }
+    run.finished = true;
+}
+
+enum OrdinaryView {
+    Committed(Option<String>),
+    Cancelled,
+    Failed(Option<String>),
+    Open,
+    Unknown,
+}
+
+fn query_ordinary(core: &Core, run: &Active) -> OrdinaryView {
+    let Ok(ws) = WorkspaceId::parse(&run.workspace_id) else {
+        return OrdinaryView::Unknown;
+    };
+    let Ok(id) = RunId::parse(&run.run_id) else {
+        return OrdinaryView::Unknown;
+    };
+    match core.get_conversation_run(&ws, &id) {
+        Ok(stored) if stored.state == "committed" => OrdinaryView::Committed(
+            stored
+                .assistant_message_id
+                .as_ref()
+                .map(|item| item.as_str().to_string()),
+        ),
+        Ok(stored) if stored.state == "cancelled" => OrdinaryView::Cancelled,
+        Ok(stored) if stored.state == "failed" => OrdinaryView::Failed(stored.error_code),
+        Ok(_) => OrdinaryView::Open,
+        Err(_) => OrdinaryView::Unknown,
+    }
+}
+
+fn fail_reason(code: &str) -> String {
+    let trimmed = code.trim();
+    let reason = if trimmed.is_empty() {
+        "failed"
+    } else {
+        trimmed
+    };
+    reason.chars().take(200).collect()
+}
+
+fn retryable_code(code: &str) -> bool {
+    matches!(
+        code,
+        "timeout" | "sqlite" | "io" | "persistence_unknown" | "queue_overflow"
+    )
+}
+
+fn turn_error(code: &str, detail: &str, retryable: bool) -> TurnErrorBody {
+    TurnErrorBody {
+        code: code.chars().take(64).collect(),
+        message: detail.chars().take(180).collect(),
+        retryable,
+    }
+}
+
+fn emit_event(run: &mut Active, event_type: &'static str, payload: RunStreamPayload) {
+    let Some(progress) = run.progress.clone() else {
+        return;
+    };
+    run.seq = run.seq.saturating_add(1);
+    progress.emit(RunStreamEvent {
+        schema_version: "hark.ui.v1",
+        workspace_id: run.workspace_id.clone(),
+        conversation_id: run.conversation_id.clone(),
+        run_id: run.run_id.clone(),
+        seq: run.seq,
+        event_type,
+        payload,
+    });
+}
+
+fn emit_completed(run: &mut Active, message_id: Option<String>) {
+    emit_event(
+        run,
+        "run_completed",
+        RunStreamPayload {
+            delta: None,
+            persisted_message_id: message_id,
+            persistence_verified: Some(true),
+            error: None,
+        },
+    );
+}
+
+fn emit_cancelled(run: &mut Active) {
+    emit_event(
+        run,
+        "run_cancelled",
+        RunStreamPayload {
+            delta: None,
+            persisted_message_id: None,
+            persistence_verified: Some(false),
+            error: None,
+        },
+    );
+}
+
+fn emit_failed(run: &mut Active, code: &str, detail: &str, retryable: bool) {
+    emit_event(
+        run,
+        "run_failed",
+        RunStreamPayload {
+            delta: None,
+            persisted_message_id: None,
+            persistence_verified: Some(false),
+            error: Some(turn_error(code, detail, retryable)),
+        },
+    );
+}
+
+fn ordinary_run_current(
+    core: &Core,
+    workspace_id: &WorkspaceId,
+    run_id: &str,
+    provider: &str,
+    model: &str,
+    grant_updated_at: &str,
+    root_updated_at: &str,
+) -> bool {
+    let Ok(id) = RunId::parse(run_id) else {
+        return false;
+    };
+    let Ok(run) = core.get_conversation_run(workspace_id, &id) else {
+        return false;
+    };
+    matches!(run.state.as_str(), "pending" | "running")
+        && run.provider == provider
+        && run.model == model
+        && run.grant_updated_at == grant_updated_at
+        && run.root_updated_at == root_updated_at
+}
+
+pub fn map_agent_turn_status(run: &hark_core::ConversationRun) -> AgentTurnStatus {
+    let (state, latest_error) = match run.state.as_str() {
+        "committed" => ("completed", None),
+        "cancelled" => ("cancelled", None),
+        "failed" => (
+            "failed",
+            Some(turn_error(
+                run.error_code.as_deref().unwrap_or("failed"),
+                "普通回合失败。用户原文保留，没有伪造助手回复。",
+                false,
+            )),
+        ),
+        "pending" | "running" => ("running", None),
+        _ => (
+            "persistence_unknown",
+            Some(turn_error(
+                "persistence_unknown",
+                "Core run state is not a completed assistant message.",
+                true,
+            )),
+        ),
+    };
+    AgentTurnStatus {
+        run_id: run.id.as_str().to_string(),
+        workspace_id: run.workspace_id.as_str().to_string(),
+        conversation_id: run.conversation_id.as_str().to_string(),
+        state: state.to_string(),
+        persisted_assistant_message_id: run
+            .assistant_message_id
+            .as_ref()
+            .map(|id| id.as_str().to_string()),
+        latest_error,
+    }
+}
+
+pub fn unknown_agent_turn_status(workspace_id: &str, run_id: &str) -> AgentTurnStatus {
+    AgentTurnStatus {
+        run_id: run_id.to_string(),
+        workspace_id: workspace_id.to_string(),
+        conversation_id: String::new(),
+        state: "persistence_unknown".to_string(),
+        persisted_assistant_message_id: None,
+        latest_error: Some(turn_error(
+            "persistence_unknown",
+            "Core query failed. Candidate text was not treated as done.",
+            true,
+        )),
+    }
+}
+
 fn current_authorization(
     core: &Core,
     workspace_id: &WorkspaceId,
     run_id: &str,
+    purpose: &str,
 ) -> Result<Value, ShellError> {
     let checkpoint = core.onboarding(workspace_id)?;
     let ws = core.get_workspace(workspace_id)?;
@@ -1823,12 +2845,24 @@ fn current_authorization(
         .as_ref()
         .map(|item| item.id.as_str().to_string())
         .unwrap_or_else(|| "root_00000000000000000000000000000000".to_string());
-    let current = checkpoint.active_run_id.as_ref().map(|item| item.as_str()) == Some(run_id)
+    let opening_current = purpose != "conversation"
+        && checkpoint.active_run_id.as_ref().map(|item| item.as_str()) == Some(run_id)
         && checkpoint.state == "analyzing"
         && checkpoint.auth_provider.as_deref() == Some(provider.as_str())
         && checkpoint.auth_model.as_deref() == Some(model.as_str())
         && checkpoint.auth_grant_updated_at.as_deref() == Some(grant_updated.as_str())
-        && checkpoint.auth_root_updated_at.as_deref() == Some(root_updated.as_str())
+        && checkpoint.auth_root_updated_at.as_deref() == Some(root_updated.as_str());
+    let conversation_current = purpose == "conversation"
+        && ordinary_run_current(
+            core,
+            workspace_id,
+            run_id,
+            &provider,
+            &model,
+            &grant_updated,
+            &root_updated,
+        );
+    let current = (opening_current || conversation_current)
         && directory == "active"
         && model_status == "active"
         && !provider.is_empty()

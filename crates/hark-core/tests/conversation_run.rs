@@ -932,3 +932,37 @@ fn v2_nonempty_database_upgrades_without_loss() {
         "run_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     );
 }
+
+#[test]
+fn latest_ordinary_session_is_not_the_opening_binding() {
+    let fx = ready("session-hint");
+    assert!(fx
+        .db
+        .core
+        .latest_ordinary_session(&fx.ws.id)
+        .unwrap()
+        .is_none());
+    let started = start_text(&fx.db.core, &fx.ws, "req-session", "你好");
+    assert!(fx
+        .db
+        .core
+        .latest_ordinary_session(&fx.ws.id)
+        .unwrap()
+        .is_none());
+    register(&fx.db.core, &fx.ws.id, &started.run.id);
+    let hint = fx
+        .db
+        .core
+        .latest_ordinary_session(&fx.ws.id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(hint.session_ref, SESSION);
+    assert_eq!(hint.run_id.as_str(), started.run.id.as_str());
+    assert!(fx
+        .db
+        .core
+        .opening_session_binding(&fx.ws.id)
+        .unwrap()
+        .is_none());
+    cleanup(&fx.root_path);
+}

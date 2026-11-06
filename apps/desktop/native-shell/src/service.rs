@@ -6,14 +6,18 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use hark_core::{
     AuthorizedRoot, CancelFlag, CandidateId, ConfirmImport, ConfirmResult, ConversationEvent, Core,
-    FirstMessage, ImportMode, InitialScan, OnboardingCheckpoint, RootId, ScanBudget, ScanId,
+    FirstMessage, ImportMode, InitialScan, OnboardingCheckpoint, RootId, RunId, ScanBudget, ScanId,
     SelectiveReadReport, ServiceGrant, ServiceGrantUpdate, ServiceKind, ServiceStatus,
     SessionBinding, SourceId, SourceRef, Workspace, WorkspaceId, WorkspaceOverview,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::bridge::{DevSidecarConfig, OpeningBridgeResult, ProtocolProbe, SidecarSupervisor};
+use crate::bridge::{
+    map_agent_turn_status, unknown_agent_turn_status, AgentTurnAccepted, AgentTurnRequest,
+    AgentTurnStatus, DevSidecarConfig, OpeningBridgeResult, ProtocolProbe, SidecarSupervisor,
+    TurnProgress,
+};
 use crate::error::ShellError;
 use crate::process::StopReport;
 use crate::seam::SidecarStatus;
@@ -54,6 +58,9 @@ pub const FRONTEND_COMMANDS: &[&str] = &[
     "service_grants",
     "sidecar_status",
     "start_configured_opening",
+    "start_agent_turn",
+    "get_agent_turn",
+    "cancel_agent_turn",
     "hide_window",
     "quit_app",
     "shell_snapshot",
@@ -207,7 +214,7 @@ impl NativeShell {
             sidecar: self.sidecar.status(),
             notes: vec![
                 "目录读取与远程模型是两种许可。",
-                "未配置时不启动 Sidecar、不读 Key、不写开场。",
+                "未配置时不启动 Sidecar、不读 Key、不写开场，也不伪造普通聊天回复。",
                 "本地发现卡不是模型分析。开场只在 Core 提交成功后折叠。",
                 "Windows 未实现 Job Object 时 Sidecar 默认关闭。",
             ],
@@ -554,6 +561,46 @@ impl NativeShell {
         self.sidecar.opening(workspace_id)
     }
 
+    /// Trusted ordinary turn. Frontend supplies only the four request fields.
+    /// Register and commit stay inside this process.
+    pub fn start_agent_turn(
+        &self,
+        request: AgentTurnRequest,
+        progress: TurnProgress,
+    ) -> Result<AgentTurnAccepted, ShellError> {
+        self.sidecar.conversation(request, progress)
+    }
+
+    pub fn agent_turn_status(
+        &self,
+        workspace_id: &str,
+        run_id: &str,
+    ) -> Result<AgentTurnStatus, ShellError> {
+        let ws = parse_workspace(workspace_id)?;
+        let id = parse_run(run_id)?;
+        match self.core.get_conversation_run(&ws, &id) {
+            Ok(run) => Ok(map_agent_turn_status(&run)),
+            Err(err) if err.code_str() == "run_mismatch" => {
+                Err(ShellError::new("run_mismatch", "run_not_found"))
+            }
+            Err(_) => Ok(unknown_agent_turn_status(workspace_id, run_id)),
+        }
+    }
+
+    pub fn cancel_agent_turn(
+        &self,
+        workspace_id: &str,
+        run_id: &str,
+    ) -> Result<AgentTurnStatus, ShellError> {
+        let _ = self.sidecar.cancel_turn(workspace_id, run_id);
+        let ws = parse_workspace(workspace_id)?;
+        let id = parse_run(run_id)?;
+        match self.core.cancel_conversation_run(&ws, &id) {
+            Ok(run) => Ok(map_agent_turn_status(&run)),
+            Err(_) => self.agent_turn_status(workspace_id, run_id),
+        }
+    }
+
     pub fn close_sidecar_stdin(&self) -> Result<(), ShellError> {
         self.sidecar.close_stdin()
     }
@@ -622,6 +669,17 @@ impl NativeShell {
         Ok(self
             .core
             .opening_session_binding(&parse_workspace(workspace_id)?)?)
+    }
+
+    /// Test/restore helper. Not a frontend command and not the opening binding.
+    pub fn latest_ordinary_session_ref(
+        &self,
+        workspace_id: &str,
+    ) -> Result<Option<String>, ShellError> {
+        Ok(self
+            .core
+            .latest_ordinary_session(&parse_workspace(workspace_id)?)?
+            .map(|hint| hint.session_ref))
     }
 }
 
@@ -693,6 +751,10 @@ fn parse_candidate(value: &str) -> Result<CandidateId, ShellError> {
 
 fn parse_workspace(value: &str) -> Result<WorkspaceId, ShellError> {
     WorkspaceId::parse(value).map_err(|_| ShellError::new("invalid_id", "workspace id"))
+}
+
+fn parse_run(value: &str) -> Result<RunId, ShellError> {
+    RunId::parse(value).map_err(|_| ShellError::new("invalid_id", "run id"))
 }
 
 fn parse_source(value: &str) -> Result<SourceId, ShellError> {

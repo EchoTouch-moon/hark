@@ -69,7 +69,7 @@ export const Composer: React.FC<ComposerProps> = ({
                 {!sidecarAvailable
                   ? "Pi Agent Host 暂不可用：草稿已在当前项目本地安全保留，恢复连接后可发送。"
                   : !stepFunConfigured
-                  ? "模型未配置，普通聊天本轮没有 Native 接口。草稿留在本地，不会伪造回复或 runCompleted。"
+                  ? "模型未配置，远程传输关闭。草稿留在本地，不会伪造回复，也不会把候选标成已保存。"
                   : `当前项目「${workspaceName}」尚未启用模型对话授权：草稿已隔离保存，开启授权后即可发送。`}
               </span>
             </div>

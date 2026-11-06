@@ -9,7 +9,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use hark_native_shell::{
-    ConfirmRequest, DevSidecarConfig, NativeShell, Selection, FRONTEND_COMMANDS,
+    AgentTurnRequest, ConfirmRequest, DevSidecarConfig, NativeShell, RunStreamEvent, Selection,
+    TurnProgress, FRONTEND_COMMANDS,
 };
 
 const KEY: &str = "synthetic-key-not-real";
@@ -585,4 +586,245 @@ fn stalled_hook_stop_is_bounded_and_refuses_revival() {
     assert!(stop.worker_stopped, "{stop:?}");
     assert!(!stop.group_alive);
     assert!(!ready.shell.sidecar_status().connected);
+}
+
+fn kind_count(shell: &NativeShell, workspace_id: &str, kind: &str) -> usize {
+    shell
+        .list_conversation(workspace_id)
+        .unwrap()
+        .iter()
+        .filter(|event| event.kind == kind)
+        .count()
+}
+
+fn wait_terminal(events: &Mutex<Vec<RunStreamEvent>>) -> Vec<RunStreamEvent> {
+    let start = Instant::now();
+    loop {
+        let guard = events.lock().unwrap();
+        if guard.iter().any(|event| {
+            matches!(
+                event.event_type,
+                "run_completed" | "run_cancelled" | "run_failed"
+            )
+        }) {
+            return guard.clone();
+        }
+        drop(guard);
+        if start.elapsed() > Duration::from_secs(45) {
+            panic!("ordinary turn produced no terminal stream event");
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
+}
+
+fn assert_ordered(events: &[RunStreamEvent], run_id: &str) {
+    assert!(!events.is_empty());
+    let mut previous = 0_u64;
+    for event in events {
+        assert_eq!(event.schema_version, "hark.ui.v1");
+        assert_eq!(event.run_id, run_id);
+        assert!(event.seq > previous, "seq not monotonic: {events:?}");
+        previous = event.seq;
+    }
+    assert_eq!(events.first().unwrap().event_type, "run_started");
+    let completed = events
+        .iter()
+        .filter(|event| event.event_type == "run_completed");
+    for event in completed {
+        assert_eq!(event.payload.persistence_verified, Some(true));
+        assert!(event.payload.persisted_message_id.is_some());
+    }
+}
+
+#[test]
+fn ordinary_turns_use_scripted_transport_not_a_real_model() {
+    let scripted = r#"{"responses":[{"kind":"tool_call","name":"workspace.read_file","arguments":{"relativePath":"README.md"}},{"kind":"text","text":"Scripted opening. Not StepFun."},{"kind":"text","text":"scripted-chat-one"},{"kind":"text","text":"scripted-chat-two"},{"kind":"hold","untilAbort":true}]}"#;
+    let ready = ready("chat", scripted, 60_000);
+    let opening = ready
+        .shell
+        .run_configured_opening(&ready.workspace_id)
+        .unwrap();
+    assert!(opening.committed);
+    assert!(opening.session_ref.starts_with("pi:"));
+    let conversation_id = ready
+        .shell
+        .get_workspace(&ready.workspace_id)
+        .unwrap()
+        .conversation_id
+        .as_str()
+        .to_string();
+    let events = Arc::new(Mutex::new(Vec::<RunStreamEvent>::new()));
+    let turn = |request_id: &str, prompt: &str| {
+        events.lock().unwrap().clear();
+        let log = Arc::clone(&events);
+        let accepted = ready
+            .shell
+            .start_agent_turn(
+                AgentTurnRequest {
+                    request_id: request_id.to_string(),
+                    workspace_id: ready.workspace_id.clone(),
+                    conversation_id: conversation_id.clone(),
+                    user_prompt: prompt.to_string(),
+                },
+                TurnProgress::new(move |event| log.lock().unwrap().push(event)),
+            )
+            .unwrap();
+        let streamed = wait_terminal(&events);
+        (accepted, streamed)
+    };
+    let before = scripted_count(&ready.shell.sidecar_stderr());
+    let (first, first_events) = turn("req-chat-1", "第一句");
+    assert_eq!(first.accepted_user_message.body, "第一句");
+    assert_ordered(&first_events, &first.run_id);
+    assert!(first_events
+        .iter()
+        .any(|event| event.event_type == "text_delta"));
+    assert_eq!(first_events.last().unwrap().event_type, "run_completed");
+    assert_eq!(
+        kind_count(&ready.shell, &ready.workspace_id, "user_message"),
+        1
+    );
+    assert_eq!(
+        kind_count(&ready.shell, &ready.workspace_id, "agent_message"),
+        1
+    );
+    let assistant = ready
+        .shell
+        .list_conversation(&ready.workspace_id)
+        .unwrap()
+        .into_iter()
+        .find(|event| event.kind == "agent_message")
+        .unwrap();
+    assert_eq!(assistant.body, "scripted-chat-one");
+    assert!(assistant.source_ids.is_empty());
+    let after_one = scripted_count(&ready.shell.sidecar_stderr());
+    assert!(after_one > before);
+    events.lock().unwrap().clear();
+    let replay = ready
+        .shell
+        .start_agent_turn(
+            AgentTurnRequest {
+                request_id: "req-chat-1".to_string(),
+                workspace_id: ready.workspace_id.clone(),
+                conversation_id: conversation_id.clone(),
+                user_prompt: "第一句".to_string(),
+            },
+            TurnProgress::new({
+                let log = Arc::clone(&events);
+                move |event| log.lock().unwrap().push(event)
+            }),
+        )
+        .unwrap();
+    assert_eq!(replay.run_id, first.run_id);
+    assert_eq!(
+        replay.accepted_user_message.id,
+        first.accepted_user_message.id
+    );
+    let replayed = wait_terminal(&events);
+    assert_ordered(&replayed, &first.run_id);
+    assert_eq!(replayed.last().unwrap().event_type, "run_completed");
+    assert_eq!(scripted_count(&ready.shell.sidecar_stderr()), after_one);
+    assert_eq!(
+        kind_count(&ready.shell, &ready.workspace_id, "user_message"),
+        1
+    );
+    assert_eq!(
+        kind_count(&ready.shell, &ready.workspace_id, "agent_message"),
+        1
+    );
+    let (second, second_events) = turn("req-chat-2", "第二句");
+    assert_ne!(second.run_id, first.run_id);
+    assert_ordered(&second_events, &second.run_id);
+    assert_eq!(second_events.last().unwrap().event_type, "run_completed");
+    assert_eq!(
+        kind_count(&ready.shell, &ready.workspace_id, "user_message"),
+        2
+    );
+    assert_eq!(
+        kind_count(&ready.shell, &ready.workspace_id, "agent_message"),
+        2
+    );
+    let binding = ready
+        .shell
+        .opening_session_binding(&ready.workspace_id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(binding.session_ref, opening.session_ref);
+    assert_eq!(binding.run_id.as_str(), opening.run_id);
+    assert_eq!(
+        ready
+            .shell
+            .latest_ordinary_session_ref(&ready.workspace_id)
+            .unwrap()
+            .as_deref(),
+        Some(opening.session_ref.as_str())
+    );
+    let (third, _) = {
+        events.lock().unwrap().clear();
+        let log = Arc::clone(&events);
+        let accepted = ready
+            .shell
+            .start_agent_turn(
+                AgentTurnRequest {
+                    request_id: "req-chat-cancel".to_string(),
+                    workspace_id: ready.workspace_id.clone(),
+                    conversation_id: conversation_id.clone(),
+                    user_prompt: "取消这句".to_string(),
+                },
+                TurnProgress::new(move |event| log.lock().unwrap().push(event)),
+            )
+            .unwrap();
+        let status = ready
+            .shell
+            .cancel_agent_turn(&ready.workspace_id, &accepted.run_id)
+            .unwrap();
+        assert_eq!(status.state, "cancelled");
+        let streamed = wait_terminal(&events);
+        assert_eq!(streamed.last().unwrap().event_type, "run_cancelled");
+        (accepted, streamed)
+    };
+    let _ = third;
+    assert_eq!(
+        kind_count(&ready.shell, &ready.workspace_id, "user_message"),
+        3
+    );
+    assert_eq!(
+        kind_count(&ready.shell, &ready.workspace_id, "agent_message"),
+        2
+    );
+    assert_eq!(opening_count(&ready.shell, &ready.workspace_id), 1);
+    let saved = ready.shell.list_conversation(&ready.workspace_id).unwrap();
+    let db = ready.tmp.path().join("business.sqlite");
+    let workspace_id = ready.workspace_id.clone();
+    let session_ref = opening.session_ref.clone();
+    let opening_run = opening.run_id.clone();
+    let stderr = ready.shell.sidecar_stderr();
+    assert_no_key(&stderr);
+    let stop = ready.shell.stop_sidecar().unwrap();
+    assert!(!stop.group_alive);
+    drop(ready.shell);
+    let restored = NativeShell::open(&db).unwrap();
+    let again = restored.list_conversation(&workspace_id).unwrap();
+    assert_eq!(again.len(), saved.len());
+    assert_eq!(
+        again
+            .iter()
+            .map(|event| event.id.as_str())
+            .collect::<Vec<_>>(),
+        saved
+            .iter()
+            .map(|event| event.id.as_str())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(kind_count(&restored, &workspace_id, "agent_message"), 2);
+    assert_eq!(kind_count(&restored, &workspace_id, "user_message"), 3);
+    let bound = restored
+        .opening_session_binding(&workspace_id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(bound.session_ref, session_ref);
+    assert_eq!(bound.run_id.as_str(), opening_run);
+    println!(
+        "CONVERSATION_EVIDENCE {{\"transport\":\"scripted\",\"stepFun\":\"unverified\",\"openingRun\":\"{opening_run}\",\"sessionRef\":\"{session_ref}\",\"userMessages\":3,\"agentMessages\":2,\"realModel\":false}}"
+    );
 }

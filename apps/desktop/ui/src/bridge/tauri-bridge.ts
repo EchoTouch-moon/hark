@@ -1,7 +1,7 @@
-import { invoke } from "@tauri-apps/api/core";
-import type { HarkBridge, HarkUIError } from "./HarkBridge.ts";
+import { Channel, invoke } from "@tauri-apps/api/core";
+import type { HarkBridge, HarkUIError, RunStreamEvent } from "./HarkBridge.ts";
 import { DevPreviewHarkBridge } from "./dev-preview.ts";
-import { createTauriHarkBridge, selectBridge, uiError, type InvokeFn } from "./native-adapter.ts";
+import { createTauriHarkBridge, selectBridge, uiError, type InvokeFn, type TurnChannelFactory } from "./native-adapter.ts";
 
 /**
  * Native default is strict Tauri IPC.
@@ -23,6 +23,12 @@ export function isTauriHostAvailable(): boolean {
 
 export const tauriInvoke: InvokeFn = <T>(cmd: string, args?: Record<string, unknown>) =>
   invoke<T>(cmd, args);
+
+export const tauriTurnChannel: TurnChannelFactory = (onEvent: (event: RunStreamEvent) => void) => {
+  const channel = new Channel<RunStreamEvent>();
+  channel.onmessage = onEvent;
+  return channel;
+};
 
 class StrictUnavailableTauriBridge implements HarkBridge {
   private createError(): HarkUIError {
@@ -142,9 +148,10 @@ export function getHarkBridge(mode: "dev_preview_synthetic" | "strict_tauri_ipc"
     invoke: tauriInvoke,
     devPreview: singletonDevBridge,
     unavailable: singletonStrictTauriBridge,
+    turnChannel: tauriTurnChannel,
   });
 }
 
 export function createNativeBridge(invoke: InvokeFn = tauriInvoke): HarkBridge {
-  return createTauriHarkBridge(invoke);
+  return createTauriHarkBridge(invoke, { turnChannel: tauriTurnChannel });
 }
