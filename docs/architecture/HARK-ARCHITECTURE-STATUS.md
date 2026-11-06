@@ -8,6 +8,6 @@
 
 串行建设：Core → Host → Tauri 集成，见 `docs/r1/IMPLEMENTATION-PLAN.md`。实际状态以 `handoff/STATUS.md` 与 `handoff/EVIDENCE/r1/` 为准。主会话已在 `0771ebe` 复跑 fmt/check/46 项测试通过，接受五项本机定向修复并放行 F1 底座继续开发；不等于 R1 产品验收。允许隔离的 SDK 无网络 smoke 与 Tauri/Core 壳独立推进，正式 Sidecar 接入仍串行消费两者证据。历史 M0/M1 不继承为通过。
 
-候选分支进展（尚未合入主线）：`dev/r1-host-runtime` / `2b9ac8c` 已有 Node 嵌入式 Pi stdio Host；`dev/r1-native-shell` / `ca0efb3` 已有 Tauri 2 壳与 Core 命令服务。主会话已分别复跑其局部测试，但两个 Grok 4.7 high 审查均因 xAI 403 额度/订阅故障中断，没有最终 verdict。Host 仍有跨 Workspace 并发、旧快照、EOF/衔接与 StepFun 硬拒绝疑点需定向复核；Native 与 Host 尚未通过真实 Rust 桥接接通。当前不合并/不称产品通过，恢复条件见 handoff/BLOCKERS.md。
+候选分支进展（尚未合入主线）：Node 嵌入式 Pi Host `dev/r1-host-runtime` / `40dae61` 已修跨 Workspace 并发（采用全局单活跃 run）、旧快照回退、EOF 清理、Session 衔接与 StepFun 名字硬拒绝；主会话已检查 diff 并复跑 TS/SDK smoke/13 项 Host IPC/probe，通过且允许进入串行集成。Tauri 壳 `dev/r1-native-shell` 的当前独立审查确认重复操作覆盖取消标志 P1，修复中。此前 403 为历史阻塞，恢复后任务已实际运行。Native 与 Host 尚未通过真实 Rust 桥接接通；不是产品通过，见 handoff/BLOCKERS.md 与 f2-parent-review.md。
 
 本地画布目标在新工作区未配置，本轮不扫描其他个人文件。
