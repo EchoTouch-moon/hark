@@ -46,7 +46,9 @@ Core::memory_propose_change(ctx, MemoryChangeProposal) -> Result<MemoryReceipt>
 - 必须有同 workspace 的 `user_message` 原话支持正文。文件摘录或当前消息 ID 不能单独为外部事实背书。
 - `REVISE` / `DISPUTE` 还必须绑定当前用户消息，不能只用旧消息改决定。
 - 正文比原话更强（彻底切换、已迁移、全局偏好等）或对不上时，返回 `needs_clarification`，`recorded=false`，不写决定。`retainedQuote` 是留下来的原话，不是已记录的决定。
-- 例：原话「先试 Bun，Node 保底」不能写成「已彻底切换 Bun」。
+- 决定不能只靠子串或词覆盖当成肯定结论。否定、疑问、条件里的片段（「不采用 Bun」「是否采用 Bun？先别决定。」「如果测试通过，再采用 Bun。」）摘成「采用 Bun」时，返回 `needs_clarification`，`recorded=false`。疑问句和「先别决定」整段照抄也不是已决定。
+- 完整原话可以记下，否定和试用限定语必须留在正文里。例如「我决定不采用Bun，继续Node」仍是否定决定；「先试 Bun，Node 保底」仍是试用保底，不能写成「已彻底切换 Bun」，也不能只摘「先试 Bun」。只丢掉「我们决定」「改为」这类中性前缀、其余原话还在时，可以记。
+- 身份引用和观点重叠仍用原来的词覆盖。那不是已核实事实，也不能借此把摘出来的肯定句写成决定。
 
 身份只接受用户原话或文件摘录的包含引用，标签是「不是观察事实」。经验必须有明确确认用语（如「记住这点」）并且正文被该原话支持；单次观察不会升成方法或全局偏好。没有全局记忆写入口。
 
@@ -138,5 +140,5 @@ UI `MemorySearchPage` 没有 `matchMode / note`。Native 映射 `items` 时要�
 - Native adapter、Tauri command、Host tool 都没接。UI 仍会看到 unavailable 或空观点列表。
 - 没有模型协议、没有 Pi tool 注册、没有真实模型调用。
 - CTX-01、Observer 失效、全局记忆、向量检索、中文分词依赖都没做。
-- 词汇核验会把对不上的决定留在待澄清，这是故意的；它不是语义蕴含器。
+- 决定核验只认原话引用和少量中性前缀，不是语义蕴含器，也不是新的模型校验。对不上、被摘掉限定语、或无法确定是明确决定时，留在待澄清。
 - 本机 `cargo test` 与 Native `cargo check` 只证明 Core 类型和本地 SQLite 行为。不是桌面点击，也不是整产品完成。

@@ -16,7 +16,8 @@ use crate::messages;
 use crate::policy::looks_like_secret_text;
 use crate::search::{self, SearchDoc};
 use crate::support::{
-    explicit_experience_confirmation, file_quote_supports, normalize_match, text_supports,
+    decision_supports, explicit_experience_confirmation, file_quote_supports, normalize_match,
+    text_supports,
 };
 use crate::workspace;
 use crate::Core;
@@ -914,7 +915,7 @@ fn support_for(
             }
             if messages
                 .iter()
-                .any(|item| text_supports(content, &item.text))
+                .any(|item| decision_supports(content, &item.text))
             {
                 Ok(Support::Ok {
                     support: "user_quote".to_string(),
@@ -923,7 +924,7 @@ fn support_for(
                 })
             } else {
                 Ok(Support::Clarify {
-                    detail: "needs_clarification: decision text is not supported by the cited user wording".to_string(),
+                    detail: "needs_clarification: decision text is not a clear quote of the user wording; a stripped fragment is not an affirmative decision".to_string(),
                     quote: messages.first().map(|item| item.text.clone()),
                     source_ids,
                 })

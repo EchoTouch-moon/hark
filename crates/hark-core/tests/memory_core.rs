@@ -871,3 +871,74 @@ fn local_feedback_does_not_require_a_model_grant() {
     assert!(!explicit_noop.recorded);
     cleanup(&root_path);
 }
+
+#[test]
+fn decision_quote_keeps_qualifiers_and_rejects_stripped_affirmative() {
+    let (db, root_path, ws) = ready("decision-support", "synthetic\n");
+    let stripped = [
+        ("negated", "我们决定不采用 Bun，继续使用 Node。", "采用 Bun"),
+        ("question", "是否采用 Bun？先别决定。", "采用 Bun"),
+        ("conditional", "如果测试通过，再采用 Bun。", "采用 Bun"),
+    ];
+    for (name, source, proposal) in stripped {
+        let message = db.core.append_user_message(&ws.id, source).unwrap();
+        let receipt = db
+            .core
+            .memory_propose_change(
+                &ctx(
+                    &ws.id,
+                    &format!("op-strip-{name}"),
+                    Some(message.id.clone()),
+                ),
+                &add_decision(proposal),
+            )
+            .unwrap();
+        assert_eq!(receipt.outcome, OUTCOME_NEEDS_CLARIFICATION, "{name}");
+        assert!(!receipt.recorded, "{name}");
+        assert!(receipt.memory_id.is_none(), "{name}");
+        assert_eq!(receipt.retained_quote.as_deref(), Some(source), "{name}");
+        assert_eq!(
+            db.core
+                .list_conversation(&ws.id)
+                .unwrap()
+                .iter()
+                .find(|event| event.id == message.id)
+                .unwrap()
+                .body,
+            source,
+            "{name}"
+        );
+    }
+    assert!(db
+        .core
+        .list_workspace_memories(&ws.id)
+        .unwrap()
+        .iter()
+        .all(|note| note.text != "采用 Bun"));
+
+    let kept = [
+        ("affirm", "我决定采用 Bun"),
+        ("negation", "我决定不采用Bun，继续Node"),
+        ("trial", "先试 Bun，Node 保底"),
+    ];
+    for (name, wording) in kept {
+        let message = db.core.append_user_message(&ws.id, wording).unwrap();
+        let receipt = db
+            .core
+            .memory_propose_change(
+                &ctx(&ws.id, &format!("op-keep-{name}"), Some(message.id)),
+                &add_decision(wording),
+            )
+            .unwrap();
+        assert_eq!(receipt.outcome, OUTCOME_COMMITTED, "{name}");
+        assert!(receipt.recorded, "{name}");
+        assert_eq!(receipt.content.as_deref(), Some(wording), "{name}");
+        let note = db
+            .core
+            .get_memory(&ws.id, receipt.memory_id.as_ref().unwrap())
+            .unwrap();
+        assert_eq!(note.text, wording, "{name}");
+        assert_ne!(note.text, "采用 Bun", "{name}");
+    }
+    cleanup(&root_path);
+}
