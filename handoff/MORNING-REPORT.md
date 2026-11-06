@@ -21,4 +21,5 @@ F1 Core 仍未产品放行。父会话审查原文仍在 `f1-parent-review.md`�
 - StepFun脚本来源 `882a723` + `9e5fd43` 已串行合入；主会话复跑bash语法、strict TS、离线安全18、Host14、SDKsmoke1通过。没有真实Key/StepFun请求。
 - 后续真实调用已结束：通用API2次402，正确套餐 `/step_plan/v1/messages` 最后1次HTTP200/OK（输入21/输出130tokens），见stepfun-plan-direct-check.json。原3次预算用完，Key已由用户撤销。
 - 这仅是正确套餐协议的直接HTTP文本成功，不是PiSDK流式/Tool/Rust闭环通过。用户叫停了续测脚本扩建；当前主线clean，继续复用PiSDK接套餐messages协议，再补连续对话。
-- 正式React前端、常规连续对话、Memory/搜索/Observer、双平台安装与用户价值验收仍未交付；参见STATUS与PRD覆盖矩阵。
+- 普通对话Core已合入8197ec0，主会话复跑55测试。用户React前端已合入3c6289a，主会话复跑21UI测试、UI构建/类型、Host类型与Tauri check通过。前端原目录保持不动，Native真实适配默认启用。
+- Native普通聊天发送/流式/状态/取消正在隔离分支接线；窗口点击、真实模型闭环、Memory/搜索/Observer、双平台安装与完整用户价值验收仍未交付。开发启动须先Vite再另终端cargo，详见README。

@@ -54,13 +54,10 @@ UI 适配层会调用，且 `apps/desktop/src-tauri` handler 里已有：
 
 ## 开发运行
 
-桌面开发启动（本轮未执行）：
+桌面开发启动（本轮未执行）：仓库根目录开两个终端，先 `npm run dev -w @hark/desktop-ui` 保持Vite运行，再 `cargo run --manifest-path apps/desktop/Cargo.toml -p hark-desktop`。`devUrl` 为 `http://127.0.0.1:1420`。纠正原交接：直接cargo不会执行Tauri CLI的beforeDevCommand，不能假定Vite自动启动。单独Vite也不是Native宿主，严格模式不会静默进预览。
 
-```sh
-cargo run --manifest-path apps/desktop/Cargo.toml -p hark-desktop
-```
-
-`tauri.conf.json` 的 `beforeDevCommand` 会起 `npm run dev -w @hark/desktop-ui`，`devUrl` 为 `http://127.0.0.1:1420`。单独起 Vite 不是 Native 宿主，严格模式会停在未检测到 Tauri，不会静默进预览。
+## 主会话串行集成复核
+已在含Core v3的主线合入3c6289a并实际执行 `set -euo pipefail`：`npm ci --ignore-scripts --no-audit --no-fund`、UI类型/21测试/build、Host类型、NativeDesktop cargo check均exit0。说明组合编译与适配单测可用，仍不代替Native点击或真实模型验收。
 
 ## 残留
 

@@ -12,7 +12,8 @@
 | R1-A/B/C/D 产品闭环 | blocked | 整 R1 未通过。见实施计划 DAG |
 | StepFun 套餐接口基础文本 | verified-live-synthetic | 正确套餐 `/step_plan/v1/messages`、step-3.7-flash，实际HTTP200/回复OK，输入21输出130tokens。原3次请求已用完、用户已撤销Key。直接HTTP，不是PiSDK/流式/工具/桌面闭环；见stepfun-plan-direct-check.json。先前通用API402不能据此判定套餐不可用 |
 | 普通连续对话 Core | verified-local | 已串行合入8197ec0：v3普通agent_message与conversation_runs，幂等回合/取消/失败/重启恢复；主会话复跑Core55项及Native/Desktop check通过。Native聊天接线与真实模型仍未完成 |
-| R1-A 当前下一步 | in-progress | 用户要求先不纠结模型适配，相关task已停止无diff。正在接普通聊天Native管道，并迁入用户现有React前端（保留外观、真实Rust适配）；不再扩建验收脚本。无新真实请求授权 |
+| 用户React前端迁入 | verified-local | 已合入3c6289a，原目录不动；主会话复跑UI类型/21测试/build、Host类型与Tauri check通过。默认strict真实适配，已接picker→确认→卡片/对话/来源与隐藏/退出；未跑Native窗口点击，不冒称产品体验通过 |
+| R1-A 当前下一步 | in-progress | 普通聊天Core与React前端均已合入，正在接普通聊天Native管道和前端三个方法（发送/状态/取消）。模型适配按用户要求暂停；不再扩建验收脚本，无新真实请求授权 |
 | macOS 安装包 / Windows 实机 | unverified | 不以本机静态检查替代。Windows 安全读源码 fail-closed，未在 Windows 编译 |
 | AT-05 / 父子排除 | blocked | 重叠拒绝不是排除流程。不得标通过 |
 
