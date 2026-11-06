@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 
 use crate::error::{CoreError, ErrorCode, Result};
 use crate::grant::{self, AuthorizedRoot, RootStatus};
-use crate::ids::{MessageId, RunId, SourceId, WorkspaceId};
+use crate::ids::{ConversationId, MessageId, RunId, SourceId, WorkspaceId};
 use crate::limits::{
     MAX_EVENT_BODY_CHARS, MAX_EXCERPT_CHARS, MAX_USER_MESSAGE_CHARS, ONBOARDING_GENERATION,
 };
@@ -84,6 +84,18 @@ pub struct OnboardingCheckpoint {
     pub auth_grant_updated_at: Option<String>,
     pub auth_root_updated_at: Option<String>,
     pub initial_read_requested: bool,
+}
+
+/// Business reference to the Pi session that served an opening run.
+/// This is not a grant, a provider permit, or a second authorization authority.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionBinding {
+    pub workspace_id: WorkspaceId,
+    pub conversation_id: ConversationId,
+    pub run_id: RunId,
+    pub session_ref: String,
+    pub bound_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -546,6 +558,19 @@ impl Core {
 
     pub fn onboarding(&self, workspace_id: &WorkspaceId) -> Result<OnboardingCheckpoint> {
         self.with_conn(|conn| load_checkpoint(conn, workspace_id))
+    }
+
+    /// Persist the Host-accepted `sessionRef` inside the existing onboarding
+    /// evidence object. Scan metadata already stored there is preserved.
+    pub fn bind_opening_session(&self, binding: &SessionBinding) -> Result<SessionBinding> {
+        self.with_tx(|tx| bind_session_tx(tx, binding))
+    }
+
+    pub fn opening_session_binding(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> Result<Option<SessionBinding>> {
+        self.with_conn(|conn| load_session_binding(conn, workspace_id))
     }
 
     pub fn workspace_overview(&self, workspace_id: &WorkspaceId) -> Result<WorkspaceOverview> {
@@ -1136,4 +1161,114 @@ fn root_for_workspace(
     )?;
     grant::load_root(conn, &crate::ids::RootId::from_trusted(root_id))?
         .ok_or_else(|| CoreError::new(ErrorCode::NotFound, "root missing for workspace"))
+}
+
+fn session_ref_shape(value: &str) -> bool {
+    let Some(rest) = value.strip_prefix("pi:") else {
+        return false;
+    };
+    rest.len() == 36 && rest.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
+}
+
+fn bind_session_tx(
+    tx: &rusqlite::Transaction<'_>,
+    binding: &SessionBinding,
+) -> Result<SessionBinding> {
+    if !session_ref_shape(&binding.session_ref) {
+        return Err(CoreError::new(
+            ErrorCode::CorrelationRejected,
+            "sessionRef is not a pi session id",
+        ));
+    }
+    let ws = workspace::load_workspace(tx, &binding.workspace_id)?.ok_or_else(|| {
+        CoreError::new(ErrorCode::WorkspaceNotFound, binding.workspace_id.as_str())
+    })?;
+    if ws.conversation_id.as_str() != binding.conversation_id.as_str() {
+        return Err(CoreError::new(
+            ErrorCode::CorrelationRejected,
+            "session binding conversation does not belong to this workspace",
+        ));
+    }
+    let checkpoint = load_checkpoint(tx, &binding.workspace_id)?;
+    match checkpoint.active_run_id.as_ref() {
+        Some(active) if active.as_str() == binding.run_id.as_str() => {}
+        _ => {
+            return Err(CoreError::new(
+                ErrorCode::RunMismatch,
+                "session binding run is not the current opening run",
+            ));
+        }
+    }
+    let raw: String = tx.query_row(
+        "SELECT evidence_json FROM onboarding_runs WHERE workspace_id = ?1 AND generation = ?2",
+        params![binding.workspace_id.as_str(), ONBOARDING_GENERATION],
+        |row| row.get(0),
+    )?;
+    let mut evidence: serde_json::Value =
+        serde_json::from_str(&raw).unwrap_or_else(|_| serde_json::json!({}));
+    if !evidence.is_object() {
+        evidence = serde_json::json!({});
+    }
+    if let Some(existing) = evidence.get("sessionBinding") {
+        if let Ok(previous) = serde_json::from_value::<SessionBinding>(existing.clone()) {
+            if previous.session_ref == binding.session_ref && previous.run_id == binding.run_id {
+                return Ok(previous);
+            }
+            return Err(CoreError::new(
+                ErrorCode::CorrelationRejected,
+                "opening run already has a different sessionRef",
+            ));
+        }
+    }
+    let stored = SessionBinding {
+        workspace_id: binding.workspace_id.clone(),
+        conversation_id: binding.conversation_id.clone(),
+        run_id: binding.run_id.clone(),
+        session_ref: binding.session_ref.clone(),
+        bound_at: Utc::now().to_rfc3339(),
+    };
+    evidence["sessionBinding"] = serde_json::to_value(&stored)?;
+    tx.execute(
+        "UPDATE onboarding_runs SET evidence_json = ?1 WHERE workspace_id = ?2 AND generation = ?3",
+        params![
+            evidence.to_string(),
+            binding.workspace_id.as_str(),
+            ONBOARDING_GENERATION
+        ],
+    )?;
+    Ok(stored)
+}
+
+fn load_session_binding(
+    conn: &rusqlite::Connection,
+    workspace_id: &WorkspaceId,
+) -> Result<Option<SessionBinding>> {
+    let raw: Option<String> = conn
+        .query_row(
+            "SELECT evidence_json FROM onboarding_runs WHERE workspace_id = ?1 AND generation = ?2",
+            params![workspace_id.as_str(), ONBOARDING_GENERATION],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let Some(raw) = raw else {
+        return Ok(None);
+    };
+    let evidence: serde_json::Value =
+        serde_json::from_str(&raw).unwrap_or_else(|_| serde_json::json!({}));
+    let Some(slot) = evidence.get("sessionBinding") else {
+        return Ok(None);
+    };
+    if slot.is_null() {
+        return Ok(None);
+    }
+    let binding: SessionBinding = serde_json::from_value(slot.clone())?;
+    if binding.workspace_id.as_str() != workspace_id.as_str()
+        || !session_ref_shape(&binding.session_ref)
+    {
+        return Err(CoreError::new(
+            ErrorCode::CorrelationRejected,
+            "stored session binding does not match this workspace",
+        ));
+    }
+    Ok(Some(binding))
 }

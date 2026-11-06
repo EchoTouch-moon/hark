@@ -615,6 +615,7 @@ export class HostRuntime {
           ...(this.scripted
             ? {
                 scripted: async (signal) => {
+                  this.log("scripted-transport-invoke");
                   const next = this.scripted?.responses[this.scriptCursor];
                   this.scriptCursor += 1;
                   if (!next) throw new Error("scripted transport has no more responses");

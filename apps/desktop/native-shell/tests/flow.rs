@@ -58,6 +58,11 @@ fn command_surface_rejects_path_success_and_model_completion() {
         "allow-all",
         "set_scan_hold",
         "set_read_hold",
+        "dev_set_synthetic_model_grant",
+        "configure_dev_sidecar",
+        "set_service_grant",
+        "mark_analyzing",
+        "commit_agent_opening",
     ];
     for name in forbidden {
         assert!(

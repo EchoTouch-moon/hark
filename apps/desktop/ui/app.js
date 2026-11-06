@@ -178,6 +178,12 @@ for (const [id, command] of [
   });
 }
 
+document.querySelector("#opening").addEventListener("click", () => {
+  run("start_configured_opening", () =>
+    invoke("start_configured_opening", { request: { workspaceId: state.workspaceId } }),
+  );
+});
+
 document.querySelector("#hide").addEventListener("click", () => {
   run("hide_window", () => invoke("hide_window"));
 });

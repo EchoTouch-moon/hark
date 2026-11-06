@@ -3,21 +3,27 @@
 //! Tauri commands in `apps/desktop/src-tauri` are thin wrappers. Integration
 //! tests call this crate directly and do not open a WebView.
 
+mod bridge;
 mod error;
 mod lifecycle;
+mod process;
 mod seam;
 mod service;
 
+pub use bridge::{
+    DevSidecarConfig, OpeningBridgeResult, ProtocolProbe, OPENING_INTERNAL_INSTRUCTION,
+};
 pub use error::ShellError;
 pub use hark_core::{
     AuthorizedRoot, ConfirmResult, ConversationEvent, FirstMessage, InitialScan,
-    OnboardingCheckpoint, SelectiveReadReport, ServiceGrant, SourceRef, Workspace,
+    OnboardingCheckpoint, SelectiveReadReport, ServiceGrant, SessionBinding, SourceRef, Workspace,
     WorkspaceOverview,
 };
 pub use lifecycle::{decide_window_close, WindowCloseDecision};
+pub use process::StopReport;
 pub use seam::{sidecar_status, IssuedOpeningRun, NotConnectedHost, OpeningHost, SidecarStatus};
 pub use service::{
-    business_db_path, AuthorizeRequest, ConfirmRequest, IdRequest, NativeShell, PickTicket,
-    Selection, ShellSnapshot, SourceRefRequest, UserMessageRequest, WorkspaceRef,
+    business_db_path, AuthorizeRequest, ConfirmRequest, IdRequest, NativeShell, OpeningRequest,
+    PickTicket, Selection, ShellSnapshot, SourceRefRequest, UserMessageRequest, WorkspaceRef,
     CONTROLLED_PICK_ENTRY, FRONTEND_COMMANDS, PICK_TTL_MS,
 };

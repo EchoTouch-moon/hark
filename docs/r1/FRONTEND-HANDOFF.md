@@ -10,7 +10,7 @@
 - 可测服务：`hark-native-shell`。集成测试直接调用它，不打开 WebView。
 - Tauri 命令只是这层服务的薄包装。业务完成由 `hark_core::Core` 决定。
 - SQLite：`app.path().app_data_dir()` + `hark-r1/business.sqlite`。identifier 是 `dev.hark.r1.native-shell`。项目原文件只读；应用状态只写这个库。
-- 本壳没有 Sidecar，没有 HTTP，没有 session-ref 库。`sidecar_status` 永远 `connected: false`。Windows Job Object 未验证。
+- 未配置时没有 Sidecar，`sidecar_status.connected` 为 false，不读 Key，不发请求。已配置的开发路径由 Rust 持有 Node 可执行文件，不接受前端命令字符串。Unix 用进程组回收。Windows 没有 Job Object，Sidecar 默认关闭。没有 HTTP。sessionRef 存在 Core onboarding evidence，不是前端可写字段。
 
 ## 2. 权限流程
 
@@ -58,7 +58,8 @@
 | `cancel_onboarding` | `{ workspaceId }` | checkpoint，`state=cancelled` |
 | `retry_onboarding` | `{ workspaceId }` | 清除 run 绑定；不删除已有本地卡 |
 | `service_grants` | `{ workspaceId }` | 四个 grant，只读 |
-| `sidecar_status` | `{}` | 永远未连接 |
+| `sidecar_status` | `{}` | 未配置或已停止时 `connected: false`。不是模型成功标志 |
+| `start_configured_opening` | `{ request: { workspaceId } }` | 只接受 workspaceId。未配置时失败，不启动进程。不能提交路径、Key、success 或 approved |
 | `shell_snapshot` | `{}` | roots、workspaces、reader 能力、关闭的模型传输 |
 | `hide_window` | `{}` | 隐藏主窗口 |
 | `quit_app` | `{}` | 标记退出并 `app.exit(0)` |

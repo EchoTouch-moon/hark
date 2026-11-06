@@ -34,7 +34,7 @@ pub use limits::{
 };
 pub use messages::{
     AgentOpeningReceipt, ConversationEvent, FileRead, FirstMessage, OnboardingCheckpoint,
-    SelectiveReadReport, SourceRef, WorkspaceOverview,
+    SelectiveReadReport, SessionBinding, SourceRef, WorkspaceOverview,
 };
 pub use reader::{
     reader_open_attempts, reader_read_syscalls, reader_readdir_steps, reset_reader_work_counters,

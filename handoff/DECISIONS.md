@@ -60,4 +60,10 @@
 - overview 若给出新的 revision 或 sourceVersion，但没有非空 `overviewText`，发送前失败关闭。不把 run.start 的旧 identity/overview 贴上新版本。有新正文时只用该正文，不保留旧 identity。
 - 旧 compaction 或 branch summary 不能可靠过滤时，不改 SessionManager，改为官方新 Session。任何新创建的 Session 都可以有一次最多 10 条的近期消息衔接。`handoffId` 只相对目标 Session 去重。原 Session 恢复不重复灌入。另一个新 Session 不因工作空间里已经出现过同一个 id 而被跳过。
 - `context_with_system` 异常会被 SDK 吞掉。真正的发送边界在 provider stream：重新核对授权并重建当前 pack；重建失败则不调用 fetch。
-- Host 返回 `pi:<sessionId>`。不发放 Core `conv_` id，不写业务库。
+- Host 返回 `pi:<sessionId>`。不发放 Core `conv_` id，不写业务库。正式归属由后续 Rust 集成保存。
+
+## 首次开场 stdio 集成（不是常规对话，也不是产品验收）
+
+- 不新增 migration。`onboarding_runs.evidence_json` 已按 workspace+generation 持久化，并已有 scan 元数据。typed `sessionBinding`（workspace、conversation、run、sessionRef）作为业务引用写入同一对象，不覆盖 scanId，也不成为授权权威。授权仍是 service grant、root 状态和 Core 发放的 active run。跨 session 查询或唯一约束不是本切片验收，所以不加列、不建 agent/session 平台。
+- `run.start.userMessageId` 对 `purpose: opening` 必须缺省。conversation 仍要求真实已存 `msg_` id。不为对齐 DTO 向 Hark 插入虚假用户发言。首轮 `userText` 是内部初读指令。Pi JSONL 仍可能把该指令记成 session prompt；那不是 Hark `user_message`。
+- 开发 Node 路径只来自 Rust `DevSidecarConfig`，不注册为前端命令。合成模型许可只走 `dev_set_synthetic_model_grant`，不进入 Tauri IPC。未配置时 `connected=false`，不读 Key，不发请求。Windows 无 Job Object 时拒绝启动。

@@ -47,13 +47,28 @@ export const runStartPayloadSchema = z
     authorization: authorizationSnapshotSchema,
     contextSnapshot: contextSnapshotSchema,
     userText: z.string().min(1).max(16000),
-    userMessageId: hexId("msg"),
+    // Opening has no stored Hark user turn. Conversation must name a real msg_ id.
+    userMessageId: hexId("msg").nullable().optional(),
     sessionRef: z.string().regex(/^pi:[0-9a-f-]{36}$/).nullable(),
     recentMessages: z.array(recentMessageSchema).max(10).optional(),
     handoffId: z.string().min(1).max(128).nullable(),
     syntheticCore: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((payload, ctx) => {
+    if (payload.purpose === "conversation" && !payload.userMessageId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "conversation requires a stored user message id",
+      });
+    }
+    if (payload.purpose === "opening" && payload.userMessageId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "opening must not carry a user message id",
+      });
+    }
+  });
 
 export type RunStartPayload = z.infer<typeof runStartPayloadSchema>;
 
@@ -76,6 +91,8 @@ export const readFileResultSchema = z
     text: z.string().max(65536),
     sourceId: hexId("src").nullable().optional(),
     unavailable: z.boolean().optional(),
+    truncated: z.boolean().optional(),
+    complete: z.boolean().optional(),
     synthetic: z.boolean().optional(),
   })
   .strict();

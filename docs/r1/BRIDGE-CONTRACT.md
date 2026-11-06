@@ -1,6 +1,6 @@
 # 首条开场 Rust ↔ Pi Host 接线切片
 
-这是 F1/F2/Native 壳之后的纵向集成，不是完整 R1 关闭。先打通首次开场；正常连续对话、记忆/研究/Observer 与正式前端仍按 PRD 后续切片交付，不能以本地合成模型替代真实 StepFun。
+这是 F1/F2/Native 壳之后的纵向集成，不是完整 R1 关闭。Unix 首次开场 stdio 已在本机用 scripted transport 跑通，见 `handoff/EVIDENCE/r1/f4-core-host-bridge.md`。正常连续对话、记忆/研究/Observer、真实 StepFun 与正式前端仍按 PRD 后续切片交付。
 
 ## 最小边界
 - 消费 Host `40dae61`（或其定向修复提交）与 Native 取消修复后的提交。先串行合并其代码/必要证据，保留主线 F1 修复与父会话裁决，不整文件覆盖陈旧 handoff。

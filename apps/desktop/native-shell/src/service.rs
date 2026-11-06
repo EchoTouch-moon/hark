@@ -7,14 +7,16 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use hark_core::{
     AuthorizedRoot, CancelFlag, CandidateId, ConfirmImport, ConfirmResult, ConversationEvent, Core,
     FirstMessage, ImportMode, InitialScan, OnboardingCheckpoint, RootId, ScanBudget, ScanId,
-    SelectiveReadReport, ServiceGrant, ServiceKind, SourceId, SourceRef, Workspace, WorkspaceId,
-    WorkspaceOverview,
+    SelectiveReadReport, ServiceGrant, ServiceGrantUpdate, ServiceKind, ServiceStatus,
+    SessionBinding, SourceId, SourceRef, Workspace, WorkspaceId, WorkspaceOverview,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::bridge::{DevSidecarConfig, OpeningBridgeResult, ProtocolProbe, SidecarSupervisor};
 use crate::error::ShellError;
-use crate::seam::{sidecar_status, SidecarStatus};
+use crate::process::StopReport;
+use crate::seam::SidecarStatus;
 
 /// Short enough that a leaked token cannot be reused later, long enough for a
 /// person to confirm the picker result in the dev form.
@@ -51,6 +53,7 @@ pub const FRONTEND_COMMANDS: &[&str] = &[
     "retry_onboarding",
     "service_grants",
     "sidecar_status",
+    "start_configured_opening",
     "hide_window",
     "quit_app",
     "shell_snapshot",
@@ -103,6 +106,12 @@ pub struct UserMessageRequest {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct OpeningRequest {
+    pub workspace_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Selection {
     Single,
@@ -135,7 +144,8 @@ struct PendingPick {
 }
 
 pub struct NativeShell {
-    core: Core,
+    sidecar: SidecarSupervisor,
+    core: Arc<Core>,
     picks: Mutex<HashMap<String, PendingPick>>,
     scan_flags: Mutex<HashMap<String, Arc<CancelFlag>>>,
     read_flags: Mutex<HashMap<String, Arc<CancelFlag>>>,
@@ -164,8 +174,9 @@ impl NativeShell {
             std::fs::create_dir_all(parent)
                 .map_err(|err| ShellError::new("io", err.to_string()))?;
         }
-        let core = Core::open(db_path)?;
+        let core = Arc::new(Core::open(db_path)?);
         Ok(Self {
+            sidecar: SidecarSupervisor::new(Arc::clone(&core)),
             core,
             picks: Mutex::new(HashMap::new()),
             scan_flags: Mutex::new(HashMap::new()),
@@ -180,6 +191,7 @@ impl NativeShell {
 
     pub fn request_quit(&self) {
         self.quit_requested.store(true, Ordering::SeqCst);
+        let _ = self.sidecar.stop();
     }
 
     pub fn quit_requested(&self) -> bool {
@@ -192,12 +204,12 @@ impl NativeShell {
             workspaces: self.core.list_workspaces()?,
             reader_capability: self.core.reader_capability().to_string(),
             remote_model_transport: "closed_no_approved_key",
-            sidecar: sidecar_status(),
+            sidecar: self.sidecar.status(),
             notes: vec![
                 "目录读取与远程模型是两种许可。",
-                "本壳不调用模型，不写入 agent_opening_message。",
-                "本地发现卡不是模型分析。",
-                "Windows Job Object 未验证：没有 sidecar。",
+                "未配置时不启动 Sidecar、不读 Key、不写开场。",
+                "本地发现卡不是模型分析。开场只在 Core 提交成功后折叠。",
+                "Windows 未实现 Job Object 时 Sidecar 默认关闭。",
             ],
         })
     }
@@ -453,6 +465,7 @@ impl NativeShell {
         &self,
         workspace_id: &str,
     ) -> Result<OnboardingCheckpoint, ShellError> {
+        let _ = self.sidecar.cancel(workspace_id);
         Ok(self
             .core
             .cancel_onboarding(&parse_workspace(workspace_id)?)?)
@@ -515,6 +528,100 @@ impl NativeShell {
             "path_read_closed",
             "前端不能传相对路径读取。本壳只提供 selective_key_read。",
         ))
+    }
+
+    pub fn sidecar_status(&self) -> SidecarStatus {
+        self.sidecar.status()
+    }
+
+    /// Trusted process config. Not a Tauri command and not a frontend path.
+    pub fn configure_dev_sidecar(&self, config: DevSidecarConfig) -> Result<(), ShellError> {
+        self.sidecar.configure(config)
+    }
+
+    pub fn start_configured_sidecar(&self) -> Result<SidecarStatus, ShellError> {
+        self.sidecar.start()
+    }
+
+    pub fn stop_sidecar(&self) -> Result<StopReport, ShellError> {
+        self.sidecar.stop()
+    }
+
+    pub fn run_configured_opening(
+        &self,
+        workspace_id: &str,
+    ) -> Result<OpeningBridgeResult, ShellError> {
+        self.sidecar.opening(workspace_id)
+    }
+
+    pub fn close_sidecar_stdin(&self) -> Result<(), ShellError> {
+        self.sidecar.close_stdin()
+    }
+
+    pub fn kill_sidecar_child(&self) -> Result<(), ShellError> {
+        self.sidecar.kill_child()
+    }
+
+    pub fn probe_host_protocol(&self) -> Result<ProtocolProbe, ShellError> {
+        self.sidecar.probe_protocol()
+    }
+
+    pub fn sidecar_stderr(&self) -> String {
+        self.sidecar.stderr_tail()
+    }
+
+    pub fn sidecar_pid(&self) -> Option<u32> {
+        self.sidecar.pid()
+    }
+
+    /// Test injection. Not a Tauri command.
+    pub fn set_before_tool_reply_hook(&self, hook: Option<Arc<dyn Fn(&str) + Send + Sync>>) {
+        self.sidecar.set_before_tool_reply(hook);
+    }
+
+    /// Test injection. Not a Tauri command.
+    pub fn set_mismatch_next_tool(&self, enabled: bool) {
+        self.sidecar.set_mismatch_next_tool(enabled);
+    }
+
+    /// Test injection. Not a Tauri command.
+    pub fn set_opening_read_budget(&self, files: u32) {
+        self.sidecar.set_read_budget(files);
+    }
+
+    /// Synthetic model permit for local probes. Not registered as frontend IPC.
+    pub fn dev_set_synthetic_model_grant(
+        &self,
+        workspace_id: &str,
+        provider: &str,
+        model: &str,
+    ) -> Result<ServiceGrant, ShellError> {
+        if provider.contains("key")
+            || model.contains("key")
+            || provider.len() > 64
+            || model.len() > 64
+        {
+            return Err(ShellError::new(
+                "secret_material_rejected",
+                "synthetic grant labels must not look like credentials",
+            ));
+        }
+        Ok(self.core.set_service_grant(&ServiceGrantUpdate {
+            workspace_id: parse_workspace(workspace_id)?,
+            service: ServiceKind::Model,
+            status: ServiceStatus::Enabled,
+            provider: Some(provider.to_string()),
+            model: Some(model.to_string()),
+        })?)
+    }
+
+    pub fn opening_session_binding(
+        &self,
+        workspace_id: &str,
+    ) -> Result<Option<SessionBinding>, ShellError> {
+        Ok(self
+            .core
+            .opening_session_binding(&parse_workspace(workspace_id)?)?)
     }
 }
 

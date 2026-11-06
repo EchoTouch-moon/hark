@@ -3,7 +3,7 @@
 ## Grok 403 历史阻塞与恢复尝试
 
 - 2026-11-06 用户要求继续后，原 subagent 协议已实际完成两个 Grok 4.7 high child：Host `40dae61` 修复与 Native 只读审查。当前不再由 403 阻塞；历史失败记录保留。主会话已复跑 Host TS/SDK smoke/13 项测试/probe 并定向放行其进入集成；见 `f2-parent-review.md`。
-- Native 同 root/workspace 重叠取消 P1 已由 `8ca7617` 修复，主会话复核后已串行合入。历史审查原文仍在 `f3-parent-review.md`。Host/Native 真正 Rust 桥接仍待本工作区接通。
+- Native 同 root/workspace 重叠取消 P1 已由 `8ca7617` 合入。首次开场 Rust↔Host stdio 已接通，证据 `f4-core-host-bridge.md`。这不是常规对话 run，也不是 StepFun。
 
 - Workflow `d0946ef4-5bfd-4006-a0ba-4ff32b932de6` 的两个 Grok 4.7 high 审查均失败：`xai API error (403): You have run out of credits or need a Grok subscription`。Host reviewer `cfd78851-678e-4a88-9b14-5eb456d67901`；Native reviewer `e11922e9-815b-4d63-bcda-11d1066a362c`。外层 workflow complete 不代表审查通过，两个结果 `ok=false`。
 - 失败后已核验三个 worktree 均 clean：主线 `2dc8570`，Host `dev/r1-host-runtime` / `2b9ac8c`，Native `dev/r1-native-shell` / `ca0efb3`。无审查写入的 partial diff，未合并候选，未推远端，未切换模型或 CLI/前台协议。
@@ -26,8 +26,8 @@
 ## F3 Native shell 未验证项
 
 - 窗口点击、托盘菜单、隐藏与完全退出没有人工驱动或截图。debug 进程只证明启动后 3 秒未自行退出，随后被测试进程 SIGTERM。恢复条件是人工运行 `cargo run -p hark-desktop` 并操作窗口。同 key 重叠取消的 Rust 测试不是这次点击验收。
-- 安装包、签名、Windows 编译与 Windows Job Object 未跑。本壳没有 sidecar，不能把“未启动进程”写成 Job Object 通过。
-- 正式 Sidecar/stdio、真实模型、搜索、凭据 Store 仍关闭。Host 候选代码已合入，但还没有 Rust 桥接，不能标为已接通。
+- 安装包、签名、Windows 编译与 Windows Job Object 未跑。无 Job Object 时 Sidecar 默认关闭，不能把 EOF 写成 Windows 进程树安全。
+- 真实模型、搜索、凭据 Store 仍关闭。已接通的是合成 transport 的首次开场 stdio，不是 StepFun。
 - `cargo check` / `cargo build` 不是桌面交互验收。
 
 ## 仍阻塞或未验证
@@ -36,12 +36,12 @@
 - Windows 安全读未实现，源码 fail-closed。本机未安装/未编译 Windows target。恢复条件是 Windows 上的真实编译和目录负例。
 - 真实私人项目读取、付费 StepFun/搜索调用：未授权，unverified。合成 provider/model 与合成收据不是真实 StepFun。恢复条件为用户指定合法目录、系统凭据机制与发送范围。
 - UI 与整 R1 未通过。
-- F2 Host 已有本机 sidecar 证据，但仍未接 Rust。`workspace.overview` 的 authorization 对象要由后续 integration 从 Core 构造；本段合成 `synthetic: true` 不是 Core 收据。Host 不写 SQLite，也不调用 `mark_analyzing` / `commit_agent_opening`。
+- 首次开场的 authorization 由 Rust 从当前 Core 构造。Host 仍不写 SQLite。常规连续对话 run 仍 pending。
 - StepFun endpoint、流式、工具调用和计费仍 unverified。显式 `providerId: stepfun` 不再被型号字符串拒绝，但没有启用配置、凭据和 `allowRemote` 时仍然关闭。`faux` 仍拒绝，不是 fallback。本轮只用合成 Key 和拦截 transport 看 OpenAI-completions 形状，没有联网。真实协议未臆造。
 - Pi 1.5.0 `ModelRuntime.create` 没有 `authContext`。生产收口是：刷新前给 `google-vertex` 注册字面 closed key，并在加载 SDK 前只拒绝已知凭据路径。这不是全量 fs monkeypatch，也不证明所有未来 SDK 探测都已关闭。
 - 队列上限由 sidecar 使用的同一 codec 单测证明。拉起的 stdio probe 现在会在活动 run 上关闭 stdin，并暂停 stdout 后要求子进程在 3 秒内退出。没有把 OS pipe 故意堵满到内核容量。进程内 Writable 停住 write callback，证明不会空转续发。
 - 自动 compaction 关闭。遇到无法证明不含旧事实的 compaction/branch summary 时，Host 新建官方 Session，不把旧摘要当当前来源。
-- sessionRef 的 SQLite 绑定、进程监督、Windows Job Object 留给 integration。
+- sessionRef 存在 onboarding evidence_json，不是新授权表。Unix 进程组已有本机证据。Windows Job Object 仍未实现。
 - 开场提交仍是延迟事务。与撤权写者重叠时可能返回 SQLite busy，而不是 `root_revoked`；busy 时不提交新开场。撤权已经返回之后，读侧与开场侧都拒绝。
 - 已经进入内核且不返回的单次 `read`/`openat` 不能被打断。另一连接最多等到现有 `busy_timeout`（5 s）；超时是 SQLite busy，不是撤权成功。
 - Pi JSONL、网页 Reader、FTS、记忆修订：未进入本切片。

@@ -1034,3 +1034,67 @@ fn live_run_survives_restart_but_unissued_success_does_not() {
     assert_not_presented(&db.core, &ws.id);
     cleanup(&root_path);
 }
+
+#[test]
+fn session_binding_lives_in_onboarding_evidence_and_is_not_a_grant() {
+    let mut fx = ready("session-binding");
+    let before = fx.db.core.onboarding(&fx.ws.id).unwrap();
+    assert!(fx
+        .db
+        .core
+        .opening_session_binding(&fx.ws.id)
+        .unwrap()
+        .is_none());
+    let binding = hark_core::SessionBinding {
+        workspace_id: fx.ws.id.clone(),
+        conversation_id: fx.ws.conversation_id.clone(),
+        run_id: fx.run_id.clone(),
+        session_ref: "pi:01234567-89ab-cdef-0123-456789abcdef".to_string(),
+        bound_at: "caller-clock-is-not-authoritative".to_string(),
+    };
+    let stored = fx.db.core.bind_opening_session(&binding).unwrap();
+    assert_eq!(stored.session_ref, binding.session_ref);
+    assert_ne!(stored.bound_at, binding.bound_at);
+    let again = fx.db.core.bind_opening_session(&binding).unwrap();
+    assert_eq!(again.bound_at, stored.bound_at);
+    let replaced = hark_core::SessionBinding {
+        session_ref: "pi:ffffffff-ffff-ffff-ffff-ffffffffffff".to_string(),
+        ..binding.clone()
+    };
+    assert_eq!(
+        fx.db.core.bind_opening_session(&replaced).unwrap_err().code,
+        ErrorCode::CorrelationRejected
+    );
+    let after = fx.db.core.onboarding(&fx.ws.id).unwrap();
+    assert_eq!(after.active_run_id, before.active_run_id);
+    assert_eq!(after.auth_provider, before.auth_provider);
+    assert_eq!(after.auth_grant_updated_at, before.auth_grant_updated_at);
+    assert!(!after.opening_presented);
+    fx.db.reopen();
+    let loaded = fx
+        .db
+        .core
+        .opening_session_binding(&fx.ws.id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(loaded.session_ref, binding.session_ref);
+    assert_eq!(loaded.run_id, fx.run_id);
+    assert!(fx
+        .db
+        .core
+        .list_conversation(&fx.ws.id)
+        .unwrap()
+        .iter()
+        .all(|event| event.kind != "user_message"));
+    let conn = rusqlite::Connection::open(&fx.db.path).unwrap();
+    let evidence: String = conn
+        .query_row(
+            "SELECT evidence_json FROM onboarding_runs WHERE workspace_id = ?1",
+            [fx.ws.id.as_str()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(evidence.contains("scanId"), "{evidence}");
+    assert!(evidence.contains("sessionBinding"), "{evidence}");
+    cleanup(&fx.root_path);
+}

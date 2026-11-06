@@ -12,8 +12,7 @@
         <p class="eyebrow">开发入口 · 不是正式产品界面</p>
         <h1>Hark R1 本地目录确认</h1>
         <p>
-          目录读取和远程模型是两种许可。这里只做本地只读初扫。未配置模型时显示等待授权，不调用模型，也不写入
-          agent_opening_message。
+          目录读取和远程模型是两种许可。未配置可信 Sidecar 时不启动 Node、不读 Key、不写开场。
         </p>
       </header>
 
@@ -82,6 +81,8 @@
           <button id="quit" type="button">完全退出</button>
         </div>
         <p id="sidecar">Sidecar：尚未查询。</p>
+        <button id="opening" type="button">开始已配置的首次开场</button>
+        <p>这个按钮只提交 workspaceId。不能提交路径、Key、success 或 approved。没有可信配置时会失败，不会启动进程。</p>
       </section>
 
       <section>

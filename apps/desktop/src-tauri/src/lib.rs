@@ -1,6 +1,6 @@
 use hark_native_shell::{
-    decide_window_close, sidecar_status as host_sidecar_status, AuthorizeRequest, ConfirmRequest,
-    NativeShell, ShellError, SourceRefRequest, UserMessageRequest, WindowCloseDecision,
+    decide_window_close, AuthorizeRequest, ConfirmRequest, NativeShell, OpeningRequest, ShellError,
+    SourceRefRequest, UserMessageRequest, WindowCloseDecision,
 };
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
@@ -204,8 +204,16 @@ fn service_grants(
 }
 
 #[tauri::command(rename_all = "camelCase")]
-fn sidecar_status() -> hark_native_shell::SidecarStatus {
-    host_sidecar_status()
+fn sidecar_status(shell: tauri::State<'_, NativeShell>) -> hark_native_shell::SidecarStatus {
+    shell.sidecar_status()
+}
+
+#[tauri::command(rename_all = "camelCase", async)]
+fn start_configured_opening(
+    shell: tauri::State<'_, NativeShell>,
+    request: OpeningRequest,
+) -> Result<hark_native_shell::OpeningBridgeResult, ShellError> {
+    shell.run_configured_opening(&request.workspace_id)
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -322,6 +330,7 @@ pub fn run() {
             retry_onboarding,
             service_grants,
             sidecar_status,
+            start_configured_opening,
             shell_snapshot,
             hide_window,
             quit_app

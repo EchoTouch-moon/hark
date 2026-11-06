@@ -2,7 +2,7 @@
 
 状态：`frozen for F1 host consumption`。这是 Rust Core 与未来 TypeScript Agent Host 之间的消息合同，不是已运行的 Sidecar，也不是 HTTP API。
 
-本阶段实现了可测试的 frame codec、有界队列和关联门禁。没有进程监督、没有端口、没有模型调用。Tauri 应直接调用 in-process `hark_core::Core`，不要把本文件当成已经接通的 stdio 服务。
+Frame codec、有界队列和关联门禁仍是本文件的冻结合同。首次开场的 Unix stdio 已由 Native shell 消费这些 frame；这不是 HTTP，不是常规对话 run，也不是 Windows Job Object。Tauri 业务写入仍调用 in-process `hark_core::Core`。
 
 ## 1. 传输规则（Host 实现时必须遵守）
 
@@ -94,7 +94,8 @@ Host 在实际向模型或搜索发送前必须再次读取 `get_service_grant`�
 
 ## 7. 明确未实现
 
-- Sidecar 进程、Windows Job Object、stdout 实管道
+- Windows Job Object。无 Job Object 时 Sidecar 默认关闭，EOF 不是 Windows 进程树安全
+- 常规连续对话 run、真实 StepFun、搜索。首次开场 stdio 使用 scripted transport 时不是 StepFun 验收
 - HTTP / 回环服务
 - 真实模型、搜索、网页 Reader、FTS、记忆表、Observer、UI、整 R1。合成 provider/model 字符串不是 StepFun 调用
 - macOS security-scoped bookmark。授权路径被替换或改名后 fail closed，不跟随新 inode

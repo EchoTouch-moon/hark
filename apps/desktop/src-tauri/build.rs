@@ -28,6 +28,7 @@ fn main() {
             "retry_onboarding",
             "service_grants",
             "sidecar_status",
+            "start_configured_opening",
             "hide_window",
             "quit_app",
             "shell_snapshot",

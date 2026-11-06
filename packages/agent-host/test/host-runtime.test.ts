@@ -8,7 +8,7 @@ import { test } from "node:test";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { installCredentialPathDeny, isClosedCredentialPath } from "../src/credentials/path-deny.ts";
 import { COMPACTION_SUMMARY_PREFIX } from "../src/context-pack.ts";
-import type { ProviderConfig } from "../src/dto.ts";
+import { runStartPayloadSchema, type ProviderConfig } from "../src/dto.ts";
 import { encodeFrame, mintId, NdjsonParser, type Frame } from "../src/ipc.ts";
 import { createGuardedFetch, sseText, sseToolCall } from "../src/provider.ts";
 import { HostRuntime, loadProviderConfig } from "../src/runtime.ts";
@@ -175,6 +175,36 @@ function startHarness(options: {
 
 function runStart(seq: number, extra: Record<string, unknown> = {}): Frame {
   const now = Date.now();
+  const payload: Record<string, unknown> = {
+    provider: "hark-byok",
+    model: "local-model",
+    purpose: "conversation",
+    authorization: {
+      runId: `run_${hex(200 + seq)}`,
+      provider: "hark-byok",
+      model: "local-model",
+      rootId: `root_${hex(3)}`,
+      rootUpdatedAt: "root-v1",
+      grantUpdatedAt: "grant-v1",
+      directoryStatus: "active",
+      modelGrantStatus: "active",
+      current: true,
+    },
+    contextSnapshot: {
+      contextPackRevision: "rev-a",
+      sourceVersion: "src-a",
+      empty: true,
+    },
+    userText: `user-turn-${seq}`,
+    userMessageId: `msg_${hex(300 + seq)}`,
+    sessionRef: null,
+    handoffId: null,
+    syntheticCore: true,
+    ...extra,
+  };
+  if (payload.purpose === "opening") {
+    delete payload.userMessageId;
+  }
   return {
     v: 1,
     kind: "request",
@@ -185,33 +215,7 @@ function runStart(seq: number, extra: Record<string, unknown> = {}): Frame {
     method: "run.start",
     deadlineUnixMs: now + 60_000,
     error: null,
-    payload: {
-      provider: "hark-byok",
-      model: "local-model",
-      purpose: "conversation",
-      authorization: {
-        runId: `run_${hex(200 + seq)}`,
-        provider: "hark-byok",
-        model: "local-model",
-        rootId: `root_${hex(3)}`,
-        rootUpdatedAt: "root-v1",
-        grantUpdatedAt: "grant-v1",
-        directoryStatus: "active",
-        modelGrantStatus: "active",
-        current: true,
-      },
-      contextSnapshot: {
-        contextPackRevision: "rev-a",
-        sourceVersion: "src-a",
-        empty: true,
-      },
-      userText: `user-turn-${seq}`,
-      userMessageId: `msg_${hex(300 + seq)}`,
-      sessionRef: null,
-      handoffId: null,
-      syntheticCore: true,
-      ...extra,
-    },
+    payload,
   };
 }
 
@@ -224,6 +228,39 @@ async function waitFor(frames: Frame[], predicate: (frame: Frame) => boolean): P
   }
   throw new Error(`timed out waiting for frame; saw ${frames.map((frame) => `${frame.method}:${frame.kind}:${frame.error?.code ?? frame.payload.contextPolicy ?? ""}`).join(",")}`);
 }
+
+test("opening run.start omits userMessageId and conversation still requires one", () => {
+  const authorization = {
+    runId: `run_${hex(1)}`,
+    provider: "hark-byok",
+    model: "local-model",
+    rootId: `root_${hex(2)}`,
+    rootUpdatedAt: "root-v1",
+    grantUpdatedAt: "grant-v1",
+    directoryStatus: "active",
+    modelGrantStatus: "active",
+    current: true,
+  };
+  const base = {
+    provider: "hark-byok",
+    model: "local-model",
+    authorization,
+    contextSnapshot: { contextPackRevision: "rev", sourceVersion: "src", empty: true },
+    userText: "internal first read",
+    sessionRef: null,
+    handoffId: null,
+  };
+  assert.equal(runStartPayloadSchema.safeParse({ ...base, purpose: "opening" }).success, true);
+  assert.equal(
+    runStartPayloadSchema.safeParse({ ...base, purpose: "opening", userMessageId: `msg_${hex(3)}` }).success,
+    false,
+  );
+  assert.equal(runStartPayloadSchema.safeParse({ ...base, purpose: "conversation" }).success, false);
+  assert.equal(
+    runStartPayloadSchema.safeParse({ ...base, purpose: "conversation", userMessageId: `msg_${hex(3)}` }).success,
+    true,
+  );
+});
 
 test("credential path deny does not wrap ordinary files", () => {
   assert.equal(isClosedCredentialPath("/tmp/application_default_credentials.json"), true);

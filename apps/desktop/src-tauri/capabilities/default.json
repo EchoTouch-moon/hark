@@ -29,6 +29,7 @@
     "allow-retry-onboarding",
     "allow-service-grants",
     "allow-sidecar-status",
+    "allow-start-configured-opening",
     "allow-hide-window",
     "allow-quit-app",
     "allow-shell-snapshot"

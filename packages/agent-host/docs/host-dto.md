@@ -14,7 +14,8 @@ Trusted Core/bridge payload. Zod source: `runStartPayloadSchema` in `src/dto.ts`
 | `purpose` | `opening` or `conversation`. Opening success still requires a later Rust commit. |
 | `authorization` | Required snapshot below. `current: true` is necessary to accept the run and is not a send permit. |
 | `contextSnapshot` | Current compact pack identity. `empty: true` means no memory engine facts. |
-| `userText`, `userMessageId` | The user turn. Not a place to hide L0/L1. |
+| `userText` | Opening: an internal first-read instruction, not a stored Hark user message and not an L0/L1 container. Conversation: the real user turn. |
+| `userMessageId` | Absent or null for `purpose: opening`. Required `msg_` id for `conversation`, and that id must already exist in Hark. Do not mint a fake id to satisfy this field. |
 | `sessionRef` | `pi:<uuid>` from Pi SessionManager, or null to create one. Not a Core `conv_` id. |
 | `recentMessages` | Optional, max 10, roles `user` or `assistant` only. Used only when a new session is created. |
 | `handoffId` | Dedup key for that recent-message handoff. |
