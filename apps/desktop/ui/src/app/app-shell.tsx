@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   ChevronDown,
   MoreHorizontal,
@@ -69,7 +69,8 @@ export const AppShell: React.FC = () => {
   const [bridgeMode, setBridgeMode] = useState<"dev_preview_synthetic" | "strict_tauri_ipc">(
     "strict_tauri_ipc"
   );
-  const bridge = getHarkBridge(bridgeMode);
+  // selectBridge 在 Tauri 可用时每次 new bridge；绑定 bridgeMode，避免 cache.runs 跨 render 丢失。
+  const bridge = useMemo(() => getHarkBridge(bridgeMode), [bridgeMode]);
 
   // 主题与动效状态
   const [themePref, setThemePref] = useState<ThemePreference>("light");
@@ -351,6 +352,28 @@ export const AppShell: React.FC = () => {
     const bufferedEvents: RunStreamEvent[] = [];
     let resolvedRunId: string | null = null;
 
+    const refreshPersistedConversation = (
+      wsId: WorkspaceId,
+      conversationId: string,
+      persistedMessageId: string | undefined,
+      verified: boolean,
+    ) => {
+      // 缺 id 或未核验不当已保存，也不把候选写入时间线。
+      if (!verified || !persistedMessageId) return;
+      bridge
+        .getConversation(conversationId)
+        .then((page) => {
+          if (activeStreamWorkspaceRef.current !== wsId) return;
+          setMessages(page.messages);
+          setStreamState(null);
+          setTransientSpreadKey((k) => k + 1);
+        })
+        .catch((err) => {
+          if (activeStreamWorkspaceRef.current !== wsId) return;
+          setActiveError(asUiError(err));
+        });
+    };
+
     const handleStreamEvent = (ev: RunStreamEvent) => {
       if (activeStreamWorkspaceRef.current !== ev.workspaceId) {
         return;
@@ -364,14 +387,13 @@ export const AppShell: React.FC = () => {
         return applyRunStreamEvents(base, [ev]);
       });
 
-      if (ev.type === "run_completed" && ev.payload.persistenceVerified) {
-        bridge.getConversation(convId).then((page) => {
-          if (activeStreamWorkspaceRef.current === targetWsId) {
-            setMessages(page.messages);
-            setStreamState(null);
-            setTransientSpreadKey((k) => k + 1);
-          }
-        });
+      if (ev.type === "run_completed") {
+        refreshPersistedConversation(
+          targetWsId,
+          convId,
+          ev.payload.persistedMessageId,
+          ev.payload.persistenceVerified === true,
+        );
       }
     };
 
@@ -388,10 +410,18 @@ export const AppShell: React.FC = () => {
       );
 
       resolvedRunId = result.runId;
-      setMessages((prev) => [...prev, result.acceptedUserMessage]);
+      if (activeStreamWorkspaceRef.current === targetWsId) {
+        setMessages((prev) => [...prev, result.acceptedUserMessage]);
+      }
 
-      const initialStream = createInitialStreamState(targetWsId, result.runId);
-      setStreamState(applyRunStreamEvents(initialStream, bufferedEvents));
+      const nextStream = applyRunStreamEvents(
+        createInitialStreamState(targetWsId, result.runId),
+        bufferedEvents,
+      );
+      setStreamState(nextStream);
+      if (nextStream.status === "completed_verified" && nextStream.persistedMessageId) {
+        refreshPersistedConversation(targetWsId, convId, nextStream.persistedMessageId, true);
+      }
     } catch (err) {
       setDraftStore((prev) => setWorkspaceDraft(prev, targetWsId, prompt));
       setActiveError(err as HarkUIError);

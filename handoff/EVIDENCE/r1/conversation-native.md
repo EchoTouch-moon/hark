@@ -45,3 +45,15 @@ CONVERSATION_EVIDENCE {"transport":"scripted","stepFun":"unverified","openingRun
 - 没有改 Pi Provider、SDK 协议、付费 HTTP 或验收脚本。
 - 同一 request 在模型尚未发出时崩溃，不会自动重发；需要新的 request。`recentMessages.createdAtUnixMs` 现为 0，只影响新 session handoff 的时间戳。
 - 没有改 `AGENTS.md`、共享 `handoff/STATUS.md` 或根 `MORNING-REPORT.md`。
+
+## UI 时序
+
+`13c6e55` 之后只改 `apps/desktop/ui/src/app/app-shell.tsx`。`useMemo` 按 `bridgeMode` 保留同一 Bridge，避免每次 render 新建后丢掉 `cache.runs`。ack 前的 `run_completed` 仍进缓冲；只有 `completed_verified` 且有 `persistedMessageId` 才刷新 Core 权威消息。未核验或不带持久化 id 不当已保存。ack 时若已离开该 Workspace，不把旧用户消息插入当前面板。刷新失败只在仍停留该 Workspace 时记错误。
+
+没有真实请求、Key、模型开关、schema/IPC/Core 或 AGENTS 改动。没有装 React 测试；现有 23 项不覆盖 AppShell 时序。
+
+| 命令 | 结果 |
+|---|---|
+| `set -euo pipefail` 后 `npm run typecheck:ui` | 通过。`tsc -p tsconfig.json --noEmit` 无输出。 |
+| `npm run test:ui` | 通过。23 pass，0 fail，duration_ms 96.642167。 |
+| `npm run build:ui` | 通过。vite 8.3.6，1682 modules，433ms。 |
