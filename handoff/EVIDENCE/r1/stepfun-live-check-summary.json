@@ -1,0 +1,46 @@
+{
+  "schema": "hark.stepfun-live-check.v1",
+  "model": "step-3.7-flash",
+  "endpoint": "https://api.stepfun.com/v1/chat/completions",
+  "endpointProven": false,
+  "endpointStatus": "pending-live",
+  "maxRequests": 3,
+  "requestCount": 1,
+  "attemptCount": 1,
+  "blockedAttempts": 0,
+  "tokenCap": 512,
+  "tokenCapFields": [
+    "max_tokens",
+    "max_completion_tokens"
+  ],
+  "tokenCapForced": true,
+  "httpStatuses": [
+    402
+  ],
+  "redirect": "error",
+  "autoRetry": false,
+  "backupModel": false,
+  "firstText": {
+    "verdict": "fail",
+    "httpStatus": 402,
+    "sawStreamDelta": false,
+    "toolChoice": "forced-none"
+  },
+  "tool": {
+    "verdict": "incomplete",
+    "selection": "not-sent",
+    "toolName": null,
+    "followUpToolChoice": "not-sent",
+    "httpStatuses": [],
+    "readFileRequests": 0
+  },
+  "syntheticInputMarker": "synthetic-hark-stepfun-live-check",
+  "realProjectRead": false,
+  "rustJointClosedLoop": false,
+  "claimsProductAcceptance": false,
+  "boundedLiveObservation": false,
+  "refusedPath": null,
+  "code": "http_status",
+  "status": 402,
+  "liveTransport": true
+}

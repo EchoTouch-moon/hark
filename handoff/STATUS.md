@@ -10,7 +10,7 @@
 | F3 Native shell + opening stdio | verified-local | 已合入 `ca0efb3` 与 `8ca7617`，并接通 Unix 进程组管理的 Node+Pi SDK stdio。窗口点击、托盘、安装包、Windows Job Object、真实模型未验。见 `f3-parent-review.md` 与 `f4-core-host-bridge.md` |
 | Bridge 重试/状态/队列/stop | verified-local-accepted | 主会话已在 `9f9bb01` 检查diff并复跑Core48与Native16项，全通过；独立Session重绑probe从失败变成功，接受首次开场本机底座。真实模型/整R1未通过。见 `f4-parent-review.md` |
 | R1-A/B/C/D 产品闭环 | blocked | 整 R1 未通过。见实施计划 DAG |
-| 真实项目/StepFun/搜索/用户验收 | unverified | 已批准仅纯合成材料、国内StepFun step-3.7-flash最多3次、每次≤512输出tokens的用户亲启验收；脚本已合入并经父会话复跑18项离线安全测试，待用户TTY隐藏输入Key亲启；尚无真实调用。私人项目/搜索未授权 |
+| 真实项目/StepFun/搜索/用户验收 | live-check-blocked | 用户亲启首次实际请求1次，HTTP402，无流式/工具成功；再次运行因原摘要存在拒绝、0次发送。用户已表示计费处理完成；正准备累计预算剩余2次的续测模式。原始证据与复核见stepfun-live-check-summary/review。私人项目/搜索未授权 |
 | macOS 安装包 / Windows 实机 | unverified | 不以本机静态检查替代。Windows 安全读源码 fail-closed，未在 Windows 编译 |
 | AT-05 / 父子排除 | blocked | 重叠拒绝不是排除流程。不得标通过 |
 
