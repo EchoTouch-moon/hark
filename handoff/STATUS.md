@@ -26,8 +26,8 @@ PRD 六项微型验收包：
 | ID | 状态 | 说明 |
 |---|---|---|
 | CTX-01 | verified-local | Host 请求级 pack 与本段 Core 有界概况已在合成快照/合成目录上验证。没有 Memory Engine，pack 标 empty。不能当产品通过 |
-| MEM-11 | pending | 未建记忆表，未实现提议 Tool |
-| SEARCH-01 | pending | 未建 FTS |
+| MEM-11 | pending-integration | v4记忆/观点修订与Core提议API已实现，69项Core通过；Host绑定提议Tool与真实UI收据仍在接线，不能标产品通过 |
+| SEARCH-01 | verified-core-only | 已实现FTS5 trigram与明确短词LIKE兜底、来源/历史标签；前端/recall尚待接线，未做用户检索验收 |
 | WS-OVERLAP-01 | not-pass | 重叠显式拒绝；父子排除未实现，不称 AT-05 通过 |
 | ONBOARD-01 | verified-local | Core 拒绝取消/旧 run/错模型/未配置模型/跨 workspace/撤权，并只在绑定 run 的成功收据后折叠。无 UI、无真实模型，不是产品通过 |
 | READER-01 | pending | 网页 Reader 未做。本地文件负例见 EVIDENCE/r1/f1-core-limits.md |
