@@ -18,4 +18,11 @@
 
 本轮只收口新桥接代码的重试/状态/资源边界；不扩 Observer、常规对话、Memory、Windows 或真实模型 Gate。修复后复跑受影响回归，再决定接受此本机接线切片。
 
+## 定向收口复核 · 9f9bb01
+父会话检查 SessionBinding 更新/归档、共享状态 Arc、Rust bounded ingress 与 stop/reap 边界的 diff，并以 `set -euo pipefail` 实际复跑：Core fmt/test 48 项，Native fmt/check（含 desktop）与 lib2+bridge5+flow9，共16项，全通过。原父会话独立 probe 重链新库后，实际 `fresh_run_session_rebind_ok=true; error=None`。
+
+已接受：合法当前 run 替换已结束 run 的 Session 引用、旧/伪 run 仍拒绝；worker 与 Native 读同一状态；64-frame ingress 有真实 Node flood 证明；满队列不堵取消控制；有界 stop 不把未结束 worker 报成功，已 kill 子进程用 WNOHANG 回收；取消→重试→Core 提交探针通过。停滞测试的屏障失败清理已收口，不再用120秒 opening超时掩盖失败。
+
+**裁决：接受此本机首次开场底座接线切片。** 已验证真实磁盘/SQLite/Node子进程/PiSDK/管道与恢复，transport仍是明确合成SSE，不是StepFun或完整R1产品通过。Native窗口点击、安装包、Windows/JobObject、真实模型和常规连续对话仍需独立交付。已进入内核的 syscall 不可打断、测试hook不等于真实磁盘永久挂起压测、未对活动Pi会话填满整条OS管道的限制继续保留。
+
 后续本机修复记录见 `f4-bridge-lifecycle-fix.md`。本文件保留复核当时的缺口，不改写成已通过。
