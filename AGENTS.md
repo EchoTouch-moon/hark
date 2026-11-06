@@ -38,4 +38,5 @@ READ 任务 → 最小接口/测试 → 实现 → 局部测试/类型检查 →
 - 有界StepFun脚本离线测试18项已在本机Node22通过，包装器PTY验证使用本机python3。该脚本后续扩建已被用户叫停，不再建设续测/额度平台。真实请求须单独批准；用户后续曾明确批准主会话直接做一次套餐接口测试，3次总预算现已用完，Key已撤销，不得继续使用。
 - 已实测StepFun套餐 `https://api.stepfun.com/step_plan/v1/messages` 的anthropic-messages格式，模型step-3.7-flash：HTTP200/OK、输入21输出130tokens。通用 `/v1/chat/completions` 的HTTP402不代表套餐不可用。实际SDK的baseUrl拼接须以当前锁版源码/离线请求捕获验证，不能把直接HTTP成功写成PiSDK/流式/工具通过。
 - 用户React初版已迁入 `apps/desktop/ui`，npm workspace为 `@hark/desktop-ui`。本机Node22实跑UI类型、21测试、Vite8.3.6构建通过；根命令 `typecheck:ui` / `test:ui` / `build:ui`。开发时先独立运行 `npm run dev -w @hark/desktop-ui`（127.0.0.1:1420），另一个终端再cargo run；直接cargo不会执行Tauri CLI的beforeDevCommand。当前未跑Native点击。
+- 主线普通聊天集成后已实跑Core56、Native17、UI23与桌面build；开发二进制 `apps/desktop/target/debug/hark-desktop` 可直接启动（需Vite1420服务先就绪）。本轮已实际HTTP200并通过NSRunningApplication激活该进程；不代表Native控件点击或真实模型通过。
 - 本轮 SDK smoke 精确锁 `@earendil-works/pi-coding-agent`/`pi-ai` `1.5.0`，`npm run typecheck` 与 `npm run test:pi-sdk-smoke` 在 Node `v22.23.2` 实测通过。`noTools: "builtin"` 不移除注册表中的内置工具；使用纯名字 allowlist 并核验 all/active/callable。无网络 faux 不是 StepFun 验收；SDK 的 ADC fileExists 探测被测试 guard 拒绝，生产 Host 仍需显式收口环境凭据来源。

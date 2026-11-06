@@ -29,7 +29,7 @@ npm run dev -w @hark/desktop-ui
 # 终端2：启动Tauri开发窗口
 cargo run --manifest-path apps/desktop/Cargo.toml -p hark-desktop
 ```
-直接 `cargo run` 不会代为执行Tauri CLI的 `beforeDevCommand`；不能只开Native就假定Vite已启动。这是开发入口，不是安装包。默认模型关闭；普通聊天Native接线正在开发，未完成功能不回退为预览数据。不要为测试选择私人vault。尚无本轮窗口点击验收。
+直接 `cargo run` 不会代为执行Tauri CLI的 `beforeDevCommand`；不能只开Native就假定Vite已启动。这是开发入口，不是安装包。默认模型关闭；普通聊天Native接线已实现并通过合成transport联合测试，页面模型配置与workspace启用尚待补齐。未完成功能不回退为预览数据。不要为测试选择私人vault。尚无本轮窗口点击验收。
 
 ## StepFun 当前接入
 正确套餐接口为 `https://api.stepfun.com/step_plan/v1/messages`、模型 `step-3.7-flash`，直接HTTP已实测200/OK；现正接入PiSDK的anthropic-messages协议。SDK流式/工具与桌面模型闭环尚未通过。

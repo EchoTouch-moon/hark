@@ -6,9 +6,9 @@ Host 不调用 Pi CLI。stdout 只写 NDJSON。模型可见工具只有 `workspa
 
 Native shell 目录选择仍走短时 picker token。未配置 Sidecar 时 `connected=false`，不读 Key，不发请求。已配置的开发 Node 路径只来自 Rust，不接受前端任意命令。macOS 用进程组关闭 stdin、SIGTERM、SIGKILL、`waitpid(WNOHANG)` 和有界 stop。worker 与 `sidecar_status` 读同一份状态。stdout frame ingress 上限 64，过载关闭受影响 run。Windows 没有 Job Object，Sidecar 默认关闭。
 
-用户初版React/Vite/Tailwind前端已迁入 `apps/desktop/ui`（3c6289a），保留炉心外观，默认strict Native；真实目录选择/导入、本地卡/消息/来源、目录暂停撤销和窗口隐藏退出已适配。UI21测试、build、Host类型与Tauri检查通过，但没有Native点击证据。普通聊天Core已55测试，Native发送/流式/状态/取消正在接线。
+用户初版React/Vite/Tailwind前端已迁入 `apps/desktop/ui`（3c6289a），保留炉心外观，默认strict Native；真实目录选择/导入、本地卡/消息/来源、目录暂停撤销和窗口隐藏退出已适配。UI21测试、build、Host类型与Tauri检查通过，但没有Native点击证据。普通聊天已接上三个Native命令和per-turn Channel，Core提交成功后才通知前端完成。主会话复跑Core56/Native17/UI23及桌面build通过，模型仍scripted。开发Vite已HTTP200、Tauri进程已启动并激活；没有控件点击或截图证据。
 
-当前未完成或未通过：窗口点击/托盘人工验收、普通聊天完整纵切、PiSDK真实StepFun、搜索、记忆修订、FTS、Observer、网页Reader、安装包、Windows实机、整R1。父子目录排除（AT-05）未实现。已进入内核的单次 read 不能被本切片打断。合成 scripted transport 不是 StepFun。
+当前未完成或未通过：窗口点击/托盘人工验收、应用内模型配置/启用与真实聊天体验、PiSDK真实StepFun、搜索、记忆修订、FTS、Observer、网页Reader、安装包、Windows实机、整R1。父子目录排除（AT-05）未实现。已进入内核的单次 read 不能被本切片打断。合成 scripted transport 不是 StepFun。
 
 主会话已在 `9f9bb01` 定向复核并复跑 Core48、Native16项通过，接受真实本地磁盘/SQLite/Node+PiSDK/stdio 首次开场底座；模型transport仍为合成SSE。StepFun套餐 `/step_plan/v1/messages` 的直接HTTP基础文本已实际200/OK（step-3.7-flash，输入21/输出130tokens）；通用API两次402不代表套餐不可用。原3次许可已耗尽，Key已撤销。现有Host仍只接openai-completions，下一切片复用PiSDK的anthropic-messages支持套餐；SDK流式/工具与桌面真实闭环尚未通过。不再扩建独立验收/额度脚本，优先产品接线与常规连续对话。
 

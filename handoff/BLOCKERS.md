@@ -36,7 +36,7 @@
 - Windows 安全读未实现，源码 fail-closed。本机未安装/未编译 Windows target。恢复条件是 Windows 上的真实编译和目录负例。
 - 私人项目读取与真实搜索仍未授权。用户另行批准一次有界 StepFun 验收：国内 `https://api.stepfun.com/v1/chat/completions`、仅 `step-3.7-flash`、最多3次请求、每次输出≤512tokens、仅纯合成材料、Key仅用户亲启独立进程临时env。真实调用已结束：通用API共2次HTTP402；用户提供正确套餐 `/step_plan/v1/messages` 后，最后1次实际HTTP200/回复OK（见stepfun-plan-direct-check.json）。旧402/续测记录是历史，不再认定为当前套餐计费阻塞。续测脚本任务已按用户要求停止，无partial diff；不再维护或扩建该验收脚本。原3次预算用完，Key已由用户撤销，不得再使用或发请求。接下来离线把正确anthropic-messages协议接入现有Pi Host；流式、工具与桌面真实闭环仍待后续实际授权验证。
 - UI 与整 R1 未通过。
-- 首次开场的 authorization 由 Rust 从当前 Core 构造。Host 仍不写 SQLite。常规连续对话 run 仍 pending。
+- 首次开场的 authorization 由 Rust 从当前 Core 构造。Host 仍不写 SQLite。普通聊天已通过scripted transport接线；当前阻塞真实体验的是模型配置与workspace启用，不是run存储/管道未实现。
 - StepFun套餐endpoint基础文本已真实验证；PiSDK流式、工具调用与应用内配置仍unverified。显式 `providerId: stepfun` 不再被型号字符串拒绝，但没有启用配置、凭据和 `allowRemote` 时仍然关闭。`faux` 仍拒绝，不是 fallback。本轮只用合成 Key 和拦截 transport 看 OpenAI-completions 形状，没有联网。真实协议未臆造。
 - Pi 1.5.0 `ModelRuntime.create` 没有 `authContext`。生产收口是：刷新前给 `google-vertex` 注册字面 closed key，并在加载 SDK 前只拒绝已知凭据路径。这不是全量 fs monkeypatch，也不证明所有未来 SDK 探测都已关闭。
 - Rust stdout→worker ingress cap 现为合同控制队列 64，由生产 `read_stdout` 加真实 Node 子进程 flood 证明；满载关闭 run/管道，stop/cancel 不走这条满队列。没有把活动 Pi run 灌满 64 帧，不能据此称整份 IPC 合同已由实机会话灌满。Node SideQueues 单测仍在。Host stdio probe 仍会关 stdin 并暂停 stdout。没有把 OS pipe 堵到内核容量。

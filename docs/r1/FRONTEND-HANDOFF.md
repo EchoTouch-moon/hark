@@ -1,6 +1,8 @@
 # F3 Native shell handoff
 
-状态：`verified-local` 只覆盖无 WebView 的 Rust 服务测试、`cargo check` 和本机 debug 二进制启动。不是正式前端、不是 Sidecar、不是真实模型、不是安装包、不是 Windows。
+当前状态：用户React前端已迁入，普通聊天已贯通HarkBridge→Native→Node/PiSDK→Core（合成transport）。主会话复跑Core56/Native17/UI23、UI和桌面构建通过；Vite HTTP200、Tauri进程已启动并激活到前台。没有Native控件点击/截图验收，不是真实模型或安装包/Windows通过。默认模型仍关闭，页面模型配置与workspace启用是下一步。
+
+普通聊天入口：`start_agent_turn({request:{requestId,workspaceId,conversationId,userPrompt},onEvent:Channel})` → `{runId,acceptedUserMessage}`；`get_agent_turn` / `cancel_agent_turn` 的request为 `{workspaceId,runId}`。Channel在invoke前创建，完成事件仅在Core提交成功后带persistenceVerified=true。Core原始register/commit依旧不暴露WebView。详见CONVERSATION-HANDOFF.md。
 
 后续前端应只消费本文。不要读旧 `handoff/FRONTEND.md` 或旧 fixture 服务。那些不是 R1。
 
@@ -86,7 +88,7 @@
 
 ## 5. 开发入口
 
-`apps/desktop/ui` 是中文测试表单，不是产品 UI。用 `textContent` 显示不可信文件正文。正式 React/视觉另做。
+`apps/desktop/ui` 已替换为用户提供的React/Vite/Tailwind炉心界面，保留原视觉。默认strict Native，无宿主或调用失败不回退DevPreview。先在仓库根运行 `npm run dev -w @hark/desktop-ui`，再另终端启动下述cargo run；cargo不代跑beforeDevCommand。
 
 ```sh
 cd apps/desktop
@@ -100,7 +102,7 @@ cargo build -p hark-desktop
 ## 6. 明确未实现
 
 - 正式前端、签名安装包、Windows 编译/实机、窗口点击验收。
-- Sidecar、stdio、Pi、真实模型、搜索、凭据 Store、`mark_analyzing`、`commit_agent_opening`。
+- 真实模型的应用内配置/启用、搜索与凭据持久Store仍未完成；Sidecar/stdio/Pi、可信开场和普通聊天Core接口已实现，不再把这些列为未做。
 - 父子 Workspace 排除。重叠仍是 `overlap_refused`，不是 AT-05。
 - macOS security-scoped bookmark。路径被替换后由 Core fail closed。
 - 通用 shell/fs 命令、任意相对路径读取、观察器、通知、FTS、记忆。
