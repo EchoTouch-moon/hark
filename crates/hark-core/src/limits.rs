@@ -1,7 +1,8 @@
 //! Provisional engineering limits. Not a product close of PRD O-13.
 
-/// Current business schema. v1 SQL is unchanged; v2 only adds opening-run columns.
-pub const SCHEMA_VERSION: i64 = 2;
+/// Current business schema. v1 SQL is unchanged. v2 adds opening-run columns.
+/// v3 widens conversation event kinds and adds ordinary conversation runs.
+pub const SCHEMA_VERSION: i64 = 3;
 
 pub const MAX_FRAME_BYTES: usize = 1_048_576;
 pub const MAX_STREAM_QUEUE: usize = 64;

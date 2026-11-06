@@ -3,6 +3,7 @@
 //! Tauri should call [`Core`] directly. This crate does not open an HTTP server
 //! or spawn the Pi sidecar. IPC v1 types are a frozen codec for a later host.
 
+mod conversation;
 mod db;
 mod error;
 mod grant;
@@ -19,6 +20,10 @@ mod reader;
 mod scan;
 mod workspace;
 
+pub use conversation::{
+    ConversationCommit, ConversationRun, ConversationRunStart, ConversationTurn,
+    StartedConversationRun,
+};
 pub use error::{CoreError, ErrorCode};
 pub use grant::{AuthorizedRoot, RootStatus};
 pub use ids::*;

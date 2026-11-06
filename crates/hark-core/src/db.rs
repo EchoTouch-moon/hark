@@ -11,6 +11,8 @@ const MIGRATION_V1: &str = include_str!("../migrations/0001_init.sql");
 const MIGRATION_V1_NAME: &str = "0001_init";
 const MIGRATION_V2: &str = include_str!("../migrations/0002_opening_run.sql");
 const MIGRATION_V2_NAME: &str = "0002_opening_run";
+const MIGRATION_V3: &str = include_str!("../migrations/0003_conversation_run.sql");
+const MIGRATION_V3_NAME: &str = "0003_conversation_run";
 
 pub(crate) fn open_path(path: &Path) -> Result<Core> {
     let conn = Connection::open(path)?;
@@ -56,10 +58,10 @@ pub(crate) fn migrate(core: &Core) -> Result<()> {
                 ErrorCode::SchemaTooNew,
                 format!("database schema {v} is newer than library {SCHEMA_VERSION}"),
             )),
-            Some(1) => apply_version(tx, 2, MIGRATION_V2_NAME, MIGRATION_V2),
+            Some(v) if (1..SCHEMA_VERSION).contains(&v) => apply_upgrades_from(tx, v),
             Some(v) => Err(CoreError::new(
                 ErrorCode::MigrationFailed,
-                format!("unsupported schema version {v}; this library applies v1 then v2 only"),
+                format!("unsupported schema version {v}; this library applies v1 through v3"),
             )),
         }
     })
@@ -68,7 +70,210 @@ pub(crate) fn migrate(core: &Core) -> Result<()> {
 fn apply_fresh(tx: &Transaction<'_>) -> Result<()> {
     apply_version(tx, 1, MIGRATION_V1_NAME, MIGRATION_V1)?;
     apply_version(tx, 2, MIGRATION_V2_NAME, MIGRATION_V2)?;
+    apply_conversation_v3(tx)
+}
+
+fn apply_upgrades_from(tx: &Transaction<'_>, version: i64) -> Result<()> {
+    if version < 2 {
+        apply_version(tx, 2, MIGRATION_V2_NAME, MIGRATION_V2)?;
+    }
+    if version < 3 {
+        apply_conversation_v3(tx)?;
+    }
     Ok(())
+}
+
+fn apply_conversation_v3(tx: &Transaction<'_>) -> Result<()> {
+    ensure_conversation_events_rebuild_safe(tx)?;
+    let before = scalar_count(tx, "SELECT COUNT(*) FROM conversation_events")?;
+    tx.execute_batch(MIGRATION_V3)?;
+    let after = scalar_count(tx, "SELECT COUNT(*) FROM conversation_events")?;
+    if before != after {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            format!("refusing conversation_events rebuild: {before} rows before, {after} after"),
+        ));
+    }
+    let index_left = scalar_count(
+        tx,
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'conversation_first_message_idem'",
+    )?;
+    if index_left != 1 {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            "conversation_first_message_idem missing after rebuild",
+        ));
+    }
+    let leftover = scalar_count(
+        tx,
+        "SELECT COUNT(*) FROM sqlite_master WHERE name = 'conversation_events_v3'",
+    )?;
+    if leftover != 0 {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            "conversation_events_v3 still present after rebuild",
+        ));
+    }
+    let runs = scalar_count(
+        tx,
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'conversation_runs'",
+    )?;
+    if runs != 1 {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            "conversation_runs missing after v3",
+        ));
+    }
+    tx.execute(
+        "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?1, ?2, ?3)",
+        rusqlite::params![3_i64, MIGRATION_V3_NAME, Utc::now().to_rfc3339()],
+    )?;
+    Ok(())
+}
+
+fn ensure_conversation_events_rebuild_safe(tx: &Transaction<'_>) -> Result<()> {
+    let columns = table_columns(tx, "conversation_events")?;
+    let expected_columns = [
+        "id",
+        "workspace_id",
+        "conversation_id",
+        "kind",
+        "generation",
+        "body",
+        "presentation",
+        "source_ids_json",
+        "receipt_id",
+        "created_at",
+    ];
+    if columns != expected_columns {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            format!("refusing conversation_events rebuild; columns are {columns:?}"),
+        ));
+    }
+    let mut indexes = index_names(tx, "conversation_events")?;
+    indexes.sort();
+    let expected_indexes = ["conversation_first_message_idem", "idx_events_workspace"];
+    if indexes != expected_indexes {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            format!("refusing conversation_events rebuild; indexes are {indexes:?}"),
+        ));
+    }
+    let fks = outbound_fks(tx, "conversation_events")?;
+    let mut fk_pairs: Vec<(String, String)> = fks
+        .into_iter()
+        .map(|(from, table, _to)| (from, table))
+        .collect();
+    fk_pairs.sort();
+    let expected_fks = [
+        ("conversation_id".to_string(), "conversations".to_string()),
+        ("workspace_id".to_string(), "workspaces".to_string()),
+    ];
+    if fk_pairs != expected_fks {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            format!("refusing conversation_events rebuild; outbound fks are {fk_pairs:?}"),
+        ));
+    }
+    let inbound = inbound_refs(tx, "conversation_events")?;
+    if !inbound.is_empty() {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            format!("refusing conversation_events rebuild; inbound fks from {inbound:?}"),
+        ));
+    }
+    let triggers = scalar_count(
+        tx,
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'conversation_events'",
+    )?;
+    if triggers != 0 {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            "refusing conversation_events rebuild; triggers exist",
+        ));
+    }
+    let views = scalar_count(
+        tx,
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'view' AND instr(sql, 'conversation_events') > 0",
+    )?;
+    if views != 0 {
+        return Err(CoreError::new(
+            ErrorCode::MigrationFailed,
+            "refusing conversation_events rebuild; a view references it",
+        ));
+    }
+    Ok(())
+}
+
+fn scalar_count(tx: &Transaction<'_>, sql: &str) -> Result<i64> {
+    tx.query_row(sql, [], |row| row.get(0))
+        .map_err(CoreError::from)
+}
+
+fn table_columns(tx: &Transaction<'_>, table: &str) -> Result<Vec<String>> {
+    let mut stmt = tx.prepare(&format!("PRAGMA table_info({})", quote_ident(table)))?;
+    let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+    let mut names = Vec::new();
+    for row in rows {
+        names.push(row?);
+    }
+    Ok(names)
+}
+
+fn index_names(tx: &Transaction<'_>, table: &str) -> Result<Vec<String>> {
+    let mut stmt = tx.prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = ?1 AND name NOT LIKE 'sqlite_%'",
+    )?;
+    let rows = stmt.query_map(rusqlite::params![table], |row| row.get(0))?;
+    let mut names = Vec::new();
+    for row in rows {
+        names.push(row?);
+    }
+    Ok(names)
+}
+
+fn outbound_fks(tx: &Transaction<'_>, table: &str) -> Result<Vec<(String, String, String)>> {
+    let mut stmt = tx.prepare(&format!("PRAGMA foreign_key_list({})", quote_ident(table)))?;
+    let rows = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, String>(3)?,
+            row.get::<_, String>(2)?,
+            row.get::<_, String>(4)?,
+        ))
+    })?;
+    let mut pairs = Vec::new();
+    for row in rows {
+        pairs.push(row?);
+    }
+    Ok(pairs)
+}
+
+fn inbound_refs(tx: &Transaction<'_>, target: &str) -> Result<Vec<String>> {
+    let mut stmt = tx.prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+    )?;
+    let names: Vec<String> = stmt
+        .query_map([], |row| row.get(0))?
+        .collect::<std::result::Result<_, _>>()?;
+    drop(stmt);
+    let mut inbound = Vec::new();
+    for name in names {
+        if name.eq_ignore_ascii_case(target) {
+            continue;
+        }
+        for (_from, table, _to) in outbound_fks(tx, &name)? {
+            if table.eq_ignore_ascii_case(target) {
+                inbound.push(name);
+                break;
+            }
+        }
+    }
+    Ok(inbound)
+}
+
+fn quote_ident(name: &str) -> String {
+    format!("\"{}\"", name.replace('"', "\"\""))
 }
 
 fn apply_version(tx: &Transaction<'_>, version: i64, name: &str, sql: &str) -> Result<()> {
@@ -177,7 +382,7 @@ mod tests {
         drop(conn);
 
         let core = open_path(&path).unwrap();
-        assert_eq!(schema_version(&core).unwrap(), 2);
+        assert_eq!(schema_version(&core).unwrap(), 3);
         let columns = core
             .with_conn(|conn| {
                 let mut stmt = conn.prepare("PRAGMA table_info(onboarding_runs)")?;
@@ -200,6 +405,62 @@ mod tests {
             assert!(columns.iter().any(|name| name == required), "{required}");
         }
         let again = open_path(&path).unwrap();
-        assert_eq!(schema_version(&again).unwrap(), 2);
+        assert_eq!(schema_version(&again).unwrap(), 3);
+        let runs: i64 = again
+            .with_conn(|conn| {
+                conn.query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'conversation_runs'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(CoreError::from)
+            })
+            .unwrap();
+        assert_eq!(runs, 1);
+    }
+
+    #[test]
+    fn v3_refuses_unknown_event_index_without_dropping_rows() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("extra-index.db");
+        let conn = Connection::open(&path).unwrap();
+        conn.execute_batch(MIGRATION_V1).unwrap();
+        conn.execute_batch(MIGRATION_V2).unwrap();
+        conn.execute_batch(
+            "INSERT INTO schema_migrations (version, name, applied_at) VALUES (1, '0001_init', '2026-01-01T00:00:00Z');
+             INSERT INTO schema_migrations (version, name, applied_at) VALUES (2, '0002_opening_run', '2026-01-01T00:00:01Z');
+             CREATE INDEX extra_events_idx ON conversation_events (created_at);",
+        )
+        .unwrap();
+        drop(conn);
+
+        let err = match open_path(&path) {
+            Err(err) => err,
+            Ok(_) => panic!("unknown index must refuse the v3 rebuild"),
+        };
+        assert_eq!(err.code, ErrorCode::MigrationFailed, "{err}");
+        let conn = Connection::open(&path).unwrap();
+        let version: i64 = conn
+            .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(version, 2);
+        let extra: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE name = 'extra_events_idx'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(extra, 1);
+        let runs: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE name = 'conversation_runs'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(runs, 0);
     }
 }

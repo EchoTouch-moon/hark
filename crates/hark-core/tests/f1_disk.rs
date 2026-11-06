@@ -85,7 +85,7 @@ fn confirm_single(
 #[test]
 fn migration_is_current_and_lists_only_current_tables() {
     let db = Db::new();
-    assert_eq!(db.core.schema_version().unwrap(), 2);
+    assert_eq!(db.core.schema_version().unwrap(), 3);
     db.core.schema_version().unwrap();
     let mut tables = db.core.schema_tables().unwrap();
     tables.sort();
@@ -94,6 +94,7 @@ fn migration_is_current_and_lists_only_current_tables() {
         vec![
             "authorized_roots",
             "conversation_events",
+            "conversation_runs",
             "conversations",
             "onboarding_runs",
             "scan_candidates",
@@ -105,7 +106,7 @@ fn migration_is_current_and_lists_only_current_tables() {
         ]
     );
     let again = Core::open(&db.path).unwrap();
-    assert_eq!(again.schema_version().unwrap(), 2);
+    assert_eq!(again.schema_version().unwrap(), 3);
     assert_eq!(again.schema_tables().unwrap().len(), tables.len());
 }
 

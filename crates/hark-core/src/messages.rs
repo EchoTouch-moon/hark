@@ -779,7 +779,7 @@ fn build_local_card(
         + &format!(" structure_scanned={}", checkpoint.structure_scanned)
 }
 
-fn insert_event(
+pub(crate) fn insert_event(
     tx: &rusqlite::Transaction<'_>,
     ws: &Workspace,
     kind: &str,
@@ -792,10 +792,15 @@ fn insert_event(
     let id = MessageId::new();
     let now = Utc::now().to_rfc3339();
     let ids: Vec<&str> = source_ids.iter().map(|s| s.as_str()).collect();
+    let seq: i64 = tx.query_row(
+        "SELECT COALESCE(MAX(seq), 0) + 1 FROM conversation_events WHERE workspace_id = ?1",
+        params![ws.id.as_str()],
+        |row| row.get(0),
+    )?;
     tx.execute(
         "INSERT INTO conversation_events (
-            id, workspace_id, conversation_id, kind, generation, body, presentation, source_ids_json, receipt_id, created_at
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            id, workspace_id, conversation_id, kind, generation, body, presentation, source_ids_json, receipt_id, created_at, seq
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         params![
             id.as_str(),
             ws.id.as_str(),
@@ -807,6 +812,7 @@ fn insert_event(
             serde_json::to_string(&ids)?,
             receipt_id,
             now,
+            seq,
         ],
     )?;
     Ok(ConversationEvent {
@@ -920,30 +926,7 @@ fn commit_opening_tx(
             "empty_evidence",
         ));
     }
-    for source_id in &receipt.source_ids {
-        let owner: Option<String> = tx
-            .query_row(
-                "SELECT workspace_id FROM source_refs WHERE id = ?1",
-                params![source_id.as_str()],
-                |row| row.get(0),
-            )
-            .optional()?;
-        match owner {
-            None => {
-                return Err(CoreError::new(
-                    ErrorCode::SourceRefNotFound,
-                    source_id.as_str(),
-                ));
-            }
-            Some(other) if other != receipt.workspace_id.as_str() => {
-                return Err(CoreError::new(
-                    ErrorCode::CrossWorkspaceRef,
-                    source_id.as_str(),
-                ));
-            }
-            Some(_) => {}
-        }
-    }
+    require_same_workspace_sources(tx, &receipt.workspace_id, &receipt.source_ids)?;
     let ws = workspace::load_workspace(tx, &receipt.workspace_id)?.ok_or_else(|| {
         CoreError::new(ErrorCode::WorkspaceNotFound, receipt.workspace_id.as_str())
     })?;
@@ -974,8 +957,40 @@ fn commit_opening_tx(
     }))
 }
 
-fn explicit_model_grant(
-    tx: &rusqlite::Transaction<'_>,
+pub(crate) fn require_same_workspace_sources(
+    conn: &rusqlite::Connection,
+    workspace_id: &WorkspaceId,
+    source_ids: &[SourceId],
+) -> Result<()> {
+    for source_id in source_ids {
+        let owner: Option<String> = conn
+            .query_row(
+                "SELECT workspace_id FROM source_refs WHERE id = ?1",
+                params![source_id.as_str()],
+                |row| row.get(0),
+            )
+            .optional()?;
+        match owner {
+            None => {
+                return Err(CoreError::new(
+                    ErrorCode::SourceRefNotFound,
+                    source_id.as_str(),
+                ));
+            }
+            Some(other) if other != workspace_id.as_str() => {
+                return Err(CoreError::new(
+                    ErrorCode::CrossWorkspaceRef,
+                    source_id.as_str(),
+                ));
+            }
+            Some(_) => {}
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn explicit_model_grant(
+    tx: &rusqlite::Connection,
     workspace_id: &WorkspaceId,
 ) -> Result<(String, String, String)> {
     let grant = workspace::load_grant(tx, workspace_id, ServiceKind::Model)?
@@ -1047,7 +1062,7 @@ fn load_events(
 ) -> Result<Vec<ConversationEvent>> {
     let mut stmt = conn.prepare(
         "SELECT id, workspace_id, conversation_id, kind, generation, body, presentation, source_ids_json, created_at
-         FROM conversation_events WHERE workspace_id = ?1 ORDER BY created_at, id",
+         FROM conversation_events WHERE workspace_id = ?1 ORDER BY seq, created_at, id",
     )?;
     let rows = stmt.query_map(params![workspace_id.as_str()], map_event)?;
     let mut out = Vec::new();
@@ -1057,7 +1072,7 @@ fn load_events(
     Ok(out)
 }
 
-fn map_event(row: &rusqlite::Row<'_>) -> rusqlite::Result<ConversationEvent> {
+pub(crate) fn map_event(row: &rusqlite::Row<'_>) -> rusqlite::Result<ConversationEvent> {
     let ids: String = row.get(7)?;
     let parsed: Vec<String> = serde_json::from_str(&ids).unwrap_or_default();
     Ok(ConversationEvent {
@@ -1162,7 +1177,7 @@ fn map_source_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SourceRef> {
     })
 }
 
-fn root_for_workspace(
+pub(crate) fn root_for_workspace(
     conn: &rusqlite::Connection,
     workspace_id: &WorkspaceId,
 ) -> Result<AuthorizedRoot> {
@@ -1175,7 +1190,7 @@ fn root_for_workspace(
         .ok_or_else(|| CoreError::new(ErrorCode::NotFound, "root missing for workspace"))
 }
 
-fn session_ref_shape(value: &str) -> bool {
+pub(crate) fn session_ref_shape(value: &str) -> bool {
     let Some(rest) = value.strip_prefix("pi:") else {
         return false;
     };
