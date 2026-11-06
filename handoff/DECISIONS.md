@@ -69,3 +69,12 @@
 - 开发 Node 路径只来自 Rust `DevSidecarConfig`，不注册为前端命令。合成模型许可只走 `dev_set_synthetic_model_grant`，不进入 Tauri IPC。未配置时 `connected=false`，不读 Key，不发请求。Windows 无 Job Object 时拒绝启动。
 - 已结束 opening run 的当前 `sessionBinding` 可被 Core 新发放的 run 替换。同 run 不能任意换 session。compaction 新 session 只走显式 `replace_opening_session_for_compaction`，不扩常规对话，不删 Pi JSONL，不复活旧 run。
 - Sidecar 状态只有一份 `Arc`。stdout frame ingress 上限等于 IPC control queue 64；过载关闭受影响 run 和管道。`stop`/`Drop` 有界；worker 未结束时返回 timeout，不允许并发复活同一任务。已 SIGKILL 的子进程用 `waitpid(WNOHANG)` 回收。已进入内核的单次 syscall 仍不可打断。
+
+## 下一阶段 StepFun 真实验收授权（尚未执行）
+
+用户已单独批准下一阶段只做 StepFun 真实验收，边界如下。本段 bridge 返工没有使用该许可：未读任何真实 Key，未发任何真实请求，未加 live 脚本，也未从父进程环境查找 Key。
+
+- 模型只允许 `step-3.7-flash`。最多 3 次真实模型请求。每次输出上限 512 tokens。
+- 只发送合成材料。不读取真实私人项目或私人目录。
+- Key 只由后续独立验收进程的临时环境变量提供。不粘贴到聊天，不读取现有全局 Key，不写入源码、SQLite、JSONL 或证据。
+- 该许可不扩大为后台自动调用、搜索、通知，或其他模型/次数/材料范围。用户会在后续本地独立脚本中隐藏输入 Key；当前进程不得代为查找。
