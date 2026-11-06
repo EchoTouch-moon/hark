@@ -2,7 +2,8 @@
 
 ## Grok 403 历史阻塞与恢复尝试
 
-- 2026-11-06 用户要求继续。恢复前核验主线 `4015593`、Host `2b9ac8c`、Native `ca0efb3` 三个 worktree 均 clean。通过原 subagent 协议重新派发 workflow `04c0893f-e6f3-47d8-90df-bcc6f8d848b0`：Host 仅修已知缺陷（writer `b04dca3c-27d5-4367-b9d6-94b42a1b010c`），Native 有界只读审查（`15a7f84f-50c8-41b9-bb6e-08b1468015ea`），均显式 Grok 4.7 high。启动状态 running，不据此提前称修复/审查完成；若仍 403 停止，不自动换 Provider。
+- 2026-11-06 用户要求继续后，原 subagent 协议已实际完成两个 Grok 4.7 high child：Host `40dae61` 修复与 Native 只读审查。当前不再由 403 阻塞；历史失败记录保留。主会话已复跑 Host TS/SDK smoke/13 项测试/probe 并定向放行其进入集成；见 `f2-parent-review.md`。
+- 当前 Native 实际阻塞：同 root/workspace 重叠操作覆盖 CancelFlag 的 P1 已确认，独占修复 run `5b8ee524-69ff-4219-b846-d2742d097947` 正在进行。完成复核前不合入该候选。Host/Native 真正 Rust 桥接仍待串行集成。
 
 - Workflow `d0946ef4-5bfd-4006-a0ba-4ff32b932de6` 的两个 Grok 4.7 high 审查均失败：`xai API error (403): You have run out of credits or need a Grok subscription`。Host reviewer `cfd78851-678e-4a88-9b14-5eb456d67901`；Native reviewer `e11922e9-815b-4d63-bcda-11d1066a362c`。外层 workflow complete 不代表审查通过，两个结果 `ok=false`。
 - 失败后已核验三个 worktree 均 clean：主线 `2dc8570`，Host `dev/r1-host-runtime` / `2b9ac8c`，Native `dev/r1-native-shell` / `ca0efb3`。无审查写入的 partial diff，未合并候选，未推远端，未切换模型或 CLI/前台协议。
