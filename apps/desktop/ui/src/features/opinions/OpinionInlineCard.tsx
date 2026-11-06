@@ -55,6 +55,8 @@ export const OpinionInlineCard: React.FC<OpinionInlineCardProps> = ({
     disputed: "存在反驳 / 争议中",
     superseded: "已被新版本替代",
     stale: "依据已过期 · 待重验",
+    pending_revision: "已收到修订意见 · 待修订",
+    retracted: "已撤回 · 历史保留",
   };
 
   const handleQuickAction = async (action: OpinionFeedbackAction, customComment?: string) => {
@@ -64,7 +66,7 @@ export const OpinionInlineCard: React.FC<OpinionInlineCardProps> = ({
       await onSubmitFeedback(opinion.id, opinion.revision, action, customComment);
       setFeedbackDraftMode(null);
       setCommentText("");
-      setLastSavedReceipt(`后端已持久化回执 · 修订版本 v${opinion.revision + 1}`);
+      setLastSavedReceipt("后端已保存反馈 · 以当前修订状态为准");
     } finally {
       setSubmitting(false);
     }

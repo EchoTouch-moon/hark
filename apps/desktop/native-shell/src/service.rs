@@ -20,6 +20,9 @@ use crate::bridge::{
     AgentTurnStatus, DevSidecarConfig, OpeningBridgeResult, ProtocolProbe, SidecarSupervisor,
     TurnProgress,
 };
+use crate::cognition::{
+    MessageEvidenceRequest, OpinionFeedbackRequest, OpinionRequest, RevertMemoryRequest,
+};
 use crate::error::ShellError;
 use crate::process::StopReport;
 use crate::seam::SidecarStatus;
@@ -70,6 +73,12 @@ pub const FRONTEND_COMMANDS: &[&str] = &[
     "clear_stepfun_session",
     "stepfun_session_status",
     "set_model_grant",
+    "get_opinion",
+    "list_workspace_opinions",
+    "submit_opinion_feedback",
+    "revert_memory_operation",
+    "search_workspace_memory",
+    "get_message_evidence",
 ];
 
 pub fn business_db_path(app_data_dir: &Path) -> PathBuf {
@@ -118,7 +127,10 @@ fn wipe_key(slot: &mut Option<String>) {
 fn dev_repo_root() -> Result<PathBuf, ShellError> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let canon = root.canonicalize().map_err(|_| {
-        ShellError::new("dev_runtime_missing", "repo root missing; packaging is not done")
+        ShellError::new(
+            "dev_runtime_missing",
+            "repo root missing; packaging is not done",
+        )
     })?;
     if !canon.join("packages/agent-host/src/sidecar.ts").is_file() {
         return Err(ShellError::new(
@@ -163,7 +175,8 @@ fn write_keyless_slot(path: &Path) -> Result<(), ShellError> {
         "keyStorage": "process-memory",
         "authenticated": false
     });
-    let text = serde_json::to_string(&body).map_err(|err| ShellError::new("io", err.to_string()))?;
+    let text =
+        serde_json::to_string(&body).map_err(|err| ShellError::new("io", err.to_string()))?;
     if text.contains("apiKey") {
         return Err(ShellError::new(
             "secret_material_rejected",
@@ -607,6 +620,78 @@ impl NativeShell {
             .commit_local_scan_card(&parse_workspace(workspace_id)?)?)
     }
 
+    pub fn get_opinion(
+        &self,
+        request: &OpinionRequest,
+    ) -> Result<hark_core::OpinionView, ShellError> {
+        let workspace_id = parse_workspace(&request.workspace_id)?;
+        let opinion = self.core.get_opinion(&request.opinion_id)?;
+        if opinion.workspace_id != workspace_id {
+            return Err(ShellError::new(
+                "cross_workspace_ref",
+                "opinion belongs to another workspace",
+            ));
+        }
+        Ok(opinion)
+    }
+
+    pub fn list_workspace_opinions(
+        &self,
+        workspace_id: &str,
+    ) -> Result<Vec<hark_core::OpinionView>, ShellError> {
+        Ok(self
+            .core
+            .list_workspace_opinions(&parse_workspace(workspace_id)?)?)
+    }
+
+    pub fn submit_opinion_feedback(
+        &self,
+        request: &OpinionFeedbackRequest,
+    ) -> Result<hark_core::OpinionView, ShellError> {
+        Ok(self
+            .core
+            .submit_opinion_feedback(&hark_core::OpinionFeedbackInput {
+                request_id: request.request_id.clone(),
+                workspace_id: parse_workspace(&request.workspace_id)?,
+                opinion_id: request.opinion_id.clone(),
+                expected_revision: request.expected_revision,
+                action: request.action,
+                user_comment: request.user_comment.clone(),
+                caller: hark_core::MemoryCaller::User,
+            })?)
+    }
+
+    pub fn revert_memory_operation(
+        &self,
+        request: &RevertMemoryRequest,
+    ) -> Result<hark_core::MemoryReceipt, ShellError> {
+        Ok(self.core.revert_memory_operation(
+            &parse_workspace(&request.workspace_id)?,
+            &request.operation_id,
+        )?)
+    }
+
+    pub fn search_workspace_memory(
+        &self,
+        request: &hark_core::MemorySearchInput,
+    ) -> Result<hark_core::MemorySearchPage, ShellError> {
+        Ok(self.core.search_workspace_memory(request)?)
+    }
+
+    pub fn get_message_evidence(
+        &self,
+        request: &MessageEvidenceRequest,
+    ) -> Result<ConversationEvent, ShellError> {
+        let message_id = hark_core::MessageId::parse(&request.message_id)
+            .map_err(|_| ShellError::new("invalid_id", "message id"))?;
+        self.list_conversation(&request.workspace_id)?
+            .into_iter()
+            .find(|event| event.id == message_id)
+            .ok_or_else(|| {
+                ShellError::new("source_ref_not_found", "message is not in this workspace")
+            })
+    }
+
     pub fn list_conversation(
         &self,
         workspace_id: &str,
@@ -710,7 +795,10 @@ impl NativeShell {
 
     /// Store a run-only key, write keyless metadata, and start the dev sidecar.
     /// This does not call the model and does not authorize every workspace.
-    pub fn configure_stepfun_session(&self, api_key: &str) -> Result<StepFunSessionStatus, ShellError> {
+    pub fn configure_stepfun_session(
+        &self,
+        api_key: &str,
+    ) -> Result<StepFunSessionStatus, ShellError> {
         accept_session_key(api_key)?;
         let repo = dev_repo_root()?;
         let node = dev_node22()?;
@@ -760,7 +848,11 @@ impl NativeShell {
     }
 
     /// Enable or disable the model grant for one workspace. Does not read or send the key.
-    pub fn set_model_grant(&self, workspace_id: &str, enabled: bool) -> Result<ServiceGrant, ShellError> {
+    pub fn set_model_grant(
+        &self,
+        workspace_id: &str,
+        enabled: bool,
+    ) -> Result<ServiceGrant, ShellError> {
         Ok(self.core.set_service_grant(&ServiceGrantUpdate {
             workspace_id: parse_workspace(workspace_id)?,
             service: ServiceKind::Model,

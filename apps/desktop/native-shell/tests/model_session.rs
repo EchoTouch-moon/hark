@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use hark_native_shell::{business_db_path, NativeShell, Selection, ConfirmRequest};
+use hark_native_shell::{business_db_path, ConfirmRequest, NativeShell, Selection};
 
 const SYNTH: &str = "hark-session-test-key";
 
@@ -21,9 +21,10 @@ fn walk_contains(dir: &Path, needle: &str) -> bool {
             }
             continue;
         }
-        if fs::read(&path).ok().is_some_and(|bytes| {
-            String::from_utf8_lossy(&bytes).contains(needle)
-        }) {
+        if fs::read(&path)
+            .ok()
+            .is_some_and(|bytes| String::from_utf8_lossy(&bytes).contains(needle))
+        {
             return true;
         }
     }
@@ -59,7 +60,10 @@ fn synthetic_key_does_not_fetch_or_land_and_grant_is_per_workspace() {
     let snap = serde_json::to_string(&shell.snapshot().unwrap()).unwrap();
     assert!(snap.contains("stepfun_session_memory"));
     assert!(!snap.contains(SYNTH), "snapshot contained the session key");
-    assert!(!walk_contains(&tmp, SYNTH), "session key landed in app data");
+    assert!(
+        !walk_contains(&tmp, SYNTH),
+        "session key landed in app data"
+    );
     let stderr = shell.sidecar_stderr();
     assert!(
         !stderr.contains("api.stepfun.com") && !stderr.contains("401"),
@@ -88,7 +92,9 @@ fn synthetic_key_does_not_fetch_or_land_and_grant_is_per_workspace() {
         .unwrap();
     let workspace_id = confirmed.workspaces[0].id.as_str().to_string();
     let grants = shell.service_grants(&workspace_id).unwrap();
-    assert!(grants.iter().any(|grant| grant.service.as_str() == "model" && grant.status.as_str() != "enabled"));
+    assert!(grants
+        .iter()
+        .any(|grant| grant.service.as_str() == "model" && grant.status.as_str() != "enabled"));
     let enabled = shell.set_model_grant(&workspace_id, true).unwrap();
     assert_eq!(enabled.status.as_str(), "enabled");
     assert_eq!(enabled.provider.as_deref(), Some("stepfun"));
@@ -104,6 +110,9 @@ fn synthetic_key_does_not_fetch_or_land_and_grant_is_per_workspace() {
         shell.snapshot().unwrap().remote_model_transport,
         "closed_no_approved_key"
     );
-    assert!(!walk_contains(&tmp, SYNTH), "clear left the session key on disk");
+    assert!(
+        !walk_contains(&tmp, SYNTH),
+        "clear left the session key on disk"
+    );
     let _ = fs::remove_dir_all(&tmp);
 }

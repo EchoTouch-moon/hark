@@ -1,6 +1,6 @@
 # 记忆 / 观点 / 检索 Core 对接
 
-状态：Core 存储是 `implemented-local`。Native、Host、UI 都还没接这些方法。`native-adapter` 里的 `getOpinion` / `submitOpinionFeedback` / `revertMemoryOperation` / `searchWorkspaceMemory` 仍然 unavailable，`listWorkspaceOpinions` 仍是空列表。这不是产品完成，也不是真实模型验收。
+状态：Core存储已verified-local；本分支Native/Tauri/UI读和用户动作已接（get/list opinion、反馈、撤销、检索、原消息证据），Native20/UI27及构建通过。独立观点在页面真实显示，pending_revision不伪成已修订判断。Pi提议/recall工具仍未接，不能自动创建新记忆/观点，也不是真实模型或完整产品验收。部署状态见主线STATUS与memory-native-ui.md。
 
 受信调用方是进程内 Native / Host。不要把 `memory_propose_change` 或 `opinion_propose_change` 加进 `FRONTEND_COMMANDS`、Tauri command 或 capability。WebView 不能传 `recorded`、`success`、来源 ID 或完成状态。
 
@@ -137,8 +137,8 @@ UI `MemorySearchPage` 没有 `matchMode / note`。Native 映射 `items` 时要�
 
 ## 还没做
 
-- Native adapter、Tauri command、Host tool 都没接。UI 仍会看到 unavailable 或空观点列表。
-- 没有模型协议、没有 Pi tool 注册、没有真实模型调用。
+- Native adapter/Tauri读和用户动作已接，本分支UI不再用unavailable/假空列表替代；Host工具仍未接。
+- 本切片没有改模型协议、没有注册记忆Pi工具、没有真实模型调用。
 - CTX-01、Observer 失效、全局记忆、向量检索、中文分词依赖都没做。
 - 决定核验只认原话引用和少量中性前缀，不是语义蕴含器，也不是新的模型校验。对不上、被摘掉限定语、或无法确定是明确决定时，留在待澄清。
 - 本机 `cargo test` 与 Native `cargo check` 只证明 Core 类型和本地 SQLite 行为。不是桌面点击，也不是整产品完成。

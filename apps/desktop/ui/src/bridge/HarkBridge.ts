@@ -190,7 +190,7 @@ export interface EvidenceDetail extends EvidenceRef {
   relatedOpinionIds?: ID[];
 }
 
-export type OpinionStatus = "active" | "shelved" | "disputed" | "superseded" | "stale";
+export type OpinionStatus = "active" | "shelved" | "disputed" | "superseded" | "stale" | "pending_revision" | "retracted";
 export type OpinionFeedbackAction = "helpful" | "rebut" | "shelve" | "revise";
 
 export interface OpinionRevisionEntry {
@@ -324,7 +324,7 @@ export interface OpinionFeedbackInput {
   userComment?: string;
 }
 
-export type MemoryRecordKind = "decision" | "opinion" | "conversation_milestone" | "local_fact";
+export type MemoryRecordKind = "decision" | "opinion" | "conversation_milestone" | "local_fact" | "identity" | "experience";
 
 export interface MemorySearchItem {
   id: ID;

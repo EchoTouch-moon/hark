@@ -51,7 +51,15 @@ impl SpawnedSidecar {
     ) -> Result<(Self, std::process::ChildStdout), ShellError> {
         #[cfg(not(unix))]
         {
-            let _ = (node_path, args, working_dir, fake_home, secret, inject_session_key, stderr_tail);
+            let _ = (
+                node_path,
+                args,
+                working_dir,
+                fake_home,
+                secret,
+                inject_session_key,
+                stderr_tail,
+            );
             return Err(ShellError::new(
                 "sidecar_disabled_windows",
                 "Windows Job Object is not implemented. Sidecar stays off. EOF is not a safe process-tree stop.",

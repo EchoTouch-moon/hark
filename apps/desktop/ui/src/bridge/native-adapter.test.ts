@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { HarkBridge, HarkUIError } from "./HarkBridge.ts";
+import type { HarkBridge, HarkUIError, OpinionView } from "./HarkBridge.ts";
 import {
   buildConfirmArgs,
   createTauriHarkBridge,
@@ -27,6 +27,67 @@ const WS = "ws_0123456789abcdef0123456789abcdef";
 const CONV = "conv_0123456789abcdef0123456789abcdef";
 const SRC = "src_0123456789abcdef0123456789abcdef";
 const MSG = "msg_0123456789abcdef0123456789abcdef";
+
+function opinionView(): OpinionView {
+  return {
+    id: "opinion-native", workspaceId: WS, title: "项目建议", revision: 2,
+    summary: "先试 Bun，Node 保底", rationale: "推断，不是验证事实",
+    evidenceRefs: [MSG], counterArguments: [], uncertainties: ["尚未验证"],
+    status: "pending_revision", lastUpdatedAt: "2026-11-06T00:00:00Z",
+    history: [{ revision: 1, status: "active", note: "初始建议", updatedAt: "2026-11-06T00:00:00Z" }],
+  };
+}
+
+test("opinion queries and feedback use Native records and preserve pending revision", async () => {
+  const view = opinionView();
+  const { invoke, calls } = recorder({
+    list_workspace_opinions: () => [view], get_opinion: () => view,
+    submit_opinion_feedback: () => view,
+  });
+  const bridge = createTauriHarkBridge(invoke);
+  assert.deepEqual(await bridge.listWorkspaceOpinions(WS), [view]);
+  assert.equal((await bridge.getOpinion(view.id)).status, "pending_revision");
+  const feedback = { requestId: "req-feedback", workspaceId: WS, opinionId: view.id, expectedRevision: 1, action: "revise" as const, userComment: "请重新比较" };
+  assert.equal((await bridge.submitOpinionFeedback(feedback)).summary, view.summary);
+  assert.deepEqual(calls[1].args, { request: { workspaceId: WS, opinionId: view.id } });
+  assert.deepEqual(calls[2].args, { request: feedback });
+});
+
+test("history search keeps historical and LIKE labels and reads actual message evidence", async () => {
+  const { invoke, calls } = recorder({
+    search_workspace_memory: () => ({
+      workspaceId: WS, matchMode: "like_fallback", usedOrFallback: true,
+      items: [{ id: "history", workspaceId: WS, kind: "identity", title: "项目身份",
+        snippet: "先试 Bun", recordedAt: "2026-11-06T00:00:00Z", statusLabel: "历史修订，不是当前决定",
+        sourceRefId: MSG, termMatch: "like_fallback" }],
+    }),
+    get_message_evidence: () => ({ id: MSG, workspaceId: WS, conversationId: CONV,
+      kind: "user_message", body: "先试 Bun，Node 保底", sourceIds: [],
+      presentation: "normal", createdAt: "2026-11-06T00:00:00Z" }),
+  });
+  const bridge = createTauriHarkBridge(invoke);
+  const page = await bridge.searchWorkspaceMemory({ workspaceId: WS, query: "先试" });
+  assert.equal(page.items[0].kind, "identity");
+  assert.match(page.items[0].statusLabel, /历史修订/);
+  assert.match(page.items[0].statusLabel, /LIKE/);
+  assert.match(page.items[0].statusLabel, /OR召回/);
+  const evidence = await bridge.getEvidence(MSG);
+  assert.equal(evidence.excerpt, "先试 Bun，Node 保底");
+  assert.equal(evidence.kind, "conversation");
+  assert.deepEqual(calls[1].args, { request: { workspaceId: WS, messageId: MSG } });
+});
+
+test("undo requires a real Core reverted receipt", async () => {
+  const { invoke, calls } = recorder({ revert_memory_operation: () => ({
+    operationId: "save", workspaceId: WS, reverted: true, revision: 2,
+    committedAt: "2026-11-06T00:00:00Z", decisionTitle: "原决定", decisionSummary: "追加撤销修订",
+  }) });
+  const bridge = createTauriHarkBridge(invoke);
+  assert.equal((await bridge.revertMemoryOperation(WS, "save")).reverted, true);
+  assert.deepEqual(calls[0].args, { request: { workspaceId: WS, operationId: "save" } });
+  const bad = recorder({ revert_memory_operation: () => ({ recorded: false, reverted: false }) });
+  await assert.rejects(() => createTauriHarkBridge(bad.invoke).revertMemoryOperation(WS, "missing"));
+});
 
 function workspace(): NativeWorkspace {
   return {
@@ -465,10 +526,9 @@ test("snapshot load uses shell_snapshot and list_workspaces and does not mark th
   assert.equal(app.attentionItems.length, 0);
 });
 
-test("unfinished surfaces do not invoke", async () => {
+test("unfinished child workspace and remote search surfaces do not invoke", async () => {
   const { invoke, calls } = recorder({});
   const bridge = createTauriHarkBridge(invoke);
-  await assert.rejects(() => bridge.searchWorkspaceMemory({ workspaceId: WS, query: "火" }));
   await assert.rejects(() =>
     bridge.createChildWorkspace({
       requestId: "x",
@@ -479,7 +539,6 @@ test("unfinished surfaces do not invoke", async () => {
       retainParentHistoryRef: true,
     }),
   );
-  await assert.rejects(() => bridge.searchWorkspaceMemory({ workspaceId: WS, query: "火" }));
   await assert.rejects(() =>
     bridge.setWorkspacePermissions({
       requestId: "x",

@@ -1,7 +1,7 @@
 use hark_native_shell::{
     decide_window_close, AgentTurnRef, AgentTurnRequest, AuthorizeRequest, ConfirmRequest,
-    ModelGrantRequest, NativeShell, OpeningRequest, ShellError, SourceRefRequest, StepFunKeyRequest,
-    TurnProgress, UserMessageRequest, WindowCloseDecision,
+    ModelGrantRequest, NativeShell, OpeningRequest, ShellError, SourceRefRequest,
+    StepFunKeyRequest, TurnProgress, UserMessageRequest, WindowCloseDecision,
 };
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
@@ -275,6 +275,54 @@ fn stepfun_session_status(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+fn get_opinion(
+    shell: tauri::State<'_, NativeShell>,
+    request: hark_native_shell::OpinionRequest,
+) -> Result<hark_native_shell::OpinionView, ShellError> {
+    shell.get_opinion(&request)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn list_workspace_opinions(
+    shell: tauri::State<'_, NativeShell>,
+    workspace_id: String,
+) -> Result<Vec<hark_native_shell::OpinionView>, ShellError> {
+    shell.list_workspace_opinions(&workspace_id)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn submit_opinion_feedback(
+    shell: tauri::State<'_, NativeShell>,
+    request: hark_native_shell::OpinionFeedbackRequest,
+) -> Result<hark_native_shell::OpinionView, ShellError> {
+    shell.submit_opinion_feedback(&request)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn revert_memory_operation(
+    shell: tauri::State<'_, NativeShell>,
+    request: hark_native_shell::RevertMemoryRequest,
+) -> Result<hark_native_shell::MemoryReceipt, ShellError> {
+    shell.revert_memory_operation(&request)
+}
+
+#[tauri::command(rename_all = "camelCase", async)]
+fn search_workspace_memory(
+    shell: tauri::State<'_, NativeShell>,
+    request: hark_native_shell::MemorySearchInput,
+) -> Result<hark_native_shell::MemorySearchPage, ShellError> {
+    shell.search_workspace_memory(&request)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn get_message_evidence(
+    shell: tauri::State<'_, NativeShell>,
+    request: hark_native_shell::MessageEvidenceRequest,
+) -> Result<hark_native_shell::ConversationEvent, ShellError> {
+    shell.get_message_evidence(&request)
+}
+
+#[tauri::command(rename_all = "camelCase")]
 fn set_model_grant(
     shell: tauri::State<'_, NativeShell>,
     request: ModelGrantRequest,
@@ -399,7 +447,13 @@ pub fn run() {
             configure_stepfun_session,
             clear_stepfun_session,
             stepfun_session_status,
-            set_model_grant
+            set_model_grant,
+            get_opinion,
+            list_workspace_opinions,
+            submit_opinion_feedback,
+            revert_memory_operation,
+            search_workspace_memory,
+            get_message_evidence
         ])
         .run(tauri::generate_context!())
         .expect("hark desktop failed to start");

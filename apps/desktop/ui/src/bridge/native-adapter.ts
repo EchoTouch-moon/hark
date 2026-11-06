@@ -9,6 +9,10 @@ import type {
   HarkErrorCode,
   HarkUIError,
   LocalScanSummaryData,
+  MemoryReceiptData,
+  MemorySearchItem,
+  MemorySearchPage,
+  OpinionView,
   NarrativeState,
   OnboardingRun,
   OnboardingStage,
@@ -326,6 +330,8 @@ function mapNativeCode(code: string): HarkErrorCode {
     case "scan_not_running":
     case "read_not_running":
       return "OPERATION_CANCELLED";
+    case "conflict_revision":
+      return "CONFLICT_REVISION";
     case "invoke_rejected":
       return "CONNECTION_LOST";
     default:
@@ -734,6 +740,7 @@ export function createTauriHarkBridge(
     snapshot: null as ShellSnapshotDto | null,
     focusWorkspaceId: undefined as string | undefined,
     runs: new Map<string, { workspaceId: string; conversationId: string }>(),
+    opinions: new Map<string, string>(),
   };
 
   const call = async <T>(cmd: string, args?: Record<string, unknown>): Promise<T> => {
@@ -958,22 +965,47 @@ export function createTauriHarkBridge(
       });
       return mapAgentTurnStatus(status, owned.conversationId);
     },
-    async getOpinion() {
-      throw unavailable("观点");
+    async getOpinion(opinionId) {
+      const workspaceId = cache.opinions.get(opinionId) ?? cache.focusWorkspaceId;
+      if (!workspaceId) throw uiError("WORKSPACE_NOT_FOUND", "没有观点所属的工作空间。", false);
+      const opinion = await call<OpinionView>("get_opinion", { request: { workspaceId, opinionId } });
+      cache.opinions.set(opinion.id, opinion.workspaceId);
+      return opinion;
     },
-    async listWorkspaceOpinions() {
-      return [];
+    async listWorkspaceOpinions(workspaceId) {
+      const opinions = await call<OpinionView[]>("list_workspace_opinions", { workspaceId });
+      for (const opinion of opinions) cache.opinions.set(opinion.id, opinion.workspaceId);
+      return opinions;
     },
-    async submitOpinionFeedback() {
-      throw unavailable("观点反馈");
+    async submitOpinionFeedback(input) {
+      const opinion = await call<OpinionView>("submit_opinion_feedback", { request: input });
+      cache.opinions.set(opinion.id, opinion.workspaceId);
+      return opinion;
     },
-    async revertMemoryOperation() {
-      throw unavailable("记忆撤销");
+    async revertMemoryOperation(workspaceId, operationId) {
+      const receipt = await call<MemoryReceiptData & { reverted: boolean; committedAt?: string; revision?: number }>(
+        "revert_memory_operation", { request: { workspaceId, operationId } },
+      );
+      if (!receipt.reverted || !receipt.committedAt || !Number.isInteger(receipt.revision)) {
+        throw uiError("CONNECTION_LOST", "未收到 Core 的撤销收据，不会显示已撤销。", true);
+      }
+      return { ...receipt, decisionTitle: receipt.decisionTitle ?? "记忆变更", decisionSummary: receipt.decisionSummary ?? "已追加撤销修订，原历史保留" };
     },
     async getEvidence(evidenceId) {
       const workspaceId = cache.focusWorkspaceId;
       if (!workspaceId) {
         throw uiError("SOURCE_UNREADABLE", "没有当前 workspace，不会按路径查找来源。", false);
+      }
+      if (isHarkId(evidenceId, "msg")) {
+        const message = await call<ConversationEventDto>("get_message_evidence", {
+          request: { workspaceId, messageId: evidenceId },
+        });
+        return {
+          id: message.id, workspaceId: message.workspaceId, kind: "conversation",
+          title: message.kind === "user_message" ? "用户原文" : "历史对话原文（不是独立验证事实）",
+          displayLocation: `对话 ${message.conversationId}`, observedAt: message.createdAt,
+          availability: "available", verificationLevel: "full_text", excerpt: message.body,
+        };
       }
       const source = await call<SourceRefDto>("get_source_ref", {
         request: { workspaceId, sourceId: evidenceId },
@@ -985,8 +1017,20 @@ export function createTauriHarkBridge(
       const sources = await call<SourceRefDto[]>("list_source_refs", { workspaceId });
       return sources.map(mapSourceRefList);
     },
-    async searchWorkspaceMemory() {
-      throw unavailable("记忆 / FTS 检索");
+    async searchWorkspaceMemory(input) {
+      cache.focusWorkspaceId = input.workspaceId;
+      const page = await call<Omit<MemorySearchPage, "items"> & {
+        items: (MemorySearchItem & { termMatch?: string })[];
+        note?: string; usedOrFallback?: boolean;
+      }>("search_workspace_memory", { request: input });
+      for (const item of page.items) if (item.opinionId) cache.opinions.set(item.opinionId, input.workspaceId);
+      return { ...page, items: page.items.map((item) => ({
+        ...item,
+        statusLabel: [item.statusLabel,
+          item.termMatch === "like_fallback" || item.termMatch === "mixed" ? "短词匹配含LIKE（非FTS排名）" : "",
+          page.usedOrFallback ? "OR召回，仅供线索" : "",
+        ].filter(Boolean).join(" · "),
+      })) };
     },
     async getWorkspacePermissions(workspaceId) {
       const grants = await call<ServiceGrant[]>("service_grants", { workspaceId });

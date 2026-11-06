@@ -39,6 +39,12 @@
     "allow-configure-stepfun-session",
     "allow-clear-stepfun-session",
     "allow-stepfun-session-status",
-    "allow-set-model-grant"
+    "allow-set-model-grant",
+    "allow-get-opinion",
+    "allow-list-workspace-opinions",
+    "allow-submit-opinion-feedback",
+    "allow-revert-memory-operation",
+    "allow-search-workspace-memory",
+    "allow-get-message-evidence"
   ]
 }

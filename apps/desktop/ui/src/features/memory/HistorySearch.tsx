@@ -74,6 +74,8 @@ export const HistorySearch: React.FC<HistorySearchProps> = ({
     { id: "decision", label: "用户决策 / 折页" },
     { id: "opinion", label: "Agent 观点" },
     { id: "local_fact", label: "本地文件与证据" },
+    { id: "identity", label: "项目身份记录" },
+    { id: "experience", label: "已确认经验" },
   ];
 
   return (

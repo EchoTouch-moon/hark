@@ -39,6 +39,12 @@ fn main() {
             "clear_stepfun_session",
             "stepfun_session_status",
             "set_model_grant",
+            "get_opinion",
+            "list_workspace_opinions",
+            "submit_opinion_feedback",
+            "revert_memory_operation",
+            "search_workspace_memory",
+            "get_message_evidence",
         ]));
     tauri_build::try_build(attributes).expect("failed to run tauri-build");
 }

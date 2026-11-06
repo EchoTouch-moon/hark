@@ -357,7 +357,11 @@ impl SidecarSupervisor {
     }
 
     /// In-memory session key. The provider file must already be keyless metadata.
-    pub fn configure_session(&self, config: DevSidecarConfig, secret: &str) -> Result<(), ShellError> {
+    pub fn configure_session(
+        &self,
+        config: DevSidecarConfig,
+        secret: &str,
+    ) -> Result<(), ShellError> {
         if self
             .worker
             .lock()
@@ -754,7 +758,10 @@ fn disconnected(reason: &'static str) -> SidecarStatus {
     }
 }
 
-fn validate_config(config: &DevSidecarConfig, session_secret: Option<&str>) -> Result<ProviderSlot, ShellError> {
+fn validate_config(
+    config: &DevSidecarConfig,
+    session_secret: Option<&str>,
+) -> Result<ProviderSlot, ShellError> {
     let node = safe_file(&config.node_path, "node")?;
     let entry = safe_file(&config.host_entry, "host entry")?;
     if entry.file_name().and_then(|name| name.to_str()) != Some("sidecar.ts") {
@@ -817,7 +824,10 @@ fn validate_config(config: &DevSidecarConfig, session_secret: Option<&str>) -> R
         .get("wire")
         .and_then(|item| item.as_str())
         .unwrap_or("");
-    let file_secret = value.get("apiKey").and_then(|item| item.as_str()).unwrap_or("");
+    let file_secret = value
+        .get("apiKey")
+        .and_then(|item| item.as_str())
+        .unwrap_or("");
     if provider == "faux" || model == "faux" {
         return Err(ShellError::new("sidecar_config", "faux is not a provider"));
     }
@@ -828,7 +838,12 @@ fn validate_config(config: &DevSidecarConfig, session_secret: Option<&str>) -> R
         ));
     }
     if scripted {
-        if !enabled || allow_remote || wire != "openai-completions" || provider.is_empty() || model.is_empty() || file_secret.is_empty()
+        if !enabled
+            || allow_remote
+            || wire != "openai-completions"
+            || provider.is_empty()
+            || model.is_empty()
+            || file_secret.is_empty()
         {
             return Err(ShellError::new(
                 "sidecar_transport_closed",
@@ -842,7 +857,10 @@ fn validate_config(config: &DevSidecarConfig, session_secret: Option<&str>) -> R
             scripted: true,
         });
     }
-    let base = value.get("baseUrl").and_then(|item| item.as_str()).unwrap_or("");
+    let base = value
+        .get("baseUrl")
+        .and_then(|item| item.as_str())
+        .unwrap_or("");
     if file_secret.is_empty() == false || raw.contains("apiKey") {
         return Err(ShellError::new(
             "secret_material_rejected",

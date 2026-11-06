@@ -874,6 +874,7 @@ export const AppShell: React.FC = () => {
 
               {/* FE-05 · 中央对话时间线（含首条主动开场、观点卡、记忆回执、分级证据引用） */}
               <ConversationTimeline
+                workspaceId={currentSummary.id}
                 workspaceName={currentSummary.name}
                 messages={messages}
                 opinionsMap={opinionsMap}

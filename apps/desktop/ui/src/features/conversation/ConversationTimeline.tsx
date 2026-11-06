@@ -24,6 +24,7 @@ import { OpinionInlineCard } from "../opinions/OpinionInlineCard";
 import { StreamAccumulatorState } from "../../bridge/schemas";
 
 interface ConversationTimelineProps {
+  workspaceId?: string;
   workspaceName: string;
   messages: ConversationMessage[];
   opinionsMap: Record<ID, OpinionView>;
@@ -50,6 +51,7 @@ interface ConversationTimelineProps {
  * - 记忆写入回执（MemoryReceiptData）：显示“已记下决策 · 查看 / 撤销”。
  */
 export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
+  workspaceId,
   workspaceName,
   messages,
   opinionsMap,
@@ -446,6 +448,20 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
           </article>
         );
       })}
+
+      {/* 独立持久化观点不是伪造的聊天消息，也不依赖临时流事件。 */}
+      {Object.values(opinionsMap).filter((opinion) =>
+        opinion.workspaceId === workspaceId && !messages.some((message) => message.opinionId === opinion.id)
+      ).map((opinion) => (
+        <section key={opinion.id} aria-label="已保存的观点与修订">
+          <OpinionInlineCard
+            opinion={opinion}
+            evidenceMap={evidenceMap}
+            onInspectEvidence={onInspectEvidence}
+            onSubmitFeedback={onSubmitOpinionFeedback}
+          />
+        </section>
+      ))}
 
       {/* 实时流式生成临时视图（仅属于当前 Workspace 与当前 RunId，PRD §4.2 & §7.6） */}
       {streamState && streamState.status === "streaming" && (
