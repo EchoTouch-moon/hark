@@ -34,7 +34,7 @@
 
 - AT-05 / 父子排除未实现。物理重叠拒绝不是排除流程。WS-OVERLAP-01 不得标通过。恢复条件仍是单独设计并测试排除、回滚和链接/别名。
 - Windows 安全读未实现，源码 fail-closed。本机未安装/未编译 Windows target。恢复条件是 Windows 上的真实编译和目录负例。
-- 私人项目读取与真实搜索仍未授权。用户另行批准一次有界 StepFun 验收：国内 `https://api.stepfun.com/v1/chat/completions`、仅 `step-3.7-flash`、最多3次请求、每次输出≤512tokens、仅纯合成材料、Key仅用户亲启独立进程临时env。尚未提供/读取Key，未实际发送。它不授权后台调用或私人项目外发。脚本候选在隔离分支做Key argv/摘要路径安全修复，父会话复核前不要运行。
+- 私人项目读取与真实搜索仍未授权。用户另行批准一次有界 StepFun 验收：国内 `https://api.stepfun.com/v1/chat/completions`、仅 `step-3.7-flash`、最多3次请求、每次输出≤512tokens、仅纯合成材料、Key仅用户亲启独立进程临时env。尚未提供/读取Key，未实际发送。它不授权后台调用或私人项目外发。脚本已合入且经父会话复核：Key argv/摘要路径安全修复、18项离线测试与Host14回归通过；待用户在本地TTY亲启 `bash scripts/stepfun-live-check.sh` 隐藏输入专用Key。默认摘要文件必须不存在，失败后先审查记录，不自动追加请求。见 `stepfun-live-check-parent-review.md`。
 - UI 与整 R1 未通过。
 - 首次开场的 authorization 由 Rust 从当前 Core 构造。Host 仍不写 SQLite。常规连续对话 run 仍 pending。
 - StepFun endpoint、流式、工具调用和计费仍 unverified。显式 `providerId: stepfun` 不再被型号字符串拒绝，但没有启用配置、凭据和 `allowRemote` 时仍然关闭。`faux` 仍拒绝，不是 fallback。本轮只用合成 Key 和拦截 transport 看 OpenAI-completions 形状，没有联网。真实协议未臆造。
