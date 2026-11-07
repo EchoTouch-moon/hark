@@ -1,5 +1,7 @@
 # Hark R1 架构与交付状态
 
+应用视觉资源：三款App Icon提案已输出到 `design/app-icon-concepts/`（SVG、1024透明PNG、实际渲染对照图），等待用户选择。原Native图标未替换，不是安装包/平台图标验收；功能架构、权限与运行进程不变。
+
 主页已完成渐进披露整理：Header仅项目与⋯，初读/记忆折页移入项目概览，扫描/依据/观点/记忆回执默认折叠，Composer保留核心操作。复用原Bridge和原生dialog，无后端/权限/存储变更。UI类型、29测试、构建与Chrome合成页面交互/截图通过，Native WebView实际效果待用户确认。证据：`handoff/EVIDENCE/r1/home-minimal.md`；外部画布目标未配置，未扫描个人笔记。
 
 当前已实现并在本机测试：Rust Core 库，嵌入 Pi SDK 1.5.0 的 TypeScript Host，进程内 Native shell，以及 Unix 上由 Rust 管理的一条首次开场 stdio。v1/v2迁移原文保留；v2给 `onboarding_runs` 增加当前 opening run 与授权快照列；v3为普通聊天扩展事件CHECK并增加稳定seq，仅新建 `conversation_runs`，保存普通run与对应用户/助手消息引用，重启恢复。主线源码现已增加v4：独立记忆/观点修订、反馈、幂等写收据与FTS5投影；聊天和文件来源仍各自为权威。Core69项通过；Native/页面认知读与反馈接口已合入6da36be（Native20/UI27），包括历史检索、观点反馈/撤销与消息来源。用户已选择部署并重启，随后确认窗口可见。Pi记忆/观点提议及按需recall已部署376d75e，普通对话可写Core真实修订并返回收据；UI从持久收据投影而非伪造聊天原文。Core69/Native21/Host16+2/UI29及构建通过，窗口已重启/前置。opening仅recall不写记忆，自动L0/L1投影仍未完成，真实模型效果未验收。sessionRef 写在现有 `evidence_json`，没有新 migration。目录授权可暂停/撤销。确认前初扫有界。Workspace 读取绑定已验证目录 fd。开场必须匹配 Core 发放的 run；调用方 `success` 不是完成。IPC v1 frame 没有 HTTP。
