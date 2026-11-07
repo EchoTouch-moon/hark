@@ -361,6 +361,22 @@ export const AppShell: React.FC = () => {
     const bufferedEvents: RunStreamEvent[] = [];
     let resolvedRunId: string | null = null;
 
+    const refreshStoredArtifacts = (clearStream: boolean) => {
+      Promise.all([
+        bridge.getConversation(convId), bridge.listWorkspaceOpinions(targetWsId),
+        bridge.listWorkspaceEvidence(targetWsId),
+      ]).then(([page, opinions, evidence]) => {
+        if (activeStreamWorkspaceRef.current !== targetWsId) return;
+        setMessages(page.messages);
+        setOpinionsMap(Object.fromEntries(opinions.map((opinion) => [opinion.id, opinion])));
+        setEvidenceMap(Object.fromEntries(evidence.map((item) => [item.id, item])));
+        if (clearStream) setStreamState(null);
+        setTransientSpreadKey((k) => k + 1);
+      }).catch((err) => {
+        if (activeStreamWorkspaceRef.current === targetWsId) setActiveError(asUiError(err));
+      });
+    };
+
     const refreshPersistedConversation = (
       wsId: WorkspaceId,
       conversationId: string,
@@ -369,18 +385,8 @@ export const AppShell: React.FC = () => {
     ) => {
       // 缺 id 或未核验不当已保存，也不把候选写入时间线。
       if (!verified || !persistedMessageId) return;
-      bridge
-        .getConversation(conversationId)
-        .then((page) => {
-          if (activeStreamWorkspaceRef.current !== wsId) return;
-          setMessages(page.messages);
-          setStreamState(null);
-          setTransientSpreadKey((k) => k + 1);
-        })
-        .catch((err) => {
-          if (activeStreamWorkspaceRef.current !== wsId) return;
-          setActiveError(asUiError(err));
-        });
+      if (wsId !== targetWsId || conversationId !== convId) return;
+      refreshStoredArtifacts(true);
     };
 
     const handleStreamEvent = (ev: RunStreamEvent) => {
@@ -396,6 +402,11 @@ export const AppShell: React.FC = () => {
         return applyRunStreamEvents(base, [ev]);
       });
 
+      if (ev.type === "run_failed" || ev.type === "run_cancelled") {
+        if (ev.payload.error) setActiveError(ev.payload.error);
+        // A memory tool may have committed before the subsequent model request failed.
+        refreshStoredArtifacts(false);
+      }
       if (ev.type === "run_completed") {
         refreshPersistedConversation(
           targetWsId,
@@ -427,7 +438,12 @@ export const AppShell: React.FC = () => {
         createInitialStreamState(targetWsId, result.runId),
         bufferedEvents,
       );
+      if (activeStreamWorkspaceRef.current !== targetWsId) return;
       setStreamState(nextStream);
+      if (nextStream.status === "failed" || nextStream.status === "cancelled") {
+        if (nextStream.latestError) setActiveError(nextStream.latestError);
+        refreshStoredArtifacts(false);
+      }
       if (nextStream.status === "completed_verified" && nextStream.persistedMessageId) {
         refreshPersistedConversation(targetWsId, convId, nextStream.persistedMessageId, true);
       }

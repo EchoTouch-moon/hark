@@ -676,6 +676,22 @@ fn fail_tx(
     }
 }
 
+/// Used inside the memory write transaction, not as a separate preflight check.
+pub(crate) fn require_running_agent(
+    conn: &Connection,
+    workspace_id: &WorkspaceId,
+    run_id: &RunId,
+) -> Result<()> {
+    let row = require_owned_run(conn, workspace_id, run_id)?;
+    if row.state != "running" {
+        return Err(CoreError::new(
+            ErrorCode::RunMismatch,
+            "memory writer run is not running",
+        ));
+    }
+    require_run_auth(&row, &current_auth(conn, workspace_id)?)
+}
+
 fn current_auth(conn: &Connection, workspace_id: &WorkspaceId) -> Result<AuthSnap> {
     let (provider, model, grant_updated_at) = messages::explicit_model_grant(conn, workspace_id)?;
     let root = messages::root_for_workspace(conn, workspace_id)?;

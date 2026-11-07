@@ -45,6 +45,7 @@
     "allow-submit-opinion-feedback",
     "allow-revert-memory-operation",
     "allow-search-workspace-memory",
-    "allow-get-message-evidence"
+    "allow-get-message-evidence",
+    "allow-list-memory-receipts"
   ]
 }

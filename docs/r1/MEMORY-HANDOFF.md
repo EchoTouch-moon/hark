@@ -1,6 +1,6 @@
 # 记忆 / 观点 / 检索 Core 对接
 
-状态：Core存储已verified-local；本分支Native/Tauri/UI读和用户动作已接（get/list opinion、反馈、撤销、检索、原消息证据），Native20/UI27及构建通过。独立观点在页面真实显示，pending_revision不伪成已修订判断。Pi提议/recall工具仍未接，不能自动创建新记忆/观点，也不是真实模型或完整产品验收。部署状态见主线STATUS与memory-native-ui.md。
+状态：Core存储已verified-local；本分支Native/Tauri/UI读和用户动作已接（get/list opinion、反馈、撤销、检索、原消息证据），Native20/UI27及构建通过。独立观点在页面真实显示，pending_revision不伪成已修订判断。本切片已接Pi提议/recall工具，普通对话可返回Core真实写入收据；opening仅recall不写入。Core69/Native21/Host16+2/UI29及构建通过，尚未部署至运行窗口，不是真实模型或完整产品验收。部署状态见主线STATUS与memory-native-ui.md。
 
 受信调用方是进程内 Native / Host。不要把 `memory_propose_change` 或 `opinion_propose_change` 加进 `FRONTEND_COMMANDS`、Tauri command 或 capability。WebView 不能传 `recorded`、`success`、来源 ID 或完成状态。
 
@@ -29,7 +29,7 @@ currentUserMessageId # 已落库且属于该 workspace；可省略
 caller               # user | host | agentRun { runId }
 ```
 
-`agentRun` 的 run 必须属于该 workspace。本地用户反馈和已有记录阅读不查模型授权，也不新造 Gate。文件来源是否可用仍走原来的目录撤权 / 暂停；写记忆不会打开任意文件。
+`agentRun` 的run必须属于该workspace、处于running且当前服务/目录快照仍匹配；校验在Core写事务内复用普通run合同。Host按run+SDK toolCallId生成稳定operationId，Native绑定currentUserMessageId，不从模型参数取。本地用户反馈和已有记录阅读不查模型授权，也不新造 Gate。文件来源是否可用仍走原来的目录撤权 / 暂停；写记忆不会打开任意文件。
 
 ## memory_propose_change
 
@@ -137,8 +137,8 @@ UI `MemorySearchPage` 没有 `matchMode / note`。Native 映射 `items` 时要�
 
 ## 还没做
 
-- Native adapter/Tauri读和用户动作已接，本分支UI不再用unavailable/假空列表替代；Host工具仍未接。
-- 本切片没有改模型协议、没有注册记忆Pi工具、没有真实模型调用。
-- CTX-01、Observer 失效、全局记忆、向量检索、中文分词依赖都没做。
+- Native/UI读与用户动作已接；Pi三个认知工具及持久收据投影已在本分支接通。只读 `list_memory_receipts({workspaceId})` 返回最近100条提交/撤销收据，UI artifact不是新的对话原文。
+- 没有真实模型调用。opening写入尚不支持，不用Host caller绕过普通run验证。
+- CTX-01的自动L0/L1投影、Observer失效、全局记忆、memory_get_evidence、向量检索和中文分词依赖仍没做；本切片通过按需recall读既有记录。
 - 决定核验只认原话引用和少量中性前缀，不是语义蕴含器，也不是新的模型校验。对不上、被摘掉限定语、或无法确定是明确决定时，留在待澄清。
 - 本机 `cargo test` 与 Native `cargo check` 只证明 Core 类型和本地 SQLite 行为。不是桌面点击，也不是整产品完成。

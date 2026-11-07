@@ -1206,32 +1206,7 @@ fn caller_label_direct(
     workspace_id: &WorkspaceId,
     caller: &MemoryCaller,
 ) -> Result<String> {
-    match caller {
-        MemoryCaller::User => Ok("user".to_string()),
-        MemoryCaller::Host => Ok("host".to_string()),
-        MemoryCaller::AgentRun { run_id } => {
-            let owner: Option<String> = conn
-                .query_row(
-                    "SELECT workspace_id FROM conversation_runs WHERE id = ?1",
-                    params![run_id.as_str()],
-                    |row| row.get(0),
-                )
-                .optional()?;
-            match owner {
-                Some(owner) if owner == workspace_id.as_str() => {
-                    Ok(format!("run:{}", run_id.as_str()))
-                }
-                Some(_) => Err(CoreError::new(
-                    ErrorCode::WorkspaceMismatch,
-                    "caller run is in another workspace",
-                )),
-                None => Err(CoreError::new(
-                    ErrorCode::RunMismatch,
-                    "caller run is not in this workspace",
-                )),
-            }
-        }
-    }
+    memory::caller_label(conn, workspace_id, caller)
 }
 
 fn opinion_label(status: &str, historical: bool, judgment_generated: bool) -> String {

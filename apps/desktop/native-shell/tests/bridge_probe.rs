@@ -637,6 +637,169 @@ fn assert_ordered(events: &[RunStreamEvent], run_id: &str) {
 }
 
 #[test]
+fn memory_tools_commit_real_receipts_and_recall_without_a_model() {
+    let scripted = r#"{"responses":[{"kind":"tool_call","name":"workspace.read_file","arguments":{"relativePath":"README.md"}},{"kind":"text","text":"Synthetic opening, not a real model."},{"kind":"tool_call","name":"memory_propose_change","arguments":{"operation":"ADD","kind":"decision","content":"我决定先用 Tauri，Node 保底"}},{"kind":"tool_call","name":"opinion_propose_change","arguments":{"operation":"ADD","summary":"我决定先用 Tauri，Node 保底","evidenceRefs":[],"counterArguments":[],"uncertainties":["尚未比较运行时"]}},{"kind":"tool_call","name":"memory_recall","arguments":{"query":"保底"}},{"kind":"text","text":"Synthetic tool round completed."},{"kind":"tool_call","name":"memory_propose_change","arguments":{"operation":"ADD","kind":"decision","content":"采用 Bun"}},{"kind":"text","text":"Needs clarification; not saved."},{"kind":"tool_call","name":"memory_propose_change","arguments":{"operation":"ADD","kind":"decision","content":"我决定保留 CLI 入口"}},{"kind":"hold","untilAbort":true}]}"#;
+    let ready = ready("memory-tools", scripted, 60_000);
+    ready
+        .shell
+        .run_configured_opening(&ready.workspace_id)
+        .unwrap();
+    let ws = ready.shell.get_workspace(&ready.workspace_id).unwrap();
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&events);
+    let accepted = ready
+        .shell
+        .start_agent_turn(
+            AgentTurnRequest {
+                request_id: "memory-tool-round".into(),
+                workspace_id: ready.workspace_id.clone(),
+                conversation_id: ws.conversation_id.to_string(),
+                user_prompt: "我决定先用 Tauri，Node 保底".into(),
+            },
+            TurnProgress::new(move |event| sink.lock().unwrap().push(event)),
+        )
+        .unwrap();
+    let streamed = wait_terminal(&events);
+    assert_eq!(
+        streamed.last().unwrap().event_type,
+        "run_completed",
+        "{streamed:?}"
+    );
+    let receipts = ready
+        .shell
+        .list_memory_receipts(&ready.workspace_id)
+        .unwrap();
+    assert_eq!(receipts.len(), 1);
+    assert!(receipts[0].recorded && receipts[0].committed_at.is_some());
+    assert_eq!(
+        receipts[0].source_message_id.as_deref(),
+        Some(accepted.accepted_user_message.id.as_str())
+    );
+    let opinions = ready
+        .shell
+        .list_workspace_opinions(&ready.workspace_id)
+        .unwrap();
+    assert_eq!(opinions.len(), 1);
+    assert!(opinions[0]
+        .evidence_refs
+        .contains(&accepted.accepted_user_message.id.to_string()));
+    let rejected_events = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&rejected_events);
+    ready
+        .shell
+        .start_agent_turn(
+            AgentTurnRequest {
+                request_id: "memory-clarification-round".into(),
+                workspace_id: ready.workspace_id.clone(),
+                conversation_id: ws.conversation_id.to_string(),
+                user_prompt: "我们决定不采用 Bun，继续使用 Node。".into(),
+            },
+            TurnProgress::new(move |event| sink.lock().unwrap().push(event)),
+        )
+        .unwrap();
+    let terminal = wait_terminal(&rejected_events);
+    assert_eq!(terminal.last().unwrap().event_type, "run_completed");
+    assert_eq!(
+        ready
+            .shell
+            .list_memory_receipts(&ready.workspace_id)
+            .unwrap()
+            .len(),
+        1,
+        "clarification is not a saved receipt"
+    );
+
+    let core = hark_core::Core::open(&ready.tmp.path().join("business.sqlite")).unwrap();
+    let memories = core.list_workspace_memories(&ws.id).unwrap();
+    assert_eq!(memories.len(), 1);
+    let late = core.memory_propose_change(
+        &hark_core::MemoryCallContext {
+            workspace_id: ws.id.clone(),
+            operation_id: "late-new-proposal".into(),
+            current_user_message_id: Some(accepted.accepted_user_message.id.clone()),
+            caller: hark_core::MemoryCaller::AgentRun {
+                run_id: hark_core::RunId::parse(&accepted.run_id).unwrap(),
+            },
+        },
+        &hark_core::MemoryChangeProposal {
+            operation: hark_core::MemoryOperation::Add,
+            kind: hark_core::MemoryNoteKind::Decision,
+            content: "我决定先用 Tauri，Node 保底".into(),
+            source_refs: vec![],
+            target_id: None,
+            expected_revision: None,
+        },
+    );
+    assert!(
+        late.is_err(),
+        "finished model run must not append a new proposal"
+    );
+    let cancel_events = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&cancel_events);
+    let cancelled = ready
+        .shell
+        .start_agent_turn(
+            AgentTurnRequest {
+                request_id: "memory-before-cancel".into(),
+                workspace_id: ready.workspace_id.clone(),
+                conversation_id: ws.conversation_id.to_string(),
+                user_prompt: "我决定保留 CLI 入口".into(),
+            },
+            TurnProgress::new(move |event| sink.lock().unwrap().push(event)),
+        )
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while ready
+        .shell
+        .list_memory_receipts(&ready.workspace_id)
+        .unwrap()
+        .len()
+        < 2
+    {
+        assert!(
+            Instant::now() < deadline,
+            "tool did not commit before cancel"
+        );
+        thread::sleep(Duration::from_millis(10));
+    }
+    ready
+        .shell
+        .cancel_agent_turn(&ready.workspace_id, &cancelled.run_id)
+        .unwrap();
+    let terminal = wait_terminal(&cancel_events);
+    assert_eq!(terminal.last().unwrap().event_type, "run_cancelled");
+    assert_eq!(
+        kind_count(&ready.shell, &ready.workspace_id, "agent_message"),
+        2
+    );
+    assert_eq!(
+        ready
+            .shell
+            .list_memory_receipts(&ready.workspace_id)
+            .unwrap()
+            .len(),
+        2
+    );
+    ready.shell.stop_sidecar().unwrap();
+    drop(core);
+    let restored = NativeShell::open(&ready.tmp.path().join("business.sqlite")).unwrap();
+    assert_eq!(
+        restored
+            .list_memory_receipts(&ready.workspace_id)
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        restored
+            .list_workspace_opinions(&ready.workspace_id)
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[test]
 fn ordinary_turns_use_scripted_transport_not_a_real_model() {
     let scripted = r#"{"responses":[{"kind":"tool_call","name":"workspace.read_file","arguments":{"relativePath":"README.md"}},{"kind":"text","text":"Scripted opening. Not StepFun."},{"kind":"text","text":"scripted-chat-one"},{"kind":"text","text":"scripted-chat-two"},{"kind":"hold","untilAbort":true}]}"#;
     let ready = ready("chat", scripted, 60_000);

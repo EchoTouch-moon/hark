@@ -32,7 +32,7 @@ const HOST_TEXT_CAP: usize = 65_536;
 pub const FRAME_INGRESS_CAP: usize = hark_core::MAX_CONTROL_QUEUE;
 const STOP_REPLY_WAIT: Duration = Duration::from_secs(5);
 const STOP_JOIN_WAIT: Duration = Duration::from_secs(2);
-pub const OPENING_INTERNAL_INSTRUCTION: &str = "Internal first-read instruction for the initial opening run only. Use workspace.overview and workspace.read_file. This text is not a stored Hark user message, not an L0/L1 container, and not evidence of a user decision. There is no memory engine.";
+pub const OPENING_INTERNAL_INSTRUCTION: &str = "Internal first-read instruction for the initial opening run only. Use workspace.overview and workspace.read_file. This text is not a stored Hark user message, not an L0/L1 container, and not evidence of a user decision. Memory writes require a normal conversation turn; recall is available for existing workspace records.";
 
 #[derive(Debug, Clone)]
 pub struct DevSidecarConfig {
@@ -1845,6 +1845,38 @@ fn answer_tool(
                 "overviewText": overview,
             }),
         );
+    }
+    if matches!(
+        tool,
+        "memory_propose_change" | "opinion_propose_change" | "memory_recall"
+    ) {
+        let operation_id = frame
+            .payload
+            .get("operationId")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let input = frame.payload.get("input").cloned().unwrap_or(Value::Null);
+        let result = crate::memory_agent::call(
+            core,
+            &workspace_id,
+            &RunId::parse(&run.run_id)?,
+            run.user_message_id.as_deref(),
+            run.purpose,
+            tool,
+            operation_id,
+            input,
+        );
+        return match result {
+            Ok(payload) => write_response(proc, frame, &run.workspace_id, &run.run_id, payload),
+            Err(error) => send_error(
+                proc,
+                frame,
+                &run.workspace_id,
+                &run.run_id,
+                &error.code,
+                &error.detail,
+            ),
+        };
     }
     if tool != "workspace.read_file" {
         return send_error(

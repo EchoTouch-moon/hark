@@ -315,6 +315,14 @@ fn search_workspace_memory(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+fn list_memory_receipts(
+    shell: tauri::State<'_, NativeShell>,
+    workspace_id: String,
+) -> Result<Vec<hark_native_shell::MemoryReceipt>, ShellError> {
+    shell.list_memory_receipts(&workspace_id)
+}
+
+#[tauri::command(rename_all = "camelCase")]
 fn get_message_evidence(
     shell: tauri::State<'_, NativeShell>,
     request: hark_native_shell::MessageEvidenceRequest,
@@ -453,7 +461,8 @@ pub fn run() {
             submit_opinion_feedback,
             revert_memory_operation,
             search_workspace_memory,
-            get_message_evidence
+            get_message_evidence,
+            list_memory_receipts
         ])
         .run(tauri::generate_context!())
         .expect("hark desktop failed to start");

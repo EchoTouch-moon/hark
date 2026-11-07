@@ -79,6 +79,7 @@ pub const FRONTEND_COMMANDS: &[&str] = &[
     "revert_memory_operation",
     "search_workspace_memory",
     "get_message_evidence",
+    "list_memory_receipts",
 ];
 
 pub fn business_db_path(app_data_dir: &Path) -> PathBuf {
@@ -676,6 +677,15 @@ impl NativeShell {
         request: &hark_core::MemorySearchInput,
     ) -> Result<hark_core::MemorySearchPage, ShellError> {
         Ok(self.core.search_workspace_memory(request)?)
+    }
+
+    pub fn list_memory_receipts(
+        &self,
+        workspace_id: &str,
+    ) -> Result<Vec<hark_core::MemoryReceipt>, ShellError> {
+        Ok(self
+            .core
+            .list_workspace_memory_receipts(&parse_workspace(workspace_id)?)?)
     }
 
     pub fn get_message_evidence(

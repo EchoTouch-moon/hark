@@ -7,6 +7,7 @@ mod bridge;
 mod cognition;
 mod error;
 mod lifecycle;
+mod memory_agent;
 mod process;
 mod seam;
 mod service;

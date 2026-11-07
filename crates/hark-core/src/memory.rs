@@ -279,6 +279,28 @@ impl Core {
         })
     }
 
+    /// Persisted memory receipts for UI artifacts, not synthetic chat events.
+    pub fn list_workspace_memory_receipts(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> Result<Vec<MemoryReceipt>> {
+        self.with_conn(|conn| {
+            require_workspace(conn, workspace_id)?;
+            let mut stmt = conn.prepare("SELECT operation_id FROM memory_write_receipts WHERE workspace_id=?1 AND domain='memory' AND outcome='committed' ORDER BY created_at DESC, operation_id DESC LIMIT 100")?;
+            let ids = stmt.query_map(params![workspace_id.as_str()], |row| row.get::<_, String>(0))?
+                .collect::<std::result::Result<Vec<_>, _>>()?;
+            let mut receipts = Vec::new();
+            for operation_id in ids.into_iter().rev() {
+                let stored = load_receipt(conn, workspace_id, &operation_id, "revert")?
+                    .or(load_receipt(conn, workspace_id, &operation_id, "memory")?);
+                if let Some(stored) = stored {
+                    receipts.push(receipt_from_stored(conn, stored, true)?);
+                }
+            }
+            Ok(receipts)
+        })
+    }
+
     pub fn revert_memory_operation(
         &self,
         workspace_id: &WorkspaceId,
@@ -1283,7 +1305,7 @@ fn project_memory(
     )
 }
 
-fn caller_label(
+pub(crate) fn caller_label(
     conn: &Connection,
     workspace_id: &WorkspaceId,
     caller: &MemoryCaller,
@@ -1292,26 +1314,8 @@ fn caller_label(
         MemoryCaller::User => Ok("user".to_string()),
         MemoryCaller::Host => Ok("host".to_string()),
         MemoryCaller::AgentRun { run_id } => {
-            let owner: Option<String> = conn
-                .query_row(
-                    "SELECT workspace_id FROM conversation_runs WHERE id = ?1",
-                    params![run_id.as_str()],
-                    |row| row.get(0),
-                )
-                .optional()?;
-            match owner {
-                Some(owner) if owner == workspace_id.as_str() => {
-                    Ok(format!("run:{}", run_id.as_str()))
-                }
-                Some(_) => Err(CoreError::new(
-                    ErrorCode::WorkspaceMismatch,
-                    "caller run is in another workspace",
-                )),
-                None => Err(CoreError::new(
-                    ErrorCode::RunMismatch,
-                    "caller run is not in this workspace",
-                )),
-            }
+            crate::conversation::require_running_agent(conn, workspace_id, run_id)?;
+            Ok(format!("run:{}", run_id.as_str()))
         }
     }
 }
@@ -1547,6 +1551,12 @@ pub(crate) fn receipt_from_stored(
         current_status: stored.status.clone(),
         detail: stored.detail,
     };
+    if let Some(revision_id) = receipt.revision_id.as_deref() {
+        receipt.committed_at = conn.query_row(
+            "SELECT created_at FROM memory_revisions WHERE id=?1 UNION ALL SELECT created_at FROM opinion_revisions WHERE id=?1 LIMIT 1",
+            params![revision_id], |row| row.get(0),
+        ).optional()?;
+    }
     if let Some(memory_id) = receipt.memory_id.clone() {
         if let Some(head) = load_head(conn, &receipt.workspace_id, &memory_id)? {
             receipt.current_revision = Some(head.revision);

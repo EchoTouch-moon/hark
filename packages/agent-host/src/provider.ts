@@ -288,8 +288,9 @@ export function sseText(text: string): string {
   return `${chunk({ role: "assistant", content: text }, null)}${chunk({}, "stop")}data: [DONE]\n\n`;
 }
 
+let scriptedToolSequence = 0;
 export function sseToolCall(name: string, args: unknown): string {
-  const id = "call_local";
+  const id = `call_local_${++scriptedToolSequence}`;
   const first = {
     role: "assistant",
     content: "",

@@ -20,6 +20,8 @@ import {
   type SourceRefDto,
 } from "./native-adapter.ts";
 
+import { projectMemoryReceipts, type StoredMemoryReceipt } from "./receipt-projection.ts";
+
 const ROOT = "root_0123456789abcdef0123456789abcdef";
 const SCAN = "scan_0123456789abcdef0123456789abcdef";
 const CAND = "cand_0123456789abcdef0123456789abcdef";
@@ -27,6 +29,34 @@ const WS = "ws_0123456789abcdef0123456789abcdef";
 const CONV = "conv_0123456789abcdef0123456789abcdef";
 const SRC = "src_0123456789abcdef0123456789abcdef";
 const MSG = "msg_0123456789abcdef0123456789abcdef";
+
+function storedReceipt(): StoredMemoryReceipt {
+  return { operationId: "op-saved", workspaceId: WS, recorded: true, reverted: false,
+    stillCurrent: true, currentStatus: "active", decisionTitle: "技术选择", decisionSummary: "先试 Bun，Node 保底",
+    committedAt: "2026-11-06T00:00:01Z", revision: 1, sourceMessageId: MSG };
+}
+
+test("persisted memory receipts survive conversation reload without inventing user text", async () => {
+  const raw = { id: MSG, workspaceId: WS, conversationId: CONV, kind: "user_message", body: "先试 Bun，Node 保底", sourceIds: [], presentation: "normal", createdAt: "2026-11-06T00:00:00Z" };
+  const { invoke, calls } = recorder({
+    list_workspaces: () => [workspace()], list_conversation: () => [raw], list_source_refs: () => [],
+    onboarding: () => ({ modelAnalyzed: false }), list_memory_receipts: () => [storedReceipt()],
+  });
+  const page = await createTauriHarkBridge(invoke).getConversation(CONV);
+  assert.deepEqual(page.messages.map((item) => item.kind), ["text", "memory_receipt"]);
+  assert.equal(page.messages[0].content, raw.body);
+  assert.equal(page.messages[1].memoryReceipt?.operationId, "op-saved");
+  assert.ok(calls.some((call) => call.cmd === "list_memory_receipts"));
+});
+
+test("receipt projection never marks an uncommitted or missing-time result saved", () => {
+  assert.deepEqual(projectMemoryReceipts([], [
+    { ...storedReceipt(), recorded: false }, { ...storedReceipt(), committedAt: null },
+    { ...storedReceipt(), workspaceId: "other" },
+  ], WS, CONV), []);
+  const reverted = projectMemoryReceipts([], [{ ...storedReceipt(), reverted: true, stillCurrent: false }], WS, CONV);
+  assert.equal(reverted[0].memoryReceipt?.reverted, true);
+});
 
 function opinionView(): OpinionView {
   return {

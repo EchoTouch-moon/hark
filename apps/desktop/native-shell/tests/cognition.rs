@@ -143,7 +143,11 @@ fn cognition_search_feedback_undo_and_restart_use_real_records() {
         operation_id: saved.operation_id,
     };
     assert!(shell.revert_memory_operation(&undo).unwrap().reverted);
-    assert!(shell.revert_memory_operation(&undo).unwrap().replayed);
+    let replayed = shell.revert_memory_operation(&undo).unwrap();
+    assert!(replayed.replayed && replayed.committed_at.is_some());
+    let receipts = shell.list_memory_receipts(ws.id.as_str()).unwrap();
+    assert_eq!(receipts.len(), 1);
+    assert!(receipts[0].reverted && receipts[0].committed_at.is_some());
     drop(core);
     drop(shell);
     let reopened = NativeShell::open(&db).unwrap();

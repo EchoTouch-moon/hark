@@ -14,6 +14,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { applyContextPack } from "./context-pack.ts";
+import { createMemoryTools } from "./memory-tools.ts";
 import { closeBuiltinCredentialProbes } from "./credentials/close-runtime.ts";
 import { createMemoryCredentialStore } from "./memory-credentials.ts";
 import {
@@ -26,6 +27,7 @@ import {
   readFileResultSchema,
   runStartPayloadSchema,
   scriptedTransportSchema,
+  type HarkToolName,
   type ProviderConfig,
   type RunStartPayload,
   type ScriptedTransport,
@@ -704,7 +706,7 @@ export class HostRuntime {
           throw new Error(`tool inventory exposed ${name}`);
         }
       }
-      if (list.length !== 2 || !HARK_TOOL_NAMES.every((name) => list.includes(name))) {
+      if (list.length !== HARK_TOOL_NAMES.length || !HARK_TOOL_NAMES.every((name) => list.includes(name))) {
         session.dispose();
         throw new Error("tool inventory is not the Hark allowlist");
       }
@@ -831,7 +833,7 @@ export class HostRuntime {
   }
 
   private createTools(run: ActiveRun) {
-    const call = (tool: "workspace.read_file" | "workspace.overview", input: Record<string, unknown>) => this.callTool(run, tool, input);
+    const call = (tool: HarkToolName, input: Record<string, unknown>) => this.callTool(run, tool, input);
     const read = defineTool({
       name: "workspace.read_file",
       label: "Read workspace file",
@@ -850,7 +852,7 @@ export class HostRuntime {
           return { content: [{ type: "text" as const, text: "read failed" }], details: { untrusted: true as const }, isError: true };
         }
         return {
-          content: [{ type: "text" as const, text: `untrusted reader data\n${parsed.data.text}` }],
+          content: [{ type: "text" as const, text: `untrusted reader data; sourceId=${parsed.data.sourceId ?? "unavailable"}\n${parsed.data.text}` }],
           details: { untrusted: true as const },
         };
       },
@@ -871,18 +873,21 @@ export class HostRuntime {
           return { content: [{ type: "text" as const, text: "overview unavailable" }], details: { untrusted: true }, isError: true };
         }
         return {
-          content: [{ type: "text" as const, text: `untrusted overview data\n${parsed.data.overviewText ?? ""}` }],
+          content: [{ type: "text" as const, text: `untrusted overview data; sourceIds=${JSON.stringify(parsed.data.sourceIds ?? [])}\n${parsed.data.overviewText ?? ""}` }],
           details: { untrusted: true as const },
         };
       },
     });
-    return [read, overview];
+    return [read, overview, ...createMemoryTools({
+      workspaceId: run.workspaceId, runId: run.runId, purpose: run.payload.purpose,
+      closed: () => this.shuttingDown || run.cancelled || run.timedOut,
+    }, (name, input, operationId) => this.callTool(run, name, input, operationId))];
   }
 
-  private callTool(run: ActiveRun, tool: "workspace.read_file" | "workspace.overview", input: Record<string, unknown>): Promise<Frame> {
+  private callTool(run: ActiveRun, tool: HarkToolName, input: Record<string, unknown>, stableOperationId?: string): Promise<Frame> {
     if (this.shuttingDown || run.cancelled) return Promise.reject(new IpcError("cancelled", "run cancelled"));
     if (run.timedOut) return Promise.reject(new IpcError("timeout", "run timed out"));
-    const operationId = mintId("op");
+    const operationId = stableOperationId ?? mintId("op");
     const frame = this.requestFrame(run.workspaceId, run.runId, "tool.request", { tool, operationId, input }, this.gate.deadlineOf(run.requestId));
     this.gate.registerRequest(frame, this.now());
     run.toolRequestIds.push(frame.id);

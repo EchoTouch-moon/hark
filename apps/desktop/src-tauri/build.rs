@@ -45,6 +45,7 @@ fn main() {
             "revert_memory_operation",
             "search_workspace_memory",
             "get_message_evidence",
+            "list_memory_receipts",
         ]));
     tauri_build::try_build(attributes).expect("failed to run tauri-build");
 }

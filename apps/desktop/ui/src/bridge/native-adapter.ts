@@ -31,6 +31,8 @@ import type {
  * This module does not call Tauri and does not know about dev-preview.
  */
 
+import { projectMemoryReceipts, type StoredMemoryReceipt } from "./receipt-projection.ts";
+
 export type InvokeFn = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
 
 /** Created before invoke so a per-turn Channel can deliver events early. */
@@ -881,15 +883,16 @@ export function createTauriHarkBridge(
     },
     async getConversation(conversationId) {
       const workspace = await workspaceForConversation(conversationId);
-      const [events, sources, checkpoint] = await Promise.all([
+      const [events, sources, checkpoint, receipts] = await Promise.all([
         call<ConversationEventDto[]>("list_conversation", { workspaceId: workspace.id }),
         call<SourceRefDto[]>("list_source_refs", { workspaceId: workspace.id }),
         call<OnboardingCheckpointDto>("onboarding", { workspaceId: workspace.id }),
+        call<StoredMemoryReceipt[]>("list_memory_receipts", { workspaceId: workspace.id }),
       ]);
       return {
         workspaceId: workspace.id,
         conversationId: workspace.conversationId,
-        messages: events.map((event) => mapConversationEvent(event, sources, checkpoint.modelAnalyzed)),
+        messages: projectMemoryReceipts(events.map((event) => mapConversationEvent(event, sources, checkpoint.modelAnalyzed)), receipts, workspace.id, workspace.conversationId),
       };
     },
     async startAgentTurn(input, onEvent) {
