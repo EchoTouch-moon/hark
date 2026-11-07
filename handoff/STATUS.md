@@ -4,7 +4,7 @@
 
 | 项目 | 状态 | 证据/下一步 |
 |---|---|---|
-| 主页极简整理 | verified-browser-synthetic | 顶栏5→2按钮，低频操作进⋯菜单；初读/记忆折页移入项目概览，扫描/依据/观点/收据按需展开；保留错误提示及权限检查。UI类型、29测试、build通过；Chrome合成页面验证菜单、弹窗/Escape/焦点、390px布局与深浅主题，非真实Native或模型验收。见home-minimal.md |
+| 主页极简整理 | verified-browser-synthetic | 主线9e0c7bb已由既有Vite热更新，Native进程未重启。顶栏5→2按钮，低频操作进⋯菜单；初读/记忆折页移入项目概览，扫描/依据/观点/收据按需展开；保留错误提示及权限检查。UI类型、29测试、build通过；Chrome合成页面验证菜单、弹窗/Escape/焦点、390px布局与深浅主题，非真实Native或模型验收。见home-minimal.md |
 | F0 工程基线 | implemented | 用户批准；AGENTS、README、docs/r1/IMPLEMENTATION-PLAN.md |
 | F1 Core/Reader/SQLite | verified-local | 审查五项已在当前 Core 串行合入并有本机联合测试。#2/#4 resolved-local，见 `f1-reader-fifo-budget.md`。#1 与 #5 fd/物理范围 resolved-local，见 `f1-scope-repair.md`。#5 检查到 open/read 的短事务准入 resolved-local，见 `f1-revocation-admission.md`。#3 开场 run 绑定 resolved-local，见 `f1-opening-receipt.md` 与 `f1-core-integrated.md`。父会话已在 `0771ebe` 复跑 fmt/check/46 项测试通过，放行 F1 本机底座继续开发；不是产品 PASS |
 | F2 嵌入式 Pi Host | verified-local | 已合入 `2b9ac8c` 与 `40dae61`。本段复跑 strict TS、SDK smoke、Host 14 项（含 opening 可空 userMessageId）与 stdio probe 通过。不是 StepFun，不是产品通过。见 `f2-parent-review.md` |

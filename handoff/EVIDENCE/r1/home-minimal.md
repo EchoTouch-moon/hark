@@ -13,6 +13,9 @@
 - 截图：`home-before-synthetic.png`、`home-after-synthetic.png`、`home-after-dark-synthetic.png`、`home-mobile-synthetic.png`、`home-menu-synthetic.png`、`home-overview-synthetic.png`、`home-empty-synthetic.png`。
 
 ## 范围与待确认
-截图均为明确标记的合成界面资料，不是实际项目观察或真实模型回复。Chrome页面交互不替代Tauri WebView、系统文件夹选择器、隐藏/退出或真实模型验收；本段未自动操作运行中用户窗口。真正Native API和授权合同未修改。
+截图均为明确标记的合成界面资料，不是实际项目观察或真实模型回复。Chrome页面交互不替代Tauri WebView、系统文件夹选择器、隐藏/退出或真实模型验收；本段未自动点击或截取运行中用户窗口。真正Native API和授权合同未修改。
+
+## 主线部署
+源码 `9e0c7bb` 已合入主线，主线再次通过UI类型、29测试与build。既有Vite记录四个修改模块的HMR更新，1420及Header模块HTTP200；Native PID27872在更新前后相同，未重启。已关闭临时1421预览，不影响主服务。输出与HMR记录见 `home-main-deployment.txt`。实际Native窗口观感仍由用户查看确认。
 
 仓库未配置外部架构画布目标；仅同步仓库内架构状态，不扫描个人笔记。
