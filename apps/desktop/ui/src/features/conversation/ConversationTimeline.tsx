@@ -65,6 +65,9 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
 }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [revertingOpId, setRevertingOpId] = useState<string | null>(null);
+  const standaloneOpinions = Object.values(opinionsMap).filter((opinion) =>
+    opinion.workspaceId === workspaceId && !messages.some((message) => message.opinionId === opinion.id)
+  );
 
   const handleCopy = (msg: ConversationMessage) => {
     const refsText =
@@ -99,27 +102,47 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
         const isSystem = msg.role === "system_notice";
         const attachedOpinion = msg.opinionId ? opinionsMap[msg.opinionId] : undefined;
 
+        if (msg.kind === "memory_receipt" && msg.memoryReceipt) {
+          const receipt = msg.memoryReceipt;
+          return (
+            <details key={msg.id} data-testid={`memory-receipt-${receipt.operationId}`} className="rounded-lg text-xs text-[var(--text-muted)]">
+              <summary className="flex cursor-pointer items-center gap-2 py-1.5 hover:text-[var(--text-primary)]">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#3d8068]" />
+                <span className="truncate">{receipt.reverted ? "已撤回" : "已记录"} · {receipt.decisionTitle}</span>
+              </summary>
+              <div className="mt-2 space-y-3 rounded-xl border border-[var(--border-subtle)] p-4">
+                <p className="whitespace-pre-wrap leading-relaxed">{receipt.decisionSummary}</p>
+                <div className="flex flex-wrap items-center gap-4">
+                  {receipt.sourceMessageId && <button type="button" className="hover:text-[#c27537]" onClick={() => onInspectEvidence(receipt.sourceMessageId!)}>查看原文</button>}
+                  {!receipt.reverted && <button type="button" disabled={revertingOpId === receipt.operationId} className="hover:text-[#b74a46]" onClick={() => handleRevert(receipt)}>{revertingOpId === receipt.operationId ? "撤销中…" : "撤销记录"}</button>}
+                  <span className="ml-auto text-[10px]">v{receipt.revision} · {receipt.operationId}</span>
+                </div>
+              </div>
+            </details>
+          );
+        }
+
         // 1. 本地初扫卡片 (local_scan_card，当未启用 StepFun 模型初读时)
         if (msg.kind === "local_scan_card" && msg.localScanData) {
           const scan = msg.localScanData;
           return (
-            <article
+            <details
               key={msg.id}
               data-testid="local-scan-card"
-              className="rounded-[var(--corner-md)] border border-[var(--border-strong)] hearth-surface p-6 space-y-4 animate-hearth-fade-up"
+              className="rounded-xl border border-[var(--border-subtle)] px-4 py-3 text-xs text-[var(--text-muted)]"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
+              <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <FolderSearch className="w-4 h-4 text-[#e88e47]" />
                   <span className="font-semibold text-[var(--text-primary)]">
-                    {workspaceName} · 本地只读结构概况 (local_scan_card)
+                    本地资料
                   </span>
                 </div>
                 <span className="font-mono tabular-nums">
-                  已选读来源 {scan.scannedFilesCount}
+                  已选读 {scan.scannedFilesCount} 项 · 非模型分析
                 </span>
-              </div>
-
+              </summary>
+              <div className="pt-4 space-y-4">
               <p className="text-sm text-[var(--text-primary)] leading-relaxed">{msg.content}</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs pt-1">
@@ -154,7 +177,8 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
                   </button>
                 </div>
               )}
-            </article>
+              </div>
+            </details>
           );
         }
 
@@ -297,7 +321,7 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
           <article
             key={msg.id}
             data-testid={`message-${msg.id}`}
-            className={`space-y-3 animate-hearth-fade-up ${isUser ? "pl-6 sm:pl-20" : "pr-1"}`}
+            className={`group space-y-3 animate-hearth-fade-up ${isUser ? "pl-6 sm:pl-20" : "pr-1"}`}
           >
             <div
               className={`rounded-[var(--corner-md)] transition-colors ${
@@ -322,19 +346,14 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
                   <span className="font-mono tabular-nums">
                     {msg.persistedAt.slice(11, 16)}
                   </span>
-                  {msg.status === "persisted" && (
-                    <>
-                      <span aria-hidden="true">·</span>
-                      <span className="text-[11px]">已持久化</span>
-                    </>
-                  )}
+
                 </div>
 
                 <button
                   type="button"
                   onClick={() => handleCopy(msg)}
                   aria-label="复制消息与引用"
-                  className="inline-flex items-center gap-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                  className="inline-flex items-center gap-1 text-[11px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-[var(--text-primary)] transition-opacity"
                 >
                   {copiedId === msg.id ? (
                     <>
@@ -344,7 +363,7 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
                   ) : (
                     <>
                       <Copy className="w-3 h-3" />
-                      <span>复制</span>
+                      <span className="sr-only">复制</span>
                     </>
                   )}
                 </button>
@@ -357,8 +376,9 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
 
               {/* 行内证据引用列表（区分只见摘要 / 原文 / 过期 / 移出当前范围） */}
               {msg.sourceRefs && msg.sourceRefs.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex flex-wrap items-center gap-2 text-xs">
-                  <span className="text-[var(--text-muted)]">证据引用：</span>
+                <details className="mt-3 text-xs text-[var(--text-muted)]">
+                  <summary className="cursor-pointer py-1 hover:text-[var(--text-primary)]">依据 · {msg.sourceRefs.length} 条</summary>
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
                   {msg.sourceRefs.map((refId) => {
                     const ev = evidenceMap[refId];
                     if (!ev) return null;
@@ -391,7 +411,8 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
                       </button>
                     );
                   })}
-                </div>
+                  </div>
+                </details>
               )}
 
               {/* 持久记忆写入回执（PRD §4.3: 只有后端成功返回 memoryOperationId 才显示“已记下决策 · 查看 / 撤销”） */}
@@ -450,18 +471,15 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
       })}
 
       {/* 独立持久化观点不是伪造的聊天消息，也不依赖临时流事件。 */}
-      {Object.values(opinionsMap).filter((opinion) =>
-        opinion.workspaceId === workspaceId && !messages.some((message) => message.opinionId === opinion.id)
-      ).map((opinion) => (
-        <section key={opinion.id} aria-label="已保存的观点与修订">
-          <OpinionInlineCard
-            opinion={opinion}
-            evidenceMap={evidenceMap}
-            onInspectEvidence={onInspectEvidence}
-            onSubmitFeedback={onSubmitOpinionFeedback}
-          />
-        </section>
-      ))}
+      {standaloneOpinions.length > 0 && <details className="text-xs text-[var(--text-muted)]">
+        <summary className="cursor-pointer py-2 hover:text-[var(--text-primary)]">观点记录 · {standaloneOpinions.length}</summary>
+        <div className="space-y-4 pt-3">{standaloneOpinions.map((opinion) => (
+          <section key={opinion.id} aria-label="已保存的观点与修订">
+            <OpinionInlineCard opinion={opinion} evidenceMap={evidenceMap}
+              onInspectEvidence={onInspectEvidence} onSubmitFeedback={onSubmitOpinionFeedback} />
+          </section>
+        ))}</div>
+      </details>}
 
       {/* 实时流式生成临时视图（仅属于当前 Workspace 与当前 RunId，PRD §4.2 & §7.6） */}
       {streamState && streamState.status === "streaming" && (

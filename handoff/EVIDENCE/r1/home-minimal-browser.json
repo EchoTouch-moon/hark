@@ -1,0 +1,52 @@
+{
+  "fixture": "synthetic UI only; not real Native data",
+  "checks": [
+    {
+      "page": "home-before-synthetic.png",
+      "headerButtons": 5,
+      "scanExpanded": true,
+      "scrollWidth": 1120,
+      "viewport": 1120
+    },
+    {
+      "page": "home-after-synthetic.png",
+      "headerButtons": 2,
+      "scanExpanded": false,
+      "scrollWidth": 1120,
+      "viewport": 1120
+    },
+    {
+      "overviewOpens": true,
+      "progressInDialog": true
+    },
+    {
+      "escapeClosesOverview": true,
+      "focusReturnsToMenu": true,
+      "scanCanExpand": true
+    },
+    {
+      "mobileWidth": 390,
+      "scrollWidth": 390,
+      "headerButtons": 2
+    },
+    {
+      "menuAction": "open-history-search-btn",
+      "modalOpened": true
+    },
+    {
+      "menuAction": "open-workspace-settings-btn",
+      "modalOpened": true
+    },
+    {
+      "menuAction": "menu-open-app-settings",
+      "modalOpened": true
+    },
+    {
+      "darkThemeApplied": true
+    },
+    {
+      "emptyStatePickerVisible": true
+    }
+  ],
+  "consoleErrors": []
+}

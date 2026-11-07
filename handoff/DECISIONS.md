@@ -1,5 +1,10 @@
 # Hark R1 决策
 
+## 主页极简整理
+- 按用户要求收起而不删除功能：保留炉心风格，顶栏只留项目与⋯；低频配置/历史与诊断信息按需打开。
+- 复用现有Bridge、进度/记忆组件，仅增加Header与原生dialog容器；不增依赖、表、后端API或门禁，不重启Rust。
+- 保留真正错误、合成预览标识、只读说明与模型/Workspace授权检查；折叠不改变持久化或完成权威。
+
 - 用户明确批准隔离新建 `dev/r1-desktop`，PRD v0.5.1 替代旧 M0/M1 产品/实施合同，保留安全红线；PRD 原 DRAFT 状态不擅改。
 - 原工作区有未提交修改，不覆盖、不 stash、不代为提交；新 worktree 从本机 origin/master 7fa37df 建立，未 fetch，不声称远端最新。
 - 前端主体暂缓；Grok 4.7 分 Core → Host → integration 三个独占串行 seam 实现，主会话负责规划与代码/证据审查，不额外消耗 OpenAI 规划子 agent。

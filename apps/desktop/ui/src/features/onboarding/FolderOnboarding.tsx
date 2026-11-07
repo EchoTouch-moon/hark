@@ -150,31 +150,25 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
       <section
         aria-label="选择项目文件夹"
         data-testid="folder-onboarding-picker"
-        className="w-full max-w-[680px] mx-auto my-10 rounded-[20px] border border-[var(--border-subtle)] hearth-surface p-8 sm:p-10 text-center space-y-7 animate-hearth-fade-up"
+        className="w-full max-w-[600px] mx-auto my-16 sm:my-24 px-6 py-8 text-center space-y-7 animate-hearth-fade-up"
       >
         <div className="space-y-3">
           <div className="w-11 h-11 rounded-2xl bg-[#e88e47]/12 border border-[#e88e47]/30 flex items-center justify-center mx-auto">
             <Flame className="w-5 h-5 text-[#e88e47]" />
           </div>
-          <p className="text-xs text-[var(--text-muted)] tracking-wide">
-            Hark R1 · 对话即炉心
-          </p>
           <h2 className="text-2xl sm:text-[26px] font-semibold text-[var(--text-primary)] font-serif-narrative">
-            从一个你正在关心的项目开始。
+            从一个项目开始
           </h2>
           <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto leading-relaxed">
             {native
-              ? "选一个本地文件夹。系统选择器只交回一次性令牌，我会在只读边界内初扫，先写本地发现卡，而不是假装已经理解它。"
+              ? "只读了解项目资料，不修改文件。"
               : "选一个本地文件夹，我会先在只读边界内认识它，主动说出第一句理解，再和你深聊。"}
           </p>
         </div>
 
         <div className="max-w-lg mx-auto text-left space-y-3.5">
           {native ? (
-            <div className="space-y-3">
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                Native 模式不接受手输路径，也不使用预设目录。取消选择器不会被当成导入成功。
-              </p>
+            <div className="space-y-3 text-center">
               <button
                 type="button"
                 disabled={loadingPreview}
@@ -183,7 +177,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[#c27537] text-white hover:bg-[#b0672c] disabled:opacity-50 shadow-xs transition-all active:scale-[0.98]"
               >
                 <FolderOpen className="w-4 h-4" />
-                <span>{loadingPreview ? "正在等待系统选择器并初扫…" : "选择文件夹"}</span>
+                <span>{loadingPreview ? "正在读取…" : "选择项目文件夹"}</span>
               </button>
             </div>
           ) : (

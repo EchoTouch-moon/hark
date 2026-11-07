@@ -1,17 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
-  ChevronDown,
-  MoreHorizontal,
-  Search,
-  Shield,
-  Sliders,
-  FolderPlus,
-  EyeOff,
-  Power,
-  Flame,
-  Info,
-} from "lucide-react";
-import {
   AttentionItem,
   ConfirmImportInput,
   ConversationMessage,
@@ -44,6 +32,8 @@ import {
   StreamAccumulatorState,
 } from "../bridge/schemas";
 import { FlameAtmosphere } from "../components/hearth/FlameAtmosphere";
+import { HomeHeader } from "../components/hearth/HomeHeader";
+import { ProjectOverviewSheet } from "../components/hearth/ProjectOverviewSheet";
 import { MemoryFold } from "../components/hearth/MemoryFold";
 import { AttentionNotice } from "../components/hearth/AttentionNotice";
 import { TrayCompanionBar } from "../components/hearth/TrayCompanionBar";
@@ -114,9 +104,8 @@ export const AppShell: React.FC = () => {
   const [showHistorySearch, setShowHistorySearch] = useState(false);
   const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
   const [showAppSettings, setShowAppSettings] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [inspectedEvidence, setInspectedEvidence] = useState<EvidenceDetail | null>(null);
-  const [showFlameTooltip, setShowFlameTooltip] = useState(false);
+  const [showProjectOverview, setShowProjectOverview] = useState(false);
 
   // 1. 昼夜环境光同步（PRD §6.4 + Dual-Theme 规范）
   useEffect(() => {
@@ -246,7 +235,6 @@ export const AppShell: React.FC = () => {
   };
 
   const handleHideWindow = async () => {
-    setShowMoreMenu(false);
     if (bridgeMode === "strict_tauri_ipc") {
       try {
         if (!bridge.hideWindow) {
@@ -262,7 +250,6 @@ export const AppShell: React.FC = () => {
   };
 
   const handleQuitApp = async () => {
-    setShowMoreMenu(false);
     if (bridgeMode === "strict_tauri_ipc") {
       try {
         if (!bridge.quitApp) {
@@ -569,25 +556,21 @@ export const AppShell: React.FC = () => {
   const currentDraft = getWorkspaceDraft(draftStore, currentWorkspaceId);
 
   const getHeaderContextStatus = () => {
-    if (runtime.piSidecarStatus === "unavailable") {
-      return "Sidecar 不可用 · 本地只读模式";
-    }
-    if (!runtime.stepFunConfigured) {
-      return "尚未配置模型 · 本地只读模式";
-    }
+    if (!runtime.stepFunConfigured) return "尚未配置模型 · 可查看本地资料";
+    if (runtime.piSidecarStatus === "unavailable") return "模型连接暂不可用";
     if (!currentSummary) {
       return "等待绑定项目文件夹";
     }
     if (currentSummary.observerState === "paused") {
       return "文件观察已暂停 (paused)";
     }
-    if (onboardingRun && onboardingRun.stage !== "completed") {
+    if (onboardingRun && ["reading", "analyzing"].includes(onboardingRun.stage)) {
       return "正在认识项目…";
     }
     if (streamState && streamState.status === "streaming") {
       return "正在生成回复…";
     }
-    return `观察中 · ${flameVisual.badgeText}`;
+    return "项目已就绪";
   };
 
   return (
@@ -631,184 +614,20 @@ export const AppShell: React.FC = () => {
         }}
       />
 
-      {/* Quiet Header · 低密度三区顶栏合同 */}
-      <header
-        data-testid="quiet-header"
-        className="sticky top-0 z-30 flex items-center justify-between gap-8 px-6 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--canvas)]/75 backdrop-blur-xl"
-      >
-        {/* Zone 1: 当前项目 Workspace Switcher */}
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowWorkspacePicker(true)}
-            data-testid="workspace-switcher-trigger"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-solid)]/80 hover:border-[#e88e47] text-sm font-semibold text-[var(--text-primary)] shadow-2xs transition-all active:scale-[0.98] whitespace-nowrap shrink-0"
-          >
-            <Flame className="w-4 h-4 text-[#e88e47] shrink-0" />
-            <span className="truncate max-w-[240px] font-serif-narrative">
-              {currentSummary ? currentSummary.name : "Hark · 选择项目"}
-            </span>
-            <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
-          </button>
-
-          {/* PRD §9.2 强制要求：开发预览适配器需明示 DEV PREVIEW / SYNTHETIC */}
-          <span
-            data-testid="bridge-mode-indicator"
-            className="hidden sm:inline-block font-mono text-[11px] text-[var(--text-muted)] whitespace-nowrap shrink-0"
-          >
-            {bridgeMode === "dev_preview_synthetic"
-              ? "DEV PREVIEW / SYNTHETIC"
-              : "STRICT TAURI IPC"}
-          </span>
-        </div>
-
-        {/* Zone 2: 轻量状态与叙事火光说明 */}
-        <div className="relative hidden md:flex items-center gap-2 text-xs text-[var(--text-muted)] whitespace-nowrap shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowFlameTooltip((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 hover:text-[var(--text-primary)] transition-colors"
-          >
-            <span data-testid="header-context-status">{getHeaderContextStatus()}</span>
-            <Info className="w-3.5 h-3.5 opacity-70" />
-          </button>
-
-          {showFlameTooltip && (
-            <div
-              role="tooltip"
-              className="absolute top-9 left-1/2 -translate-x-1/2 w-80 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-solid)] p-3.5 shadow-xl text-xs whitespace-normal z-40 space-y-1.5 animate-hearth-pop"
-            >
-              <div className="font-semibold text-[var(--text-primary)]">
-                叙事火势阶段：{flameVisual.stage}（{flameVisual.badgeText}）
-              </div>
-              <p className="text-[var(--text-muted)] leading-relaxed">
-                {flameVisual.description}
-              </p>
-              <p className="text-[11px] text-[var(--text-muted)] pt-1.5 border-t border-[var(--border-subtle)]">
-                边界声明：火势仅由后端已核验项目事实决定，绝不与聊天条数、签到天数或点击次数挂钩。
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Zone 3: 快捷按需入口与 [⋯] More Menu */}
-        <div className="relative flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowHistorySearch(true)}
-            aria-label="打开记忆与历史检索"
-            data-testid="open-history-search-btn"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors whitespace-nowrap shrink-0"
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">检索记忆</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowWorkspaceSettings(true)}
-            aria-label="打开工作空间权限与范围"
-            data-testid="open-workspace-settings-btn"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors whitespace-nowrap shrink-0"
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">项目权限</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowMoreMenu((prev) => !prev)}
-            aria-label="更多菜单 (More Menu)"
-            aria-expanded={showMoreMenu}
-            data-testid="more-menu-trigger"
-            className="p-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-solid)]/80 text-[var(--text-primary)] hover:border-[#e88e47] transition-all active:scale-[0.97] shrink-0"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-
-          {showMoreMenu && (
-            <div
-              role="menu"
-              data-testid="more-menu-dropdown"
-              className="absolute right-0 top-11 w-56 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-solid)] shadow-2xl py-1.5 text-xs z-50 animate-hearth-pop"
-            >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setShowMoreMenu(false);
-                  setShowOnboardingFlow(true);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2 text-[var(--text-primary)]"
-              >
-                <FolderPlus className="w-3.5 h-3.5 text-[#c27537]" />
-                <span>认识新项目文件夹…</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setShowMoreMenu(false);
-                  setShowHistorySearch(true);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2 text-[var(--text-primary)]"
-              >
-                <Search className="w-3.5 h-3.5 text-[#c27537]" />
-                <span>历史与专属记忆检索</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setShowMoreMenu(false);
-                  setShowWorkspaceSettings(true);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2 text-[var(--text-primary)]"
-              >
-                <Shield className="w-3.5 h-3.5 text-[#c27537]" />
-                <span>当前项目权限与排除目录</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                data-testid="menu-open-app-settings"
-                onClick={() => {
-                  setShowMoreMenu(false);
-                  setShowAppSettings(true);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2 text-[var(--text-primary)]"
-              >
-                <Sliders className="w-3.5 h-3.5 text-[#c27537]" />
-                <span>应用设置 / 昼夜主题 / 故障演练</span>
-              </button>
-              <div className="my-1 border-t border-[var(--border-subtle)]" />
-              <button
-                type="button"
-                role="menuitem"
-                data-testid="menu-hide-to-tray"
-                onClick={() => {
-                  void handleHideWindow();
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2 text-[var(--text-muted)]"
-              >
-                <EyeOff className="w-3.5 h-3.5" />
-                <span>关闭窗口（隐藏至系统托盘）</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  void handleQuitApp();
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-[#b74a46]/10 flex items-center gap-2 text-[#b74a46]"
-              >
-                <Power className="w-3.5 h-3.5" />
-                <span>完全退出 Hark</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+      <HomeHeader
+        projectName={currentSummary?.name}
+        status={getHeaderContextStatus()}
+        busy={Boolean(streamState?.status === "streaming" || onboardingRun?.stage === "reading" || onboardingRun?.stage === "analyzing")}
+        synthetic={bridgeMode === "dev_preview_synthetic"}
+        onChooseProject={() => setShowWorkspacePicker(true)}
+        onOverview={() => setShowProjectOverview(true)}
+        onSearch={() => setShowHistorySearch(true)}
+        onProjectSettings={() => setShowWorkspaceSettings(true)}
+        onAppSettings={() => setShowAppSettings(true)}
+        onAddProject={() => setShowOnboardingFlow(true)}
+        onHide={() => { void handleHideWindow(); }}
+        onQuit={() => { void handleQuitApp(); }}
+      />
 
       {/* Conversation Hearth · 中央单页对话炉心（最大可读宽度 800px，打开 Inspector 时平滑让位且绝不遮挡） */}
       <main className="relative z-10 flex-1 flex flex-col transition-all duration-200">
@@ -873,20 +692,27 @@ export const AppShell: React.FC = () => {
                 }
               />
 
-              {/* FE-04 · 正在认识项目实时阶段进度 */}
-              <OnboardingProgress
-                run={onboardingRun}
-                onAdvanceStage={handleAdvanceOnboarding}
-                onEnableModelAuth={() =>
-                  handleUpdateWorkspacePermissions({ modelPermission: "enabled" })
-                }
-              />
-
-              {/* FE-10 · 视觉上的「记忆折页」（随对话滚动，不常驻遮挡） */}
-              <MemoryFold
-                fold={currentWorkspaceDetail?.memoryFold}
-                onInspectEvidence={handleInspectEvidence}
-              />
+              <ProjectOverviewSheet open={showProjectOverview} onClose={() => setShowProjectOverview(false)}>
+                <p className="mb-4 text-sm text-[var(--text-muted)]">{getHeaderContextStatus()}</p>
+                <OnboardingProgress
+                  run={onboardingRun}
+                  onAdvanceStage={bridgeMode === "dev_preview_synthetic" ? handleAdvanceOnboarding : undefined}
+                  onEnableModelAuth={() => {
+                    setShowProjectOverview(false);
+                    return handleUpdateWorkspacePermissions({ modelPermission: "enabled" });
+                  }}
+                />
+                {/* FE-10 · 记忆折页，按需查看 */}
+                <MemoryFold
+                  fold={currentWorkspaceDetail?.memoryFold}
+                  onInspectEvidence={(id) => { setShowProjectOverview(false); void handleInspectEvidence(id); }}
+                />
+                <details className="mt-4 text-xs text-[var(--text-muted)]">
+                  <summary className="cursor-pointer py-2">界面状态说明</summary>
+                  <p className="pt-2 leading-relaxed">{flameVisual.description}</p>
+                  <p className="pt-2 leading-relaxed">火光不按聊天次数或点击次数增长，未有项目依据时保持中性。</p>
+                </details>
+              </ProjectOverviewSheet>
 
               {/* FE-05 · 中央对话时间线（含首条主动开场、观点卡、记忆回执、分级证据引用） */}
               <ConversationTimeline

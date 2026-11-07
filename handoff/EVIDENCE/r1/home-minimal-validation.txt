@@ -1,0 +1,206 @@
+npm notice run typecheck:ui
+npm notice run npm run typecheck -w @hark/desktop-ui
+npm notice run @hark/desktop-ui@0.0.0 typecheck
+npm notice run tsc -p tsconfig.json --noEmit
+npm notice run test:ui
+npm notice run npm run test -w @hark/desktop-ui
+npm notice run @hark/desktop-ui@0.0.0 test
+npm notice run node --experimental-strip-types --test src/bridge/native-adapter.test.ts src/bridge/schemas.test.ts
+TAP version 13
+# Subtest: persisted memory receipts survive conversation reload without inventing user text
+ok 1 - persisted memory receipts survive conversation reload without inventing user text
+  ---
+  duration_ms: 1.374917
+  type: 'test'
+  ...
+# Subtest: receipt projection never marks an uncommitted or missing-time result saved
+ok 2 - receipt projection never marks an uncommitted or missing-time result saved
+  ---
+  duration_ms: 0.092958
+  type: 'test'
+  ...
+# Subtest: opinion queries and feedback use Native records and preserve pending revision
+ok 3 - opinion queries and feedback use Native records and preserve pending revision
+  ---
+  duration_ms: 0.213666
+  type: 'test'
+  ...
+# Subtest: history search keeps historical and LIKE labels and reads actual message evidence
+ok 4 - history search keeps historical and LIKE labels and reads actual message evidence
+  ---
+  duration_ms: 0.35975
+  type: 'test'
+  ...
+# Subtest: undo requires a real Core reverted receipt
+ok 5 - undo requires a real Core reverted receipt
+  ---
+  duration_ms: 0.325541
+  type: 'test'
+  ...
+# Subtest: strict host failure does not fall back to dev preview
+ok 6 - strict host failure does not fall back to dev preview
+  ---
+  duration_ms: 0.325292
+  type: 'test'
+  ...
+# Subtest: strict without a host does not invoke and does not use preview
+ok 7 - strict without a host does not invoke and does not use preview
+  ---
+  duration_ms: 0.15
+  type: 'test'
+  ...
+# Subtest: dev preview is only selected explicitly
+ok 8 - dev preview is only selected explicitly
+  ---
+  duration_ms: 0.053375
+  type: 'test'
+  ...
+# Subtest: picker flow sends token only and never a path
+ok 9 - picker flow sends token only and never a path
+  ---
+  duration_ms: 0.496083
+  type: 'test'
+  ...
+# Subtest: path preview does not invoke
+ok 10 - path preview does not invoke
+  ---
+  duration_ms: 0.358125
+  type: 'test'
+  ...
+# Subtest: confirm body is root scan and selection only
+ok 11 - confirm body is root scan and selection only
+  ---
+  duration_ms: 0.265792
+  type: 'test'
+  ...
+# Subtest: confirm without nativeSelection is refused before invoke
+ok 12 - confirm without nativeSelection is refused before invoke
+  ---
+  duration_ms: 0.189166
+  type: 'test'
+  ...
+# Subtest: read failure does not commit a card or fall back
+ok 13 - read failure does not commit a card or fall back
+  ---
+  duration_ms: 0.120542
+  type: 'test'
+  ...
+# Subtest: local scan card is not disguised as model understanding
+ok 14 - local scan card is not disguised as model understanding
+  ---
+  duration_ms: 0.104958
+  type: 'test'
+  ...
+# Subtest: source ref detail uses the returned excerpt and does not imply a path read
+ok 15 - source ref detail uses the returned excerpt and does not imply a path read
+  ---
+  duration_ms: 0.154208
+  type: 'test'
+  ...
+# Subtest: startAgentTurn rejects empty input before invoke and does not invent completion
+ok 16 - startAgentTurn rejects empty input before invoke and does not invent completion
+  ---
+  duration_ms: 0.273
+  type: 'test'
+  ...
+# Subtest: startAgentTurn creates the channel before invoke and does not mark an unverified run done
+ok 17 - startAgentTurn creates the channel before invoke and does not mark an unverified run done
+  ---
+  duration_ms: 0.404042
+  type: 'test'
+  ...
+# Subtest: startAgentTurn maps an unconfigured sidecar without emitting completion
+ok 18 - startAgentTurn maps an unconfigured sidecar without emitting completion
+  ---
+  duration_ms: 0.119833
+  type: 'test'
+  ...
+# Subtest: snapshot load uses shell_snapshot and list_workspaces and does not mark the model configured
+ok 19 - snapshot load uses shell_snapshot and list_workspaces and does not mark the model configured
+  ---
+  duration_ms: 0.771708
+  type: 'test'
+  ...
+# Subtest: unfinished child workspace and remote search surfaces do not invoke
+ok 20 - unfinished child workspace and remote search surfaces do not invoke
+  ---
+  duration_ms: 0.123583
+  type: 'test'
+  ...
+# Subtest: model grant uses the existing set_model_grant command and does not send a key
+ok 21 - model grant uses the existing set_model_grant command and does not send a key
+  ---
+  duration_ms: 0.105875
+  type: 'test'
+  ...
+# Subtest: hide and quit call the real commands
+ok 22 - hide and quit call the real commands
+  ---
+  duration_ms: 0.07825
+  type: 'test'
+  ...
+# Subtest: invoke error object and string shapes do not become success
+ok 23 - invoke error object and string shapes do not become success
+  ---
+  duration_ms: 0.058792
+  type: 'test'
+  ...
+# Subtest: scan mapping keeps ignored paths as display only
+ok 24 - scan mapping keeps ignored paths as display only
+  ---
+  duration_ms: 0.053834
+  type: 'test'
+  ...
+# Subtest: NarrativeState: unknown availability or unrecognized stage falls back to neutral flame
+ok 25 - NarrativeState: unknown availability or unrecognized stage falls back to neutral flame
+  ---
+  duration_ms: 0.516542
+  type: 'test'
+  ...
+# Subtest: Stream protocol: deduplicates seq, orders out-of-order events, and isolates by workspaceId/runId
+ok 26 - Stream protocol: deduplicates seq, orders out-of-order events, and isolates by workspaceId/runId
+  ---
+  duration_ms: 0.163458
+  type: 'test'
+  ...
+# Subtest: Stream protocol: marks completed_unverified when run_completed has no persistence confirmation
+ok 27 - Stream protocol: marks completed_unverified when run_completed has no persistence confirmation
+  ---
+  duration_ms: 0.116958
+  type: 'test'
+  ...
+# Subtest: Draft isolation: switching workspaces preserves separate draft strings
+ok 28 - Draft isolation: switching workspaces preserves separate draft strings
+  ---
+  duration_ms: 0.072875
+  type: 'test'
+  ...
+# Subtest: Error code descriptor returns deterministic recovery metadata
+ok 29 - Error code descriptor returns deterministic recovery metadata
+  ---
+  duration_ms: 0.115959
+  type: 'test'
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 29
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 90.073625
+npm notice run build:ui
+npm notice run npm run build -w @hark/desktop-ui
+npm notice run @hark/desktop-ui@0.0.0 build
+npm notice run vite build
+vite v8.3.6 building client environment for production...
+transforming...
+✓ 1685 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   1.05 kB │ gzip:   0.55 kB
+dist/assets/index-dylvEXAw.css   64.49 kB │ gzip:  10.14 kB
+dist/assets/index-wWchlmC3.js   388.82 kB │ gzip: 114.05 kB
+
+✓ built in 332ms

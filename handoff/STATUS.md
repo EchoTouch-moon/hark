@@ -4,6 +4,7 @@
 
 | 项目 | 状态 | 证据/下一步 |
 |---|---|---|
+| 主页极简整理 | verified-browser-synthetic | 顶栏5→2按钮，低频操作进⋯菜单；初读/记忆折页移入项目概览，扫描/依据/观点/收据按需展开；保留错误提示及权限检查。UI类型、29测试、build通过；Chrome合成页面验证菜单、弹窗/Escape/焦点、390px布局与深浅主题，非真实Native或模型验收。见home-minimal.md |
 | F0 工程基线 | implemented | 用户批准；AGENTS、README、docs/r1/IMPLEMENTATION-PLAN.md |
 | F1 Core/Reader/SQLite | verified-local | 审查五项已在当前 Core 串行合入并有本机联合测试。#2/#4 resolved-local，见 `f1-reader-fifo-budget.md`。#1 与 #5 fd/物理范围 resolved-local，见 `f1-scope-repair.md`。#5 检查到 open/read 的短事务准入 resolved-local，见 `f1-revocation-admission.md`。#3 开场 run 绑定 resolved-local，见 `f1-opening-receipt.md` 与 `f1-core-integrated.md`。父会话已在 `0771ebe` 复跑 fmt/check/46 项测试通过，放行 F1 本机底座继续开发；不是产品 PASS |
 | F2 嵌入式 Pi Host | verified-local | 已合入 `2b9ac8c` 与 `40dae61`。本段复跑 strict TS、SDK smoke、Host 14 项（含 opening 可空 userMessageId）与 stdio probe 通过。不是 StepFun，不是产品通过。见 `f2-parent-review.md` |
@@ -15,10 +16,10 @@
 | 用户React前端迁入 | verified-local | 已合入3c6289a，原目录不动；主会话复跑UI类型/21测试/build、Host类型与Tauri check通过。默认strict真实适配，已接picker→确认→卡片/对话/来源与隐藏/退出；未跑Native窗口点击，不冒称产品体验通过 |
 | 开发窗口启动 | running-local | 已实际启动Vite，127.0.0.1:1420返回200；新构建Tauri进程存活并通过NSRunningApplication激活到前台。不是截图/DOM/控件点击验收；见desktop-startup.md |
 | 模型配置与workspace启用 | verified-local | a8deffb已合入：页面本次运行Key、固定StepFun套餐anthropic协议、现有service_grants启用/禁用；保存不fetch、配置不等于已认证。主会话复跑Host14+2/UI24/SDKsmoke1/Native18与build通过，随后重启并激活新桌面；见model-settings.md |
-| 记忆/观点/反馈/检索 Core | verified-local | 已合入3dfc540+a4b1e92，v4独立记忆/观点修订、反馈/撤销及FTS5；否定/疑问/条件摘录决定修正。主会话复跑Core69及Native check通过。仍需Native/Host/UI接线，不当R1-B产品通过 |
+| 记忆/观点/反馈/检索 Core | verified-local | 已合入3dfc540+a4b1e92，v4独立记忆/观点修订、反馈/撤销及FTS5；否定/疑问/条件摘录决定修正。主会话复跑Core69及Native check通过。Native/Host/UI后续接线见下两行，不当R1-B产品通过 |
 | 认知后端 Native/UI | verified-local | 已合入6da36be：真实观点查询/反馈/撤销、历史检索、原消息证据回读，独立观点真实呈现及待修订状态。Native20/UI27与构建通过；用户选择部署后已重启，并确认能看到窗口。控件功能尚未用户验收 |
 | Pi认知工具 | verified-local-scripted | 已部署376d75e：普通对话 memory_propose_change/opinion_propose_change 与按需memory_recall，真实Core收据及重启后UI投影；Core69/Native21/Host16+2/UI29与构建通过。否定摘录待澄清、结束run不再写、取消保留此前已提交记忆均有合成transport回归。窗口已重启/前置，真实模型尚未验收，opening不写记忆 |
-| R1-A 当前下一步 | awaiting-user-model | 入口与管道均已接，用户需在桌面填新Key并为Workspace启用后主动发送，才可验证真实体验。原Key已撤销，本会话未用新Key或发请求；Memory/搜索/Observer等仍未实现 |
+| R1-A 当前下一步 | awaiting-user-model | 入口与管道均已接，用户需在桌面填新Key并为Workspace启用后主动发送，才可验证真实体验。原Key已撤销，本会话未用新Key或发请求；普通对话记忆工具已接；自动L0/L1、联网搜索与Observer仍未实现 |
 | macOS 安装包 / Windows 实机 | unverified | 不以本机静态检查替代。Windows 安全读源码 fail-closed，未在 Windows 编译 |
 | AT-05 / 父子排除 | blocked | 重叠拒绝不是排除流程。不得标通过 |
 
@@ -26,9 +27,9 @@ PRD 六项微型验收包：
 
 | ID | 状态 | 说明 |
 |---|---|---|
-| CTX-01 | verified-local | Host 请求级 pack 与本段 Core 有界概况已在合成快照/合成目录上验证。没有 Memory Engine，pack 标 empty。不能当产品通过 |
+| CTX-01 | verified-local | Host 请求级 pack 与本段 Core 有界概况已在合成快照/合成目录上验证。尚无自动L0/L1投影，pack标empty不代表没有已存记忆。不能当产品通过 |
 | MEM-11 | verified-local-scripted | 普通对话Host/Native可信绑定提议及Core真实收据、UI保存/撤销/重载已接；模型实际调用与漏记/误记表现未验证，opening写入未支持，不能标完整产品通过 |
-| SEARCH-01 | verified-core-only | 已实现FTS5 trigram与明确短词LIKE兜底、来源/历史标签；前端/recall尚待接线，未做用户检索验收 |
+| SEARCH-01 | verified-local | 已实现FTS5 trigram与明确短词LIKE兜底、来源/历史标签；Native/历史前端/按需recall已接，未做用户检索验收 |
 | WS-OVERLAP-01 | not-pass | 重叠显式拒绝；父子排除未实现，不称 AT-05 通过 |
-| ONBOARD-01 | verified-local | Core 拒绝取消/旧 run/错模型/未配置模型/跨 workspace/撤权，并只在绑定 run 的成功收据后折叠。无 UI、无真实模型，不是产品通过 |
+| ONBOARD-01 | verified-local | Core 拒绝取消/旧 run/错模型/未配置模型/跨 workspace/撤权，并只在绑定 run 的成功收据后折叠。已有Native/UI接线；无真实模型或用户操作验收，不是产品通过 |
 | READER-01 | pending | 网页 Reader 未做。本地文件负例见 EVIDENCE/r1/f1-core-limits.md |
