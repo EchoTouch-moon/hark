@@ -1,6 +1,6 @@
 # Hark R1 架构与交付状态
 
-当前已实现并在本机测试：Rust Core 库，嵌入 Pi SDK 1.5.0 的 TypeScript Host，进程内 Native shell，以及 Unix 上由 Rust 管理的一条首次开场 stdio。v1/v2迁移原文保留；v2给 `onboarding_runs` 增加当前 opening run 与授权快照列；v3为普通聊天扩展事件CHECK并增加稳定seq，仅新建 `conversation_runs`，保存普通run与对应用户/助手消息引用，重启恢复。主线源码现已增加v4：独立记忆/观点修订、反馈、幂等写收据与FTS5投影；聊天和文件来源仍各自为权威。Core69项通过，但Native/Host/页面的认知接口还在接线，当前运行桌面未因此被自动重启。sessionRef 写在现有 `evidence_json`，没有新 migration。目录授权可暂停/撤销。确认前初扫有界。Workspace 读取绑定已验证目录 fd。开场必须匹配 Core 发放的 run；调用方 `success` 不是完成。IPC v1 frame 没有 HTTP。
+当前已实现并在本机测试：Rust Core 库，嵌入 Pi SDK 1.5.0 的 TypeScript Host，进程内 Native shell，以及 Unix 上由 Rust 管理的一条首次开场 stdio。v1/v2迁移原文保留；v2给 `onboarding_runs` 增加当前 opening run 与授权快照列；v3为普通聊天扩展事件CHECK并增加稳定seq，仅新建 `conversation_runs`，保存普通run与对应用户/助手消息引用，重启恢复。主线源码现已增加v4：独立记忆/观点修订、反馈、幂等写收据与FTS5投影；聊天和文件来源仍各自为权威。Core69项通过；Native/页面认知读与反馈接口已合入6da36be（Native20/UI27），包括历史检索、观点反馈/撤销与消息来源。用户已选择部署并重启，随后确认窗口可见。Pi记忆/观点提议与recall工具仍待接，尚不会自动新建记忆/观点。sessionRef 写在现有 `evidence_json`，没有新 migration。目录授权可暂停/撤销。确认前初扫有界。Workspace 读取绑定已验证目录 fd。开场必须匹配 Core 发放的 run；调用方 `success` 不是完成。IPC v1 frame 没有 HTTP。
 
 Host 不调用 Pi CLI。stdout 只写 NDJSON。模型可见工具只有 `workspace.read_file` 与 `workspace.overview`。一个 Host 进程同时只跑一个 run。每次 provider 请求前反向 overview。Rust 用当前 Core 授权构造 `authorization.current`，Core `enabled` 映射 Host `active`。`stream.delta` 只是候选。合法 `stream.done` 后 Rust 用本轮真实读取收据调用 `commit_agent_opening`，成功才折叠本地卡。opening 的 `userMessageId` 缺省，不向 Hark 插入虚假用户消息。没有 Memory Engine，Context Pack 标 empty。显式 stepfun 槽可以按 OpenAI-completions 形状构造，真实协议未验证。
 
@@ -10,7 +10,7 @@ Native shell 目录选择仍走短时 picker token。未配置 Sidecar 时 `conn
 
 页面模型配置与workspace启用已合入a8deffb，固定StepFun套餐anthropic协议并复用Pi驱动；Key仅本次Native/Node运行内存、元数据无Key，授权复用service_grants。配置不自动发请求、不代表已认证。主会话复跑Host14+2/UI24/SDKsmoke1/Native18及前端/桌面build通过，已重启并激活新桌面供用户操作。
 
-当前未完成或未通过：窗口控件点击/托盘人工验收、用户新Key下真实聊天体验、PiSDK真实StepFun、记忆/观点/反馈与检索的应用接线、联网搜索、Observer、网页Reader、安装包、Windows实机、整R1。父子目录排除（AT-05）未实现。已进入内核的单次 read 不能被本切片打断。合成 scripted transport 不是 StepFun。
+当前未完成或未通过：窗口控件点击/托盘人工验收、用户新Key下真实聊天体验、PiSDK真实StepFun、Pi记忆/观点提议/recall工具及真实对话认知验收、联网搜索、Observer、网页Reader、安装包、Windows实机、整R1。父子目录排除（AT-05）未实现。已进入内核的单次 read 不能被本切片打断。合成 scripted transport 不是 StepFun。
 
 主会话已在 `9f9bb01` 定向复核并复跑 Core48、Native16项通过，接受真实本地磁盘/SQLite/Node+PiSDK/stdio 首次开场底座；模型transport仍为合成SSE。StepFun套餐 `/step_plan/v1/messages` 的直接HTTP基础文本已实际200/OK（step-3.7-flash，输入21/输出130tokens）；通用API两次402不代表套餐不可用。原3次许可已耗尽，Key已撤销。现有Host仍只接openai-completions，下一切片复用PiSDK的anthropic-messages支持套餐；SDK流式/工具与桌面真实闭环尚未通过。不再扩建独立验收/额度脚本，优先产品接线与常规连续对话。
 

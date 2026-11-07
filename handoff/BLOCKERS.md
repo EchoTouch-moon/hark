@@ -1,5 +1,10 @@
 # Hark R1 阻塞与验证条件
 
+## 认知接线进度与Grok容量（当前）
+- 认知Core v4与Native/UI读/反馈/撤销/检索已合入。主线6da36be，Native20/UI27与构建通过，用户确认新窗口可见；不再把FTS或这些读接口标成未实现。
+- Grok run07e5404c连接中断；重试e3540a70明确返回模型容量不足。隔离worktree当时HEAD d0c148c、clean，无partial改动。用户明确批准主会话直接完成该段，未换CLI/关闭保护或购买优先服务；ee9ddc4→主线6da36be为实际实现证据。
+- Pi memory_propose_change/opinion_propose_change/memory_recall仍未接，不是Native/UI回归通过就完成自动记忆。联网研究/Observer/父子排除/安装包继续未实现。
+
 ## Grok 403 历史阻塞与恢复尝试
 
 - 2026-11-06 用户要求继续后，原 subagent 协议已实际完成两个 Grok 4.7 high child：Host `40dae61` 修复与 Native 只读审查。当前不再由 403 阻塞；历史失败记录保留。主会话已复跑 Host TS/SDK smoke/13 项测试/probe 并定向放行其进入集成；见 `f2-parent-review.md`。
