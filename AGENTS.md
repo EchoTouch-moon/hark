@@ -29,6 +29,7 @@ READ 任务 → 最小接口/测试 → 实现 → 局部测试/类型检查 →
 本地架构画布只在配置存在、可达且不触及上述禁止目录时同步；不扫描个人笔记，不把个人路径写入仓库。缺配置不阻塞开发。
 
 ## 本机环境
+- 本机Finder启动使用 `/usr/bin/python3`（3.9.6）、`/usr/bin/osacompile` 和AppKit；无需终端PATH、npm命令或Automation/Accessibility操作。桌面Hark.app指向仓库 `scripts/launch-desktop-dev.py`，不是独立安装包。Native已实际build并由入口启动/激活，重复启动复用PID；日志在Git忽略的data/desktop-launcher，退出后Key仍需重填。
 - 本机Pillow `11.3.0` 与 `/usr/bin/iconutil` 已验证可用：Pillow检查/缩放RGBA PNG、生成七档ICO，iconutil生成ICNS，无新装依赖。用户选定炉心01，Native资源位于 `apps/desktop/src-tauri/icons/`；macOS cargo check/fmt已过，运行中进程未重启，实际Dock/托盘及Windows效果未验。
 - 本机Chrome位于 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`，已用headless独立临时profile及Node内置WebSocket/CDP检查合成主页，无新增浏览器依赖；不使用个人浏览器profile，不等于Tauri WebView验收。UI改动可由既有Vite热更新，无须重启Rust或清除本次运行Key。
 - 本轮使用原仓库 linked worktree、分支 `dev/r1-desktop`，起点为本机 `origin/master` 的 `7fa37df`；未 fetch，不声称为远端最新状态。原 dirty 工作区不改动、不 stash、不代为提交。

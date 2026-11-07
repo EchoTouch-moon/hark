@@ -1,5 +1,10 @@
 # Hark R1 执行交接
 
+## 最新：桌面Hark启动入口
+- 按用户选择创建开发启动器Hark.app，炉心图标；双击准备本地页面并启动Native，重复打开复用已有进程。
+- 已运行6项单测、Native build、签名校验；通过桌面入口实际启动，再次运行PID保持97055、AppKit激活成功，Vite200。此前旧PID已不存在，没有停止或重启一个在用进程。
+- 启动器需要原仓库；退出后新启动Key仍是会话制，隐藏窗口可用托盘显示。不是独立安装包或完整R1验收。见EVIDENCE/r1/desktop-launcher.md。
+
 ## 最新：App Icon 三款提案
 - `design/app-icon-concepts/index.html` 为独立预览，`preview.png` 为实际浏览器截图；三款SVG/1024透明PNG含大图、小尺寸及深色背景对照。
 - 用户随后选定01；已生成正式PNG/ICNS/ICO/单色托盘并接入配置，资源解析与macOS cargo check/fmt通过。未重启后台，没有模型请求；实际Dock/托盘待用户批准下次启动后确认，仍未启用打包。

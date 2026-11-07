@@ -1,5 +1,7 @@
 # Hark R1 架构与交付状态
 
+本机入口：用户授权的桌面Hark.app已创建，AppleScript→仓库Python标准库启动器→本地Vite/既有Native二进制，已实测启动与复用进程；不是独立产品打包，bundle.active仍false。无Native接口/模型授权变化，仍需本机仓库与Node。证据：`handoff/EVIDENCE/r1/desktop-launcher.md`。
+
 应用视觉资源：三款App Icon提案已输出到 `design/app-icon-concepts/`，用户选定01炉心；PNG32～1024、ICNS/ICO与单色托盘已接入Native配置，macOS cargo check/fmt及资源解析通过。bundle.active仍false，当前进程未重启；实际Dock/托盘、Windows与安装包未验。功能架构、权限与运行进程不变。
 
 主页已完成渐进披露整理：Header仅项目与⋯，初读/记忆折页移入项目概览，扫描/依据/观点/记忆回执默认折叠，Composer保留核心操作。复用原Bridge和原生dialog，无后端/权限/存储变更。UI类型、29测试、构建与Chrome合成页面交互/截图通过，Native WebView实际效果待用户确认。证据：`handoff/EVIDENCE/r1/home-minimal.md`；外部画布目标未配置，未扫描个人笔记。

@@ -11,6 +11,11 @@
 
 联合测试模型响应是明确合成transport；真实StepFun接口曾仅做直接文本连通验证，用户新Key下的应用流式/工具/体验尚未验收。opening记忆写入、自动L0/L1、联网研究、Observer与双平台安装成品仍未交付。认知工具说明见 [MEMORY-HANDOFF](docs/r1/MEMORY-HANDOFF.md)。
 
+## 桌面启动入口（本机开发版）
+已按用户授权创建桌面 **Hark.app**，带炉心图标，双击即可启动本地Vite和Native；已运行时复用进程。它是开发启动器，不是独立安装包，需保留当前仓库与Node依赖。窗口若已隐藏到托盘，可从托盘选“显示窗口”。完全退出后再启动仍需重新填写本次运行Key，重复打开入口不会主动清除Key。
+
+启动脚本：`scripts/launch-desktop-dev.py`；AppleScript模板：`scripts/desktop-launcher.applescript`。使用本机Python标准库和AppKit激活，不配置模型、不发送模型请求。日志位于被Git忽略的 `data/desktop-launcher/`。
+
 ## 开发运行
 ```bash
 npm ci --ignore-scripts

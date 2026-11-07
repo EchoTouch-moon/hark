@@ -4,7 +4,7 @@
 
 | 项目 | 状态 | 证据/下一步 |
 |---|---|---|
-| 桌面开发启动入口 | implemented-awaiting-install | Python本地启动器与AppleScript入口已编写：准备Vite/启动Native/复用既有进程，不配置Key或发请求；待安装桌面并实测。 |
+| 桌面开发启动入口 | verified-local-launch | 已授权创建桌面Hark.app（炉心图标），本地开发启动器而非独立安装包；6项测试、Native build、签名校验通过，实际通过入口启动Native97055，再次运行复用同PID、AppKit激活成功，Vite200。不发模型请求；见EVIDENCE/r1/desktop-launcher.md。 |
 | App Icon 炉心定稿资源 | verified-assets-native-check | 用户选定01炉心；PNG32～1024、ICNS、七档ICO与单色托盘已生成并接入Tauri配置/托盘，保留bundle.active=false；Pillow解析、macOS cargo check/fmt通过。当前窗口未重启，实际Dock/托盘、Windows和安装包未验。见EVIDENCE/r1/icon-concepts.md |
 | 主页极简整理 | verified-browser-synthetic | 主线9e0c7bb已由既有Vite热更新，Native进程未重启。顶栏5→2按钮，低频操作进⋯菜单；初读/记忆折页移入项目概览，扫描/依据/观点/收据按需展开；保留错误提示及权限检查。UI类型、29测试、build通过；Chrome合成页面验证菜单、弹窗/Escape/焦点、390px布局与深浅主题，非真实Native或模型验收。见home-minimal.md |
 | F0 工程基线 | implemented | 用户批准；AGENTS、README、docs/r1/IMPLEMENTATION-PLAN.md |
