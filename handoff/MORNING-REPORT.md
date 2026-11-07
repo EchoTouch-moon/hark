@@ -25,4 +25,5 @@ F1 Core 仍未产品放行。父会话审查原文仍在 `f1-parent-review.md`�
 - Native普通聊天发送/流式/状态/取消已合入3b9dee7，UI时序收口d74ba9f。主会话复跑Core56、Native17、UI23、UIbuild/类型和桌面build通过。transport仍scripted，不是应用真实模型通过。
 - 已按用户要求启动Vite（HTTP200）与开发Tauri进程，并激活桌面到前台；启动证据见desktop-startup.md。未做窗口控件点击/截图。随后模型配置已合入a8deffb，主会话复跑Host14+2/UI24/Native18/SDKsmoke与构建后再次重启并激活窗口。应用设置可存本次运行Key、工作空间可独立启用；配置不自动发请求，未提供真实Key所以尚无应用真实模型验收。
 - Core v4记忆/观点修订/FTS已合入，69项通过；认知Native/UI读/反馈/撤销/检索已合入6da36be，Native20/UI27与构建通过。用户选择现在部署，已重启并确认窗口可见；这不是控件点击验收。
-- Pi记忆/观点提议与recall工具仍未接，不能自动创建新长期记忆/观点；联网搜索/Observer、双平台安装与完整用户价值验收仍未交付。开发启动须先Vite再另终端cargo，详见README。
+- Pi记忆/观点提议与recall已接并部署376d75e，普通对话可返回Core真实收据，UI重启能重载；Core69/Native21/Host16+2/UI29通过。用户批准更新后新窗口已正常重启/前置，尚无真实模型效果验收，opening写入与自动L0/L1未支持。
+- 联网搜索/Observer、双平台安装与完整用户价值验收仍未交付。开发启动须先Vite再另终端cargo，详见README。

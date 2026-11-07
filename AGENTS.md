@@ -42,4 +42,5 @@ READ 任务 → 最小接口/测试 → 实现 → 局部测试/类型检查 →
 - 页面模型配置已合入a8deffb；本机实跑Host14+2/UI24/Native18/SDKsmoke1与构建通过，已重启新桌面。Key仅本次运行，由Native私有内存经专用子进程env `HARK_SESSION_PROVIDER_KEY` 传给Node并删除env，不写provider元数据/SQLite/argv；workspace授权仍用service_grants。此为实现/离线验证事实，不是用户新Key或真实模型成功。
 - Core v4记忆/观点/反馈/检索已主会话实跑69项。bundled SQLite实际支持FTS5 trigram；少于3个Unicode字符的词使用有界LIKE，明确不是FTS排名。主线源码已升级，运行中旧桌面未自动重启/迁移；Native/Host/UI认知接线独立开发中。
 - 用户已明确授权主会话直接完成Grok容量不足而未写入的认知Native/UI接线。已部署6da36be，Native20/UI27与构建通过；重启后macOS前置调用false，但用户亲自确认窗口可见。Pi认知工具仍待接，不能把读/反馈接口完成当自动记忆写入完成。
+- 376d75e已部署Pi认知工具：callable allowlist现为workspace.read_file/overview与memory_propose_change/opinion_propose_change/memory_recall共5个。Host按run+SDK toolCallId派生幂等ID，Native绑定已存用户消息，Core写事务复用当前running/授权快照。Core69/Native21/Host16+2/UI29与SDKsmoke1已过；普通对话写入、收据重载/撤销可用，opening写入和L0/L1仍未实现。更新后已正常重启/前置；真实模型效果未验收。
 - 本轮 SDK smoke 精确锁 `@earendil-works/pi-coding-agent`/`pi-ai` `1.5.0`，`npm run typecheck` 与 `npm run test:pi-sdk-smoke` 在 Node `v22.23.2` 实测通过。`noTools: "builtin"` 不移除注册表中的内置工具；使用纯名字 allowlist 并核验 all/active/callable。无网络 faux 不是 StepFun 验收；SDK 的 ADC fileExists 探测被测试 guard 拒绝，生产 Host 仍需显式收口环境凭据来源。

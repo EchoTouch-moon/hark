@@ -1,6 +1,6 @@
 # 记忆 / 观点 / 检索 Core 对接
 
-状态：Core存储已verified-local；本分支Native/Tauri/UI读和用户动作已接（get/list opinion、反馈、撤销、检索、原消息证据），Native20/UI27及构建通过。独立观点在页面真实显示，pending_revision不伪成已修订判断。本切片已接Pi提议/recall工具，普通对话可返回Core真实写入收据；opening仅recall不写入。Core69/Native21/Host16+2/UI29及构建通过，尚未部署至运行窗口，不是真实模型或完整产品验收。部署状态见主线STATUS与memory-native-ui.md。
+状态：Core存储已verified-local；本分支Native/Tauri/UI读和用户动作已接（get/list opinion、反馈、撤销、检索、原消息证据），Native20/UI27及构建通过。独立观点在页面真实显示，pending_revision不伪成已修订判断。本切片已接Pi提议/recall工具，普通对话可返回Core真实写入收据；opening仅recall不写入。Core69/Native21/Host16+2/UI29及构建通过，已按用户批准部署主线376d75e并重启/前置窗口；没有真实模型或完整产品验收。部署状态见主线STATUS与memory-native-ui.md。
 
 受信调用方是进程内 Native / Host。不要把 `memory_propose_change` 或 `opinion_propose_change` 加进 `FRONTEND_COMMANDS`、Tauri command 或 capability。WebView 不能传 `recorded`、`success`、来源 ID 或完成状态。
 

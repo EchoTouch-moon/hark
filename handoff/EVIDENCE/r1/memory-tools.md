@@ -1,6 +1,6 @@
 # Pi 认知工具接线
 
-主会话直接实现，分支dev/r1-memory-tools。使用原Core v4/官方Pi SDK/现有stdio，未增加migration、后台提取、独立模型请求或新权限平台。未改当前运行窗口，尚待部署。
+主会话直接实现，分支dev/r1-memory-tools。使用原Core v4/官方Pi SDK/现有stdio，未增加migration、后台提取、独立模型请求或新权限平台。用户随后明确批准更新重启。已合入主线376d75e；主会话复跑Host/UI类型、UI29与UI/桌面build通过，随后正常请求自身旧桌面退出（返回true），启动新进程并激活到前台（返回true），Vite HTTP200。未发真实模型请求，没有截图或控件点击验收。
 
 ## 行为
 - 新增 memory_propose_change、opinion_propose_change、memory_recall，SDK callable allowlist由2个workspace工具扩到这5个，内置bash/read/write等仍关闭。

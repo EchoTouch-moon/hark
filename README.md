@@ -7,7 +7,9 @@
 - 实施计划/边界：[docs/r1/IMPLEMENTATION-PLAN.md](docs/r1/IMPLEMENTATION-PLAN.md)
 - 实际交付状态：[handoff/STATUS.md](handoff/STATUS.md)
 
-已交付并在本机验证：Rust/SQLite 受控读取与授权、嵌入式 Pi SDK Host、Tauri 开发壳、首次开场的真实 Rust↔Node stdio 与持久化恢复。当前模型响应仍为明确合成 transport；用户React初版已迁入并接本地Core；常规连续对话纵切、Memory/研究与双平台成品尚未交付。
+已实现并在本机验证：Rust/SQLite受控读取与授权、Pi SDK/stdio开场与普通聊天、用户React界面的真实Native接入、页面模型配置、记忆/观点修订、反馈/撤销与历史检索。普通对话可通过Pi工具提交记忆/观点并显示Core收据，重启可恢复。
+
+联合测试模型响应是明确合成transport；真实StepFun接口曾仅做直接文本连通验证，用户新Key下的应用流式/工具/体验尚未验收。opening记忆写入、自动L0/L1、联网研究、Observer与双平台安装成品仍未交付。认知工具说明见 [MEMORY-HANDOFF](docs/r1/MEMORY-HANDOFF.md)。
 
 ## 开发运行
 ```bash

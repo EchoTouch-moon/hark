@@ -17,7 +17,7 @@
 | 模型配置与workspace启用 | verified-local | a8deffb已合入：页面本次运行Key、固定StepFun套餐anthropic协议、现有service_grants启用/禁用；保存不fetch、配置不等于已认证。主会话复跑Host14+2/UI24/SDKsmoke1/Native18与build通过，随后重启并激活新桌面；见model-settings.md |
 | 记忆/观点/反馈/检索 Core | verified-local | 已合入3dfc540+a4b1e92，v4独立记忆/观点修订、反馈/撤销及FTS5；否定/疑问/条件摘录决定修正。主会话复跑Core69及Native check通过。仍需Native/Host/UI接线，不当R1-B产品通过 |
 | 认知后端 Native/UI | verified-local | 已合入6da36be：真实观点查询/反馈/撤销、历史检索、原消息证据回读，独立观点真实呈现及待修订状态。Native20/UI27与构建通过；用户选择部署后已重启，并确认能看到窗口。控件功能尚未用户验收 |
-| Pi认知工具 | pending | memory_propose_change / opinion_propose_change / memory_recall尚未注册/接线，应用还不会因当前切片自动新建记忆/观点。下一步补此链路，不造假数据/额外提取请求 |
+| Pi认知工具 | verified-local-scripted | 已部署376d75e：普通对话 memory_propose_change/opinion_propose_change 与按需memory_recall，真实Core收据及重启后UI投影；Core69/Native21/Host16+2/UI29与构建通过。否定摘录待澄清、结束run不再写、取消保留此前已提交记忆均有合成transport回归。窗口已重启/前置，真实模型尚未验收，opening不写记忆 |
 | R1-A 当前下一步 | awaiting-user-model | 入口与管道均已接，用户需在桌面填新Key并为Workspace启用后主动发送，才可验证真实体验。原Key已撤销，本会话未用新Key或发请求；Memory/搜索/Observer等仍未实现 |
 | macOS 安装包 / Windows 实机 | unverified | 不以本机静态检查替代。Windows 安全读源码 fail-closed，未在 Windows 编译 |
 | AT-05 / 父子排除 | blocked | 重叠拒绝不是排除流程。不得标通过 |
@@ -27,7 +27,7 @@ PRD 六项微型验收包：
 | ID | 状态 | 说明 |
 |---|---|---|
 | CTX-01 | verified-local | Host 请求级 pack 与本段 Core 有界概况已在合成快照/合成目录上验证。没有 Memory Engine，pack 标 empty。不能当产品通过 |
-| MEM-11 | pending-integration | v4记忆/观点修订与Core提议API已实现，69项Core通过；Host绑定提议Tool与真实UI收据仍在接线，不能标产品通过 |
+| MEM-11 | verified-local-scripted | 普通对话Host/Native可信绑定提议及Core真实收据、UI保存/撤销/重载已接；模型实际调用与漏记/误记表现未验证，opening写入未支持，不能标完整产品通过 |
 | SEARCH-01 | verified-core-only | 已实现FTS5 trigram与明确短词LIKE兜底、来源/历史标签；前端/recall尚待接线，未做用户检索验收 |
 | WS-OVERLAP-01 | not-pass | 重叠显式拒绝；父子排除未实现，不称 AT-05 通过 |
 | ONBOARD-01 | verified-local | Core 拒绝取消/旧 run/错模型/未配置模型/跨 workspace/撤权，并只在绑定 run 的成功收据后折叠。无 UI、无真实模型，不是产品通过 |

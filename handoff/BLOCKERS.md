@@ -3,7 +3,7 @@
 ## 认知接线进度与Grok容量（当前）
 - 认知Core v4与Native/UI读/反馈/撤销/检索已合入。主线6da36be，Native20/UI27与构建通过，用户确认新窗口可见；不再把FTS或这些读接口标成未实现。
 - Grok run07e5404c连接中断；重试e3540a70明确返回模型容量不足。隔离worktree当时HEAD d0c148c、clean，无partial改动。用户明确批准主会话直接完成该段，未换CLI/关闭保护或购买优先服务；ee9ddc4→主线6da36be为实际实现证据。
-- Pi memory_propose_change/opinion_propose_change/memory_recall仍未接，不是Native/UI回归通过就完成自动记忆。联网研究/Observer/父子排除/安装包继续未实现。
+- Pi三个认知工具已在376d75e接入普通对话并按用户批准部署；Core69/Native21/Host16+2/UI29回归通过。用户新Key下的实际调用/遗漏率与认知体验仍未验收，opening写入及自动L0/L1未做。联网研究/Observer/父子排除/安装包继续未实现。
 
 ## Grok 403 历史阻塞与恢复尝试
 
