@@ -366,17 +366,15 @@ fn install_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>
     let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "完全退出", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
-    let mut rgba = vec![0_u8; 16 * 16 * 4];
-    for pixel in rgba.chunks_exact_mut(4) {
-        pixel[1] = 96;
-        pixel[2] = 72;
-        pixel[3] = 255;
-    }
-    let icon = tauri::image::Image::new(&rgba, 16, 16);
+    #[cfg(target_os = "macos")]
+    let icon = tauri::include_image!("icons/tray.png");
+    #[cfg(not(target_os = "macos"))]
+    let icon = tauri::include_image!("icons/32x32.png");
     TrayIconBuilder::with_id("main")
         .menu(&menu)
         .icon(icon)
-        .tooltip("Hark R1 开发入口")
+        .icon_as_template(cfg!(target_os = "macos"))
+        .tooltip("Hark")
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => {
                 if let Some(window) = app.get_webview_window("main") {

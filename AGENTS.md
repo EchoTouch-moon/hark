@@ -29,7 +29,7 @@ READ 任务 → 最小接口/测试 → 实现 → 局部测试/类型检查 →
 本地架构画布只在配置存在、可达且不触及上述禁止目录时同步；不扫描个人笔记，不把个人路径写入仓库。缺配置不阻塞开发。
 
 ## 本机环境
-- 本机现有Python Pillow可用：已用 `PIL.Image.open/verify` 检查图标PNG的1024尺寸、RGBA与透明边角，无需新装渲染依赖；SVG与PNG在 `design/app-icon-concepts/`，仅为待选提案。
+- 本机Pillow `11.3.0` 与 `/usr/bin/iconutil` 已验证可用：Pillow检查/缩放RGBA PNG、生成七档ICO，iconutil生成ICNS，无新装依赖。用户选定炉心01，Native资源位于 `apps/desktop/src-tauri/icons/`；macOS cargo check/fmt已过，运行中进程未重启，实际Dock/托盘及Windows效果未验。
 - 本机Chrome位于 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`，已用headless独立临时profile及Node内置WebSocket/CDP检查合成主页，无新增浏览器依赖；不使用个人浏览器profile，不等于Tauri WebView验收。UI改动可由既有Vite热更新，无须重启Rust或清除本次运行Key。
 - 本轮使用原仓库 linked worktree、分支 `dev/r1-desktop`，起点为本机 `origin/master` 的 `7fa37df`；未 fetch，不声称为远端最新状态。原 dirty 工作区不改动、不 stash、不代为提交。
 - 本机已执行验证：Node `v22.23.2`、Cargo `1.95.0`、rustc `1.95.0`、Bun `1.3.14`。均为本机开发工具，不证明打包后无需预装运行时。

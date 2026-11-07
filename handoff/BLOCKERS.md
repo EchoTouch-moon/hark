@@ -1,7 +1,7 @@
 # Hark R1 阻塞与验证条件
 
 ## App Icon
-- 三款设计与预览已完成，等待用户选择；正式icns/ico/托盘变体与打包集成尚未进行，不将概念PNG当成已部署应用图标。无需重启现有窗口来查看提案。
+- 用户已选定01炉心，PNG/ICNS/ICO/托盘资源与源码配置已完成，macOS cargo check通过。按约定不重启当前窗口；实际Dock/托盘须下次用户批准启动后确认，Windows及安装包未验。bundle.active仍false，不冒称图标已在运行进程生效。
 
 ## 主页极简整理
 - UI类型、29测试、build及Chrome合成页面检查通过，无当前实现阻塞；Native WebView实际效果待用户查看，不拿合成IPC页面当Core/模型验收。

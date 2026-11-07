@@ -1,0 +1,13 @@
+128x128.png (128, 128) RGBA transparent corners: OK
+128x128@2x.png (256, 256) RGBA transparent corners: OK
+256x256.png (256, 256) RGBA transparent corners: OK
+32x32.png (32, 32) RGBA transparent corners: OK
+512x512.png (512, 512) RGBA transparent corners: OK
+icon.png (1024, 1024) RGBA transparent corners: OK
+tray.png (32, 32) RGBA transparent corners: OK
+Production master equals selected 01 pixels: OK
+Tray is a pure black alpha template: OK
+All 7 ICO frames decoded: [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+All ICNS representations decoded: [(16, 16, 2), (32, 32, 2), (128, 128, 1), (128, 128, 2), (256, 256, 1), (256, 256, 2), (512, 512, 1), (512, 512, 2)]
+   Compiling hark-desktop v0.1.0 (/Users/v/new-idea/hark-r1-icons/apps/desktop/src-tauri)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.73s
