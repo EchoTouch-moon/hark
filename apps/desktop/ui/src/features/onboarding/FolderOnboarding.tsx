@@ -21,6 +21,7 @@ import {
 interface FolderOnboardingProps {
   existingWorkspaces: WorkspaceSummary[];
   stepFunConfigured: boolean;
+  credentialPersistenceAvailable?: boolean;
   bridgeMode: "dev_preview_synthetic" | "strict_tauri_ipc";
   onPreviewPath: (path: string) => Promise<RootPreview>;
   onPickNative?: () => Promise<RootPreview>;
@@ -55,6 +56,7 @@ const PRESET_PATHS = [
 export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
   existingWorkspaces,
   stepFunConfigured,
+  credentialPersistenceAvailable,
   bridgeMode,
   onPreviewPath,
   onPickNative,
@@ -81,7 +83,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
   const [keyBusy, setKeyBusy] = useState(false);
   const [keyError, setKeyError] = useState("");
 
-  const modelSetup = native && onSaveStepFunKey && !stepFunConfigured ? (
+  const modelSetup = native && onSaveStepFunKey && credentialPersistenceAvailable && !stepFunConfigured ? (
     <form
       onSubmit={async (event) => {
         event.preventDefault();
@@ -101,9 +103,9 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
       className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-solid)] p-4 text-left space-y-2"
     >
       <label htmlFor="onboarding-stepfun-key" className="block text-sm font-medium text-[var(--text-primary)]">
-        配置 StepFun Key
+        配置 AI
       </label>
-      <p className="text-xs text-[var(--text-muted)]">仅保存在本次运行中，重启后需重新填写。保存时不会发送请求。</p>
+      <p className="text-xs text-[var(--text-muted)]">StepFun API Key 将安全保存在系统钥匙串中。保存时不会发送请求。</p>
       <div className="flex gap-2">
         <input
           id="onboarding-stepfun-key"
@@ -216,8 +218,9 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
         <div className="max-w-lg mx-auto text-left space-y-3.5">
           {modelSetup}
           {native && stepFunConfigured && (
-            <p role="status" className="text-center text-xs text-[#3d8068]">StepFun Key 已保存到本次运行</p>
+            <p role="status" className="text-center text-xs text-[#3d8068]">AI 已配置</p>
           )}
+          {native && !credentialPersistenceAvailable && !stepFunConfigured && <p className="text-center text-xs text-[var(--text-muted)]">暂时无法安全保存 AI 配置，请重新打开 Hark 后再试。</p>}
           {native ? (
             <div className="space-y-3 text-center">
               <button
@@ -411,7 +414,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
                     <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
                       <span>{cand.suggestedName}</span>
                       <span className="text-xs font-normal text-[var(--text-muted)]">
-                        · {cand.classification === "single_project" ? "建议作为一个 Workspace" : "独立子项目候选"}
+                        · {cand.classification === "single_project" ? "作为一个项目" : "独立项目"}
                       </span>
                       <code className="text-xs font-mono font-normal text-[var(--text-muted)]">
                         ({cand.relativePath})
@@ -439,7 +442,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-[#3d8068] shrink-0" />
               <span className="font-medium text-[var(--text-primary)]">
-                只读范围 / 默认排除项（R1 不包含项目写入与脚本执行工具）
+                项目资料仅供读取，不会修改文件
               </span>
             </div>
             <button
@@ -479,19 +482,19 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
               <Cpu className="w-3.5 h-3.5 text-[#e88e47]" />
               <span>
                 {stepFunConfigured
-                  ? "允许将必要项目片段发送给已配置 StepFun，调用已有开场入口。不会另建欢迎流程，也不会在保存 Key 时自动发送。"
-                  : "填写本次运行的 Key 后，可以选择开启模型初读。"}
+                  ? "允许使用 StepFun 分析这个项目"
+                  : "配置 AI 后可选择分析这个项目"}
               </span>
             </div>
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
               {stepFunConfigured
-                ? "确认导入后会开始初读。不勾选则只进行本地只读扫描。"
-                : "当前尚未配置本次运行的 StepFun Key。本次导入只做本地只读扫描，不会读取全局凭据。"}
+                ? "分析时会将所需的项目资料发送给 StepFun。你可以随时在项目设置中撤销授权。"
+                : "现在可以先添加项目，稍后再配置 AI。"}
             </p>
           </div>
         </label>
 
-        <label className="flex items-start gap-3 p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-solid)]/70 cursor-pointer hover:border-[var(--border-strong)] transition-colors">
+        {!native && <label className="flex items-start gap-3 p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-solid)]/70 cursor-pointer hover:border-[var(--border-strong)] transition-colors">
           <input
             type="checkbox"
             checked={native ? false : enableWebSearch}
@@ -511,7 +514,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
               </span>
             </div>
           </div>
-        </label>
+        </label>}
       </div>
 
       {/* 底部提交按钮 */}

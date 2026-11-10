@@ -12,7 +12,7 @@
 联合测试模型响应是明确合成transport；真实StepFun接口曾仅做直接文本连通验证，用户新Key下的应用流式/工具/体验尚未验收。opening记忆写入、自动L0/L1、联网研究、Observer与双平台安装成品仍未交付。认知工具说明见 [MEMORY-HANDOFF](docs/r1/MEMORY-HANDOFF.md)。
 
 ## 桌面启动入口（本机开发版）
-已按用户授权创建桌面 **Hark.app**，带炉心图标，双击即可启动本地Vite和Native；已运行时复用进程。它是开发启动器，不是独立安装包，需保留当前仓库与Node依赖。窗口若已隐藏到托盘，可从托盘选“显示窗口”。完全退出后再启动仍需重新填写本次运行Key，重复打开入口不会主动清除Key。
+已按用户授权创建桌面 **Hark.app**，带炉心图标，双击即可启动本地Vite和Native；已运行时复用进程。它是开发启动器，不是独立安装包，需保留当前仓库与Node依赖。窗口若已隐藏到托盘，可从托盘选“显示窗口”。新版在 macOS 上使用系统钥匙串保存 AI Key；完全退出并重新打开新版后，需要首次重新填写此前只存于内存的 Key。系统钥匙串的实际保存与恢复尚待本机验证。
 
 启动脚本：`scripts/launch-desktop-dev.py`；AppleScript模板：`scripts/desktop-launcher.applescript`。使用本机Python标准库和AppKit激活，不配置模型、不发送模型请求。日志位于被Git忽略的 `data/desktop-launcher/`。
 
@@ -36,7 +36,7 @@ npm run dev -w @hark/desktop-ui
 # 终端2：启动Tauri开发窗口
 cargo run --manifest-path apps/desktop/Cargo.toml -p hark-desktop
 ```
-直接 `cargo run` 不会代为执行Tauri CLI的 `beforeDevCommand`；不能只开Native就假定Vite已启动。这是开发入口，不是安装包。默认模型关闭；普通聊天Native接线与页面模型配置已实现。桌面「应用设置」填写新Key并选择「仅本次运行保存」，再到「工作空间设置」启用模型后主动发送。Key重启需重填，Workspace授权会保留；保存不自动测试。未完成功能不回退为预览数据。不要为测试选择私人vault。尚无本轮窗口点击验收。
+直接 `cargo run` 不会代为执行Tauri CLI的 `beforeDevCommand`；不能只开Native就假定Vite已启动。这是开发入口，不是安装包。默认模型关闭；普通聊天Native接线与页面模型配置已实现。桌面「应用设置」填写 Key 并保存到系统钥匙串，再在「项目设置」管理该项目的 AI 授权；保存配置不会自动发送模型请求。未完成功能不回退为预览数据。不要为测试选择私人vault。尚无本轮窗口点击验收。
 
 ## StepFun 当前接入
 正确套餐接口为 `https://api.stepfun.com/step_plan/v1/messages`、模型 `step-3.7-flash`，直接HTTP曾实测200/OK。PiSDK anthropic-messages驱动与页面配置已接入，合成流式/工具回归通过；用户新Key下的真实应用闭环尚未验证。详见 [MODEL-SESSION](docs/r1/MODEL-SESSION.md)。

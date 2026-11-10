@@ -5,6 +5,7 @@
 
 mod bridge;
 mod cognition;
+mod credentials;
 mod error;
 mod lifecycle;
 mod memory_agent;
@@ -19,6 +20,7 @@ pub use bridge::{
 pub use cognition::{
     MessageEvidenceRequest, OpinionFeedbackRequest, OpinionRequest, RevertMemoryRequest,
 };
+pub use credentials::CredentialStore;
 pub use error::ShellError;
 pub use hark_core::{
     AuthorizedRoot, ConfirmResult, ConversationEvent, FirstMessage, InitialScan, MemoryReceipt,

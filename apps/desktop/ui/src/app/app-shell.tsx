@@ -665,6 +665,7 @@ export const AppShell: React.FC = () => {
             <FolderOnboarding
               existingWorkspaces={workspaces}
               stepFunConfigured={runtime.stepFunConfigured}
+              credentialPersistenceAvailable={runtime.credentialPersistenceAvailable}
               bridgeMode={bridgeMode}
               onPreviewPath={(path) => bridge.previewRoot(path)}
               onPickNative={() => {
@@ -677,11 +678,12 @@ export const AppShell: React.FC = () => {
                 bridge.configureStepFunSession
                   ? async (apiKey) => {
                       const status = await bridge.configureStepFunSession!(apiKey);
-                      if (!status.configured) throw new Error("模型配置未保存");
+                      if (!status.configured || status.restartRequiresKey) throw new Error("模型配置未保存");
                       setRuntime((prev) => ({
                         ...prev,
                         stepFunConfigured: status.configured,
                         piSidecarStatus: status.sidecarConnected ? "ready" : "unavailable",
+                        credentialError: status.credentialError,
                       }));
                     }
                   : undefined
@@ -712,7 +714,7 @@ export const AppShell: React.FC = () => {
                   onAdvanceStage={bridgeMode === "dev_preview_synthetic" ? handleAdvanceOnboarding : undefined}
                   onEnableModelAuth={() => {
                     setShowProjectOverview(false);
-                    return handleUpdateWorkspacePermissions({ modelPermission: "enabled" });
+                    setShowWorkspaceSettings(true);
                   }}
                 />
                 {/* FE-10 · 记忆折页，按需查看 */}
@@ -749,9 +751,7 @@ export const AppShell: React.FC = () => {
                     );
                   }
                 }}
-                onEnableModelAuth={() =>
-                  handleUpdateWorkspacePermissions({ modelPermission: "enabled" })
-                }
+                onEnableModelAuth={() => setShowWorkspaceSettings(true)}
               />
             </div>
           )}
@@ -887,16 +887,23 @@ export const AppShell: React.FC = () => {
         onSaveStepFunKey={
           bridge.configureStepFunSession
             ? async (apiKey) => {
-                await bridge.configureStepFunSession?.(apiKey);
-                await syncAppSnapshot(currentWorkspaceId);
+                const status = await bridge.configureStepFunSession!(apiKey);
+                if (!status.configured || status.restartRequiresKey) throw new Error("模型配置未保存");
+                setRuntime((prev) => ({ ...prev, stepFunConfigured: status.configured, piSidecarStatus: status.sidecarConnected ? "ready" : "unavailable", credentialError: status.credentialError }));
               }
             : undefined
         }
         onClearStepFunKey={
           bridge.clearStepFunSession
             ? async () => {
-                await bridge.clearStepFunSession?.();
-                await syncAppSnapshot(currentWorkspaceId);
+                try {
+                  const status = await bridge.clearStepFunSession!();
+                  if (status.configured) throw new Error("模型配置未移除");
+                  setRuntime((prev) => ({ ...prev, stepFunConfigured: false, piSidecarStatus: "unavailable", credentialError: status.credentialError }));
+                } catch (error) {
+                  await syncAppSnapshot(currentWorkspaceId);
+                  throw error;
+                }
               }
             : undefined
         }

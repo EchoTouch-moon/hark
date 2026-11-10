@@ -93,7 +93,7 @@ export const HistorySearch: React.FC<HistorySearchProps> = ({
               专属记忆与历史检索 · {workspaceName}
             </h3>
             <p className="text-[11px] text-[var(--text-muted)]">
-              严格受当前 Workspace 作用域约束（不枚举其他项目的私有数据）
+              仅搜索当前项目的记录
             </p>
           </div>
           <button

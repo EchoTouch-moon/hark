@@ -38,12 +38,14 @@ export function HomeHeader(props: HomeHeaderProps) {
     };
   }, [open]);
   const act = (callback: () => void) => () => { setOpen(false); callback(); };
-  const items = [
+  const projectItems = [
     { label: "项目概览", icon: Info, action: props.onOverview, testId: "open-project-overview" },
     { label: "历史与记忆", icon: Search, action: props.onSearch, testId: "open-history-search-btn" },
     { label: "项目设置", icon: Shield, action: props.onProjectSettings, testId: "open-workspace-settings-btn" },
-    { label: "应用设置", icon: Sliders, action: props.onAppSettings, testId: "menu-open-app-settings" },
+  ];
+  const applicationItems = [
     { label: "添加项目", icon: FolderPlus, action: props.onAddProject, testId: "menu-add-project" },
+    { label: "应用设置", icon: Sliders, action: props.onAppSettings, testId: "menu-open-app-settings" },
   ];
   return (
     <header data-testid="quiet-header" className="sticky top-0 z-30 flex items-center justify-between gap-4 px-5 sm:px-8 py-4 bg-[var(--canvas)]/85 backdrop-blur-xl">
@@ -77,7 +79,14 @@ export function HomeHeader(props: HomeHeaderProps) {
             buttons[next]?.focus();
           }}
           className="absolute right-0 top-11 z-50 w-48 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-solid)] p-1.5 shadow-xl animate-hearth-pop">
-          {items.filter((item) => props.projectName || ["menu-open-app-settings", "menu-add-project"].includes(item.testId)).map(({ label, icon: Icon, action, testId }) => <button key={testId} type="button" role="menuitem" data-testid={testId}
+          {props.projectName && <div role="presentation" className="px-3 pb-1 pt-2 text-[10px] font-medium tracking-wide text-[var(--text-muted)]">当前项目</div>}
+          {(props.projectName ? projectItems : []).map(({ label, icon: Icon, action, testId }) => <button key={testId} type="button" role="menuitem" data-testid={testId}
+            onClick={act(action)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5">
+            <Icon className="h-3.5 w-3.5 text-[var(--text-muted)]" />{label}
+          </button>)}
+          {props.projectName && <div className="my-1 border-t border-[var(--border-subtle)]" />}
+          <div role="presentation" className="px-3 pb-1 pt-2 text-[10px] font-medium tracking-wide text-[var(--text-muted)]">Hark</div>
+          {applicationItems.map(({ label, icon: Icon, action, testId }) => <button key={testId} type="button" role="menuitem" data-testid={testId}
             onClick={act(action)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5">
             <Icon className="h-3.5 w-3.5 text-[var(--text-muted)]" />{label}
           </button>)}

@@ -102,10 +102,10 @@ export const WorkspacePicker: React.FC<WorkspacePickerProps> = ({
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border-subtle)]">
           <div>
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              项目工作空间切换 (Workspace Switcher)
+              切换项目
             </h3>
             <p className="text-[11px] text-[var(--text-muted)]">
-              一个项目对应一个逻辑 Agent、专属会话与隔离草稿
+              每个项目都有独立的对话和记录
             </p>
           </div>
           <button
@@ -289,11 +289,6 @@ export const WorkspacePicker: React.FC<WorkspacePickerProps> = ({
                 <GitBranchPlus className="w-3.5 h-3.5 text-[#c27537] dark:text-[#f1bb7c]" />
                 <span>拆分当前项目的子目录为独立空间</span>
               </button>
-            )}
-            {currentWs && !childSplitAvailable && (
-              <span className="text-[11px] text-[var(--text-muted)]">
-                子工作空间尚未完成，不能在这里拆分。
-              </span>
             )}
           </div>
         )}

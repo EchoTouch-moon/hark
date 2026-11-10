@@ -135,45 +135,31 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
                 <div className="flex items-center gap-2">
                   <FolderSearch className="w-4 h-4 text-[#e88e47]" />
                   <span className="font-semibold text-[var(--text-primary)]">
-                    本地资料
+                    项目资料
                   </span>
                 </div>
-                <span className="font-mono tabular-nums">
-                  已选读 {scan.scannedFilesCount} 项 · 非模型分析
+                <span className="tabular-nums">
+                  已读取 {scan.scannedFilesCount} 项资料
                 </span>
               </summary>
               <div className="pt-4 space-y-4">
-              <p className="text-sm text-[var(--text-primary)] leading-relaxed">{msg.content}</p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs pt-1">
-                <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface-solid)]/60 p-4 space-y-1.5">
-                  <div className="font-semibold text-[var(--text-primary)]">识别到的语言与关键清单</div>
-                  <div className="text-[var(--text-muted)]">
-                    语言：{scan.detectedLanguages.join(" · ")}
-                  </div>
-                  <div className="font-mono text-[11px] text-[var(--text-muted)]">
-                    清单：{scan.keyManifests.join(", ")}
-                  </div>
-                </div>
-                <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface-solid)]/60 p-4 space-y-1.5">
-                  <div className="font-semibold text-[var(--text-primary)]">尚未核验范围</div>
-                  <div className="text-[var(--text-muted)] leading-relaxed">
-                    {scan.unverifiedAreas.join("；")}
-                  </div>
-                </div>
+              <p className="text-sm leading-relaxed text-[var(--text-primary)]">这是已读取的本地资料，尚未覆盖整个项目。{scan.modelAuthRequired ? " AI 分析尚未完成。" : ""}</p>
+              <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface-solid)]/60 p-4 space-y-2">
+                <div className="font-semibold text-[var(--text-primary)]">已读取资料</div>
+                <div className="break-words leading-relaxed text-[var(--text-muted)]">{scan.keyManifests.join("、")}</div>
               </div>
 
               {scan.modelAuthRequired && onEnableModelAuth && (
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[var(--border-subtle)] text-xs">
                   <span className="text-[var(--text-muted)]">
-                    尚未启用 StepFun 模型初读，不冒充已由 Agent 深度分析。
+                    设置项目的 AI 访问权限后，可以继续分析。
                   </span>
                   <button
                     type="button"
                     onClick={onEnableModelAuth}
                     className="px-3.5 py-2 rounded-lg font-medium bg-[#c27537] text-white hover:bg-[#b0672c] transition-all active:scale-[0.98]"
                   >
-                    启用模型初读并生成主动开场（本卡将折叠为证据）
+                    查看项目设置
                   </button>
                 </div>
               )}
@@ -492,17 +478,14 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
             <div className="flex items-center gap-2">
               <Loader2 className="w-3.5 h-3.5 text-[#e88e47] animate-spin" />
               <span className="font-medium text-[var(--text-primary)]">
-                Hark 正在生成回复（流式临时视图 · Run {streamState.runId}）
+                Hark 正在思考
               </span>
             </div>
-            <span className="font-mono tabular-nums text-[11px]">
-              已接收帧 seq={streamState.seenSeqs[streamState.seenSeqs.length - 1] ?? 0}
-            </span>
           </div>
 
           {streamState.activeToolLabel && (
             <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.04] px-3.5 py-2 text-xs text-[#c27537] dark:text-[#f1bb7c] font-mono">
-              工具阶段：{streamState.activeToolLabel}
+              正在查看资料
             </div>
           )}
 
@@ -522,10 +505,10 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
         >
           <div className="flex items-center gap-1.5 font-semibold text-amber-800 dark:text-amber-300">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>模型已返回流式内容，但消息持久化状态尚未确认</span>
+            <span>回复已生成，保存状态尚未确认</span>
           </div>
           <p className="text-[var(--text-muted)]">
-            请勿重复盲发，系统正在向 Rust Core 重新对账会话历史。
+            正在检查对话记录，请稍等后再试。
           </p>
         </div>
       )}

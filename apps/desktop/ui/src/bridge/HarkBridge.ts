@@ -377,6 +377,8 @@ export interface RuntimeStatus {
   rustCoreStatus: "healthy" | "degraded" | "unreachable";
   piSidecarStatus: "ready" | "starting" | "unavailable";
   stepFunConfigured: boolean;
+  credentialError?: string | null;
+  credentialPersistenceAvailable?: boolean;
   mcpSearchConfigured: boolean;
   windowBehaviorOnClose: "hide_to_tray" | "quit_app";
   launchAtLogin: boolean;
@@ -504,4 +506,5 @@ export interface StepFunSessionStatus {
   packaging: string;
   sidecarConnected: boolean;
   restartRequiresKey: boolean;
+  credentialError?: string | null;
 }

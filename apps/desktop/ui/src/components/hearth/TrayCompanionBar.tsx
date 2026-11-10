@@ -43,9 +43,9 @@ export const TrayCompanionBar: React.FC<TrayCompanionBarProps> = ({
             <Power className="w-5 h-5 text-[#e88e47]" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-base font-semibold">Hark 桌面宿主已完全退出</h2>
+            <h2 className="text-base font-semibold">Hark 已退出</h2>
             <p className="text-xs text-[#a9a39b] leading-relaxed">
-              Rust Core、SQLite WAL 句柄与 Pi Agent Host Sidecar 子进程均已安全关闭（不留未知后台进程）。重新打开时将从 SQLite 恢复原对话与已记录决定。
+              重新打开后可以继续查看对话和记录。
             </p>
           </div>
           <button
@@ -74,7 +74,7 @@ export const TrayCompanionBar: React.FC<TrayCompanionBarProps> = ({
         <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-semibold">
             <Flame className="w-4 h-4 text-[#e88e47]" />
-            <span>Hark 系统托盘菜单 (Tray / MenuBar)</span>
+            <span>Hark</span>
           </div>
           <span className="text-[11px] font-mono text-[#a9a39b]">
             主窗口已隐藏 · 视觉渲染已暂停

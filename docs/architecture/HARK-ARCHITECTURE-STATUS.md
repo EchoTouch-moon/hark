@@ -1,5 +1,9 @@
 # Hark R1 架构与交付状态
 
+## 2026-11-10 · AI 配置与用户界面
+
+macOS Native 使用系统钥匙串存放 AI Key，保存/读取失败不降级为明文；Key 和项目授权仍分离。隔离存储测试、Native 及 UI 构建通过；真实系统钥匙串与跨重启产品体验尚未验收。证据 `handoff/EVIDENCE/r1/product-settings-2026-11-10.txt`。
+
 ## 2026-11-10 · 首次配置与菜单
 
 首次引导复用 Native 的会话 Key 配置；目录权限按钮接入已有 Native 命令，未新增权限或模型调用。此为 UI 与合成浏览器验证，不代表真实项目闭环通过；实际外发内容审阅与 Real-First 的差距仍待解决。证据 `handoff/EVIDENCE/r1/setup-menu-feedback-2026-11-10.txt`。

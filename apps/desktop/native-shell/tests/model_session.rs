@@ -3,11 +3,101 @@
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use hark_native_shell::{business_db_path, ConfirmRequest, NativeShell, Selection};
+use hark_native_shell::{
+    business_db_path, ConfirmRequest, CredentialStore, NativeShell, Selection, ShellError,
+};
 
 const SYNTH: &str = "hark-session-test-key";
+
+#[derive(Default)]
+struct FakeStore {
+    state: Mutex<FakeState>,
+}
+#[derive(Default)]
+struct FakeState {
+    value: Option<String>,
+    fail_load: bool,
+    fail_save: bool,
+    fail_clear: bool,
+}
+impl CredentialStore for FakeStore {
+    fn load(&self) -> Result<Option<String>, ShellError> {
+        let state = self.state.lock().unwrap();
+        if state.fail_load {
+            return Err(ShellError::new("fake", "sensitive store error"));
+        }
+        Ok(state.value.clone())
+    }
+    fn save(&self, value: &str) -> Result<(), ShellError> {
+        let mut state = self.state.lock().unwrap();
+        if state.fail_save {
+            return Err(ShellError::new("fake", "sensitive store error"));
+        }
+        state.value = Some(value.to_owned());
+        Ok(())
+    }
+    fn clear(&self) -> Result<(), ShellError> {
+        let mut state = self.state.lock().unwrap();
+        if state.fail_clear {
+            return Err(ShellError::new("fake", "sensitive store error"));
+        }
+        state.value = None;
+        Ok(())
+    }
+}
+
+#[test]
+fn saved_model_configuration_survives_reopen_and_failed_changes_do_not_replace_it() {
+    let tmp = tempfile::tempdir().unwrap();
+    let db = business_db_path(tmp.path());
+    let store = Arc::new(FakeStore::default());
+    let shell = NativeShell::open_with_credentials(&db, store.clone()).unwrap();
+    let initial = shell.configure_stepfun_session(SYNTH).unwrap();
+    assert!(initial.configured && !initial.restart_requires_key && initial.sidecar_connected);
+    let original_pid = shell.sidecar_pid();
+    store.state.lock().unwrap().fail_save = true;
+    let error = shell
+        .configure_stepfun_session("another-synthetic-key")
+        .unwrap_err();
+    assert_eq!(error.code, "credential_store_unavailable");
+    assert!(!error.detail.contains("sensitive store error"));
+    assert_eq!(store.state.lock().unwrap().value.as_deref(), Some(SYNTH));
+    assert_eq!(shell.sidecar_pid(), original_pid);
+    assert!(shell.stepfun_session_status().unwrap().configured);
+    store.state.lock().unwrap().fail_clear = true;
+    assert!(shell.clear_stepfun_session().is_err());
+    assert!(shell.stepfun_session_status().unwrap().configured);
+    assert_eq!(shell.sidecar_pid(), original_pid);
+    assert!(!walk_contains(tmp.path(), SYNTH));
+    drop(shell);
+
+    let reopened = NativeShell::open_with_credentials(&db, store.clone()).unwrap();
+    let restored = reopened.stepfun_session_status().unwrap();
+    assert!(restored.configured && restored.sidecar_connected && !restored.restart_requires_key);
+    assert!(restored.credential_error.is_none());
+    assert!(!walk_contains(tmp.path(), SYNTH));
+    store.state.lock().unwrap().fail_clear = false;
+    assert!(!reopened.clear_stepfun_session().unwrap().configured);
+    assert!(store.state.lock().unwrap().value.is_none());
+    let err = reopened.start_configured_sidecar().unwrap_err();
+    assert_eq!(err.code, "sidecar_not_configured");
+    assert!(!reopened.sidecar_status().connected);
+    drop(reopened);
+
+    store.state.lock().unwrap().fail_load = true;
+    let unavailable = NativeShell::open_with_credentials(&db, store).unwrap();
+    let status = unavailable.stepfun_session_status().unwrap();
+    assert!(!status.configured);
+    assert!(status.credential_error.is_some());
+    assert!(!status
+        .credential_error
+        .unwrap()
+        .contains("sensitive store error"));
+    assert!(unavailable.snapshot().unwrap().credential_error.is_some());
+}
 
 fn walk_contains(dir: &Path, needle: &str) -> bool {
     let Ok(entries) = fs::read_dir(dir) else {
@@ -106,6 +196,10 @@ fn synthetic_key_does_not_fetch_or_land_and_grant_is_per_workspace() {
     let cleared = shell.clear_stepfun_session().unwrap();
     assert!(!cleared.configured);
     assert!(!cleared.sidecar_connected);
+    assert_eq!(
+        shell.start_configured_sidecar().unwrap_err().code,
+        "sidecar_not_configured"
+    );
     assert_eq!(
         shell.snapshot().unwrap().remote_model_transport,
         "closed_no_approved_key"

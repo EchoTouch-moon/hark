@@ -25,9 +25,9 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
   }
 
   const steps = [
-    { key: "reading", label: "1. 扫描目录与只读清单" },
-    { key: "analyzing", label: "2. 选择性读取关键文件" },
-    { key: "message_ready", label: "3. 本地发现卡已保存，模型开场仍在等待" },
+    { key: "reading", label: "检查项目目录" },
+    { key: "analyzing", label: "读取项目资料" },
+    { key: "message_ready", label: "准备分析" },
   ];
 
   const currentStepIdx =
@@ -52,12 +52,12 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
           ) : (
             <Loader2 className="w-4 h-4 text-[#e88e47] animate-spin shrink-0" />
           )}
-          <span>正在认识项目 · {run.id.startsWith("checkpoint:") ? "Core checkpoint" : "后端任务"} {run.id}</span>
+          <span>正在认识项目</span>
         </div>
 
         {typeof run.scanReadCount === "number" && (
           <span className="font-mono tabular-nums text-xs text-[var(--text-muted)]">
-            已读取只读节点 {run.scanReadCount} / {run.scanTotalEstimate ?? "—"}
+            已读取 {run.scanReadCount} 项
           </span>
         )}
       </div>
@@ -91,7 +91,7 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
       {/* 操作入口 */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--border-subtle)] text-xs">
         <span className="text-[11px] text-[var(--text-muted)]">
-          状态由 Rust Core 持久化维护，关闭或重开窗口将从当前阶段幂等恢复。
+          进度会自动保存。
         </span>
         <div className="flex items-center gap-2">
           {run.stage === "waiting_for_model_auth" && onEnableModelAuth && (
@@ -100,7 +100,7 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
               onClick={onEnableModelAuth}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#c27537] text-white hover:bg-[#b0672c] transition-colors"
             >
-              <span>启用 StepFun 模型初读并生成首次开场</span>
+              <span>查看项目设置</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           )}

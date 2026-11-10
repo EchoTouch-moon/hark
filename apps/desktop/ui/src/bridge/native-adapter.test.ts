@@ -667,5 +667,17 @@ test("scan mapping keeps ignored paths as display only", () => {
   const preview = mapScanToPreview(ticket(), root(), scan());
   assert.equal(preview.recommendedMode, "single");
   assert.deepEqual(preview.defaultExcludedPaths, ["target"]);
-  assert.equal(preview.readOnlyBoundaryNote.includes("pickToken"), true);
+  assert.match(preview.readOnlyBoundaryNote, /只会读取/);
+  assert.doesNotMatch(preview.readOnlyBoundaryNote, /pickToken|模型传输标记/);
+});
+
+test("credential storage capability and recovery errors are visible in runtime state", async () => {
+  const { invoke } = recorder({
+    shell_snapshot: () => ({ ...snapshot(), credentialPersistenceAvailable: true, credentialError: "无法读取系统保存的模型配置，请检查系统凭据访问权限。" }),
+    list_workspaces: () => [],
+  });
+  const app = await createTauriHarkBridge(invoke).getAppSnapshot();
+  assert.equal(app.runtime.credentialPersistenceAvailable, true);
+  assert.match(app.runtime.credentialError ?? "", /无法读取/);
+  assert.equal(app.runtime.stepFunConfigured, false);
 });

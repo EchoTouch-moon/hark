@@ -57,7 +57,7 @@ export const EvidenceInspector: React.FC<EvidenceInspectorProps> = ({
   > = {
     full_text: {
       label: "已阅读原文 (full_text)",
-      desc: "Rust Core 或 Reader 已真实读取该来源的完整有效章节，非搜索摘要。",
+      desc: "已读取来源的完整内容。",
     },
     partial_text: {
       label: "已读关键片段 (partial_text)",
@@ -65,7 +65,7 @@ export const EvidenceInspector: React.FC<EvidenceInspectorProps> = ({
     },
     snippet: {
       label: "只见搜索摘要 (snippet)",
-      desc: "仅从搜索结果或历史引文中获取标题与简短摘要，Agent 未通读原文正文。",
+      desc: "仅取得标题或摘要，尚未阅读原文。",
     },
     metadata: {
       label: "仅见元数据 / 未读正文 (metadata)",
@@ -146,7 +146,7 @@ export const EvidenceInspector: React.FC<EvidenceInspectorProps> = ({
           >
             <div className="flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-300">
               <ShieldAlert className="w-4 h-4 shrink-0" />
-              <span>已移出当前范围 (SCOPE_EXCLUDED)</span>
+              <span>已移出当前范围</span>
             </div>
             <p className="text-[var(--text-muted)] leading-relaxed">
               {evidence.unreadableReason ||
@@ -162,7 +162,7 @@ export const EvidenceInspector: React.FC<EvidenceInspectorProps> = ({
           >
             <div className="flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-300">
               <Clock className="w-4 h-4 shrink-0" />
-              <span>证据已过期 (SOURCE_STALE)</span>
+              <span>资料可能已更新</span>
             </div>
             <p className="text-[var(--text-muted)] leading-relaxed">
               {evidence.staleReason ||
@@ -174,7 +174,7 @@ export const EvidenceInspector: React.FC<EvidenceInspectorProps> = ({
                 onClick={() => onMarkReverify(evidence.id)}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 transition-all active:scale-[0.98]"
               >
-                请求 Rust Core 重新读取核验
+                重新查看资料
               </button>
             )}
           </div>
@@ -187,7 +187,7 @@ export const EvidenceInspector: React.FC<EvidenceInspectorProps> = ({
           >
             <div className="flex items-center gap-1.5 font-semibold text-[#b74a46]">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>来源暂不可读 (SOURCE_UNREADABLE)</span>
+              <span>暂时无法读取资料</span>
             </div>
             <p className="text-[var(--text-muted)] leading-relaxed">
               {evidence.unreadableReason ||
@@ -199,7 +199,7 @@ export const EvidenceInspector: React.FC<EvidenceInspectorProps> = ({
         {/* 受控位置与观测时间元数据 */}
         <div className="space-y-2 text-xs">
           <div className="text-[var(--text-muted)] font-medium">
-            受控位置标识（非 file:// 越权直链）
+            资料位置
           </div>
           <div className="flex items-center gap-2 font-mono text-[11px] bg-black/[0.03] dark:bg-white/[0.04] px-3.5 py-2.5 rounded-lg text-[var(--text-primary)] break-all">
             {evidence.kind === "file_read" && (
@@ -229,7 +229,7 @@ export const EvidenceInspector: React.FC<EvidenceInspectorProps> = ({
                 ? "搜索摘要内容"
                 : evidence.verificationLevel === "metadata"
                 ? "元数据记录"
-                : "Rust Core 授权只读摘录"}
+                : "资料摘录"}
             </span>
             {evidence.availability === "available" && (
               <span className="inline-flex items-center gap-1 text-[11px] text-[#3d8068]">

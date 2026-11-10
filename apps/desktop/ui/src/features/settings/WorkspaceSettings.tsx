@@ -108,7 +108,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="当前工作空间权限与边界设置"
+      aria-label="项目设置"
       data-testid="workspace-settings-modal"
       className="fixed inset-0 z-50 flex items-start justify-center pt-14 px-4 bg-black/40 backdrop-blur-xs"
     >
@@ -118,7 +118,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
             <Shield className="w-4 h-4 text-[#e88e47]" />
             <div>
               <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                工作空间权限与只读范围 · {summary.name}
+                项目设置 · {summary.name}
               </h3>
               <p className="text-[11px] text-[var(--text-muted)] font-mono">
                 {summary.rootDisplayPath}
@@ -137,7 +137,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
 
         <div className="p-5 max-h-[75vh] overflow-y-auto space-y-5 text-xs">
           {/* 1. 后台文件观察状态 */}
-          <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-4 flex items-center justify-between gap-4">
+          {!nativeLocked && <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-4 flex items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
                 <Eye className="w-3.5 h-3.5 text-[#e88e47]" />
@@ -175,15 +175,15 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
                 </>
               )}
             </button>
-          </div>
+          </div>}
 
           {nativeLocked && workspace.rootId && (
             <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-4 space-y-2">
               <div className="font-semibold text-[var(--text-primary)]">
-                目录授权 · {workspace.directoryStatus ?? "unknown"}
+                文件夹访问 · {workspace.directoryStatus === "active" ? "已授权" : workspace.directoryStatus === "paused" ? "已暂停" : workspace.directoryStatus === "revoked" ? "已撤销" : "状态未知"}
               </div>
               <p className="text-[var(--text-muted)] leading-relaxed">
-                只对已授权 root 调用 pause / resume / revoke。不能在这里输入新路径。
+                Hark 只能读取你选择的文件夹。暂停或撤销后将停止读取。
               </p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={saving || !onPauseDirectory || workspace.directoryStatus !== "active"} onClick={() => void handleDirectoryAction(onPauseDirectory)} className="px-3 py-1.5 rounded-lg border border-[var(--border-strong)] disabled:opacity-50">暂停目录</button>
@@ -197,16 +197,16 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
           {/* 2. 模型对话与联网搜索授权 */}
           <div className="space-y-2.5">
             <div className="font-semibold text-[var(--text-primary)]">
-              模型推理与外部搜索授权（Workspace 级隔离）
+              AI 访问
             </div>
 
             <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-3.5 flex items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="font-medium text-[var(--text-primary)]">
-                  StepFun 模型连续对话与片段分析授权 ({summary.modelPermission})
+                  允许 AI 分析此项目
                 </div>
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  只授权这一个工作空间。填写 Key 不会打开其他工作空间。暂停或撤销目录后，已有检查会拦住发送。重启后 Key 要重填，授权会保留。
+                  此权限仅适用于当前项目。分析时，所需资料会发送给 StepFun；你可以随时撤销。
                 </p>
               </div>
               <button
@@ -224,7 +224,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
               </button>
             </div>
 
-            <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-3.5 flex items-center justify-between gap-3">
+            {!nativeLocked && <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-3.5 flex items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="font-medium text-[var(--text-primary)]">
                   MCP 联网搜索权限 ({summary.searchPermission})
@@ -245,13 +245,13 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
               >
                 {summary.searchPermission === "enabled" ? "已启用 · 点击关闭" : "未启用 · 点击开启"}
               </button>
-            </div>
+            </div>}
           </div>
 
           {/* 3. 只读目录与排除路径 */}
           <div className="space-y-2">
             <div className="font-semibold text-[var(--text-primary)]">
-              只读白名单入口 ({readOnlyPaths.length})
+              可读取的文件夹 ({readOnlyPaths.length})
             </div>
             <div className="flex flex-wrap gap-1.5 font-mono text-[11px]">
               {readOnlyPaths.map((p) => (
@@ -267,10 +267,10 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
 
           <div className="space-y-2">
             <div className="font-semibold text-[var(--text-primary)]">
-              排除目录与子空间隔离 ({excludedPaths.length})
+              排除的目录 ({excludedPaths.length})
             </div>
             <p className="text-[11px] text-[var(--text-muted)]">
-              被排除的路径不会被当前 Agent 扫描；历史对话中已存在的旧引文会保留并标记为“已移出当前范围”。
+              这些目录不会被读取。历史对话中已引用的资料仍会保留，并标记为已移出范围。
             </p>
             <div className="flex flex-wrap gap-2">
               {excludedPaths.map((p) => (
@@ -279,7 +279,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--surface)] font-mono text-[11px]"
                 >
                   <span>{p}</span>
-                  <button
+                  {!nativeLocked && <button
                     type="button"
                     disabled={nativeLocked}
                     onClick={() => handleRemoveExcluded(p)}
@@ -287,12 +287,12 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
                     className="text-[var(--text-muted)] hover:text-[#b74a46]"
                   >
                     <Trash2 className="w-3 h-3" />
-                  </button>
+                  </button>}
                 </div>
               ))}
             </div>
 
-            <form onSubmit={handleAddExcluded} className="flex items-center gap-2 pt-1">
+            {!nativeLocked && <form onSubmit={handleAddExcluded} className="flex items-center gap-2 pt-1">
               <input
                 type="text"
                 value={newExcluded}
@@ -308,7 +308,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
                 <Plus className="w-3.5 h-3.5" />
                 <span>添加排除</span>
               </button>
-            </form>
+            </form>}
           </div>
         </div>
       </div>

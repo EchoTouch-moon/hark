@@ -23,6 +23,7 @@ use crate::bridge::{
 use crate::cognition::{
     MessageEvidenceRequest, OpinionFeedbackRequest, OpinionRequest, RevertMemoryRequest,
 };
+use crate::credentials::{CredentialStore, SystemCredentialStore};
 use crate::error::ShellError;
 use crate::process::StopReport;
 use crate::seam::SidecarStatus;
@@ -271,6 +272,7 @@ pub struct StepFunSessionStatus {
     pub packaging: &'static str,
     pub sidecar_connected: bool,
     pub restart_requires_key: bool,
+    pub credential_error: Option<String>,
 }
 
 const STEPFUN_PROVIDER: &str = "stepfun";
@@ -300,6 +302,8 @@ pub struct ShellSnapshot {
     pub reader_capability: String,
     /// This process never calls a model, even if a future database row says enabled.
     pub remote_model_transport: &'static str,
+    pub credential_error: Option<String>,
+    pub credential_persistence_available: bool,
     pub sidecar: SidecarStatus,
     pub notes: Vec<&'static str>,
 }
@@ -325,6 +329,10 @@ pub struct NativeShell {
     quit_requested: AtomicBool,
     app_data_dir: PathBuf,
     session_key: Mutex<Option<String>>,
+    credential_store: Option<Arc<dyn CredentialStore>>,
+    credential_error: Mutex<Option<String>>,
+    credential_operation: Mutex<()>,
+    credential_saved: AtomicBool,
 }
 
 type TaskHold = Arc<dyn Fn() + Send + Sync>;
@@ -337,6 +345,29 @@ impl NativeShell {
     pub fn open_with_clock(
         db_path: &Path,
         clock_unix_ms: impl Fn() -> u64 + Send + Sync + 'static,
+    ) -> Result<Self, ShellError> {
+        Self::open_inner(db_path, clock_unix_ms, None)
+    }
+
+    /// Desktop entry point: only this instance uses the OS credential store.
+    pub fn open_with_system_credentials(db_path: &Path) -> Result<Self, ShellError> {
+        Self::open_with_credentials(db_path, Arc::new(SystemCredentialStore))
+    }
+
+    /// Injectable store permits isolated tests without touching a user's keychain.
+    pub fn open_with_credentials(
+        db_path: &Path,
+        store: Arc<dyn CredentialStore>,
+    ) -> Result<Self, ShellError> {
+        let shell = Self::open_inner(db_path, system_unix_ms, Some(store))?;
+        shell.restore_credential();
+        Ok(shell)
+    }
+
+    fn open_inner(
+        db_path: &Path,
+        clock_unix_ms: impl Fn() -> u64 + Send + Sync + 'static,
+        credential_store: Option<Arc<dyn CredentialStore>>,
     ) -> Result<Self, ShellError> {
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent)
@@ -356,6 +387,10 @@ impl NativeShell {
             quit_requested: AtomicBool::new(false),
             app_data_dir: app_data_dir_of(db_path),
             session_key: Mutex::new(None),
+            credential_store,
+            credential_error: Mutex::new(None),
+            credential_operation: Mutex::new(()),
+            credential_saved: AtomicBool::new(false),
         })
     }
 
@@ -373,16 +408,19 @@ impl NativeShell {
             roots: self.core.list_roots()?,
             workspaces: self.core.list_workspaces()?,
             reader_capability: self.core.reader_capability().to_string(),
-            remote_model_transport: if self.session_key_present() {
+            remote_model_transport: if self.model_configured() {
                 "stepfun_session_memory"
             } else {
                 "closed_no_approved_key"
             },
+            credential_error: self.credential_error_value(),
+            credential_persistence_available: cfg!(target_os = "macos")
+                && self.credential_store.is_some(),
             sidecar: self.sidecar.status(),
-            notes: if self.session_key_present() {
+            notes: if self.model_configured() {
                 vec![
                     "目录读取与远程模型是两种许可。",
-                    "StepFun Key 只在本次运行内存。重启后要重新填写，不会读取全局凭据。",
+                    "模型配置使用当前应用的凭据。",
                     "保存不表示 Key 已认证，也不会自动发请求。",
                     "打包未做。这条模型路径是 dev-only。",
                 ]
@@ -803,28 +841,50 @@ impl NativeShell {
         self.sidecar.configure(config)
     }
 
-    /// Store a run-only key, write keyless metadata, and start the dev sidecar.
-    /// This does not call the model and does not authorize every workspace.
+    /// Save to the configured system store and start the local host. Saving does
+    /// not call the model and does not authorize any workspace.
     pub fn configure_stepfun_session(
         &self,
         api_key: &str,
     ) -> Result<StepFunSessionStatus, ShellError> {
         accept_session_key(api_key)?;
-        let repo = dev_repo_root()?;
-        let node = dev_node22()?;
-        let slot_path = self.provider_slot_path();
-        write_keyless_slot(&slot_path)?;
+        let _operation = self
+            .credential_operation
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "credential operation"))?;
+        if let Some(store) = &self.credential_store {
+            store.save(api_key).map_err(|_| {
+                ShellError::new(
+                    "credential_store_unavailable",
+                    "无法保存到系统凭据存储，原配置未更改",
+                )
+            })?;
+            self.credential_saved.store(true, Ordering::SeqCst);
+        }
+        match self.activate_stepfun(api_key) {
+            Err(err) if self.credential_store.is_none() => {
+                self.rollback_session()?;
+                return Err(err);
+            }
+            Err(_) => self.set_credential_error(Some("模型配置已保存，但连接暂不可用。")),
+            Ok(()) => self.set_credential_error(None),
+        }
+        self.session_status()
+    }
+
+    fn activate_stepfun(&self, api_key: &str) -> Result<(), ShellError> {
+        self.rollback_session()?;
         {
             let mut guard = self
                 .session_key
                 .lock()
                 .map_err(|_| ShellError::new("lock_poisoned", "session key"))?;
-            wipe_key(&mut guard);
             *guard = Some(api_key.to_string());
         }
-        if self.sidecar.status().connected || self.sidecar.pid().is_some() {
-            let _ = self.sidecar.stop();
-        }
+        let repo = dev_repo_root()?;
+        let node = dev_node22()?;
+        let slot_path = self.provider_slot_path();
+        write_keyless_slot(&slot_path)?;
         let config = DevSidecarConfig {
             node_path: node,
             host_entry: repo.join("packages/agent-host/src/sidecar.ts"),
@@ -835,21 +895,40 @@ impl NativeShell {
             run_timeout_ms: 60_000,
         };
         if let Err(err) = self.sidecar.configure_session(config, api_key) {
-            self.rollback_session();
             return Err(err);
         }
         if let Err(err) = self.sidecar.start() {
-            self.rollback_session();
+            let _ = self.sidecar.stop();
+            let _ = self.sidecar.clear_configuration();
             return Err(ShellError::new(
                 err.code,
                 "sidecar did not become ready. No model request was sent.",
             ));
         }
-        self.session_status()
+        Ok(())
     }
 
     pub fn clear_stepfun_session(&self) -> Result<StepFunSessionStatus, ShellError> {
-        self.rollback_session();
+        let _operation = self
+            .credential_operation
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "credential operation"))?;
+        if let Some(store) = &self.credential_store {
+            store.clear().map_err(|_| {
+                ShellError::new(
+                    "credential_store_unavailable",
+                    "无法从系统凭据存储中删除，原配置未更改",
+                )
+            })?;
+        }
+        self.credential_saved.store(false, Ordering::SeqCst);
+        self.rollback_session().map_err(|_| {
+            ShellError::new(
+                "sidecar_stop_incomplete",
+                "已删除保存的模型配置，但模型连接尚未完全停止",
+            )
+        })?;
+        self.set_credential_error(None);
         self.session_status()
     }
 
@@ -895,9 +974,51 @@ impl NativeShell {
             .unwrap_or(false)
     }
 
+    fn model_configured(&self) -> bool {
+        self.credential_saved.load(Ordering::SeqCst) || self.session_key_present()
+    }
+
+    fn set_credential_error(&self, message: Option<&str>) {
+        if let Ok(mut error) = self.credential_error.lock() {
+            *error = message.map(str::to_owned);
+        }
+    }
+
+    fn credential_error_value(&self) -> Option<String> {
+        self.credential_error
+            .lock()
+            .ok()
+            .and_then(|value| value.clone())
+    }
+
+    fn restore_credential(&self) {
+        let Some(store) = &self.credential_store else {
+            return;
+        };
+        match store.load() {
+            Ok(None) => self.set_credential_error(None),
+            Ok(Some(key)) => {
+                let mut key = Some(key);
+                if let Some(value) = key.as_deref() {
+                    if accept_session_key(value).is_err() {
+                        self.set_credential_error(Some("已保存的模型配置不可用，请重新配置。"));
+                    } else {
+                        self.credential_saved.store(true, Ordering::SeqCst);
+                        if self.activate_stepfun(value).is_err() {
+                            self.set_credential_error(Some("模型配置已保存，但连接暂不可用。"));
+                        }
+                    }
+                }
+                wipe_key(&mut key);
+            }
+            Err(_) => self
+                .set_credential_error(Some("无法读取系统保存的模型配置，请检查系统凭据访问权限。")),
+        }
+    }
+
     fn session_status(&self) -> Result<StepFunSessionStatus, ShellError> {
         Ok(StepFunSessionStatus {
-            configured: self.session_key_present(),
+            configured: self.model_configured(),
             authenticated: false,
             provider: STEPFUN_PROVIDER,
             model: STEPFUN_MODEL,
@@ -906,19 +1027,34 @@ impl NativeShell {
             dev_only: true,
             packaging: "not_packaged",
             sidecar_connected: self.sidecar.status().connected,
-            restart_requires_key: true,
+            restart_requires_key: !self.credential_saved.load(Ordering::SeqCst),
+            credential_error: self.credential_error_value(),
         })
     }
 
-    fn rollback_session(&self) {
+    fn rollback_session(&self) -> Result<(), ShellError> {
         if let Ok(mut guard) = self.session_key.lock() {
             wipe_key(&mut guard);
         }
         let _ = fs::remove_file(self.provider_slot_path());
-        let _ = self.sidecar.stop();
+        let stopped = self.sidecar.stop();
+        // Always forget the provider even if stopping the worker failed.
+        self.sidecar.clear_configuration()?;
+        let report = stopped?;
+        if report.group_alive || !report.worker_stopped {
+            return Err(ShellError::new(
+                "sidecar_stop_incomplete",
+                "模型连接尚未完全停止",
+            ));
+        }
+        Ok(())
     }
 
     pub fn start_configured_sidecar(&self) -> Result<SidecarStatus, ShellError> {
+        let _operation = self
+            .credential_operation
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "credential operation"))?;
         self.sidecar.start()
     }
 

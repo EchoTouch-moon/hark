@@ -189,6 +189,8 @@ export interface ShellSnapshotDto {
   workspaces: NativeWorkspace[];
   readerCapability: string;
   remoteModelTransport: string;
+  credentialError?: string | null;
+  credentialPersistenceAvailable?: boolean;
   sidecar: SidecarStatusDto;
   notes: string[];
 }
@@ -364,6 +366,8 @@ export function mapRuntime(snapshot: ShellSnapshotDto): RuntimeStatus {
     rustCoreStatus: "healthy",
     piSidecarStatus: snapshot.sidecar.connected ? "ready" : "unavailable",
     stepFunConfigured: modelConfiguredFromSnapshot(snapshot),
+    credentialError: snapshot.credentialError,
+    credentialPersistenceAvailable: snapshot.credentialPersistenceAvailable === true,
     mcpSearchConfigured: false,
     windowBehaviorOnClose: "hide_to_tray",
     launchAtLogin: false,
@@ -414,7 +418,7 @@ export function unknownNarrative(sourceIds: string[] = []): NarrativeState {
     availability: "unknown",
     flame: "neutral",
     stageLabel: "尚无叙事状态",
-    narrativeReason: "Native 没有叙事命令。火势保持中性，不按聊天条数或导入次数推断。",
+    narrativeReason: "等待更多项目资料。",
     basisRefs: sourceIds,
     stale: false,
   };
@@ -456,28 +460,28 @@ function mapOnboardingStage(checkpoint: OnboardingCheckpointDto): OnboardingStag
 
 function describeCheckpoint(checkpoint: OnboardingCheckpointDto): string {
   if (checkpoint.state === "cancelled") {
-    return "认识已取消。已写入的本地卡不会被这条取消删掉。";
+    return "已取消，之前读取的资料仍然保留。";
   }
   if (checkpoint.openingPresented || checkpoint.modelAnalyzed) {
-    return "Core checkpoint 标记模型开场已提交。界面只展示已持久化结果，不在前端补写理解。";
+    return "项目的初步分析已完成。";
   }
   if (
     checkpoint.state === "waiting_for_model_auth" ||
     checkpoint.modelStatus === "disabled" ||
     checkpoint.modelStatus === "unavailable"
   ) {
-    return "本地发现卡不是模型理解。模型未配置，开场等待。默认壳没有已批准的模型，普通聊天失败时不会伪造回复。";
+    return "本地资料已准备好。配置并授权 AI 后，可以继续分析。";
   }
   if (checkpoint.selectiveReadDone && !checkpoint.modelAnalyzed) {
-    return "选择性读取已完成。若本地卡尚未出现，需要 commit_local_scan_card 的真实返回，而不是前端补一张卡。";
+    return "已读取部分项目资料。";
   }
   if (checkpoint.structureScanned) {
-    return "结构初扫已在 Core。确认导入后才会选择性读取关键文件。";
+    return "已检查项目结构，确认后将读取相关资料。";
   }
   if (checkpoint.errorCode) {
-    return `认识未完成：${checkpoint.errorCode}。没有伪造开场。`;
+    return "项目资料读取未完成，请检查项目权限后重试。";
   }
-  return `Core onboarding 状态：${checkpoint.state}。没有业务事件通道，只展示这条 checkpoint。`;
+  return "项目资料准备中。";
 }
 
 export function mapSourceRef(source: SourceRefDto): EvidenceDetail {
@@ -580,11 +584,11 @@ export function mapScanToPreview(
     uncoveredReasons: [
       ...scan.limitsHit.map((hit) => `预算：${hit}`),
       ...scan.ignored.map((item) => `${item.relativePath || "（根）"}：${item.reason}`),
-      `覆盖：${scan.coverage}。结构计数 files=${scan.filesSeen} dirs=${scan.dirsSeen}，不是模型阅读数。`,
+      `已检查 ${scan.filesSeen} 个文件和 ${scan.dirsSeen} 个文件夹。`,
     ],
     recommendedMode: scan.defaultSingleProject ? "single" : "select_candidates",
     defaultExcludedPaths: scan.ignored.map((item) => item.relativePath).filter((path) => path.length > 0),
-    readOnlyBoundaryNote: `只读。显示名「${ticket.displayName}」。授权只用一次性 pickToken，确认时不回传路径。模型传输标记：${ticket.remoteModel}。壳内模型初读固定关闭。`,
+    readOnlyBoundaryNote: "Hark 只会读取你选择的文件夹，不会修改文件或运行项目中的命令。",
   };
 }
 
@@ -602,7 +606,7 @@ function mapCandidate(candidate: ScanCandidate, displayName: string): RootCandid
     relativePath: candidate.relativePath || ".",
     suggestedName: candidate.relativePath ? candidate.relativePath : displayName || "整个目录",
     classification,
-    reasons: candidate.evidence.length > 0 ? candidate.evidence : ["Core 未附带额外依据"],
+    reasons: candidate.evidence.length > 0 ? candidate.evidence : ["所选文件夹"],
     selectable: candidate.role !== "module_hint",
   };
 }

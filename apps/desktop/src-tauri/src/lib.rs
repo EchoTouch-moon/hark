@@ -359,7 +359,7 @@ fn quit_app(app: tauri::AppHandle) -> Result<(), ShellError> {
 
 fn open_shell(app_data_dir: &std::path::Path) -> Result<NativeShell, ShellError> {
     std::fs::create_dir_all(app_data_dir).map_err(|err| ShellError::new("io", err.to_string()))?;
-    NativeShell::open(&hark_native_shell::business_db_path(app_data_dir))
+    NativeShell::open_with_system_credentials(&hark_native_shell::business_db_path(app_data_dir))
 }
 
 fn install_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {

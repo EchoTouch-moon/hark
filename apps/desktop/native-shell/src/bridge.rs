@@ -162,6 +162,17 @@ struct ProviderSlot {
     scripted: bool,
 }
 
+impl Drop for ProviderSlot {
+    fn drop(&mut self) {
+        // Every cloned provider slot owns its own allocation. Wipe it when
+        // replaced or dropped; volatile writes avoid eliminating the wipe.
+        for byte in unsafe { self.secret.as_bytes_mut() } {
+            unsafe { std::ptr::write_volatile(byte, 0) };
+        }
+        std::sync::atomic::compiler_fence(Ordering::SeqCst);
+    }
+}
+
 struct Hooks {
     before_tool: Mutex<Option<Arc<dyn Fn(&str) + Send + Sync>>>,
     mismatch_next: AtomicBool,
@@ -710,6 +721,23 @@ impl SidecarSupervisor {
             .lock()
             .map_err(|_| ShellError::new("lock_poisoned", "stop"))? = Some(report.clone());
         Ok(report)
+    }
+
+    /// Forget the provider and its secret after stopping the worker. A regular
+    /// stop deliberately retains configuration for the explicit restart API.
+    pub fn clear_configuration(&self) -> Result<(), ShellError> {
+        let mut slot = self
+            .slot
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "slot"))?;
+        *slot = None;
+        drop(slot);
+        let mut config = self
+            .config
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "config"))?;
+        *config = None;
+        Ok(())
     }
 
     fn send(&self, msg: Command) -> Result<(), ShellError> {
