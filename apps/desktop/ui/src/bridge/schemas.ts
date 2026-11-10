@@ -5,6 +5,8 @@ import type {
   WorkspaceId,
   HarkUIError,
   HarkErrorCode,
+  HarkBridge,
+  RunStatus,
 } from "./HarkBridge.ts";
 
 const VALID_FLAME_STAGES: ReadonlySet<string> = new Set([
@@ -150,6 +152,7 @@ export function applyRunStreamEvents(
 
   for (const ev of validEvents) {
     if (next.seenSeqs.includes(ev.seq)) continue;
+    if (["completed_verified", "completed_unverified", "cancelled", "failed"].includes(next.status)) break;
     next.seenSeqs.push(ev.seq);
 
     switch (ev.type) {
@@ -195,6 +198,30 @@ export function applyRunStreamEvents(
   }
 
   return next;
+}
+
+// A missing channel event is not proof of failure or completion. Ask the
+// authority for the persisted state; only request cancellation for a live run.
+export async function reconcileStalledTurn(
+  bridge: Pick<HarkBridge, "getRunStatus" | "cancelAgentTurn">,
+  expected: { runId: string; workspaceId: string; conversationId: string },
+  timeoutMs = 5_000,
+  cancelRunning = true,
+): Promise<RunStatus | null> {
+  const bounded = async <T>(promise: Promise<T>): Promise<T | null> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([promise, new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), timeoutMs); })]);
+    } catch { return null; } finally { if (timer) clearTimeout(timer); }
+  };
+  const matches = (status: RunStatus | null): status is RunStatus => Boolean(status &&
+    status.runId === expected.runId && status.workspaceId === expected.workspaceId && status.conversationId === expected.conversationId);
+  const current = await bounded(bridge.getRunStatus(expected.runId));
+  if (!matches(current)) return null;
+  if (current.state !== "running") return current;
+  if (!cancelRunning) return current;
+  const cancelled = await bounded(bridge.cancelAgentTurn(expected.runId));
+  return matches(cancelled) && cancelled.state !== "running" ? cancelled : null;
 }
 
 /**
@@ -316,9 +343,9 @@ export function resolveErrorDescriptor(code: HarkErrorCode): {
       };
     case "CONNECTION_LOST":
       return {
-        title: "Native 调用没有完成",
-        explanation: "IPC 拒绝或返回了未单独映射的壳错误。界面不会改用预览数据。",
-        actionLabel: "重新从 Core 读取",
+        title: "连接暂不可用",
+        explanation: "请检查 AI 服务连接和对话状态，再决定是否重试。",
+        actionLabel: "检查连接",
         retryable: true,
       };
     case "FEATURE_UNAVAILABLE":

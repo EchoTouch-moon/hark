@@ -9,6 +9,10 @@ interface ComposerProps {
   onSend: () => Promise<void>;
   onCancelRun: () => Promise<void>;
   isRunning: boolean;
+  sendBlocked?: boolean;
+  sendStatus?: string;
+  onCheckSendStatus?: () => void;
+  onEndUnknownSend?: () => void;
   modelPermission: ServicePermission;
   stepFunConfigured: boolean;
   sidecarAvailable: boolean;
@@ -18,12 +22,12 @@ interface ComposerProps {
 
 /** Quiet composer. Capability checks and IME behavior are unchanged. */
 export const Composer: React.FC<ComposerProps> = ({
-  workspaceName, draft, onDraftChange, onSend, onCancelRun, isRunning,
+  workspaceName, draft, onDraftChange, onSend, onCancelRun, isRunning, sendBlocked = false, sendStatus, onCheckSendStatus, onEndUnknownSend,
   modelPermission, stepFunConfigured, sidecarAvailable, onOpenPermissions, onFocusChange,
 }) => {
   const [isComposing, setIsComposing] = useState(false);
   const [focused, setFocused] = useState(false);
-  const canSendRemote = stepFunConfigured && modelPermission === "enabled" && sidecarAvailable && !isRunning;
+  const canSendRemote = stepFunConfigured && modelPermission === "enabled" && sidecarAvailable && !isRunning && !sendBlocked;
   const needsSetup = !stepFunConfigured || modelPermission !== "enabled" || !sidecarAvailable;
   const setupLabel = !stepFunConfigured ? "配置模型后开始对话" : !sidecarAvailable ? "模型连接暂不可用" : "此项目尚未启用模型";
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -45,7 +49,7 @@ export const Composer: React.FC<ComposerProps> = ({
           onKeyDown={handleKeyDown} placeholder="聊聊这个项目…"
           className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-muted)]/65 focus:outline-none" />
         <div className="mt-1 flex min-h-8 items-center justify-between gap-3 text-[11px] text-[var(--text-muted)]">
-          {needsSetup ? (
+          {sendStatus ? <span role="status">{sendStatus}{onCheckSendStatus && <button type="button" onClick={onCheckSendStatus} data-testid="check-send-status" className="ml-2 font-medium text-[#c27537] hover:underline">检查状态</button>}{onEndUnknownSend && <button type="button" onClick={onEndUnknownSend} data-testid="end-unknown-send" className="ml-2 font-medium text-[#c27537] hover:underline">结束等待</button>}</span> : needsSetup ? (
             <button type="button" onClick={onOpenPermissions} aria-label="打开模型设置"
               className="rounded-md py-1 text-left hover:text-[#c27537] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]">
               {setupLabel}<span className="ml-1 text-[#c27537]"> →</span>

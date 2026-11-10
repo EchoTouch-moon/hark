@@ -90,6 +90,14 @@ pub struct AgentTurnRef {
     pub run_id: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AgentTurnRequestRef {
+    pub workspace_id: String,
+    pub conversation_id: String,
+    pub request_id: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentTurnAccepted {

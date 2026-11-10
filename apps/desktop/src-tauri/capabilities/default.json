@@ -32,6 +32,7 @@
     "allow-start-configured-opening",
     "allow-start-agent-turn",
     "allow-get-agent-turn",
+    "allow-get-agent-turn-by-request",
     "allow-cancel-agent-turn",
     "allow-hide-window",
     "allow-quit-app",

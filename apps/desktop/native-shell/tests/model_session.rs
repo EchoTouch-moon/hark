@@ -11,6 +11,7 @@ use hark_native_shell::{
 };
 
 const SYNTH: &str = "hark-session-test-key";
+const REPLACEMENT: &str = "synthetic/key+replacement";
 
 #[derive(Default)]
 struct FakeStore {
@@ -71,7 +72,24 @@ fn saved_model_configuration_survives_reopen_and_failed_changes_do_not_replace_i
     assert!(shell.clear_stepfun_session().is_err());
     assert!(shell.stepfun_session_status().unwrap().configured);
     assert_eq!(shell.sidecar_pid(), original_pid);
+    {
+        let mut state = store.state.lock().unwrap();
+        state.fail_save = false;
+        state.fail_clear = false;
+    }
+    let replaced = shell.configure_stepfun_session(REPLACEMENT).unwrap();
+    assert!(replaced.configured && !replaced.restart_requires_key && replaced.sidecar_connected);
+    assert!(store.state.lock().unwrap().value.as_deref() == Some(REPLACEMENT));
+    assert_eq!(
+        shell
+            .configure_stepfun_session("invalid key")
+            .unwrap_err()
+            .code,
+        "session_key_rejected"
+    );
+    assert!(store.state.lock().unwrap().value.as_deref() == Some(REPLACEMENT));
     assert!(!walk_contains(tmp.path(), SYNTH));
+    assert!(!walk_contains(tmp.path(), REPLACEMENT));
     drop(shell);
 
     let reopened = NativeShell::open_with_credentials(&db, store.clone()).unwrap();
@@ -79,6 +97,8 @@ fn saved_model_configuration_survives_reopen_and_failed_changes_do_not_replace_i
     assert!(restored.configured && restored.sidecar_connected && !restored.restart_requires_key);
     assert!(restored.credential_error.is_none());
     assert!(!walk_contains(tmp.path(), SYNTH));
+    assert!(!walk_contains(tmp.path(), REPLACEMENT));
+    assert!(store.state.lock().unwrap().value.as_deref() == Some(REPLACEMENT));
     store.state.lock().unwrap().fail_clear = false;
     assert!(!reopened.clear_stepfun_session().unwrap().configured);
     assert!(store.state.lock().unwrap().value.is_none());

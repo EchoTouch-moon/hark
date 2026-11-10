@@ -66,6 +66,7 @@ pub const FRONTEND_COMMANDS: &[&str] = &[
     "start_configured_opening",
     "start_agent_turn",
     "get_agent_turn",
+    "get_agent_turn_by_request",
     "cancel_agent_turn",
     "hide_window",
     "quit_app",
@@ -106,7 +107,7 @@ fn accept_session_key(value: &str) -> Result<(), ShellError> {
         || value.len() > 512
         || value
             .chars()
-            .any(|ch| ch.is_control() || ch.is_whitespace() || ch == '/' || ch == '\\')
+            .any(|ch| ch.is_control() || ch.is_whitespace())
     {
         return Err(ShellError::new(
             "session_key_rejected",
@@ -117,13 +118,18 @@ fn accept_session_key(value: &str) -> Result<(), ShellError> {
 }
 
 fn wipe_key(slot: &mut Option<String>) {
-    if let Some(value) = slot.take() {
-        let mut bytes = value.into_bytes();
-        for byte in &mut bytes {
-            *byte = 0;
-        }
-        drop(bytes);
+    if let Some(mut value) = slot.take() {
+        wipe_string(&mut value);
     }
+}
+
+fn wipe_string(value: &mut String) {
+    // Zero bytes are valid UTF-8. Volatile writes prevent an optimizing build
+    // from discarding the wipe immediately before the allocation is freed.
+    for byte in unsafe { value.as_bytes_mut() } {
+        unsafe { std::ptr::write_volatile(byte, 0) };
+    }
+    std::sync::atomic::compiler_fence(Ordering::SeqCst);
 }
 
 fn dev_repo_root() -> Result<PathBuf, ShellError> {
@@ -251,6 +257,12 @@ pub struct StepFunKeyRequest {
     pub api_key: String,
 }
 
+impl Drop for StepFunKeyRequest {
+    fn drop(&mut self) {
+        wipe_string(&mut self.api_key);
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ModelGrantRequest {
@@ -333,6 +345,14 @@ pub struct NativeShell {
     credential_error: Mutex<Option<String>>,
     credential_operation: Mutex<()>,
     credential_saved: AtomicBool,
+}
+
+impl Drop for NativeShell {
+    fn drop(&mut self) {
+        if let Ok(slot) = self.session_key.get_mut() {
+            wipe_key(slot);
+        }
+    }
 }
 
 type TaskHold = Arc<dyn Fn() + Send + Sync>;
@@ -1092,6 +1112,25 @@ impl NativeShell {
                 Err(ShellError::new("run_mismatch", "run_not_found"))
             }
             Err(_) => Ok(unknown_agent_turn_status(workspace_id, run_id)),
+        }
+    }
+
+    pub fn agent_turn_status_by_request(
+        &self,
+        workspace_id: &str,
+        conversation_id: &str,
+        request_id: &str,
+    ) -> Result<Option<AgentTurnStatus>, ShellError> {
+        let workspace = parse_workspace(workspace_id)?;
+        match self
+            .core
+            .conversation_run_by_request(&workspace, request_id)?
+        {
+            Some(started) if started.run.conversation_id.as_str() == conversation_id => {
+                Ok(Some(map_agent_turn_status(&started.run)))
+            }
+            Some(_) => Err(ShellError::new("correlation_rejected", "对话不匹配")),
+            None => Ok(None),
         }
     }
 

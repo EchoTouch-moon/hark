@@ -30,6 +30,7 @@ import {
   getWorkspaceDraft,
   setWorkspaceDraft,
   StreamAccumulatorState,
+  reconcileStalledTurn,
 } from "../bridge/schemas";
 import { FlameAtmosphere } from "../components/hearth/FlameAtmosphere";
 import { HomeHeader } from "../components/hearth/HomeHeader";
@@ -47,6 +48,20 @@ import { WorkspacePicker } from "../features/workspace/WorkspacePicker";
 import { HistorySearch } from "../features/memory/HistorySearch";
 import { WorkspaceSettings } from "../features/settings/WorkspaceSettings";
 import { AppSettings, ThemePreference } from "../features/settings/AppSettings";
+
+interface InFlightTurn {
+  workspaceId: WorkspaceId;
+  conversationId: string;
+  requestId: string;
+  runId?: string;
+  phase: "starting" | "running" | "uncertain";
+  finished: boolean;
+  reconciling: boolean;
+  acceptTimer?: ReturnType<typeof setTimeout>;
+  watchdog?: ReturnType<typeof setTimeout>;
+  reconcile?: (cancelRunning: boolean) => Promise<void>;
+  abandon?: () => void;
+}
 
 /**
  * FE-01 · AppShell / HearthCanvas
@@ -97,6 +112,9 @@ export const AppShell: React.FC = () => {
   const [transientSpreadKey, setTransientSpreadKey] = useState(0);
   const [streamState, setStreamState] = useState<StreamAccumulatorState | null>(null);
   const activeStreamWorkspaceRef = useRef<WorkspaceId | undefined>(undefined);
+  const workspaceLoadVersionRef = useRef(0);
+  const flightRef = useRef<InFlightTurn | null>(null);
+  const [flightView, setFlightView] = useState<Pick<InFlightTurn, "workspaceId" | "phase" | "runId"> | null>(null);
 
   // 按需打开的辅助面板（On-demand Surfaces）
   const [showOnboardingFlow, setShowOnboardingFlow] = useState(false);
@@ -136,16 +154,20 @@ export const AppShell: React.FC = () => {
   // 2. 加载指定 Workspace 的完整快照（严格按 WorkspaceId 隔离）
   const loadWorkspaceContext = useCallback(
     async (wsId: WorkspaceId) => {
+      const version = ++workspaceLoadVersionRef.current;
+      activeStreamWorkspaceRef.current = wsId;
+      const current = () => workspaceLoadVersionRef.current === version && activeStreamWorkspaceRef.current === wsId;
       try {
         setActiveError(null);
         const detail = await bridge.getWorkspace(wsId);
+        if (!current()) return;
         setCurrentWorkspaceDetail(detail);
-        activeStreamWorkspaceRef.current = wsId;
 
         const [evList, opList] = await Promise.all([
           bridge.listWorkspaceEvidence(wsId),
           bridge.listWorkspaceOpinions(wsId),
         ]);
+        if (!current()) return;
 
         const nextEvMap: Record<ID, EvidenceRef> = {};
         for (const ev of evList) nextEvMap[ev.id] = ev;
@@ -157,6 +179,7 @@ export const AppShell: React.FC = () => {
 
         if (detail.summary.currentConversationId) {
           const convPage = await bridge.getConversation(detail.summary.currentConversationId);
+          if (!current()) return;
           setMessages(convPage.messages);
         } else {
           setMessages([]);
@@ -164,12 +187,13 @@ export const AppShell: React.FC = () => {
 
         if (detail.activeOnboardingRunId) {
           const run = await bridge.getOnboardingRun(detail.activeOnboardingRunId);
+          if (!current()) return;
           setOnboardingRun(run);
         } else {
           setOnboardingRun(null);
         }
       } catch (err) {
-        setActiveError(asUiError(err));
+        if (current()) setActiveError(asUiError(err));
       }
     },
     [bridge]
@@ -213,6 +237,7 @@ export const AppShell: React.FC = () => {
     setInspectedEvidence(null);
     setStreamState((prev) => (prev && prev.workspaceId !== wsId ? null : prev));
     setCurrentWorkspaceId(wsId);
+    activeStreamWorkspaceRef.current = wsId;
     await loadWorkspaceContext(wsId);
   };
 
@@ -336,28 +361,54 @@ export const AppShell: React.FC = () => {
 
   // 9. 发起一次真实流式 Agent 对话轮次（PRD §4.2 & §7.6）
   const handleSendMessage = async () => {
-    if (!currentWorkspaceId || !currentWorkspaceDetail?.summary.currentConversationId) return;
+    if (flightRef.current || !currentWorkspaceId || !currentWorkspaceDetail?.summary.currentConversationId) return;
     const prompt = getWorkspaceDraft(draftStore, currentWorkspaceId).trim();
     if (!prompt) return;
 
     const convId = currentWorkspaceDetail.summary.currentConversationId;
     const targetWsId = currentWorkspaceId;
 
-    setDraftStore((prev) => setWorkspaceDraft(prev, targetWsId, ""));
-
+    const requestSuffix = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const flight: InFlightTurn = { workspaceId: targetWsId, conversationId: convId, requestId: `req-turn-${requestSuffix}`, phase: "starting", finished: false, reconciling: false };
+    flightRef.current = flight;
+    setFlightView({ workspaceId: targetWsId, phase: "starting" });
+    activeStreamWorkspaceRef.current = targetWsId;
     const bufferedEvents: RunStreamEvent[] = [];
     let resolvedRunId: string | null = null;
+    let accumulated: StreamAccumulatorState | null = null;
+    const visible = () => activeStreamWorkspaceRef.current === targetWsId;
+    const ownsFlight = () => flightRef.current === flight && !flight.finished;
+    const showPhase = (phase: InFlightTurn["phase"]) => {
+      if (!ownsFlight()) return;
+      flight.phase = phase;
+      setFlightView({ workspaceId: targetWsId, phase, runId: flight.runId });
+    };
+    const release = () => {
+      if (flight.acceptTimer) clearTimeout(flight.acceptTimer);
+      if (flight.watchdog) clearTimeout(flight.watchdog);
+      flight.finished = true;
+      if (flightRef.current === flight) { flightRef.current = null; setFlightView(null); }
+    };
+    const markUncertain = () => {
+      if (!ownsFlight()) return;
+      showPhase("uncertain");
+      if (visible()) {
+        setStreamState((prev) => prev?.runId === flight.runId ? null : prev);
+        setActiveError({ code: "CONNECTION_LOST", message: "暂时无法确认这条消息的处理状态。请先检查对话记录，避免重复发送。", retryable: false });
+      }
+    };
+    flight.acceptTimer = setTimeout(() => { if (!resolvedRunId) markUncertain(); }, 35_000);
 
     const refreshStoredArtifacts = (clearStream: boolean) => {
       Promise.all([
         bridge.getConversation(convId), bridge.listWorkspaceOpinions(targetWsId),
         bridge.listWorkspaceEvidence(targetWsId),
       ]).then(([page, opinions, evidence]) => {
-        if (activeStreamWorkspaceRef.current !== targetWsId) return;
+        if (activeStreamWorkspaceRef.current !== targetWsId || (flightRef.current && flightRef.current !== flight)) return;
         setMessages(page.messages);
         setOpinionsMap(Object.fromEntries(opinions.map((opinion) => [opinion.id, opinion])));
         setEvidenceMap(Object.fromEntries(evidence.map((item) => [item.id, item])));
-        if (clearStream) setStreamState(null);
+        if (clearStream) setStreamState((prev) => prev?.runId === flight.runId ? null : prev);
         setTransientSpreadKey((k) => k + 1);
       }).catch((err) => {
         if (activeStreamWorkspaceRef.current === targetWsId) setActiveError(asUiError(err));
@@ -376,23 +427,73 @@ export const AppShell: React.FC = () => {
       refreshStoredArtifacts(true);
     };
 
-    const handleStreamEvent = (ev: RunStreamEvent) => {
-      if (activeStreamWorkspaceRef.current !== ev.workspaceId) {
-        return;
+    flight.abandon = () => {
+      if (!ownsFlight() || flight.runId) return;
+      refreshStoredArtifacts(false);
+      release();
+      if (visible()) setActiveError({ code: "CONNECTION_LOST", message: "已结束等待。之前的消息可能仍在处理，请先查看对话记录再决定是否重发。", retryable: false });
+    };
+
+    flight.reconcile = async (cancelRunning) => {
+      if (!ownsFlight() || flight.reconciling) return;
+      flight.reconciling = true;
+      try {
+        if (!flight.runId && bridge.getRunStatusByRequest) {
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const status = await Promise.race([
+            bridge.getRunStatusByRequest(targetWsId, convId, flight.requestId),
+            new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), 5_000); }),
+          ]).finally(() => { if (timer) clearTimeout(timer); });
+          if (!ownsFlight()) return;
+          if (status && status.workspaceId === targetWsId && status.conversationId === convId) {
+            flight.runId = status.runId;
+            resolvedRunId = status.runId;
+            accumulated ||= createInitialStreamState(targetWsId, status.runId);
+            setDraftStore((prev) => getWorkspaceDraft(prev, targetWsId).trim() === prompt ? setWorkspaceDraft(prev, targetWsId, "") : prev);
+            refreshStoredArtifacts(false);
+          }
+        }
+        if (!flight.runId) { markUncertain(); return; }
+        const status = await reconcileStalledTurn(bridge, { runId: flight.runId, workspaceId: targetWsId, conversationId: convId }, 5_000, cancelRunning);
+        if (!ownsFlight()) return;
+        if (status?.state === "running" && !cancelRunning) {
+          showPhase("running");
+          if (visible()) { setActiveError(null); setStreamState(accumulated); }
+          if (flight.watchdog) clearTimeout(flight.watchdog);
+          flight.watchdog = setTimeout(() => void flight.reconcile?.(true), 65_000);
+        } else if (status?.state === "completed" && status.persistedAssistantMessageId) {
+          refreshStoredArtifacts(true); release();
+        } else if (status?.state === "cancelled" || status?.state === "failed") {
+          if (visible()) {
+            setStreamState(null);
+            if (status.state === "failed") setActiveError(status.latestError || { code: "CONNECTION_LOST", message: "消息处理失败，请检查连接后重试。", retryable: true });
+          }
+          refreshStoredArtifacts(false); release();
+        } else markUncertain();
+      } catch {
+        if (ownsFlight()) markUncertain();
+      } finally {
+        flight.reconciling = false;
       }
+    };
+
+    const handleStreamEvent = (ev: RunStreamEvent) => {
+      if (!ownsFlight() || ev.workspaceId !== targetWsId || ev.conversationId !== convId) return;
       if (!resolvedRunId) {
         bufferedEvents.push(ev);
         return;
       }
-      setStreamState((prev) => {
-        const base = prev || createInitialStreamState(ev.workspaceId, ev.runId);
-        return applyRunStreamEvents(base, [ev]);
-      });
+      if (ev.runId !== resolvedRunId) return;
+      const previous = accumulated || createInitialStreamState(targetWsId, resolvedRunId);
+      accumulated = applyRunStreamEvents(previous, [ev]);
+      if (previous.seenSeqs.includes(ev.seq) || !accumulated.seenSeqs.includes(ev.seq)) return;
+      if (visible()) setStreamState(accumulated);
 
       if (ev.type === "run_failed" || ev.type === "run_cancelled") {
-        if (ev.payload.error) setActiveError(ev.payload.error);
+        if (visible() && ev.type === "run_failed") setActiveError(ev.payload.error || { code: "CONNECTION_LOST", message: "消息处理失败，请检查连接后重试。", retryable: true });
         // A memory tool may have committed before the subsequent model request failed.
         refreshStoredArtifacts(false);
+        release();
       }
       if (ev.type === "run_completed") {
         refreshPersistedConversation(
@@ -401,6 +502,8 @@ export const AppShell: React.FC = () => {
           ev.payload.persistedMessageId,
           ev.payload.persistenceVerified === true,
         );
+        if (ev.payload.persistenceVerified === true && ev.payload.persistedMessageId) release();
+        else markUncertain();
       }
     };
 
@@ -408,7 +511,7 @@ export const AppShell: React.FC = () => {
       setActiveError(null);
       const result = await bridge.startAgentTurn(
         {
-          requestId: `req-turn-${Date.now()}`,
+          requestId: flight.requestId,
           workspaceId: targetWsId,
           conversationId: convId,
           userPrompt: prompt,
@@ -417,42 +520,31 @@ export const AppShell: React.FC = () => {
       );
 
       resolvedRunId = result.runId;
-      if (activeStreamWorkspaceRef.current === targetWsId) {
-        setMessages((prev) => [...prev, result.acceptedUserMessage]);
+      if (!ownsFlight()) return;
+      flight.runId = result.runId;
+      if (flight.acceptTimer) clearTimeout(flight.acceptTimer);
+      showPhase("running");
+      setDraftStore((prev) => getWorkspaceDraft(prev, targetWsId).trim() === prompt ? setWorkspaceDraft(prev, targetWsId, "") : prev);
+      if (visible()) {
+        setMessages((prev) => prev.some((msg) => msg.id === result.acceptedUserMessage.id) ? prev : [...prev, result.acceptedUserMessage]);
       }
-
-      const nextStream = applyRunStreamEvents(
-        createInitialStreamState(targetWsId, result.runId),
-        bufferedEvents,
-      );
-      if (activeStreamWorkspaceRef.current !== targetWsId) return;
-      setStreamState(nextStream);
-      if (nextStream.status === "failed" || nextStream.status === "cancelled") {
-        if (nextStream.latestError) setActiveError(nextStream.latestError);
-        refreshStoredArtifacts(false);
-      }
-      if (nextStream.status === "completed_verified" && nextStream.persistedMessageId) {
-        refreshPersistedConversation(targetWsId, convId, nextStream.persistedMessageId, true);
-      }
+      accumulated ||= createInitialStreamState(targetWsId, result.runId);
+      if (visible()) setStreamState(accumulated);
+      bufferedEvents.sort((a, b) => a.seq - b.seq).forEach(handleStreamEvent);
+      if (ownsFlight()) flight.watchdog = setTimeout(() => void flight.reconcile?.(true), 65_000);
     } catch (err) {
-      setDraftStore((prev) => setWorkspaceDraft(prev, targetWsId, prompt));
-      setActiveError(err as HarkUIError);
+      if (!ownsFlight()) return;
+      const error = asUiError(err);
+      const preflightRejected = ["sidecar_not_connected", "sidecar_not_configured", "model_not_configured", "session_key_rejected"].includes(String(error.details?.nativeCode ?? ""));
+      if (!preflightRejected && (error.code === "CONNECTION_LOST" || error.code === "SIDECAR_UNAVAILABLE")) markUncertain();
+      else { if (visible()) setActiveError(error); release(); }
     }
   };
 
   // 10. 停止当前模型生成
   const handleCancelRun = async () => {
-    if (!streamState || !currentWorkspaceDetail?.summary.currentConversationId) return;
-    try {
-      await bridge.cancelAgentTurn(streamState.runId);
-      setStreamState(null);
-      const page = await bridge.getConversation(
-        currentWorkspaceDetail.summary.currentConversationId
-      );
-      setMessages(page.messages);
-    } catch (err) {
-      setActiveError(err as HarkUIError);
-    }
+    const flight = flightRef.current;
+    if (flight && flight.workspaceId === currentWorkspaceId) await flight.reconcile?.(true);
   };
 
   // 11. 提交观点反馈
@@ -779,10 +871,12 @@ export const AppShell: React.FC = () => {
               onSend={handleSendMessage}
               onCancelRun={handleCancelRun}
               isRunning={Boolean(
-                streamState &&
-                  streamState.workspaceId === currentWorkspaceId &&
-                  streamState.status === "streaming"
+                flightView && flightView.workspaceId === currentWorkspaceId && flightView.phase === "running" && flightView.runId
               )}
+              sendBlocked={flightView !== null}
+              sendStatus={flightView ? (flightView.phase === "uncertain" ? (flightView.runId ? "消息状态待确认，请先检查状态。" : "消息可能仍在处理，结束等待后重发可能重复。") : flightView.phase === "starting" ? "正在发送…" : flightView.workspaceId !== currentWorkspaceId ? "另一项目的消息正在处理。" : undefined) : undefined}
+              onCheckSendStatus={flightView?.phase === "uncertain" ? () => void flightRef.current?.reconcile?.(false) : undefined}
+              onEndUnknownSend={flightView?.phase === "uncertain" && !flightView.runId ? () => flightRef.current?.abandon?.() : undefined}
               modelPermission={currentSummary.modelPermission}
               stepFunConfigured={runtime.stepFunConfigured}
               sidecarAvailable={runtime.piSidecarStatus === "ready"}

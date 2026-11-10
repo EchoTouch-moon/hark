@@ -1,6 +1,6 @@
 use hark_native_shell::{
-    decide_window_close, AgentTurnRef, AgentTurnRequest, AuthorizeRequest, ConfirmRequest,
-    ModelGrantRequest, NativeShell, OpeningRequest, ShellError, SourceRefRequest,
+    decide_window_close, AgentTurnRef, AgentTurnRequest, AgentTurnRequestRef, AuthorizeRequest,
+    ConfirmRequest, ModelGrantRequest, NativeShell, OpeningRequest, ShellError, SourceRefRequest,
     StepFunKeyRequest, TurnProgress, UserMessageRequest, WindowCloseDecision,
 };
 use tauri::menu::{Menu, MenuItem};
@@ -238,6 +238,18 @@ fn get_agent_turn(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+fn get_agent_turn_by_request(
+    shell: tauri::State<'_, NativeShell>,
+    request: AgentTurnRequestRef,
+) -> Result<Option<hark_native_shell::AgentTurnStatus>, ShellError> {
+    shell.agent_turn_status_by_request(
+        &request.workspace_id,
+        &request.conversation_id,
+        &request.request_id,
+    )
+}
+
+#[tauri::command(rename_all = "camelCase")]
 fn cancel_agent_turn(
     shell: tauri::State<'_, NativeShell>,
     request: AgentTurnRef,
@@ -446,6 +458,7 @@ pub fn run() {
             start_configured_opening,
             start_agent_turn,
             get_agent_turn,
+            get_agent_turn_by_request,
             cancel_agent_turn,
             shell_snapshot,
             hide_window,

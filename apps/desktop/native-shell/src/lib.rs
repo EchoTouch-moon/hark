@@ -14,8 +14,9 @@ mod seam;
 mod service;
 
 pub use bridge::{
-    AgentTurnAccepted, AgentTurnRef, AgentTurnRequest, AgentTurnStatus, DevSidecarConfig,
-    OpeningBridgeResult, ProtocolProbe, RunStreamEvent, TurnProgress, OPENING_INTERNAL_INSTRUCTION,
+    AgentTurnAccepted, AgentTurnRef, AgentTurnRequest, AgentTurnRequestRef, AgentTurnStatus,
+    DevSidecarConfig, OpeningBridgeResult, ProtocolProbe, RunStreamEvent, TurnProgress,
+    OPENING_INTERNAL_INSTRUCTION,
 };
 pub use cognition::{
     MessageEvidenceRequest, OpinionFeedbackRequest, OpinionRequest, RevertMemoryRequest,

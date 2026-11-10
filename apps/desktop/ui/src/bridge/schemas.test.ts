@@ -8,6 +8,7 @@ import {
   getWorkspaceDraft,
   setWorkspaceDraft,
   resolveErrorDescriptor,
+  reconcileStalledTurn,
 } from "./schemas.ts";
 import type { NarrativeState, RunStreamEvent } from "./HarkBridge.ts";
 
@@ -137,6 +138,33 @@ test("Stream protocol: marks completed_unverified when run_completed has no pers
   const state = applyRunStreamEvents(initial, events);
   assert.equal(state.status, "completed_unverified");
   assert.equal(state.persistedMessageId, undefined);
+});
+
+test("late start and text events cannot revive a completed or failed run", () => {
+  const initial = createInitialStreamState("ws", "run");
+  const event = (seq: number, type: RunStreamEvent["type"]): RunStreamEvent => ({
+    schemaVersion: "hark.ui.v1", workspaceId: "ws", conversationId: "conv", runId: "run", seq, type, payload: {},
+  });
+  const failed = applyRunStreamEvents(initial, [event(2, "run_failed")]);
+  assert.equal(applyRunStreamEvents(failed, [event(1, "run_started")]).status, "failed");
+  assert.equal(applyRunStreamEvents(failed, [event(3, "run_started")]).status, "failed");
+});
+
+test("stalled turn checks persisted status and only cancels a still-running matching turn", async () => {
+  const expected = { runId: "run", workspaceId: "ws", conversationId: "conv" };
+  let cancellations = 0;
+  const bridge = { getRunStatus: async () => ({ ...expected, state: "running" as const }),
+    cancelAgentTurn: async () => { cancellations++; return { ...expected, state: "cancelled" as const }; } };
+  assert.equal((await reconcileStalledTurn(bridge, expected, 50, false))?.state, "running");
+  assert.equal(cancellations, 0);
+  assert.equal((await reconcileStalledTurn(bridge, expected))?.state, "cancelled");
+  assert.equal(cancellations, 1);
+  const done = { ...bridge, getRunStatus: async () => ({ ...expected, state: "completed" as const, persistedAssistantMessageId: "msg" }) };
+  assert.equal((await reconcileStalledTurn(done, expected))?.persistedAssistantMessageId, "msg");
+  assert.equal(cancellations, 1);
+  assert.equal(await reconcileStalledTurn({ ...bridge, getRunStatus: async () => ({ ...expected, workspaceId: "other", state: "running" }) }, expected), null);
+  assert.equal(await reconcileStalledTurn({ ...bridge, cancelAgentTurn: async () => { throw new Error("offline"); } }, expected), null);
+  assert.equal(await reconcileStalledTurn({ ...bridge, getRunStatus: async () => new Promise(() => {}) }, expected, 5), null);
 });
 
 test("Draft isolation: switching workspaces preserves separate draft strings", () => {

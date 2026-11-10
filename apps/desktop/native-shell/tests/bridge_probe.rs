@@ -874,6 +874,26 @@ fn ordinary_turns_use_scripted_transport_not_a_real_model() {
     let (first, first_events) = turn("req-chat-1", "第一句");
     assert_eq!(first.accepted_user_message.body, "第一句");
     assert_ordered(&first_events, &first.run_id);
+    let recovered = ready
+        .shell
+        .agent_turn_status_by_request(&ready.workspace_id, &conversation_id, "req-chat-1")
+        .unwrap()
+        .expect("accepted run is recoverable by request");
+    assert_eq!(recovered.run_id, first.run_id);
+    assert_eq!(recovered.state, "completed");
+    assert!(ready
+        .shell
+        .agent_turn_status_by_request(&ready.workspace_id, &conversation_id, "req-missing")
+        .unwrap()
+        .is_none());
+    assert_eq!(
+        ready
+            .shell
+            .agent_turn_status_by_request(&ready.workspace_id, "conv_wrong", "req-chat-1")
+            .unwrap_err()
+            .code,
+        "correlation_rejected"
+    );
     assert!(first_events
         .iter()
         .any(|event| event.event_type == "text_delta"));

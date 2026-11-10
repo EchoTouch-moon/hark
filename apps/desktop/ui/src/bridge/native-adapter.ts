@@ -313,6 +313,7 @@ function mapNativeCode(code: string): HarkErrorCode {
     case "invalid_id":
       return "SCOPE_DENIED";
     case "model_not_authorized":
+      return "MODEL_PERMISSION_REQUIRED";
     case "model_not_configured":
     case "sidecar_not_configured":
     case "session_key_rejected":
@@ -706,15 +707,20 @@ export function mapAgentTurnStatus(
       : {}),
     ...(status.latestError
       ? {
-          latestError: uiError(
-            mapNativeCode(status.latestError.code),
-            status.latestError.message,
-            status.latestError.retryable,
-            { nativeCode: status.latestError.code },
-          ),
+          latestError: mapTurnError(status.latestError),
         }
       : {}),
   };
+}
+
+function mapTurnError(error: { code: string; message: string; retryable: boolean }): HarkUIError {
+  if (error.message.includes("network guard refused: no explicit fetch was injected")) {
+    return uiError("CONNECTION_LOST", "AI 服务连接暂不可用，请稍后再试。", false);
+  }
+  if (error.code === "model_not_authorized") {
+    return uiError("CONNECTION_LOST", "AI 服务无法完成请求，请检查连接和项目权限。", error.retryable);
+  }
+  return uiError(mapNativeCode(error.code), error.message, error.retryable, { nativeCode: error.code });
 }
 
 function assertTurnInput(input: {
@@ -908,10 +914,11 @@ export function createTauriHarkBridge(
           false,
         );
       }
-      const events: RunStreamEvent[] = [];
       const channel = turnChannel((event) => {
-        events.push(event);
-        onEvent(event);
+        const mapped = event.payload.error
+          ? { ...event, payload: { ...event.payload, error: mapTurnError(event.payload.error) } }
+          : event;
+        onEvent(mapped);
       });
       const result = await call<{
         runId: string;
@@ -932,17 +939,21 @@ export function createTauriHarkBridge(
         workspaceId: input.workspaceId,
         conversationId: input.conversationId,
       });
-      if (events.some((event) => event.type === "run_completed" && event.payload.persistenceVerified !== true)) {
-        throw uiError(
-          "CONNECTION_LOST",
-          "run_completed 没有 persistenceVerified。不会把候选当已保存。",
-          true,
-        );
-      }
       return {
         runId: result.runId,
         acceptedUserMessage: mapConversationEvent(result.acceptedUserMessage, [], false),
       };
+    },
+    async getRunStatusByRequest(workspaceId, conversationId, requestId) {
+      const status = await call<AgentTurnStatusDto | null>("get_agent_turn_by_request", {
+        request: { workspaceId, conversationId, requestId },
+      });
+      if (!status) return null;
+      if (status.workspaceId !== workspaceId || status.conversationId !== conversationId || !isHarkId(status.runId, "run")) {
+        throw uiError("CONNECTION_LOST", "无法确认消息所属对话。", false);
+      }
+      cache.runs.set(status.runId, { workspaceId, conversationId });
+      return mapAgentTurnStatus(status, conversationId);
     },
     async getRunStatus(runId) {
       const owned = cache.runs.get(runId);

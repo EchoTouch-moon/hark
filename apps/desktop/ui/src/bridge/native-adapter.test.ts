@@ -541,6 +541,48 @@ test("startAgentTurn maps an unconfigured sidecar without emitting completion", 
   assert.deepEqual(events, []);
 });
 
+test("unverified completion preserves accepted run identity for reconciliation", async () => {
+  let handler: ((event: import("./HarkBridge.ts").RunStreamEvent) => void) | undefined;
+  const { invoke } = recorder({
+    start_agent_turn: () => {
+      handler?.({ schemaVersion: "hark.ui.v1", workspaceId: WS, conversationId: CONV, runId: RUN,
+        seq: 1, type: "run_completed", payload: { persistenceVerified: false } });
+      return { runId: RUN, acceptedUserMessage: acceptedMessage() };
+    },
+  });
+  const bridge = createTauriHarkBridge(invoke, { turnChannel: (onEvent) => { handler = onEvent; return {}; } });
+  const events: import("./HarkBridge.ts").RunStreamEvent[] = [];
+  const started = await bridge.startAgentTurn(turnInput(), (event) => events.push(event));
+  assert.equal(started.runId, RUN);
+  assert.equal(events[0]?.payload.persistenceVerified, false);
+});
+
+test("request recovery registers only the matching workspace and conversation", async () => {
+  const { invoke, calls } = recorder({
+    get_agent_turn_by_request: () => ({ runId: RUN, workspaceId: WS, conversationId: CONV, state: "running" }),
+    get_agent_turn: () => ({ runId: RUN, workspaceId: WS, conversationId: CONV, state: "running" }),
+  });
+  const bridge = createTauriHarkBridge(invoke);
+  assert.equal((await bridge.getRunStatusByRequest!(WS, CONV, "req-turn-1"))?.runId, RUN);
+  assert.deepEqual(calls[0]?.args, { request: { workspaceId: WS, conversationId: CONV, requestId: "req-turn-1" } });
+  assert.equal((await bridge.getRunStatus(RUN)).state, "running");
+  const mismatched = recorder({ get_agent_turn_by_request: () => ({ runId: RUN, workspaceId: "other", conversationId: CONV, state: "running" }) });
+  await assert.rejects(() => createTauriHarkBridge(mismatched.invoke).getRunStatusByRequest!(WS, CONV, "req-turn-1"));
+});
+
+test("native channel converts the closed transport failure into an actionable connection error", async () => {
+  let handler: ((event: import("./HarkBridge.ts").RunStreamEvent) => void) | undefined;
+  const { invoke } = recorder({ start_agent_turn: () => ({ runId: RUN, acceptedUserMessage: acceptedMessage() }) });
+  const bridge = createTauriHarkBridge(invoke, { turnChannel: (onEvent) => { handler = onEvent; return {}; } });
+  const events: import("./HarkBridge.ts").RunStreamEvent[] = [];
+  await bridge.startAgentTurn(turnInput(), (event) => events.push(event));
+  handler?.({ schemaVersion: "hark.ui.v1", workspaceId: WS, conversationId: CONV, runId: RUN, seq: 2,
+    type: "run_failed", payload: { error: { code: "model_not_authorized", message: "network guard refused: no explicit fetch was injected", retryable: false } as unknown as HarkUIError } });
+  assert.equal(events[0]?.payload.error?.code, "CONNECTION_LOST");
+  assert.match(events[0]?.payload.error?.message ?? "", /连接/);
+  assert.equal(events[0]?.payload.error?.message.includes("network guard"), false);
+});
+
 test("snapshot load uses shell_snapshot and list_workspaces and does not mark the model configured", async () => {
   const { invoke, calls } = recorder({
     shell_snapshot: () => snapshot(),

@@ -46,7 +46,7 @@ export const OfflineErrorBanner: React.FC<OfflineErrorBannerProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {onRetry && descriptor.retryable && (
+          {onRetry && descriptor.retryable && error.retryable && (
             <button
               type="button"
               onClick={onRetry}

@@ -31,6 +31,7 @@ fn main() {
             "start_configured_opening",
             "start_agent_turn",
             "get_agent_turn",
+            "get_agent_turn_by_request",
             "cancel_agent_turn",
             "hide_window",
             "quit_app",

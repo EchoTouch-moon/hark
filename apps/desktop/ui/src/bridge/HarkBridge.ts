@@ -465,6 +465,7 @@ export interface HarkBridge {
     onEvent: (event: RunStreamEvent) => void
   ): Promise<StartAgentTurnResult>;
   getRunStatus(runId: RunId): Promise<RunStatus>;
+  getRunStatusByRequest?(workspaceId: WorkspaceId, conversationId: ConversationId, requestId: ID): Promise<RunStatus | null>;
   cancelAgentTurn(runId: RunId): Promise<RunStatus>;
   getOpinion(opinionId: ID): Promise<OpinionView>;
   listWorkspaceOpinions(workspaceId: WorkspaceId): Promise<OpinionView[]>;
