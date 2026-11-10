@@ -556,6 +556,25 @@ test("snapshot load uses shell_snapshot and list_workspaces and does not mark th
   assert.equal(app.attentionItems.length, 0);
 });
 
+test("configured session key remains visible when the sidecar is disconnected", async () => {
+  const { invoke } = recorder({
+    shell_snapshot: () => ({ ...snapshot(), remoteModelTransport: "stepfun_session_memory" }),
+    list_workspaces: () => [],
+  });
+  const app = await createTauriHarkBridge(invoke).getAppSnapshot();
+  assert.equal(app.runtime.stepFunConfigured, true);
+  assert.equal(app.runtime.piSidecarStatus, "unavailable");
+});
+
+test("unknown model transport is not treated as a configured key", async () => {
+  const { invoke } = recorder({
+    shell_snapshot: () => ({ ...snapshot(), remoteModelTransport: "unknown" }),
+    list_workspaces: () => [],
+  });
+  const app = await createTauriHarkBridge(invoke).getAppSnapshot();
+  assert.equal(app.runtime.stepFunConfigured, false);
+});
+
 test("unfinished child workspace and remote search surfaces do not invoke", async () => {
   const { invoke, calls } = recorder({});
   const bridge = createTauriHarkBridge(invoke);

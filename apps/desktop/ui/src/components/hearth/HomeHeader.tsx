@@ -59,7 +59,7 @@ export function HomeHeader(props: HomeHeaderProps) {
         {props.synthetic && <span data-testid="bridge-mode-indicator" className="text-[10px] font-mono text-[var(--text-muted)]">DEV PREVIEW / SYNTHETIC</span>}
       </div>
       <div ref={container} className="relative shrink-0" onBlur={(event) => {
-        if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+        if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}>
         <button ref={trigger} type="button" data-testid="more-menu-trigger" aria-label="更多" aria-haspopup="menu" aria-expanded={open}
           onClick={() => setOpen((value) => !value)}

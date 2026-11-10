@@ -218,11 +218,13 @@ export const AppSettings: React.FC<AppSettingsProps> = ({
                     点击窗口关闭按钮默认行为
                   </div>
                   <p className="text-[11px] text-[var(--text-muted)]">
-                    与“完全退出应用”和“暂停观察”严格区分；隐藏窗口时自动停止前端高频视觉渲染。
+                    {nativeLocked ? "当前版本暂不支持更改此行为。" : "与完全退出和暂停观察区分；隐藏窗口时停止前端高频视觉渲染。"}
                   </p>
                 </div>
                 <select
                   aria-label="点击窗口关闭按钮默认行为"
+                  disabled={nativeLocked}
+                  title={nativeLocked ? "当前版本暂不支持更改" : undefined}
                   value={runtime.windowBehaviorOnClose}
                   onChange={(e) =>
                     onUpdateRuntime({

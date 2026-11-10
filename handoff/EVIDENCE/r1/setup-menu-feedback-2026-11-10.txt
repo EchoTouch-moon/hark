@@ -1,0 +1,7 @@
+2026-11-10 · 项目配置及菜单交互
+
+检查：npm run typecheck:ui、npm run test:ui（31/31）、npm run build:ui 均退出 0。
+独立 Chrome 临时 profile + 1431 隔离 Vite：模拟焦点丢失后菜单仍打开，应用设置可打开；合成项目设置中暂停可用、恢复不可用，暂停将合成 root ID 传给回调，失败显示在面板内。
+合成 Native 接口：首次引导 Key 输入空值不可保存；模拟失败显示错误并保留表单；模拟成功后表单隐藏；只调用 shell_snapshot、list_workspaces 和合成 configure_stepfun_session，未调用模型。
+新增单测：Key 内存状态与 sidecar 连接状态独立，未知 transport 不误报已配置。
+局限：未在真实 Native 窗口或真实项目目录操作；未使用真实密钥、发送真实模型请求或验证完整项目闭环。该桌面分支尚无对实际外发内容的逐次审阅实现，与 Real-First 约束存在差距。

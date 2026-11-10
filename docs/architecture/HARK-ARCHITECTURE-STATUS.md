@@ -1,5 +1,9 @@
 # Hark R1 架构与交付状态
 
+## 2026-11-10 · 首次配置与菜单
+
+首次引导复用 Native 的会话 Key 配置；目录权限按钮接入已有 Native 命令，未新增权限或模型调用。此为 UI 与合成浏览器验证，不代表真实项目闭环通过；实际外发内容审阅与 Real-First 的差距仍待解决。证据 `handoff/EVIDENCE/r1/setup-menu-feedback-2026-11-10.txt`。
+
 本机入口：用户授权的桌面Hark.app已创建，AppleScript→仓库Python标准库启动器→本地Vite/既有Native二进制，已实测启动与复用进程；不是独立产品打包，bundle.active仍false。无Native接口/模型授权变化，仍需本机仓库与Node。证据：`handoff/EVIDENCE/r1/desktop-launcher.md`。
 
 应用视觉资源：三款App Icon提案已输出到 `design/app-icon-concepts/`，用户选定01炉心；PNG32～1024、ICNS/ICO与单色托盘已接入Native配置，macOS cargo check/fmt及资源解析通过。bundle.active仍false，当前进程未重启；实际Dock/托盘、Windows与安装包未验。功能架构、权限与运行进程不变。

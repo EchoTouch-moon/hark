@@ -36,6 +36,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
 }) => {
   const [newExcluded, setNewExcluded] = useState("");
   const [saving, setSaving] = useState(false);
+  const [directoryError, setDirectoryError] = useState("");
 
   if (!isOpen || !workspace) return null;
 
@@ -49,6 +50,19 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
     try {
       const next: ServicePermission = current === "enabled" ? "disabled" : "enabled";
       await onUpdatePermissions({ [field]: next });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDirectoryAction = async (action: ((rootId: string) => Promise<void>) | undefined) => {
+    if (!workspace.rootId || !action) return;
+    setSaving(true);
+    setDirectoryError("");
+    try {
+      await action(workspace.rootId);
+    } catch (err) {
+      setDirectoryError(err && typeof err === "object" && "message" in err ? String(err.message) : "目录授权操作失败，请重试。");
     } finally {
       setSaving(false);
     }
@@ -172,10 +186,11 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
                 只对已授权 root 调用 pause / resume / revoke。不能在这里输入新路径。
               </p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={saving} onClick={() => workspace.rootId && onPauseDirectory?.(workspace.rootId)} className="px-3 py-1.5 rounded-lg border border-[var(--border-strong)]">暂停目录</button>
-                <button type="button" disabled={saving} onClick={() => workspace.rootId && onResumeDirectory?.(workspace.rootId)} className="px-3 py-1.5 rounded-lg border border-[var(--border-strong)]">恢复目录</button>
-                <button type="button" disabled={saving} onClick={() => workspace.rootId && onRevokeDirectory?.(workspace.rootId)} className="px-3 py-1.5 rounded-lg border border-[#b74a46]/40 text-[#b74a46]">撤销目录</button>
+                <button type="button" disabled={saving || !onPauseDirectory || workspace.directoryStatus !== "active"} onClick={() => void handleDirectoryAction(onPauseDirectory)} className="px-3 py-1.5 rounded-lg border border-[var(--border-strong)] disabled:opacity-50">暂停目录</button>
+                <button type="button" disabled={saving || !onResumeDirectory || workspace.directoryStatus !== "paused"} onClick={() => void handleDirectoryAction(onResumeDirectory)} className="px-3 py-1.5 rounded-lg border border-[var(--border-strong)] disabled:opacity-50">恢复目录</button>
+                <button type="button" disabled={saving || !onRevokeDirectory || workspace.directoryStatus === "revoked"} onClick={() => void handleDirectoryAction(onRevokeDirectory)} className="px-3 py-1.5 rounded-lg border border-[#b74a46]/40 text-[#b74a46] disabled:opacity-50">撤销目录</button>
               </div>
+              {directoryError && <p role="alert" className="text-[#b74a46]">{directoryError}</p>}
             </div>
           )}
 

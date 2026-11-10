@@ -24,6 +24,7 @@ interface FolderOnboardingProps {
   bridgeMode: "dev_preview_synthetic" | "strict_tauri_ipc";
   onPreviewPath: (path: string) => Promise<RootPreview>;
   onPickNative?: () => Promise<RootPreview>;
+  onSaveStepFunKey?: (apiKey: string) => Promise<void>;
   onConfirmImport: (input: ConfirmImportInput) => Promise<void>;
   onSelectExistingWorkspace: (workspaceId: string) => void;
   onCancel?: () => void;
@@ -57,6 +58,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
   bridgeMode,
   onPreviewPath,
   onPickNative,
+  onSaveStepFunKey,
   onConfirmImport,
   onSelectExistingWorkspace,
   onCancel,
@@ -75,6 +77,51 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
   const [enableModelInitialRead, setEnableModelInitialRead] = useState(true);
   const [enableWebSearch, setEnableWebSearch] = useState(false);
   const [forceMultiSplit, setForceMultiSplit] = useState(false);
+  const [keyDraft, setKeyDraft] = useState("");
+  const [keyBusy, setKeyBusy] = useState(false);
+  const [keyError, setKeyError] = useState("");
+
+  const modelSetup = native && onSaveStepFunKey && !stepFunConfigured ? (
+    <form
+      onSubmit={async (event) => {
+        event.preventDefault();
+        const key = keyDraft.trim();
+        if (!key || keyBusy) return;
+        setKeyBusy(true);
+        setKeyError("");
+        try {
+          await onSaveStepFunKey(key);
+          setKeyDraft("");
+        } catch {
+          setKeyError("保存失败，请检查后重试。");
+        } finally {
+          setKeyBusy(false);
+        }
+      }}
+      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-solid)] p-4 text-left space-y-2"
+    >
+      <label htmlFor="onboarding-stepfun-key" className="block text-sm font-medium text-[var(--text-primary)]">
+        配置 StepFun Key
+      </label>
+      <p className="text-xs text-[var(--text-muted)]">仅保存在本次运行中，重启后需重新填写。保存时不会发送请求。</p>
+      <div className="flex gap-2">
+        <input
+          id="onboarding-stepfun-key"
+          data-testid="onboarding-stepfun-key"
+          type="password"
+          autoComplete="off"
+          value={keyDraft}
+          disabled={keyBusy}
+          onChange={(event) => setKeyDraft(event.target.value)}
+          className="min-w-0 flex-1 rounded-lg border border-[var(--border-strong)] bg-[var(--surface-solid)] px-3 py-2 text-sm text-[var(--text-primary)]"
+        />
+        <button type="submit" disabled={keyBusy || !keyDraft.trim()} className="rounded-lg bg-[#c27537] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          {keyBusy ? "保存中…" : "保存"}
+        </button>
+      </div>
+      {keyError && <p role="alert" className="text-xs text-red-700 dark:text-red-300">{keyError}</p>}
+    </form>
+  ) : null;
 
   const applyPreview = (res: RootPreview) => {
     setPreview(res);
@@ -167,6 +214,10 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
         </div>
 
         <div className="max-w-lg mx-auto text-left space-y-3.5">
+          {modelSetup}
+          {native && stepFunConfigured && (
+            <p role="status" className="text-center text-xs text-[#3d8068]">StepFun Key 已保存到本次运行</p>
+          )}
           {native ? (
             <div className="space-y-3 text-center">
               <button
@@ -381,6 +432,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
 
       {/* 三个独立权限语义（PRD §4.1.3）：1. 只读范围 / 默认排除  2. 模型初读  3. 联网搜索 */}
       <div className="space-y-3 pt-3 border-t border-[var(--border-subtle)] text-xs">
+        {modelSetup}
         {/* 1. 只读目录范围与默认排除 */}
         <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-solid)]/70 p-3.5">
           <div className="flex items-center justify-between">
@@ -428,12 +480,12 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
               <span>
                 {stepFunConfigured
                   ? "允许将必要项目片段发送给已配置 StepFun，调用已有开场入口。不会另建欢迎流程，也不会在保存 Key 时自动发送。"
-                  : "先在设置里填写本次运行的 Key，才能开启初读。这里不能把模型标成已认证。"}
+                  : "填写本次运行的 Key 后，可以选择开启模型初读。"}
               </span>
             </div>
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
               {stepFunConfigured
-                ? "勾选后确认导入会调用已有开场入口。不勾选则只做选择性读取和 local_scan_card。"
+                ? "确认导入后会开始初读。不勾选则只进行本地只读扫描。"
                 : "当前尚未配置本次运行的 StepFun Key。本次导入只做本地只读扫描，不会读取全局凭据。"}
             </p>
           </div>

@@ -355,7 +355,7 @@ function retryableNative(code: string): boolean {
 }
 
 export function modelConfiguredFromSnapshot(snapshot: ShellSnapshotDto): boolean {
-  return snapshot.remoteModelTransport !== "closed_no_approved_key" && snapshot.sidecar.connected;
+  return snapshot.remoteModelTransport === "stepfun_session_memory";
 }
 
 export function mapRuntime(snapshot: ShellSnapshotDto): RuntimeStatus {

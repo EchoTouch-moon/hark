@@ -673,6 +673,19 @@ export const AppShell: React.FC = () => {
                 }
                 return bridge.pickAndScan();
               }}
+              onSaveStepFunKey={
+                bridge.configureStepFunSession
+                  ? async (apiKey) => {
+                      const status = await bridge.configureStepFunSession!(apiKey);
+                      if (!status.configured) throw new Error("模型配置未保存");
+                      setRuntime((prev) => ({
+                        ...prev,
+                        stepFunConfigured: status.configured,
+                        piSidecarStatus: status.sidecarConnected ? "ready" : "unavailable",
+                      }));
+                    }
+                  : undefined
+              }
               onConfirmImport={handleConfirmImport}
               onSelectExistingWorkspace={handleSelectWorkspace}
               onCancel={
@@ -840,6 +853,18 @@ export const AppShell: React.FC = () => {
         isOpen={showWorkspaceSettings}
         workspace={currentWorkspaceDetail}
         onUpdatePermissions={handleUpdateWorkspacePermissions}
+        onPauseDirectory={bridge.pauseDirectory && (async (rootId) => {
+          await bridge.pauseDirectory!(rootId);
+          await syncAppSnapshot(currentWorkspaceId);
+        })}
+        onResumeDirectory={bridge.resumeDirectory && (async (rootId) => {
+          await bridge.resumeDirectory!(rootId);
+          await syncAppSnapshot(currentWorkspaceId);
+        })}
+        onRevokeDirectory={bridge.revokeDirectory && (async (rootId) => {
+          await bridge.revokeDirectory!(rootId);
+          await syncAppSnapshot(currentWorkspaceId);
+        })}
         onClose={() => setShowWorkspaceSettings(false)}
         nativeLocked={bridgeMode === "strict_tauri_ipc"}
       />
