@@ -22,6 +22,7 @@ interface FolderOnboardingProps {
   existingWorkspaces: WorkspaceSummary[];
   stepFunConfigured: boolean;
   credentialPersistenceAvailable?: boolean;
+  modelTransportAvailable?: boolean;
   bridgeMode: "dev_preview_synthetic" | "strict_tauri_ipc";
   onPreviewPath: (path: string) => Promise<RootPreview>;
   onPickNative?: () => Promise<RootPreview>;
@@ -57,6 +58,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
   existingWorkspaces,
   stepFunConfigured,
   credentialPersistenceAvailable,
+  modelTransportAvailable = true,
   bridgeMode,
   onPreviewPath,
   onPickNative,
@@ -185,7 +187,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
             ? "multiple"
             : "single",
         nativeSelection: native ? nativeSelection : undefined,
-        enableModelInitialRead: stepFunConfigured ? enableModelInitialRead : false,
+        enableModelInitialRead: stepFunConfigured && modelTransportAvailable ? enableModelInitialRead : false,
         enableWebSearch: native ? false : enableWebSearch,
         customExcludedPaths: native ? undefined : preview.defaultExcludedPaths,
       });
@@ -472,8 +474,8 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
         <label className="flex items-start gap-3 p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-solid)]/70 cursor-pointer hover:border-[var(--border-strong)] transition-colors">
           <input
             type="checkbox"
-            checked={stepFunConfigured && enableModelInitialRead}
-            disabled={!stepFunConfigured}
+            checked={stepFunConfigured && modelTransportAvailable && enableModelInitialRead}
+            disabled={!stepFunConfigured || !modelTransportAvailable}
             onChange={(e) => setEnableModelInitialRead(e.target.checked)}
             className="mt-0.5 rounded border-[var(--border-strong)] accent-[#c27537]"
           />
@@ -481,15 +483,15 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
             <div className="flex items-center gap-1.5 font-medium text-[var(--text-primary)]">
               <Cpu className="w-3.5 h-3.5 text-[#e88e47]" />
               <span>
-                {stepFunConfigured
+                {stepFunConfigured && modelTransportAvailable
                   ? "允许使用 StepFun 分析这个项目"
-                  : "配置 AI 后可选择分析这个项目"}
+                  : stepFunConfigured ? "AI 服务暂不可用" : "配置 AI 后可选择分析这个项目"}
               </span>
             </div>
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-              {stepFunConfigured
+              {stepFunConfigured && modelTransportAvailable
                 ? "分析时会将所需的项目资料发送给 StepFun。你可以随时在项目设置中撤销授权。"
-                : "现在可以先添加项目，稍后再配置 AI。"}
+                : stepFunConfigured ? "可以先添加项目，稍后服务恢复后再分析。" : "现在可以先添加项目，稍后再配置 AI。"}
             </p>
           </div>
         </label>

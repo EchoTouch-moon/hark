@@ -1,0 +1,588 @@
+diff --git a/crates/hark-core/src/db.rs b/crates/hark-core/src/db.rs
+index 081c585..e4bd812 100644
+--- a/crates/hark-core/src/db.rs
++++ b/crates/hark-core/src/db.rs
+@@ -15,6 +15,8 @@ const MIGRATION_V3: &str = include_str!("../migrations/0003_conversation_run.sql
+ const MIGRATION_V3_NAME: &str = "0003_conversation_run";
+ const MIGRATION_V4: &str = include_str!("../migrations/0004_memory.sql");
+ const MIGRATION_V4_NAME: &str = "0004_memory";
++const MIGRATION_V5: &str = include_str!("../migrations/0005_outbound_review.sql");
++const MIGRATION_V5_NAME: &str = "0005_outbound_review";
+ 
+ pub(crate) fn open_path(path: &Path) -> Result<Core> {
+     let conn = Connection::open(path)?;
+@@ -63,7 +65,7 @@ pub(crate) fn migrate(core: &Core) -> Result<()> {
+             Some(v) if (1..SCHEMA_VERSION).contains(&v) => apply_upgrades_from(tx, v),
+             Some(v) => Err(CoreError::new(
+                 ErrorCode::MigrationFailed,
+-                format!("unsupported schema version {v}; this library applies v1 through v4"),
++                format!("unsupported schema version {v}; this library applies v1 through v5"),
+             )),
+         }
+     })
+@@ -73,7 +75,8 @@ fn apply_fresh(tx: &Transaction<'_>) -> Result<()> {
+     apply_version(tx, 1, MIGRATION_V1_NAME, MIGRATION_V1)?;
+     apply_version(tx, 2, MIGRATION_V2_NAME, MIGRATION_V2)?;
+     apply_conversation_v3(tx)?;
+-    apply_memory_v4(tx)
++    apply_memory_v4(tx)?;
++    apply_version(tx, 5, MIGRATION_V5_NAME, MIGRATION_V5)
+ }
+ 
+ fn apply_upgrades_from(tx: &Transaction<'_>, version: i64) -> Result<()> {
+@@ -86,6 +89,9 @@ fn apply_upgrades_from(tx: &Transaction<'_>, version: i64) -> Result<()> {
+     if version < 4 {
+         apply_memory_v4(tx)?;
+     }
++    if version < 5 {
++        apply_version(tx, 5, MIGRATION_V5_NAME, MIGRATION_V5)?;
++    }
+     Ok(())
+ }
+ 
+diff --git a/crates/hark-core/src/lib.rs b/crates/hark-core/src/lib.rs
+index bab2878..a36eb75 100644
+--- a/crates/hark-core/src/lib.rs
++++ b/crates/hark-core/src/lib.rs
+@@ -13,6 +13,7 @@ mod limits;
+ mod memory;
+ mod messages;
+ mod opinion;
++mod outbound;
+ mod policy;
+ #[cfg(unix)]
+ mod reader;
+@@ -54,6 +55,7 @@ pub use opinion::{
+     OpinionChangeProposal, OpinionFeedbackAction, OpinionFeedbackInput, OpinionReceipt,
+     OpinionRevisionEntry, OpinionView,
+ };
++pub use outbound::OutboundReviewBinding;
+ pub use reader::{
+     reader_open_attempts, reader_read_syscalls, reader_readdir_steps, reset_reader_work_counters,
+     set_reader_admitted_syscall_hook, set_reader_after_grant_before_syscall_hook,
+diff --git a/crates/hark-core/src/limits.rs b/crates/hark-core/src/limits.rs
+index 32f14c4..12886f8 100644
+--- a/crates/hark-core/src/limits.rs
++++ b/crates/hark-core/src/limits.rs
+@@ -3,7 +3,7 @@
+ /// Current business schema. v1 SQL is unchanged. v2 adds opening-run columns.
+ /// v3 widens conversation event kinds and adds ordinary conversation runs.
+ /// v4 adds workspace memory, structured opinions, feedback, and an FTS projection.
+-pub const SCHEMA_VERSION: i64 = 4;
++pub const SCHEMA_VERSION: i64 = 5;
+ 
+ pub const MAX_FRAME_BYTES: usize = 1_048_576;
+ pub const MAX_STREAM_QUEUE: usize = 64;
+diff --git a/crates/hark-core/src/messages.rs b/crates/hark-core/src/messages.rs
+index b87d5ed..4a4ad4f 100644
+--- a/crates/hark-core/src/messages.rs
++++ b/crates/hark-core/src/messages.rs
+@@ -135,6 +135,54 @@ pub struct WorkspaceOverview {
+ }
+ 
+ impl Core {
++    /// Verify each recorded source against its current on-disk content through
++    /// the same constrained reader used by workspace tools. Never writes a
++    /// new source while checking, and fails closed on incomplete snapshots.
++    pub fn outbound_source_version(&self, workspace_id: &WorkspaceId) -> Result<String> {
++        let (ws, root) = self.workspace_and_root(workspace_id)?;
++        grant::require_active(&root)?;
++        let before =
++            self.with_conn(|conn| crate::outbound::source_fingerprint(conn, workspace_id))?;
++        let sources = self.list_source_refs(workspace_id)?;
++        let total = sources
++            .iter()
++            .try_fold(0_u64, |sum, source| sum.checked_add(source.byte_len));
++        if sources.len() > 128 || total.is_none_or(|bytes| bytes > 8 * 1024 * 1024) {
++            return Err(CoreError::new(
++                ErrorCode::ModelNotAuthorized,
++                "source verification budget exceeded",
++            ));
++        }
++        for source in sources {
++            if source.truncated || !source.content_available {
++                return Err(CoreError::new(
++                    ErrorCode::ModelNotAuthorized,
++                    "source incomplete",
++                ));
++            }
++            let read = read_checked(self, &root, &ws, &source.relative_path, source.byte_len)?;
++            if read.truncated
++                || read.bytes.len() as u64 != source.byte_len
++                || hex::encode(Sha256::digest(&read.bytes)) != source.content_sha256
++            {
++                return Err(CoreError::new(
++                    ErrorCode::ModelNotAuthorized,
++                    "source content changed",
++                ));
++            }
++        }
++        let after =
++            self.with_conn(|conn| crate::outbound::source_fingerprint(conn, workspace_id))?;
++        if before != after {
++            return Err(CoreError::new(
++                ErrorCode::ModelNotAuthorized,
++                "source set changed",
++            ));
++        }
++        grant::require_active(&self.get_root(&root.id)?)?;
++        Ok(after)
++    }
++
+     pub fn read_workspace_file(
+         &self,
+         workspace_id: &WorkspaceId,
+diff --git a/crates/hark-core/tests/conversation_run.rs b/crates/hark-core/tests/conversation_run.rs
+index 00bc23b..0cdefcf 100644
+--- a/crates/hark-core/tests/conversation_run.rs
++++ b/crates/hark-core/tests/conversation_run.rs
+@@ -7,8 +7,9 @@ use std::path::{Path, PathBuf};
+ 
+ use hark_core::{
+     AgentOpeningReceipt, CancelFlag, ConfirmImport, ConversationCommit, ConversationId,
+-    ConversationRunStart, Core, ErrorCode, ImportMode, MessageId, RootId, RunId, ScanBudget,
+-    ServiceGrantUpdate, ServiceKind, ServiceStatus, SourceId, Workspace, WorkspaceId,
++    ConversationRunStart, Core, ErrorCode, ImportMode, MessageId, OutboundReviewBinding, RootId,
++    RunId, ScanBudget, ServiceGrantUpdate, ServiceKind, ServiceStatus, SourceId, Workspace,
++    WorkspaceId,
+ };
+ 
+ const V1: &str = include_str!("../migrations/0001_init.sql");
+@@ -164,6 +165,157 @@ fn register(core: &Core, ws: &WorkspaceId, run_id: &RunId) {
+         .unwrap();
+ }
+ 
++fn outbound_binding(ready: &Ready, run: &RunId) -> OutboundReviewBinding {
++    OutboundReviewBinding {
++        workspace_id: ready.ws.id.clone(),
++        run_id: run.clone(),
++        root_id: ready.root_id.as_str().to_string(),
++        endpoint: "https://api.stepfun.com/step_plan/v1/messages?beta=true".to_string(),
++        provider: "stepfun".to_string(),
++        model: "expected-model".to_string(),
++        body_sha256: "a".repeat(64),
++        source_version: ready.db.core.outbound_source_version(&ready.ws.id).unwrap(),
++        limits_sha256: "b".repeat(64),
++        expires_at_ms: chrono::Utc::now().timestamp_millis() + 60_000,
++    }
++}
++
++#[test]
++fn outbound_approval_is_bound_one_use_and_survives_restart() {
++    let mut fx = ready("outbound-binding");
++    let run = start_text(&fx.db.core, &fx.ws, "req-outbound", "synthetic message");
++    register(&fx.db.core, &fx.ws.id, &run.run.id);
++    let binding = outbound_binding(&fx, &run.run.id);
++    assert!(fx.db.core.consume_outbound("missing", &binding).is_err());
++    let approval = fx.db.core.approve_outbound(&binding).unwrap();
++    for changed in [
++        OutboundReviewBinding {
++            body_sha256: "c".repeat(64),
++            ..binding.clone()
++        },
++        OutboundReviewBinding {
++            source_version: "source-v2".to_string(),
++            ..binding.clone()
++        },
++        OutboundReviewBinding {
++            limits_sha256: "c".repeat(64),
++            ..binding.clone()
++        },
++        OutboundReviewBinding {
++            endpoint: "https://example.invalid/other".to_string(),
++            ..binding.clone()
++        },
++    ] {
++        assert!(fx.db.core.consume_outbound(&approval, &changed).is_err());
++    }
++    fx.db.reopen();
++    fx.db.core.consume_outbound(&approval, &binding).unwrap();
++    assert!(fx.db.core.consume_outbound(&approval, &binding).is_err());
++    let conn = rusqlite::Connection::open(&fx.db.path).unwrap();
++    assert!(conn
++        .execute("DELETE FROM outbound_review_events", [])
++        .is_err());
++    assert!(conn
++        .execute("UPDATE outbound_review_events SET phase='consumed'", [])
++        .is_err());
++    cleanup(&fx.root_path);
++}
++
++#[test]
++fn outbound_approval_refuses_revocation_and_expiry() {
++    let fx = ready("outbound-revoked");
++    let run = start_text(
++        &fx.db.core,
++        &fx.ws,
++        "req-outbound-revoked",
++        "synthetic message",
++    );
++    register(&fx.db.core, &fx.ws.id, &run.run.id);
++    let binding = outbound_binding(&fx, &run.run.id);
++    let approval = fx.db.core.approve_outbound(&binding).unwrap();
++    fx.db.core.revoke_directory(&fx.root_id).unwrap();
++    assert!(fx.db.core.consume_outbound(&approval, &binding).is_err());
++    assert!(fx.db.core.approve_outbound(&binding).is_err());
++    let expired = OutboundReviewBinding {
++        expires_at_ms: chrono::Utc::now().timestamp_millis() - 1,
++        ..binding
++    };
++    assert!(fx.db.core.approve_outbound(&expired).is_err());
++    cleanup(&fx.root_path);
++}
++
++#[test]
++fn outbound_refuses_changed_files_and_new_sources_with_old_binding() {
++    let fx = ready("outbound-changed-files");
++    fs::write(fx.root_path.join("README.md"), "first synthetic version").unwrap();
++    fx.db
++        .core
++        .read_workspace_file(&fx.ws.id, "README.md", &budget())
++        .unwrap();
++    let run = start_text(
++        &fx.db.core,
++        &fx.ws,
++        "req-changed-source",
++        "synthetic message",
++    );
++    register(&fx.db.core, &fx.ws.id, &run.run.id);
++    let binding = outbound_binding(&fx, &run.run.id);
++    let approval = fx.db.core.approve_outbound(&binding).unwrap();
++    fs::write(fx.root_path.join("README.md"), "changed synthetic text").unwrap();
++    assert!(fx.db.core.consume_outbound(&approval, &binding).is_err());
++    fs::write(fx.root_path.join("README.md"), "first synthetic version").unwrap();
++    fs::write(
++        fx.root_path.join("other.txt"),
++        "additional synthetic source",
++    )
++    .unwrap();
++    fx.db
++        .core
++        .read_workspace_file(&fx.ws.id, "other.txt", &budget())
++        .unwrap();
++    assert!(fx.db.core.consume_outbound(&approval, &binding).is_err());
++    let conn = rusqlite::Connection::open(&fx.db.path).unwrap();
++    let consumed: i64 = conn
++        .query_row(
++            "SELECT COUNT(*) FROM outbound_review_events WHERE phase='consumed'",
++            [],
++            |row| row.get(0),
++        )
++        .unwrap();
++    assert_eq!(consumed, 0);
++    cleanup(&fx.root_path);
++}
++
++#[test]
++fn outbound_rejects_foreign_and_credentialed_endpoints_without_storing_them() {
++    let fx = ready("outbound-endpoint");
++    let run = start_text(&fx.db.core, &fx.ws, "req-endpoint", "synthetic message");
++    register(&fx.db.core, &fx.ws.id, &run.run.id);
++    let binding = outbound_binding(&fx, &run.run.id);
++    for endpoint in [
++        "https://example.invalid/",
++        "https://credential@api.stepfun.com/step_plan/v1/messages?beta=true",
++        "https://api.stepfun.com/step_plan/v1/messages?beta=true&key=credential",
++    ] {
++        assert!(fx
++            .db
++            .core
++            .approve_outbound(&OutboundReviewBinding {
++                endpoint: endpoint.to_string(),
++                ..binding.clone()
++            })
++            .is_err());
++    }
++    let conn = rusqlite::Connection::open(&fx.db.path).unwrap();
++    let count: i64 = conn
++        .query_row("SELECT COUNT(*) FROM outbound_review_events", [], |row| {
++            row.get(0)
++        })
++        .unwrap();
++    assert_eq!(count, 0);
++    cleanup(&fx.root_path);
++}
++
+ fn commit(
+     core: &Core,
+     ws: &WorkspaceId,
+@@ -821,7 +973,7 @@ fn v2_nonempty_database_upgrades_without_loss() {
+     drop(conn);
+ 
+     let core = Core::open(&path).unwrap();
+-    assert_eq!(core.schema_version().unwrap(), 4);
++    assert_eq!(core.schema_version().unwrap(), 5);
+     let ws = WorkspaceId::from_trusted("ws_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string());
+     let conv = ConversationId::from_trusted("conv_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string());
+     let events = core.list_conversation(&ws).unwrap();
+diff --git a/crates/hark-core/tests/f1_disk.rs b/crates/hark-core/tests/f1_disk.rs
+index db9bccf..fc432cc 100644
+--- a/crates/hark-core/tests/f1_disk.rs
++++ b/crates/hark-core/tests/f1_disk.rs
+@@ -85,7 +85,7 @@ fn confirm_single(
+ #[test]
+ fn migration_is_current_and_lists_only_current_tables() {
+     let db = Db::new();
+-    assert_eq!(db.core.schema_version().unwrap(), 4);
++    assert_eq!(db.core.schema_version().unwrap(), 5);
+     db.core.schema_version().unwrap();
+     let mut tables = db.core.schema_tables().unwrap();
+     assert!(
+@@ -108,6 +108,7 @@ fn migration_is_current_and_lists_only_current_tables() {
+             "opinion_feedback",
+             "opinion_revisions",
+             "opinions",
++            "outbound_review_events",
+             "scan_candidates",
+             "scan_sessions",
+             "schema_migrations",
+@@ -118,7 +119,7 @@ fn migration_is_current_and_lists_only_current_tables() {
+         ]
+     );
+     let again = Core::open(&db.path).unwrap();
+-    assert_eq!(again.schema_version().unwrap(), 4);
++    assert_eq!(again.schema_version().unwrap(), 5);
+     let mut again_tables = again.schema_tables().unwrap();
+     again_tables.retain(|name| !name.starts_with("memory_search_fts"));
+     assert_eq!(again_tables.len(), tables.len());
+diff --git a/crates/hark-core/tests/memory_core.rs b/crates/hark-core/tests/memory_core.rs
+index 96ba7c4..41df0d7 100644
+--- a/crates/hark-core/tests/memory_core.rs
++++ b/crates/hark-core/tests/memory_core.rs
+@@ -720,7 +720,7 @@ fn v3_nonempty_chat_and_sources_upgrade_and_fts_follows_new_writes() {
+     drop(conn);
+ 
+     let core = Core::open(&path).unwrap();
+-    assert_eq!(core.schema_version().unwrap(), 4);
++    assert_eq!(core.schema_version().unwrap(), 5);
+     let ws = WorkspaceId::from_trusted("ws_v3".to_string());
+     let events = core.list_conversation(&ws).unwrap();
+     assert_eq!(events.len(), 1);
+diff --git a/crates/hark-core/migrations/0005_outbound_review.sql b/crates/hark-core/migrations/0005_outbound_review.sql
+new file mode 100644
+index 0000000..7850b64
+--- /dev/null
++++ b/crates/hark-core/migrations/0005_outbound_review.sql
+@@ -0,0 +1,21 @@
++-- Hashes and approval facts only: request text, headers, and credentials are never stored here.
++CREATE TABLE outbound_review_events (
++  approval_id TEXT NOT NULL,
++  phase TEXT NOT NULL CHECK (phase IN ('approved', 'consumed')),
++  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
++  run_id TEXT NOT NULL REFERENCES conversation_runs(id),
++  root_id TEXT NOT NULL REFERENCES authorized_roots(id),
++  endpoint TEXT NOT NULL,
++  provider TEXT NOT NULL,
++  model TEXT NOT NULL,
++  body_sha256 TEXT NOT NULL,
++  source_version TEXT NOT NULL,
++  limits_sha256 TEXT NOT NULL,
++  expires_at_ms INTEGER NOT NULL,
++  created_at TEXT NOT NULL,
++  PRIMARY KEY (approval_id, phase)
++);
++CREATE TRIGGER outbound_review_no_update BEFORE UPDATE ON outbound_review_events
++BEGIN SELECT RAISE(ABORT, 'append only'); END;
++CREATE TRIGGER outbound_review_no_delete BEFORE DELETE ON outbound_review_events
++BEGIN SELECT RAISE(ABORT, 'append only'); END;
+diff --git a/crates/hark-core/src/outbound.rs b/crates/hark-core/src/outbound.rs
+new file mode 100644
+index 0000000..e5f851c
+--- /dev/null
++++ b/crates/hark-core/src/outbound.rs
+@@ -0,0 +1,195 @@
++//! Persist only the fingerprint and approval facts; never persist request bodies or keys.
++use chrono::Utc;
++use rusqlite::{params, OptionalExtension, Transaction};
++use sha2::{Digest, Sha256};
++use uuid::Uuid;
++
++use crate::error::{CoreError, ErrorCode, Result};
++use crate::{Core, RunId, WorkspaceId};
++
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct OutboundReviewBinding {
++    pub workspace_id: WorkspaceId,
++    pub run_id: RunId,
++    pub root_id: String,
++    pub endpoint: String,
++    pub provider: String,
++    pub model: String,
++    pub body_sha256: String,
++    pub source_version: String,
++    pub limits_sha256: String,
++    pub expires_at_ms: i64,
++}
++
++fn rejected(reason: &'static str) -> CoreError {
++    CoreError::new(ErrorCode::ModelNotAuthorized, reason)
++}
++
++fn validate_binding(binding: &OutboundReviewBinding) -> Result<()> {
++    let sha = |s: &str| {
++        s.len() == 64
++            && s.bytes()
++                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
++    };
++    if !sha(&binding.body_sha256)
++        || !sha(&binding.limits_sha256)
++        || binding.endpoint != "https://api.stepfun.com/step_plan/v1/messages?beta=true"
++        || binding.provider != "stepfun"
++        || binding.provider.is_empty()
++        || binding.provider.len() > 64
++        || binding.model.is_empty()
++        || binding.model.len() > 128
++        || binding.source_version.is_empty()
++        || binding.source_version.len() > 256
++    {
++        return Err(rejected("invalid outbound binding"));
++    }
++    let now = Utc::now().timestamp_millis();
++    if binding.expires_at_ms <= now || binding.expires_at_ms > now + 120_000 {
++        return Err(rejected("outbound approval expired or invalid"));
++    }
++    Ok(())
++}
++
++fn require_current(tx: &Transaction<'_>, binding: &OutboundReviewBinding) -> Result<()> {
++    if source_fingerprint(tx, &binding.workspace_id)? != binding.source_version {
++        return Err(rejected("source set changed"));
++    }
++    let row = tx
++        .query_row(
++            "SELECT cr.state, cr.provider, cr.model, cr.root_updated_at, cr.grant_updated_at,
++                w.root_id, r.status, r.updated_at, g.status, g.updated_at, g.provider, g.model
++         FROM conversation_runs cr JOIN workspaces w ON w.id=cr.workspace_id
++         JOIN authorized_roots r ON r.id=w.root_id
++         JOIN service_grants g ON g.workspace_id=w.id AND g.service='model'
++         WHERE cr.id=?1 AND cr.workspace_id=?2",
++            params![binding.run_id.as_str(), binding.workspace_id.as_str()],
++            |row| {
++                Ok((
++                    row.get::<_, String>(0)?,
++                    row.get::<_, String>(1)?,
++                    row.get::<_, String>(2)?,
++                    row.get::<_, String>(3)?,
++                    row.get::<_, String>(4)?,
++                    row.get::<_, String>(5)?,
++                    row.get::<_, String>(6)?,
++                    row.get::<_, String>(7)?,
++                    row.get::<_, String>(8)?,
++                    row.get::<_, String>(9)?,
++                    row.get::<_, Option<String>>(10)?,
++                    row.get::<_, Option<String>>(11)?,
++                ))
++            },
++        )
++        .optional()?;
++    let Some((
++        state,
++        provider,
++        model,
++        root_rev,
++        grant_rev,
++        root,
++        root_status,
++        root_current,
++        grant_status,
++        grant_current,
++        grant_provider,
++        grant_model,
++    )) = row
++    else {
++        return Err(rejected("run or authorization missing"));
++    };
++    if !matches!(state.as_str(), "pending" | "running")
++        || root != binding.root_id
++        || root_status != "active"
++        || root_rev != root_current
++        || grant_status != "enabled"
++        || grant_rev != grant_current
++        || provider != binding.provider
++        || model != binding.model
++        || grant_provider.as_deref() != Some(binding.provider.as_str())
++        || grant_model.as_deref() != Some(binding.model.as_str())
++    {
++        return Err(rejected("run or authorization changed"));
++    }
++    Ok(())
++}
++
++impl Core {
++    /// Called only by the trusted native review handler after an explicit user decision.
++    pub fn approve_outbound(&self, binding: &OutboundReviewBinding) -> Result<String> {
++        validate_binding(binding)?;
++        if self.outbound_source_version(&binding.workspace_id)? != binding.source_version {
++            return Err(rejected("source content changed"));
++        }
++        self.with_immediate_tx(|tx| {
++            validate_binding(binding)?;
++            require_current(tx, binding)?;
++            let approval_id = format!("approval_{}", Uuid::new_v4().simple());
++            append(tx, &approval_id, "approved", binding)?;
++            Ok(approval_id)
++        })
++    }
++
++    /// Rechecks the immutable binding and authorization and consumes exactly once.
++    pub fn consume_outbound(
++        &self,
++        approval_id: &str,
++        binding: &OutboundReviewBinding,
++    ) -> Result<()> {
++        validate_binding(binding)?;
++        if self.outbound_source_version(&binding.workspace_id)? != binding.source_version {
++            return Err(rejected("source content changed"));
++        }
++        self.with_immediate_tx(|tx| {
++            validate_binding(binding)?;
++            require_current(tx, binding)?;
++            let matches: i64 = tx.query_row(
++                "SELECT COUNT(*) FROM outbound_review_events a WHERE a.approval_id=?1 AND a.phase='approved'
++                 AND a.workspace_id=?2 AND a.run_id=?3 AND a.root_id=?4 AND a.endpoint=?5
++                 AND a.provider=?6 AND a.model=?7 AND a.body_sha256=?8 AND a.source_version=?9
++                 AND a.limits_sha256=?10 AND a.expires_at_ms=?11
++                 AND NOT EXISTS (SELECT 1 FROM outbound_review_events c WHERE c.approval_id=a.approval_id AND c.phase='consumed')",
++                params![approval_id, binding.workspace_id.as_str(), binding.run_id.as_str(), binding.root_id,
++                    binding.endpoint, binding.provider, binding.model, binding.body_sha256, binding.source_version,
++                    binding.limits_sha256, binding.expires_at_ms], |row| row.get(0),
++            )?;
++            if matches != 1 { return Err(rejected("approval missing, changed or already consumed")); }
++            append(tx, approval_id, "consumed", binding)
++        })
++    }
++}
++
++pub(crate) fn source_fingerprint(
++    conn: &rusqlite::Connection,
++    workspace: &WorkspaceId,
++) -> Result<String> {
++    let mut stmt = conn.prepare("SELECT id,relative_path,content_sha256,byte_len,truncated FROM source_refs WHERE workspace_id=?1 ORDER BY id")?;
++    let rows = stmt.query_map(params![workspace.as_str()], |row| {
++        Ok((
++            row.get::<_, String>(0)?,
++            row.get::<_, String>(1)?,
++            row.get::<_, String>(2)?,
++            row.get::<_, i64>(3)?,
++            row.get::<_, i64>(4)?,
++        ))
++    })?;
++    let values = rows.collect::<std::result::Result<Vec<_>, _>>()?;
++    let serialized =
++        serde_json::to_vec(&values).map_err(|_| rejected("source snapshot invalid"))?;
++    Ok(hex::encode(Sha256::digest(serialized)))
++}
++
++fn append(
++    tx: &Transaction<'_>,
++    approval_id: &str,
++    phase: &str,
++    b: &OutboundReviewBinding,
++) -> Result<()> {
++    tx.execute(
++        "INSERT INTO outbound_review_events (approval_id,phase,workspace_id,run_id,root_id,endpoint,provider,model,body_sha256,source_version,limits_sha256,expires_at_ms,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
++        params![approval_id, phase, b.workspace_id.as_str(), b.run_id.as_str(), b.root_id, b.endpoint,
++            b.provider, b.model, b.body_sha256, b.source_version, b.limits_sha256, b.expires_at_ms, Utc::now().to_rfc3339()],
++    )?;
++    Ok(())
++}

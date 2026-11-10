@@ -758,6 +758,7 @@ export const AppShell: React.FC = () => {
               existingWorkspaces={workspaces}
               stepFunConfigured={runtime.stepFunConfigured}
               credentialPersistenceAvailable={runtime.credentialPersistenceAvailable}
+              modelTransportAvailable={bridgeMode !== "strict_tauri_ipc" || runtime.modelTransportAvailable === true}
               bridgeMode={bridgeMode}
               onPreviewPath={(path) => bridge.previewRoot(path)}
               onPickNative={() => {
@@ -880,6 +881,7 @@ export const AppShell: React.FC = () => {
               modelPermission={currentSummary.modelPermission}
               stepFunConfigured={runtime.stepFunConfigured}
               sidecarAvailable={runtime.piSidecarStatus === "ready"}
+              modelTransportAvailable={bridgeMode !== "strict_tauri_ipc" || runtime.modelTransportAvailable === true}
               onOpenPermissions={() => {
                 if (!runtime.stepFunConfigured || runtime.piSidecarStatus !== "ready") {
                   setShowAppSettings(true);

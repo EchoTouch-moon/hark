@@ -377,6 +377,7 @@ export interface RuntimeStatus {
   rustCoreStatus: "healthy" | "degraded" | "unreachable";
   piSidecarStatus: "ready" | "starting" | "unavailable";
   stepFunConfigured: boolean;
+  modelTransportAvailable?: boolean;
   credentialError?: string | null;
   credentialPersistenceAvailable?: boolean;
   mcpSearchConfigured: boolean;

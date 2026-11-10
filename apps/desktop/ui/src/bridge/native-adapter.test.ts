@@ -608,6 +608,18 @@ test("configured session key remains visible when the sidecar is disconnected", 
   assert.equal(app.runtime.piSidecarStatus, "unavailable");
 });
 
+test("a configured key and connected host do not imply outbound model transport is available", async () => {
+  const { invoke } = recorder({
+    shell_snapshot: () => ({ ...snapshot(), remoteModelTransport: "stepfun_session_memory", modelTransportAvailable: false,
+      sidecar: { ...snapshot().sidecar, connected: true } }),
+    list_workspaces: () => [],
+  });
+  const app = await createTauriHarkBridge(invoke).getAppSnapshot();
+  assert.equal(app.runtime.stepFunConfigured, true);
+  assert.equal(app.runtime.piSidecarStatus, "ready");
+  assert.equal(app.runtime.modelTransportAvailable, false);
+});
+
 test("unknown model transport is not treated as a configured key", async () => {
   const { invoke } = recorder({
     shell_snapshot: () => ({ ...snapshot(), remoteModelTransport: "unknown" }),

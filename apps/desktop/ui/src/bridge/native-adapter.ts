@@ -189,6 +189,7 @@ export interface ShellSnapshotDto {
   workspaces: NativeWorkspace[];
   readerCapability: string;
   remoteModelTransport: string;
+  modelTransportAvailable?: boolean;
   credentialError?: string | null;
   credentialPersistenceAvailable?: boolean;
   sidecar: SidecarStatusDto;
@@ -367,6 +368,7 @@ export function mapRuntime(snapshot: ShellSnapshotDto): RuntimeStatus {
     rustCoreStatus: "healthy",
     piSidecarStatus: snapshot.sidecar.connected ? "ready" : "unavailable",
     stepFunConfigured: modelConfiguredFromSnapshot(snapshot),
+    modelTransportAvailable: snapshot.modelTransportAvailable === true,
     credentialError: snapshot.credentialError,
     credentialPersistenceAvailable: snapshot.credentialPersistenceAvailable === true,
     mcpSearchConfigured: false,

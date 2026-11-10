@@ -1,0 +1,11 @@
+2026-11-11 连接不可用排查和隔离验证
+
+代码证据：生产 sidecar 未注入 provider 所需 fetchImpl，真实模型请求在联网前被拒。截图中的错误无法单独确定是否还存在其他原因，也不能证明用户密钥有效或无效。
+
+本次仅交付不可用状态的界面处理：Native model_transport_available=false；严格 IPC 模式缺失该状态时同样关闭发送；保留未发送输入，说明服务不可用和已保存密钥无需重新填写；添加项目时关闭不可用的模型初读选项。未接通真实外发。
+
+检查：npm run typecheck:ui、npm run test:ui（38/38）、npm run build:ui；cargo test -p hark-native-shell（22/22）、cargo build -p hark-desktop。合成浏览器 closed-transport-synthetic 脚本验证发送禁用、草稿保留、明确提示和零发送；send-appshell-synthetic 脚本验证合成传输下重复发送、失败显示和状态恢复。测试未读取真实项目、钥匙串或调用真实模型。
+
+审批原型：隔离 Core 测试共 51 项通过，但独立审查发现历史来源范围及版本格式问题、审阅后文件变化与撤权竞态、v5 数据库对旧程序不兼容。原型没有 UI、IPC 或真实发送链路，已从运行源码撤回，数据库保持 v4。补丁 outbound-review-prototype-2026-11-11.patch 仅作未完成的研发记录，不可直接部署。
+
+下一步：设计并实现可审核的最终请求与来源绑定，解决跨进程撤权和发送边界同步，完成界面与真实传输接入，再经授权进行真实端到端验证。

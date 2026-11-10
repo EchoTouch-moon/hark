@@ -314,6 +314,8 @@ pub struct ShellSnapshot {
     pub reader_capability: String,
     /// This process never calls a model, even if a future database row says enabled.
     pub remote_model_transport: &'static str,
+    /// A running host and saved key do not imply that outbound model requests are enabled.
+    pub model_transport_available: bool,
     pub credential_error: Option<String>,
     pub credential_persistence_available: bool,
     pub sidecar: SidecarStatus,
@@ -433,6 +435,8 @@ impl NativeShell {
             } else {
                 "closed_no_approved_key"
             },
+            // The production host currently has no approved outbound request path.
+            model_transport_available: false,
             credential_error: self.credential_error_value(),
             credential_persistence_available: cfg!(target_os = "macos")
                 && self.credential_store.is_some(),
