@@ -1050,6 +1050,34 @@ fn mkfifo(path: &Path) {
 }
 
 #[test]
+fn selective_read_prioritizes_readme_before_other_key_files() {
+    let db = Db::new();
+    let root_path = project("readme-priority");
+    fs::write(root_path.join("readme.md"), "R".repeat(32)).unwrap();
+    fs::write(root_path.join("AGENTS.md"), "A".repeat(32)).unwrap();
+    fs::write(root_path.join("package.json"), "P".repeat(32)).unwrap();
+    let root = db.core.authorize_directory(&root_path).unwrap();
+    let scan = db
+        .core
+        .run_initial_scan(&root.id, &budget(), &CancelFlag::new())
+        .unwrap();
+    let ws = confirm_single(&db.core, &root.id, &scan.id, false);
+    let tight = ScanBudget {
+        max_entries: 20,
+        max_depth: 2,
+        max_file_bytes: 16,
+        max_total_bytes: 16,
+    };
+    let report = db
+        .core
+        .selective_key_read(&ws.id, &tight, &CancelFlag::new())
+        .unwrap();
+    assert_eq!(report.sources.len(), 1);
+    assert_eq!(report.sources[0].relative_path, "readme.md");
+    cleanup(&root_path);
+}
+
+#[test]
 fn selective_read_respects_file_and_total_budget() {
     let db = Db::new();
     let root_path = project("bytes");
@@ -1309,9 +1337,9 @@ fn swapped_workspace_between_verify_and_open_does_not_read_sibling() {
 fn revoke_on_same_core_stops_later_reads_and_source_commits() {
     let db = Db::new();
     let root_path = project("revoke-same");
-    fs::write(root_path.join("AGENTS.md"), "agents-before-revoke").unwrap();
+    fs::write(root_path.join("AGENTS.md"), format!("agents-{CANARY}")).unwrap();
     fs::write(root_path.join("ARCHITECTURE.md"), format!("arch-{CANARY}")).unwrap();
-    fs::write(root_path.join("README.md"), format!("readme-{CANARY}")).unwrap();
+    fs::write(root_path.join("README.md"), "readme-before-revoke").unwrap();
     let root = db.core.authorize_directory(&root_path).unwrap();
     let scan = db
         .core
@@ -1345,7 +1373,7 @@ fn revoke_on_same_core_stops_later_reads_and_source_commits() {
         let gated = entered_rx
             .recv_timeout(Duration::from_secs(3))
             .expect("selective read did not reach the second file");
-        assert!(gated.ends_with("ARCHITECTURE.md"), "gated={gated}");
+        assert!(gated.ends_with("AGENTS.md"), "gated={gated}");
         core.revoke_directory(&root_id).unwrap();
         release_tx.send(()).unwrap();
         handle.join().unwrap()
@@ -1360,7 +1388,7 @@ fn revoke_on_same_core_stops_later_reads_and_source_commits() {
     let refs = db.core.list_source_refs(&ws.id).unwrap();
     assert!(
         refs.iter()
-            .all(|s| s.relative_path != "ARCHITECTURE.md" && s.relative_path != "README.md"),
+            .all(|s| s.relative_path != "ARCHITECTURE.md" && s.relative_path != "AGENTS.md"),
         "committed sources after revoke: {refs:?}"
     );
     let blob = serde_json::to_string(&refs).unwrap();

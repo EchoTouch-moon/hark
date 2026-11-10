@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 use hark_native_shell::{
     AgentTurnRequest, ConfirmRequest, DevSidecarConfig, NativeShell, RunStreamEvent, Selection,
-    TurnProgress, FRONTEND_COMMANDS,
+    TurnProgress, FRONTEND_COMMANDS, OPENING_INTERNAL_INSTRUCTION,
 };
 
 const KEY: &str = "synthetic-key-not-real";
@@ -190,6 +190,41 @@ fn joint_opening_reads_real_readme_and_restart_does_not_duplicate() {
     assert!(source.content_available);
     assert_eq!(opening_count(&ready.shell, &ready.workspace_id), 1);
     assert_eq!(user_count(&ready.shell, &ready.workspace_id), 0);
+    // The scoped opening instruction must reach Pi's session while remaining
+    // absent from the user's Hark conversation history.
+    let session_dir = ready.app_data.join("sessions").join(&ready.workspace_id);
+    let session_path = fs::read_dir(session_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .find(|path| {
+            path.extension()
+                .is_some_and(|extension| extension == "jsonl")
+        })
+        .expect("Pi session JSONL");
+    let session = fs::read_to_string(session_path).unwrap();
+    let contains_instruction = session.lines().any(|line| {
+        let Ok(entry) = serde_json::from_str::<serde_json::Value>(line) else {
+            return false;
+        };
+        entry.get("type").and_then(|value| value.as_str()) == Some("message")
+            && entry
+                .pointer("/message/role")
+                .and_then(|value| value.as_str())
+                == Some("user")
+            && entry
+                .pointer("/message/content")
+                .and_then(|value| value.as_array())
+                .is_some_and(|content| {
+                    content.iter().any(|part| {
+                        part.get("text").and_then(|value| value.as_str())
+                            == Some(OPENING_INTERNAL_INSTRUCTION)
+                    })
+                })
+    });
+    assert!(
+        contains_instruction,
+        "opening instruction did not reach Pi session"
+    );
     let card = ready
         .shell
         .list_conversation(&ready.workspace_id)

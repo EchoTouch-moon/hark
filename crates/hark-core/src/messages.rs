@@ -185,7 +185,7 @@ impl Core {
         let admit =
             move |op: &mut dyn FnMut() -> Result<()>| self.admit_active_io(&admit_id, || op());
         let gate = grant::IoGate::new(&check, &admit);
-        let listed = reader::inspect_directory(
+        let mut listed = reader::inspect_directory(
             std::path::Path::new(&root.path),
             &identity,
             &ws.relative_path,
@@ -193,6 +193,15 @@ impl Core {
             cancel,
             &gate,
         )?;
+        // When the directory contains more key files than the read budget permits,
+        // spend the budget on the project's own introduction first. Directory
+        // enumeration remains bounded and all reads still pass the existing gate.
+        listed.children.sort_by_key(|child| match child {
+            reader::ChildInspect::File { name, .. } if name.eq_ignore_ascii_case("readme.md") => 0,
+            reader::ChildInspect::File { name, .. } if name.eq_ignore_ascii_case("readme") => 1,
+            reader::ChildInspect::File { name, .. } if name.eq_ignore_ascii_case("readme.txt") => 2,
+            _ => 3,
+        });
         let mut sources = Vec::new();
         let mut skipped = Vec::new();
         let mut total = 0_u64;
