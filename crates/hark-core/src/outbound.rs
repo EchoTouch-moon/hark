@@ -14,6 +14,8 @@ use uuid::Uuid;
 
 use crate::error::{CoreError, ErrorCode, Result};
 use crate::limits::ONBOARDING_GENERATION;
+use crate::limits::{ABSOLUTE_MAX_FILE_BYTES, ABSOLUTE_MAX_TOTAL_BYTES};
+use crate::{grant, reader, workspace};
 use crate::{Core, RootId, RunId, SourceId, WorkspaceId};
 
 pub const STEPFUN_OUTBOUND_ENDPOINT: &str =
@@ -197,6 +199,64 @@ fn require_current(tx: &Transaction<'_>, binding: &OutboundBinding) -> Result<Cu
     })
 }
 
+/// Re-read only sources actually bound to the reviewed request. The caller
+/// holds the SQLite write reservation, so Core revocation cannot interleave.
+/// Files are still independently mutable by external processes: this check
+/// validates the bytes read here, not a filesystem-wide lock.
+fn verify_source_bytes(tx: &Transaction<'_>, binding: &OutboundBinding) -> Result<()> {
+    let ws = workspace::load_workspace(tx, &binding.workspace_id)?
+        .ok_or_else(|| rejected("workspace missing"))?;
+    let root = grant::load_root(tx, &binding.root_id)?.ok_or_else(|| rejected("root missing"))?;
+    grant::require_active(&root)?;
+    if ws.root_id != binding.root_id {
+        return Err(rejected("workspace root changed"));
+    }
+    let mut total = 0_u64;
+    for source in &binding.sources {
+        if source.byte_len > ABSOLUTE_MAX_FILE_BYTES {
+            return Err(rejected("outbound source exceeds file budget"));
+        }
+        total = total
+            .checked_add(source.byte_len)
+            .ok_or_else(|| rejected("outbound source budget overflow"))?;
+        if total > ABSOLUTE_MAX_TOTAL_BYTES {
+            return Err(rejected("outbound sources exceed total budget"));
+        }
+        let relative_path: String = tx
+            .query_row(
+                "SELECT relative_path FROM source_refs WHERE id=?1 AND workspace_id=?2",
+                params![source.source_id.as_str(), binding.workspace_id.as_str()],
+                |row| row.get(0),
+            )
+            .optional()?
+            .ok_or_else(|| rejected("source missing"))?;
+        let root_id = reader::DirIdentity {
+            dev: root.dev.clone(),
+            ino: root.ino.clone(),
+        };
+        let ws_id = reader::DirIdentity {
+            dev: ws.dev.clone(),
+            ino: ws.ino.clone(),
+        };
+        let bytes = reader::read_within_workspace(
+            std::path::Path::new(&root.path),
+            &root_id,
+            &ws.relative_path,
+            &ws_id,
+            &relative_path,
+            source.byte_len,
+            &grant::relaxed_io_gate(),
+        )?;
+        if bytes.bytes.len() as u64 != source.byte_len
+            || bytes.truncated != source.truncated
+            || hex::encode(Sha256::digest(&bytes.bytes)) != source.content_sha256
+        {
+            return Err(rejected("outbound source changed"));
+        }
+    }
+    Ok(())
+}
+
 impl Core {
     /// Only a trusted native handler may call this after explicit user review.
     pub fn approve_outbound(&self, binding: &OutboundBinding) -> Result<String> {
@@ -238,8 +298,8 @@ impl Core {
     /// The callback must not re-enter Core or wait for UI/IPC, which would
     /// deadlock or hold the database lock for an unbounded period.
     ///
-    /// This is not wired to the desktop. It does not validate the current
-    /// filesystem or prove that the source list covers the serialized body.
+    /// This is not wired to the desktop. It re-reads bound source bytes but
+    /// does not prove that the source list covers the serialized body.
     /// SQLite cannot roll back a network request; after any failure the
     /// receipt remains consumed and the caller must not retry automatically.
     /// Long callbacks delay or can make concurrent revocation return busy.
@@ -253,6 +313,7 @@ impl Core {
         self.with_immediate_tx(|tx| {
             validate(binding)?;
             require_current(tx, binding)?;
+            verify_source_bytes(tx, binding)?;
             begin()
         })
     }

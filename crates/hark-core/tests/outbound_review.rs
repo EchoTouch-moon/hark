@@ -356,3 +356,68 @@ fn failed_begin_keeps_the_approval_consumed() {
         .consume_and_begin_outbound(&approval, &f.binding, || Ok(()))
         .is_err());
 }
+
+#[test]
+fn edited_or_replaced_reviewed_file_refuses_begin_and_consumes_approval() {
+    use std::cell::Cell;
+    use std::os::unix::fs::symlink;
+
+    for replace_with_symlink in [false, true] {
+        let f = Fixture::new();
+        let approval = f.core.approve_outbound(&f.binding).unwrap();
+        let file = f.root.join("README.md");
+        if replace_with_symlink {
+            let outside = f._tmp.path().join("outside.txt");
+            fs::write(&outside, "synthetic outside scope").unwrap();
+            fs::remove_file(&file).unwrap();
+            symlink(&outside, &file).unwrap();
+        } else {
+            fs::write(&file, "changed synthetic readme").unwrap();
+        }
+        let called = Cell::new(false);
+        assert!(f
+            .core
+            .consume_and_begin_outbound(&approval, &f.binding, || {
+                called.set(true);
+                Ok(())
+            })
+            .is_err());
+        assert!(!called.get());
+        assert!(f.core.consume_outbound(&approval, &f.binding).is_err());
+    }
+}
+
+#[test]
+fn truncated_source_checks_the_previously_read_prefix() {
+    let mut f = Fixture::new();
+    fs::write(f.root.join("README.md"), "first part and remainder").unwrap();
+    let budget = ScanBudget {
+        max_file_bytes: 5,
+        ..ScanBudget::default()
+    };
+    let source = f
+        .core
+        .read_workspace_file(&f.binding.workspace_id, "README.md", &budget)
+        .unwrap()
+        .source;
+    assert!(source.truncated);
+    f.binding.sources = vec![OutboundSource {
+        source_id: source.id,
+        content_sha256: source.content_sha256,
+        byte_len: source.byte_len,
+        truncated: true,
+    }];
+    let approval = f.core.approve_outbound(&f.binding).unwrap();
+    // A different suffix was never read or sent; the reviewed prefix is unchanged.
+    fs::write(f.root.join("README.md"), "first new remainder").unwrap();
+    assert!(f
+        .core
+        .consume_and_begin_outbound(&approval, &f.binding, || Ok(()))
+        .is_ok());
+    let approval = f.core.approve_outbound(&f.binding).unwrap();
+    fs::write(f.root.join("README.md"), "other new remainder").unwrap();
+    assert!(f
+        .core
+        .consume_and_begin_outbound(&approval, &f.binding, || Ok(()))
+        .is_err());
+}
