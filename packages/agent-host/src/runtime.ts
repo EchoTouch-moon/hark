@@ -46,6 +46,7 @@ import {
 import { createEmptyResourceLoader } from "./empty-resource-loader.ts";
 import { createIsolatedSettings } from "./isolated-session.ts";
 import { createExplicitProvider, endpointOf, scriptedResponse, type ProviderGate } from "./provider.ts";
+import type { OutboundRequestSnapshot } from "./outbound-request.ts";
 
 const sessionRefSchema = z.string().regex(/^pi:[0-9a-f-]{36}$/);
 
@@ -79,6 +80,8 @@ export interface HostOptions {
   providerConfig?: ProviderConfig | null;
   scriptedTransport?: ScriptedTransport | null;
   fetchImpl?: typeof fetch;
+  /** Only a trusted sender which owns review and the final send may implement this. */
+  reviewedDispatch?: (snapshot: OutboundRequestSnapshot, run: { workspaceId: string; runId: string }, signal: AbortSignal) => Promise<Response>;
   now?: () => number;
   log?: (line: string) => void;
   hookShouldThrow?: () => boolean;
@@ -614,6 +617,22 @@ export class HostRuntime {
           config: slot,
           secrets: this.secrets,
           ...(this.options.fetchImpl ? { fetchImpl: this.options.fetchImpl } : {}),
+          ...(this.options.reviewedDispatch ? {
+            reviewedDispatch: async (snapshot: OutboundRequestSnapshot, signal: AbortSignal | undefined) => {
+              const run = [...this.active.values()][0];
+              if (!run || run.cancelled || run.timedOut || run.abort.signal.aborted || this.shuttingDown) {
+                throw new Error("review dispatch refused: run closed");
+              }
+              const dispatch = this.options.reviewedDispatch;
+              if (!dispatch) throw new Error("review dispatch unavailable");
+              const combined = signal ? AbortSignal.any([run.abort.signal, signal]) : run.abort.signal;
+              const response = await dispatch(snapshot, { workspaceId: run.workspaceId, runId: run.runId }, combined);
+              if (combined.aborted || run.cancelled || run.timedOut || this.shuttingDown) {
+                throw new Error("review dispatch refused: run closed");
+              }
+              return response;
+            },
+          } : {}),
           ...(this.scripted
             ? {
                 scripted: async (signal) => {

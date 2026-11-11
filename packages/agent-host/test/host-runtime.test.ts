@@ -12,6 +12,7 @@ import { runStartPayloadSchema, type ProviderConfig } from "../src/dto.ts";
 import { encodeFrame, mintId, NdjsonParser, type Frame } from "../src/ipc.ts";
 import { createGuardedFetch, sseText, sseToolCall } from "../src/provider.ts";
 import { HostRuntime, loadProviderConfig } from "../src/runtime.ts";
+import type { OutboundRequestSnapshot } from "../src/outbound-request.ts";
 
 const KEY = "synthetic-key-do-not-log";
 
@@ -56,6 +57,7 @@ function startHarness(options: {
   scripted?: boolean;
   hookShouldThrow?: () => boolean;
   failPack?: () => boolean;
+  reviewedDispatch?: (snapshot: OutboundRequestSnapshot, run: { workspaceId: string; runId: string }, signal: AbortSignal) => Promise<Response>;
   auth?: Partial<{ current: boolean; grantUpdatedAt: string; revision: string; sourceVersion: string; overviewText: string }>;
 }): Harness {
   const input = new PassThrough();
@@ -99,6 +101,7 @@ function startHarness(options: {
       const body = kind === "tool" ? sseToolCall("workspace.read_file", { relativePath: "README.md" }) : sseText(`synthetic-reply-${script}`);
       return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
     },
+    ...(options.reviewedDispatch ? { reviewedDispatch: options.reviewedDispatch } : {}),
     ...(options.hookShouldThrow ? { hookShouldThrow: options.hookShouldThrow } : {}),
     ...(options.failPack ? { failPack: options.failPack } : {}),
     log: (line) => logs.push(line),
@@ -283,6 +286,36 @@ test("closed provider slot does not send and does not accept a model-filled gran
   assert.equal(harness.logs.join("\n").includes(KEY), false);
   await harness.close();
   rmSync(dir, { recursive: true, force: true });
+});
+
+test("each SDK request reaches the review dispatch, including a new request after a file read", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "hark-host-review-"));
+  const snapshots: OutboundRequestSnapshot[] = [];
+  const harness = startHarness({ dir, reviewedDispatch: async (snapshot, run, signal) => {
+    assert.equal(run.workspaceId, `ws_${hex(1)}`);
+    assert.equal(run.runId, `run_${hex(211)}`);
+    assert.equal(signal.aborted, false);
+    snapshots.push(snapshot);
+    if (snapshots.length === 1) {
+      return new Response(sseToolCall("workspace.read_file", { relativePath: "README.md" }), { headers: { "content-type": "text/event-stream" } });
+    }
+    throw new Error("second request requires approval");
+  } });
+  try {
+    harness.input.write(encodeFrame(runStart(11)));
+    const error = await waitFor(harness.frames, (frame) => frame.kind === "error" && frame.runId === `run_${hex(211)}`);
+    assert.equal(error.error?.code, "model_not_authorized");
+    assert.equal(snapshots.length, 2);
+    assert.notEqual(snapshots[0]?.bodySha256, snapshots[1]?.bodySha256);
+    assert.equal(snapshots[0]?.body.includes("SYNTHETIC_FILE"), false);
+    assert.equal(snapshots[1]?.body.includes("SYNTHETIC_FILE"), true);
+    assert.equal(JSON.stringify(snapshots).includes(KEY), false);
+    assert.equal(harness.fetches.length, 0);
+    assert.equal(harness.frames.some((frame) => frame.method === "stream.done"), false);
+  } finally {
+    await harness.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("stream, reverse tool, cancel, and mismatched grant stay local", async () => {

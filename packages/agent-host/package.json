@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:pi-sdk-smoke": "node --experimental-strip-types --test test/sandbox-smoke.test.ts",
     "test:host": "node --experimental-strip-types --test test/ipc.test.ts test/host-runtime.test.ts test/memory-tools.test.ts",
-    "test:stepfun-session": "node --experimental-strip-types --test test/stepfun-session.test.ts",
+    "test:stepfun-session": "node --experimental-strip-types --test test/stepfun-session.test.ts test/outbound-request.test.ts",
     "test:stepfun-live-check": "node --experimental-strip-types --test test/stepfun-live-check.test.ts",
     "probe:host-stdio": "node --experimental-strip-types scripts/stdio-probe.ts"
   },

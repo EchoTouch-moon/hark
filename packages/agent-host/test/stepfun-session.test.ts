@@ -8,7 +8,7 @@ import {
   providerConfigFromFile,
   takeSessionProviderKey,
 } from "../src/dto.ts";
-import { createExplicitProvider, endpointOf, type ProviderGate } from "../src/provider.ts";
+import { createExplicitProvider, createGuardedFetch, endpointOf, type ProviderGate } from "../src/provider.ts";
 
 const SYNTH = "hark-session-test-key";
 
@@ -124,6 +124,51 @@ test("session key is taken out of env and anthropic metadata cannot store it", (
   }, SYNTH);
   assert.equal(config.apiKey, SYNTH);
   assert.equal(endpointOf(config), `${STEPFUN_BASE_URL}/v1/messages?beta=true`);
+});
+
+test("review dispatch sees final body but never credentials and has no implicit network fallback", async () => {
+  const config = providerConfigFromFile({
+    enabled: true, providerId: STEPFUN_PROVIDER_ID, modelId: STEPFUN_MODEL_ID,
+    baseUrl: STEPFUN_BASE_URL, wire: "anthropic-messages", allowRemote: true, authenticated: false,
+  }, SYNTH);
+  const body = JSON.stringify({ model: STEPFUN_MODEL_ID, messages: [{ role: "user", content: "synthetic" }] });
+  let captured = "";
+  const guarded = createGuardedFetch({ config, secrets: [SYNTH], reviewedDispatch: async (snapshot) => {
+    captured = JSON.stringify(snapshot);
+    throw new Error("review denied");
+  } });
+  await assert.rejects(guarded(endpointOf(config), { method: "POST", body, headers: { "x-api-key": SYNTH } }), /review denied/);
+  assert.equal(JSON.parse(captured).body, body);
+  assert.equal(captured.includes(SYNTH), false);
+  await assert.rejects(guarded(endpointOf(config), { method: "POST", body: JSON.stringify({ model: "wrong" }) }), /model mismatch/);
+  await assert.rejects(guarded(endpointOf(config), { method: "POST", body: JSON.stringify({ model: STEPFUN_MODEL_ID, message: SYNTH }) }), /contains provider credential/);
+});
+
+test("actual SDK serialization is captured at the review dispatch boundary", async () => {
+  const config = providerConfigFromFile({
+    enabled: true, providerId: STEPFUN_PROVIDER_ID, modelId: STEPFUN_MODEL_ID,
+    baseUrl: STEPFUN_BASE_URL, wire: "anthropic-messages", allowRemote: true, authenticated: false,
+  }, SYNTH);
+  const snapshots: string[] = [];
+  const provider = createExplicitProvider({ config, secrets: [SYNTH], reviewedDispatch: async (snapshot) => {
+    snapshots.push(JSON.stringify(snapshot));
+    return new Response(textSse(), { status: 200, headers: { "content-type": "text/event-stream" } });
+  } }, gate());
+  const model = provider.getModels()[0];
+  assert.ok(model);
+  const result = await provider.streamSimple(model, normalizeContext({
+    systemPrompt: "synthetic system instruction",
+    messages: [{ role: "user", content: "synthetic question", timestamp: 1 }],
+    tools: tools(),
+  }), { apiKey: SYNTH }).result();
+  assert.equal(result.stopReason, "stop");
+  assert.equal(snapshots.length, 1);
+  assert.match(snapshots[0] ?? "", /synthetic question/);
+  assert.equal((snapshots[0] ?? "").includes(SYNTH), false);
+  const wire = JSON.parse(JSON.parse(snapshots[0] ?? "{}").body);
+  assert.equal(wire.model, STEPFUN_MODEL_ID);
+  assert.equal(wire.stream, true);
+  assert.ok(Number.isInteger(wire.max_tokens) && wire.max_tokens > 0 && wire.max_tokens <= 4096);
 });
 
 test("anthropic SDK text and tool paths use the intercepted plan endpoint", async () => {

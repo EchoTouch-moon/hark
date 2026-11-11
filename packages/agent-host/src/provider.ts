@@ -4,6 +4,7 @@ import { streamSimple as openaiStreamSimple } from "@earendil-works/pi-ai/api/op
 import { normalizeContext } from "@earendil-works/pi-ai/utils/transcript";
 import { applyContextPack, renderContextPack } from "./context-pack.ts";
 import { STEPFUN_BASE_URL, STEPFUN_MODEL_ID, STEPFUN_PROVIDER_ID, type ProviderConfig } from "./dto.ts";
+import { bodyContainsSecret, captureOutboundRequest, type OutboundRequestSnapshot } from "./outbound-request.ts";
 
 export interface ProviderGate {
   cancelled: boolean;
@@ -19,6 +20,8 @@ export interface ProviderGate {
 export interface TransportOptions {
   config: ProviderConfig;
   fetchImpl?: typeof fetch;
+  /** Trusted native sender must perform review, authorization and actual send. */
+  reviewedDispatch?: (snapshot: OutboundRequestSnapshot, signal: AbortSignal | undefined) => Promise<Response>;
   scripted?: (signal: AbortSignal | undefined) => Promise<Response>;
   secrets: readonly string[];
 }
@@ -129,6 +132,13 @@ export function createGuardedFetch(options: TransportOptions): typeof fetch {
     }
     if (!options.config.enabled || !options.config.allowRemote) {
       throw new Error("network guard refused: remote provider is closed");
+    }
+    if (options.reviewedDispatch) {
+      const snapshot = captureOutboundRequest(input, init, { endpoint: allowed, model: options.config.modelId });
+      if (bodyContainsSecret(snapshot.body, options.secrets)) {
+        throw new Error("outbound request contains provider credential");
+      }
+      return options.reviewedDispatch(snapshot, init?.signal ?? undefined);
     }
     if (!options.fetchImpl) {
       throw new Error("network guard refused: no explicit fetch was injected");
