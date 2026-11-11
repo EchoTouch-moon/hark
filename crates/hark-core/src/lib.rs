@@ -13,6 +13,8 @@ mod limits;
 mod memory;
 mod messages;
 mod opinion;
+#[cfg(feature = "outbound-review")]
+mod outbound;
 mod policy;
 #[cfg(unix)]
 mod reader;
@@ -53,6 +55,10 @@ pub use messages::{
 pub use opinion::{
     OpinionChangeProposal, OpinionFeedbackAction, OpinionFeedbackInput, OpinionReceipt,
     OpinionRevisionEntry, OpinionView,
+};
+#[cfg(feature = "outbound-review")]
+pub use outbound::{
+    OutboundBinding, OutboundSource, STEPFUN_OUTBOUND_ENDPOINT, STEPFUN_OUTBOUND_MODEL,
 };
 pub use reader::{
     reader_open_attempts, reader_read_syscalls, reader_readdir_steps, reset_reader_work_counters,

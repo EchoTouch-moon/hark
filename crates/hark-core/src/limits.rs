@@ -3,7 +3,10 @@
 /// Current business schema. v1 SQL is unchanged. v2 adds opening-run columns.
 /// v3 widens conversation event kinds and adds ordinary conversation runs.
 /// v4 adds workspace memory, structured opinions, feedback, and an FTS projection.
+#[cfg(not(feature = "outbound-review"))]
 pub const SCHEMA_VERSION: i64 = 4;
+#[cfg(feature = "outbound-review")]
+pub const SCHEMA_VERSION: i64 = 5;
 
 pub const MAX_FRAME_BYTES: usize = 1_048_576;
 pub const MAX_STREAM_QUEUE: usize = 64;

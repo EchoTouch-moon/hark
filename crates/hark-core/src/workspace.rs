@@ -244,7 +244,9 @@ impl Core {
                 }
             }
         }
-        self.with_tx(|tx| {
+        // Reserve the writer lock before reading so concurrent send admission
+        // cannot leave a deferred transaction stuck while upgrading its lock.
+        self.with_immediate_tx(|tx| {
             let ws = load_workspace(tx, &update.workspace_id)?.ok_or_else(|| {
                 CoreError::new(ErrorCode::WorkspaceNotFound, update.workspace_id.as_str())
             })?;

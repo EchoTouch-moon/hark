@@ -15,6 +15,8 @@ const MIGRATION_V3: &str = include_str!("../migrations/0003_conversation_run.sql
 const MIGRATION_V3_NAME: &str = "0003_conversation_run";
 const MIGRATION_V4: &str = include_str!("../migrations/0004_memory.sql");
 const MIGRATION_V4_NAME: &str = "0004_memory";
+#[cfg(feature = "outbound-review")]
+const MIGRATION_V5: &str = include_str!("../migrations/0005_outbound_review.sql");
 
 pub(crate) fn open_path(path: &Path) -> Result<Core> {
     let conn = Connection::open(path)?;
@@ -73,7 +75,10 @@ fn apply_fresh(tx: &Transaction<'_>) -> Result<()> {
     apply_version(tx, 1, MIGRATION_V1_NAME, MIGRATION_V1)?;
     apply_version(tx, 2, MIGRATION_V2_NAME, MIGRATION_V2)?;
     apply_conversation_v3(tx)?;
-    apply_memory_v4(tx)
+    apply_memory_v4(tx)?;
+    #[cfg(feature = "outbound-review")]
+    apply_version(tx, 5, "0005_outbound_review", MIGRATION_V5)?;
+    Ok(())
 }
 
 fn apply_upgrades_from(tx: &Transaction<'_>, version: i64) -> Result<()> {
@@ -85,6 +90,10 @@ fn apply_upgrades_from(tx: &Transaction<'_>, version: i64) -> Result<()> {
     }
     if version < 4 {
         apply_memory_v4(tx)?;
+    }
+    #[cfg(feature = "outbound-review")]
+    if version < 5 {
+        apply_version(tx, 5, "0005_outbound_review", MIGRATION_V5)?;
     }
     Ok(())
 }

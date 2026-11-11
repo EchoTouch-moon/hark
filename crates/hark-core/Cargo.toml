@@ -6,6 +6,11 @@ publish = false
 description = "Hark R1 in-process core: directory grants, safe reader, SQLite business writer"
 license = "UNLICENSED"
 
+[features]
+default = []
+# Isolated development only until the complete sending boundary is integrated.
+outbound-review = []
+
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 hex = "0.4"

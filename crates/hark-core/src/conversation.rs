@@ -177,7 +177,8 @@ impl Core {
         workspace_id: &WorkspaceId,
         run_id: &RunId,
     ) -> Result<ConversationRun> {
-        self.with_tx(|tx| cancel_tx(tx, workspace_id, run_id))
+        // Serialize cancellation with the outbound admission boundary.
+        self.with_immediate_tx(|tx| cancel_tx(tx, workspace_id, run_id))
     }
 
     pub fn fail_conversation_run(
