@@ -50,15 +50,13 @@ export function bodyContainsSecret(body: string, secrets: readonly string[]): bo
   if (keys.length === 0) return false;
   const contains = (text: string) => keys.some((secret) => text.includes(secret));
   if (contains(body)) return true;
-  const visit = (value: unknown): boolean => {
-    if (typeof value === "string") return contains(value);
-    if (Array.isArray(value)) return value.some(visit);
-    if (value && typeof value === "object") {
-      return Object.entries(value).some(([key, item]) => contains(key) || visit(item));
+  // Scan each raw JSON string separately instead of traversing the parsed
+  // object: JSON.parse discards earlier values for duplicate keys.
+  try {
+    JSON.parse(body);
+    for (const match of body.matchAll(/"(?:\\.|[^"\\])*"/g)) {
+      if (contains(JSON.parse(match[0]) as string)) return true;
     }
     return false;
-  };
-  // captureOutboundRequest already checked the JSON, but the helper also fails
-  // closed if used independently on an invalid body.
-  try { return visit(JSON.parse(body)); } catch { return true; }
+  } catch { return true; }
 }

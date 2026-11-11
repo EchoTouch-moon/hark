@@ -28,6 +28,7 @@ test("fails closed for changed endpoint, model, method or opaque body", () => {
 
 test("credential scan catches both literal and JSON-escaped secrets", () => {
   assert.equal(bodyContainsSecret('{"message":"prefix-se\\u0063ret-suffix"}', ["secret"]), true);
+  assert.equal(bodyContainsSecret('{"message":"se\\u0063ret","message":"safe"}', ["secret"]), true);
   assert.equal(bodyContainsSecret('{"message":"secret"}', ["secret"]), true);
   assert.equal(bodyContainsSecret('{"message":"safe"}', ["secret"]), false);
   assert.equal(bodyContainsSecret("{", ["secret"]), true);
