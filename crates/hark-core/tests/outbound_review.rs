@@ -339,6 +339,52 @@ fn synchronous_begin_orders_other_connections_and_never_reuses_receipt() {
 }
 
 #[test]
+fn opening_cancel_waits_for_the_synchronous_admission_boundary() {
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+
+    let f = Fixture::new();
+    let binding = opening_binding(&f);
+    let approval = f.core.approve_outbound(&binding).unwrap();
+    let sender = Core::open(&f.db).unwrap();
+    let other = Core::open(&f.db).unwrap();
+    let workspace = binding.workspace_id.clone();
+    let (entered_tx, entered_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let send_thread = thread::spawn(move || {
+        sender.consume_and_begin_outbound(&approval, &binding, || {
+            entered_tx.send(()).unwrap();
+            release_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+            Ok(())
+        })
+    });
+    entered_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+    let (attempt_tx, attempt_rx) = mpsc::channel();
+    let (result_tx, result_rx) = mpsc::channel();
+    let cancel_thread = thread::spawn(move || {
+        attempt_tx.send(()).unwrap();
+        result_tx.send(other.cancel_onboarding(&workspace)).unwrap();
+    });
+    attempt_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+    assert!(matches!(
+        result_rx.recv_timeout(Duration::from_millis(150)),
+        Err(mpsc::RecvTimeoutError::Timeout)
+    ));
+    release_tx.send(()).unwrap();
+    send_thread.join().unwrap().unwrap();
+    cancel_thread.join().unwrap();
+    assert_eq!(
+        result_rx
+            .recv_timeout(Duration::from_secs(1))
+            .unwrap()
+            .unwrap()
+            .state,
+        "cancelled"
+    );
+}
+
+#[test]
 fn failed_begin_keeps_the_approval_consumed() {
     let f = Fixture::new();
     let approval = f.core.approve_outbound(&f.binding).unwrap();

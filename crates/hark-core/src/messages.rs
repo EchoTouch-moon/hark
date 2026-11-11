@@ -488,7 +488,8 @@ impl Core {
     }
 
     pub fn cancel_onboarding(&self, workspace_id: &WorkspaceId) -> Result<OnboardingCheckpoint> {
-        self.with_tx(|tx| {
+        // Queue cancellation with any outbound admission holding the writer lock.
+        self.with_immediate_tx(|tx| {
             let current = load_checkpoint(tx, workspace_id)?;
             if current.opening_presented {
                 return Err(CoreError::new(
