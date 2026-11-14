@@ -113,14 +113,14 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
       className="fixed inset-0 z-50 flex items-start justify-center pt-14 px-4 bg-black/40 backdrop-blur-xs"
     >
       <div className="w-full max-w-xl rounded-[var(--corner-md)] border border-[var(--border-strong)] bg-[var(--surface-solid)] shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)]">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-[#e88e47]" />
-            <div>
-              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 min-w-0">
+            <Shield className="w-4 h-4 text-[#e88e47] shrink-0" />
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">
                 项目设置 · {summary.name}
               </h3>
-              <p className="text-[11px] text-[var(--text-muted)] font-mono">
+              <p title={summary.rootDisplayPath} className="text-[11px] text-[var(--text-muted)] font-mono truncate">
                 {summary.rootDisplayPath}
               </p>
             </div>
@@ -129,7 +129,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
             type="button"
             onClick={onClose}
             aria-label="关闭工作空间设置"
-            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5"
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -257,7 +257,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
               {readOnlyPaths.map((p) => (
                 <span
                   key={p}
-                  className="px-2.5 py-1 rounded bg-black/[0.04] dark:bg-white/[0.05] text-[var(--text-primary)]"
+                  className="max-w-full break-all px-2.5 py-1 rounded bg-black/[0.04] dark:bg-white/[0.05] text-[var(--text-primary)]"
                 >
                   {p}
                 </span>
@@ -276,9 +276,9 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
               {excludedPaths.map((p) => (
                 <div
                   key={p}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--surface)] font-mono text-[11px]"
+                  className="inline-flex max-w-full items-center gap-1.5 px-2.5 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--surface)] font-mono text-[11px]"
                 >
-                  <span>{p}</span>
+                  <span className="break-all">{p}</span>
                   {!nativeLocked && <button
                     type="button"
                     disabled={nativeLocked}

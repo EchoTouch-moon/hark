@@ -152,7 +152,7 @@ export const WorkspacePicker: React.FC<WorkspacePickerProps> = ({
                     : "hover:bg-black/[0.02] dark:hover:bg-white/[0.03]"
                 }`}
               >
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
                     <span className="truncate">{ws.name}</span>
                     {ws.observerState === "paused" && (
@@ -168,8 +168,8 @@ export const WorkspacePicker: React.FC<WorkspacePickerProps> = ({
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)] font-mono">
-                    <span className="truncate">{ws.rootDisplayPath}</span>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--text-muted)] font-mono min-w-0">
+                    <span className="min-w-0 max-w-full truncate" title={ws.rootDisplayPath}>{ws.rootDisplayPath}</span>
                     <span aria-hidden="true">·</span>
                     <span>模型: {ws.modelPermission}</span>
                     <span aria-hidden="true">·</span>

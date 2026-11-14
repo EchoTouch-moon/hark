@@ -33,20 +33,43 @@ interface FolderOnboardingProps {
   onError?: (err: unknown) => void;
 }
 
-const PRESET_PATHS = [
-  {
-    label: "~/projects/hark-r1-desktop（单项目 / Monorepo 示例）",
-    path: "~/projects/hark-r1-desktop",
-  },
-  {
-    label: "~/projects/studio-multi-repos（含多个独立子项目候选）",
-    path: "~/projects/studio-multi-repos",
-  },
-  {
-    label: "~/projects/local-notes-engine（轻量单仓库项目）",
-    path: "~/projects/local-notes-engine",
-  },
-];
+function isWindowsClient(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /win/i.test(navigator.platform || navigator.userAgent);
+}
+
+function getPresetPaths(isWindows: boolean) {
+  if (isWindows) {
+    return [
+      {
+        label: "C:\\Users\\dev\\projects\\hark-r1-desktop（单项目 / Monorepo 示例）",
+        path: "C:\\Users\\dev\\projects\\hark-r1-desktop",
+      },
+      {
+        label: "C:\\Users\\dev\\projects\\studio-multi-repos（含多个独立子项目候选）",
+        path: "C:\\Users\\dev\\projects\\studio-multi-repos",
+      },
+      {
+        label: "D:\\workspaces\\local-notes-engine（轻量单仓库项目）",
+        path: "D:\\workspaces\\local-notes-engine",
+      },
+    ];
+  }
+  return [
+    {
+      label: "~/projects/hark-r1-desktop（单项目 / Monorepo 示例）",
+      path: "~/projects/hark-r1-desktop",
+    },
+    {
+      label: "~/projects/studio-multi-repos（含多个独立子项目候选）",
+      path: "~/projects/studio-multi-repos",
+    },
+    {
+      label: "~/projects/local-notes-engine（轻量单仓库项目）",
+      path: "~/projects/local-notes-engine",
+    },
+  ];
+}
 
 /**
  * FE-03 · FolderOnboarding
@@ -69,8 +92,10 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
   onError,
 }) => {
   const native = bridgeMode === "strict_tauri_ipc";
+  const windowsClient = isWindowsClient();
+  const presetPaths = getPresetPaths(windowsClient);
   const [step, setStep] = useState<"pick_folder" | "boundary_review">("pick_folder");
-  const [folderPath, setFolderPath] = useState("~/projects/hark-r1-desktop");
+  const [folderPath, setFolderPath] = useState(() => presetPaths[0].path);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [submittingImport, setSubmittingImport] = useState(false);
   const [preview, setPreview] = useState<RootPreview | null>(null);
@@ -250,8 +275,8 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
                   type="text"
                   value={folderPath}
                   onChange={(e) => setFolderPath(e.target.value)}
-                  placeholder="~/projects/your-project"
-                  className="flex-1 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-solid)] px-4 py-2.5 text-sm font-mono text-[var(--text-primary)] focus:outline-2 focus:outline-[var(--focus-ring)]"
+                  placeholder={windowsClient ? "C:\\Users\\you\\projects\\your-project" : "~/projects/your-project"}
+                  className="min-w-0 flex-1 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-solid)] px-4 py-2.5 text-sm font-mono text-[var(--text-primary)] focus:outline-2 focus:outline-[var(--focus-ring)]"
                 />
                 <button
                   type="button"
@@ -268,7 +293,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
                   预设目录只属于显式 Dev Preview，不能代替系统选择器。
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {PRESET_PATHS.map((preset) => (
+                  {presetPaths.map((preset) => (
                     <button
                       key={preset.path}
                       type="button"
@@ -276,7 +301,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
                         setFolderPath(preset.path);
                         handleChooseFolder(preset.path);
                       }}
-                      className="px-3 py-1.5 rounded-lg text-xs border border-[var(--border-subtle)] bg-[var(--surface-solid)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[#e88e47]/50 transition-all active:scale-[0.98]"
+                      className="max-w-full text-left break-all font-mono px-3 py-1.5 rounded-lg text-xs border border-[var(--border-subtle)] bg-[var(--surface-solid)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[#e88e47]/50 transition-all active:scale-[0.98]"
                     >
                       {preset.label}
                     </button>
@@ -341,9 +366,12 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
 
       {/* 路径与初步判断 */}
       <div className="space-y-1.5 text-xs">
-        <div className="flex flex-wrap items-center gap-2 text-[var(--text-muted)]">
-          <span>已选择路径：</span>
-          <code className="font-mono text-[var(--text-primary)] bg-black/[0.03] dark:bg-white/[0.04] px-2.5 py-0.5 rounded">
+        <div className="flex flex-wrap items-center gap-2 text-[var(--text-muted)] min-w-0">
+          <span className="shrink-0">已选择路径：</span>
+          <code
+            title={preview.displayPath}
+            className="min-w-0 max-w-full break-all font-mono text-[var(--text-primary)] bg-black/[0.03] dark:bg-white/[0.04] px-2.5 py-0.5 rounded"
+          >
             {preview.displayPath}
           </code>
         </div>
@@ -369,7 +397,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
                 onClick={() => {
                   setForceMultiSplit((prev) => !prev);
                   if (!forceMultiSplit) {
-                    handleChooseFolder("~/projects/studio-multi-repos");
+                    handleChooseFolder(presetPaths[1].path);
                   }
                 }}
                 className="inline-flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] underline"
@@ -406,19 +434,19 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
               }`}
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 min-w-0">
                   {isChecked ? (
                     <CheckSquare className="w-4 h-4 text-[#c27537] dark:text-[#f1bb7c] mt-0.5 shrink-0" />
                   ) : (
                     <Square className="w-4 h-4 text-[var(--text-muted)] mt-0.5 shrink-0" />
                   )}
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
                       <span>{cand.suggestedName}</span>
                       <span className="text-xs font-normal text-[var(--text-muted)]">
                         · {cand.classification === "single_project" ? "作为一个项目" : "独立项目"}
                       </span>
-                      <code className="text-xs font-mono font-normal text-[var(--text-muted)]">
+                      <code className="text-xs font-mono font-normal text-[var(--text-muted)] break-all">
                         ({cand.relativePath})
                       </code>
                     </div>
@@ -458,7 +486,7 @@ export const FolderOnboarding: React.FC<FolderOnboardingProps> = ({
           {showReadOnlyScope && (
             <div className="mt-2.5 pt-2.5 border-t border-[var(--border-subtle)] space-y-1.5 text-[var(--text-muted)] animate-hearth-pop">
               <p>{preview.readOnlyBoundaryNote}</p>
-              <div className="font-mono text-[11px]">
+              <div className="font-mono text-[11px] break-all">
                 默认排除目录：{preview.defaultExcludedPaths.join(", ")}
               </div>
               {preview.uncoveredReasons.length > 0 && (

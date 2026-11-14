@@ -48,6 +48,21 @@ import {
  * - 故障注入（Sidecar 失联、StepFun 未配置、来源过期等）
  */
 
+function getPathLeafName(targetPath: string, fallback: string): string {
+  const segments = targetPath.split(/[\\/]+/).filter(Boolean);
+  return segments[segments.length - 1] || fallback;
+}
+
+function joinDisplayPath(basePath: string, relativeSubPath: string): string {
+  const useBackslash = basePath.includes("\\") && !basePath.includes("/");
+  const cleanSub = relativeSubPath.replace(/^[\\/]+|[\\/]+$/g, "");
+  if (!cleanSub || cleanSub === ".") return basePath;
+  if (useBackslash) {
+    return `${basePath.replace(/[\\/]+$/, "")}\\${cleanSub.replace(/\//g, "\\")}`;
+  }
+  return `${basePath.replace(/\/+$/, "")}/${cleanSub.replace(/\\/g, "/")}`;
+}
+
 const INITIAL_WORKSPACES: Record<WorkspaceId, WorkspaceDetail> = {
   "ws-hark-r1": {
     summary: {
@@ -586,7 +601,7 @@ export class DevPreviewHarkBridge implements HarkBridge {
           {
             candidateId: "cand-root-single",
             relativePath: ".",
-            suggestedName: `${cleanPath.split("/").pop() || "Root"}（合并为单个项目导入）`,
+            suggestedName: `${getPathLeafName(cleanPath, "Root")}（合并为单个项目导入）`,
             classification: "single_project",
             reasons: ["忽略子目录拆分，将整个根目录作为一个统一 Workspace 认识"],
             selectable: true,
@@ -606,7 +621,7 @@ export class DevPreviewHarkBridge implements HarkBridge {
           {
             candidateId: "cand-monorepo-root",
             relativePath: ".",
-            suggestedName: cleanPath.split("/").pop() || "Monorepo Project",
+            suggestedName: getPathLeafName(cleanPath, "Monorepo Project"),
             classification: "single_project",
             reasons: [
               "发现根级 pnpm-workspace.yaml、Cargo.toml 与统一 README.md",
@@ -629,7 +644,7 @@ export class DevPreviewHarkBridge implements HarkBridge {
           {
             candidateId: "cand-single-root",
             relativePath: ".",
-            suggestedName: cleanPath.split("/").filter(Boolean).pop() || "Local Project",
+            suggestedName: getPathLeafName(cleanPath, "Local Project"),
             classification: "single_project",
             reasons: ["发现根级 README.md、package.json 与 tsconfig.json", "单一职责代码仓库结构"],
             selectable: true,
@@ -654,7 +669,7 @@ export class DevPreviewHarkBridge implements HarkBridge {
             {
               candidateId: "cand-default",
               relativePath: ".",
-              suggestedName: basePath.split("/").filter(Boolean).pop() || "新导入项目",
+              suggestedName: getPathLeafName(basePath, "新导入项目"),
               classification: "single_project" as const,
               reasons: ["发现 README.md 与核心配置"],
               selectable: true,
@@ -674,7 +689,7 @@ export class DevPreviewHarkBridge implements HarkBridge {
       const fullPath =
         cand.relativePath === "."
           ? basePath
-          : `${basePath.replace(/\/$/, "")}/${cand.relativePath.replace(/^\.\//, "")}`;
+          : joinDisplayPath(basePath, cand.relativePath.replace(/^\.\//, ""));
 
       const modelPerm = !this.runtime.stepFunConfigured
         ? "unavailable"
@@ -688,7 +703,7 @@ export class DevPreviewHarkBridge implements HarkBridge {
         workspaceId: wsId,
         kind: "file_read",
         title: `${cand.suggestedName} · README.md 与结构清单`,
-        displayLocation: `${fullPath}/README.md`,
+        displayLocation: joinDisplayPath(fullPath, "README.md"),
         observedAt: new Date().toISOString(),
         availability: "available",
         verificationLevel: "full_text",
@@ -883,7 +898,7 @@ export class DevPreviewHarkBridge implements HarkBridge {
     }
 
     // PRD §4.5: 一次请求原子提交父空间排除与新子空间创建，不出现半成功
-    const cleanSub = input.relativeSubPath.replace(/^\/+|\/+$/g, "") || "packages/sub-module";
+    const cleanSub = input.relativeSubPath.replace(/^[\\/]+|[\\/]+$/g, "") || "packages/sub-module";
     if (input.excludeFromParent && !parent.excludedPaths.includes(`${cleanSub}/`)) {
       parent.excludedPaths.push(`${cleanSub}/`);
     }
@@ -891,7 +906,7 @@ export class DevPreviewHarkBridge implements HarkBridge {
     const childId = `ws-child-${Date.now()}`;
     const convId = `conv-${childId}`;
     const runId = `onboard-${childId}`;
-    const fullChildPath = `${parent.summary.rootDisplayPath.replace(/\/$/, "")}/${cleanSub}`;
+    const fullChildPath = joinDisplayPath(parent.summary.rootDisplayPath, cleanSub);
     const evId = `ev-${childId}`;
 
     this.evidence[evId] = {
