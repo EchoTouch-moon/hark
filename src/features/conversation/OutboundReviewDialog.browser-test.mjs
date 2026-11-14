@@ -1,11 +1,31 @@
 // Run against an isolated local Vite server on port 1432; no native bridge or network provider is used.
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+/** Resolve a Chrome or Edge executable across Windows and macOS environments. */
+function resolveBrowserExecutable() {
+  const candidates = [
+    process.env.CHROME_PATH,
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  ].filter(Boolean);
+
+  const executable = candidates.find((candidate) => existsSync(candidate));
+  if (!executable) {
+    throw new Error(`No Chrome/Edge executable found. Set CHROME_PATH. Checked: ${candidates.join(", ")}`);
+  }
+  return executable;
+}
+
+const browserExecutable = resolveBrowserExecutable();
 const profile = await mkdtemp(path.join(os.tmpdir(), "hark-review-ui-"));
-const chrome = spawn("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", [
+const chrome = spawn(browserExecutable, [
   "--headless=new", "--disable-gpu", "--no-first-run", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank",
 ], { stdio: "ignore" });
 let socket;
@@ -71,5 +91,5 @@ try {
 } finally {
   socket?.close(); chrome.kill();
   await new Promise((resolve) => chrome.once("exit", resolve));
-  await rm(profile, { recursive: true, force: true });
+  await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
