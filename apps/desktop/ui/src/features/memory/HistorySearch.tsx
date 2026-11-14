@@ -13,6 +13,7 @@ interface HistorySearchProps {
   workspaceName: string;
   onSearch: (query: string, kinds?: MemoryRecordKind[]) => Promise<MemorySearchItem[]>;
   onSelectResult: (item: MemorySearchItem) => void;
+  onQuoteResult?: (item: MemorySearchItem) => void;
   onClose: () => void;
 }
 
@@ -28,6 +29,7 @@ export const HistorySearch: React.FC<HistorySearchProps> = ({
   workspaceName,
   onSearch,
   onSelectResult,
+  onQuoteResult,
   onClose,
 }) => {
   const [query, setQuery] = useState("");
@@ -185,19 +187,34 @@ export const HistorySearch: React.FC<HistorySearchProps> = ({
                   </p>
                 </div>
 
-                {item.sourceRefId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSelectResult(item);
-                      onClose();
-                    }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-[#c27537] dark:text-[#f1bb7c] hover:bg-[#e88e47]/10 whitespace-nowrap shrink-0"
-                  >
-                    <span>查看来源</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {onQuoteResult && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onQuoteResult(item);
+                        onClose();
+                      }}
+                      title="将此条记忆引用填入提问输入框"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-primary)] hover:border-[#c27537] hover:text-[#c27537] transition-all whitespace-nowrap"
+                    >
+                      <span>引用到提问</span>
+                    </button>
+                  )}
+                  {item.sourceRefId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectResult(item);
+                        onClose();
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-[#c27537] dark:text-[#f1bb7c] hover:bg-[#e88e47]/10 whitespace-nowrap shrink-0"
+                    >
+                      <span>查看来源</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))
           )}

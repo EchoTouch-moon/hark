@@ -48,9 +48,9 @@ export function describeFlameVisual(state?: NarrativeState | null): FlameVisualD
       stage: "neutral",
       badgeText: "尚未建立项目状态",
       description: "当前无已核验的项目进展快照，保持中性余光，不猜测项目健康度。",
-      coreOpacity: 0.22,
-      haloScale: 0.85,
-      warmthClass: "from-stone-400/20 via-amber-700/10 to-transparent",
+      coreOpacity: 0.42,
+      haloScale: 0.88,
+      warmthClass: "from-[#e88e47]/35 via-[#f1bb7c]/18 to-transparent",
     };
   }
 
@@ -60,45 +60,45 @@ export function describeFlameVisual(state?: NarrativeState | null): FlameVisualD
         stage: "ember",
         badgeText: state.stageLabel || "低伏微光 · 已有基础认识",
         description: state.narrativeReason || "已建立项目边界，近期可靠变更较少。",
-        coreOpacity: 0.36,
-        haloScale: 0.92,
-        warmthClass: "from-[#e88e47]/25 via-[#f1bb7c]/12 to-transparent",
+        coreOpacity: 0.68,
+        haloScale: 0.98,
+        warmthClass: "from-[#d9531e]/42 via-[#e88e47]/22 to-transparent",
       };
     case "gentle":
       return {
         stage: "gentle",
         badgeText: state.stageLabel || "稳定小火 · 持续理解中",
         description: state.narrativeReason || "近期有已核验的文件阅读、代码观察或架构讨论。",
-        coreOpacity: 0.52,
-        haloScale: 1.0,
-        warmthClass: "from-[#e88e47]/38 via-[#f1bb7c]/20 to-transparent",
+        coreOpacity: 0.84,
+        haloScale: 1.08,
+        warmthClass: "from-[#dc581b]/52 via-[#f59e0b]/28 to-transparent",
       };
     case "bright":
       return {
         stage: "bright",
         badgeText: state.stageLabel || "舒展火光 · 关键脉络推进",
         description: state.narrativeReason || "近期存在明确可引用的项目决策与证据收敛。",
-        coreOpacity: 0.68,
-        haloScale: 1.08,
-        warmthClass: "from-[#e88e47]/50 via-[#f1bb7c]/28 to-transparent",
+        coreOpacity: 0.96,
+        haloScale: 1.2,
+        warmthClass: "from-[#e05619]/64 via-[#fbbf24]/36 to-transparent",
       };
     case "milestone":
       return {
         stage: "milestone",
         badgeText: state.stageLabel || "金色暖光 · 已验证里程碑",
         description: state.narrativeReason || "后端已核验关键版本或核心架构里程碑达成。",
-        coreOpacity: 0.78,
-        haloScale: 1.14,
-        warmthClass: "from-amber-400/55 via-[#e88e47]/32 to-transparent",
+        coreOpacity: 1.0,
+        haloScale: 1.26,
+        warmthClass: "from-amber-400/72 via-[#e88e47]/42 to-transparent",
       };
     default:
       return {
         stage: "neutral",
         badgeText: "中性余光 · 待核验",
         description: state.narrativeReason || "尚未建立可信项目状态。",
-        coreOpacity: 0.24,
+        coreOpacity: 0.42,
         haloScale: 0.88,
-        warmthClass: "from-stone-400/20 via-amber-700/10 to-transparent",
+        warmthClass: "from-[#d97736]/28 via-amber-700/14 to-transparent",
       };
   }
 }

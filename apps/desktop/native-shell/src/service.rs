@@ -1,16 +1,16 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use hark_core::{
     AuthorizedRoot, CancelFlag, CandidateId, ConfirmImport, ConfirmResult, ConversationEvent, Core,
-    FirstMessage, ImportMode, InitialScan, OnboardingCheckpoint, RootId, RunId, ScanBudget, ScanId,
-    SelectiveReadReport, ServiceGrant, ServiceGrantUpdate, ServiceKind, ServiceStatus,
-    SessionBinding, SourceId, SourceRef, Workspace, WorkspaceId, WorkspaceOverview,
+    FirstMessage, ImportMode, InitialScan, OnboardingCheckpoint, RootId, RootStatus, RunId,
+    ScanBudget, ScanId, SelectiveReadReport, ServiceGrant, ServiceGrantUpdate, ServiceKind,
+    ServiceStatus, SessionBinding, SourceId, SourceRef, Workspace, WorkspaceId, WorkspaceOverview,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -26,6 +26,9 @@ use crate::cognition::{
 use crate::credentials::{CredentialStore, SystemCredentialStore};
 use crate::error::ShellError;
 use crate::process::StopReport;
+use crate::review_queue::{
+    PendingReviewQueue, ReviewDecision, ReviewQueueError, ReviewRequest, ReviewSnapshot,
+};
 use crate::seam::SidecarStatus;
 
 /// Short enough that a leaked token cannot be reused later, long enough for a
@@ -68,6 +71,8 @@ pub const FRONTEND_COMMANDS: &[&str] = &[
     "get_agent_turn",
     "get_agent_turn_by_request",
     "cancel_agent_turn",
+    "get_outbound_review",
+    "decide_outbound_review",
     "hide_window",
     "quit_app",
     "shell_snapshot",
@@ -82,6 +87,14 @@ pub const FRONTEND_COMMANDS: &[&str] = &[
     "search_workspace_memory",
     "get_message_evidence",
     "list_memory_receipts",
+    "get_narrative_state",
+    "observe_workspace",
+    "list_attention_items",
+    "dismiss_attention_item",
+    "set_search_grant",
+    "get_search_config",
+    "save_search_config",
+    "set_observer_paused",
 ];
 
 pub fn business_db_path(app_data_dir: &Path) -> PathBuf {
@@ -306,6 +319,70 @@ pub struct ConfirmRequest {
     pub selection: Selection,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ObserverStatus {
+    pub workspace_id: String,
+    pub observer_state: &'static str,
+    pub paused: bool,
+}
+
+const VALID_SEARCH_PROVIDERS: &[&str] = &["tavily", "zhipu_mcp", "bing", "serper", "duckduckgo"];
+
+fn default_search_provider() -> String {
+    "tavily".to_string()
+}
+
+#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchProviderCredentials {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub endpoint: Option<String>,
+}
+
+impl std::fmt::Debug for SearchProviderCredentials {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SearchProviderCredentials")
+            .field(
+                "has_api_key",
+                &self
+                    .api_key
+                    .as_deref()
+                    .is_some_and(|key| !key.trim().is_empty()),
+            )
+            .field("endpoint", &self.endpoint)
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchConfig {
+    #[serde(default = "default_search_provider")]
+    pub active_provider: String,
+    #[serde(default)]
+    pub providers: BTreeMap<String, SearchProviderCredentials>,
+}
+
+impl Default for SearchConfig {
+    fn default() -> Self {
+        Self {
+            active_provider: default_search_provider(),
+            providers: BTreeMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchConfigResponse {
+    pub active_provider: String,
+    pub configured_providers: Vec<String>,
+    pub providers: BTreeMap<String, SearchProviderCredentials>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ShellSnapshot {
@@ -330,6 +407,7 @@ struct PendingPick {
 pub struct NativeShell {
     sidecar: SidecarSupervisor,
     core: Arc<Core>,
+    pending_reviews: Arc<PendingReviewQueue>,
     picks: Mutex<HashMap<String, PendingPick>>,
     scan_flags: Mutex<HashMap<String, Arc<CancelFlag>>>,
     read_flags: Mutex<HashMap<String, Arc<CancelFlag>>>,
@@ -347,6 +425,7 @@ pub struct NativeShell {
     credential_error: Mutex<Option<String>>,
     credential_operation: Mutex<()>,
     credential_saved: AtomicBool,
+    search_config_lock: Mutex<()>,
 }
 
 impl Drop for NativeShell {
@@ -396,9 +475,11 @@ impl NativeShell {
                 .map_err(|err| ShellError::new("io", err.to_string()))?;
         }
         let core = Arc::new(Core::open(db_path)?);
+        let pending_reviews = Arc::new(PendingReviewQueue::new());
         Ok(Self {
-            sidecar: SidecarSupervisor::new(Arc::clone(&core)),
+            sidecar: SidecarSupervisor::new(Arc::clone(&core), Arc::clone(&pending_reviews)),
             core,
+            pending_reviews,
             picks: Mutex::new(HashMap::new()),
             scan_flags: Mutex::new(HashMap::new()),
             read_flags: Mutex::new(HashMap::new()),
@@ -413,6 +494,7 @@ impl NativeShell {
             credential_error: Mutex::new(None),
             credential_operation: Mutex::new(()),
             credential_saved: AtomicBool::new(false),
+            search_config_lock: Mutex::new(()),
         })
     }
 
@@ -435,8 +517,7 @@ impl NativeShell {
             } else {
                 "closed_no_approved_key"
             },
-            // The production host currently has no approved outbound request path.
-            model_transport_available: false,
+            model_transport_available: self.model_configured() && self.sidecar.status().connected,
             credential_error: self.credential_error_value(),
             credential_persistence_available: cfg!(target_os = "macos")
                 && self.credential_store.is_some(),
@@ -791,10 +872,21 @@ impl NativeShell {
         &self,
         workspace_id: &str,
     ) -> Result<OnboardingCheckpoint, ShellError> {
+        let workspace = parse_workspace(workspace_id)?;
+        let checkpoint = self.core.onboarding(&workspace)?;
+        if let Some(run) = checkpoint.active_run_id.as_ref() {
+            self.pending_reviews
+                .cancel_run(&workspace, run)
+                .map_err(review_queue_error)?;
+        }
         let _ = self.sidecar.cancel(workspace_id);
-        Ok(self
-            .core
-            .cancel_onboarding(&parse_workspace(workspace_id)?)?)
+        let cancelled = self.core.cancel_onboarding(&workspace)?;
+        if let Some(run) = cancelled.active_run_id.as_ref() {
+            self.pending_reviews
+                .cancel_run(&workspace, run)
+                .map_err(review_queue_error)?;
+        }
+        Ok(cancelled)
     }
 
     pub fn retry_onboarding(&self, workspace_id: &str) -> Result<OnboardingCheckpoint, ShellError> {
@@ -987,6 +1079,181 @@ impl NativeShell {
         })?)
     }
 
+    /// Enable or disable the web search grant for one workspace.
+    pub fn set_search_grant(
+        &self,
+        workspace_id: &str,
+        enabled: bool,
+    ) -> Result<ServiceGrant, ShellError> {
+        Ok(self.core.set_service_grant(&ServiceGrantUpdate {
+            workspace_id: parse_workspace(workspace_id)?,
+            service: ServiceKind::Search,
+            status: if enabled {
+                ServiceStatus::Enabled
+            } else {
+                ServiceStatus::Disabled
+            },
+            provider: None,
+            model: None,
+        })?)
+    }
+
+    pub fn get_narrative_state(
+        &self,
+        workspace_id: &str,
+    ) -> Result<hark_core::NarrativeState, ShellError> {
+        Ok(self
+            .core
+            .workspace_narrative_state(&parse_workspace(workspace_id)?)?)
+    }
+
+    pub fn observe_workspace(
+        &self,
+        workspace_id: &str,
+    ) -> Result<hark_core::WorkspaceObservationReport, ShellError> {
+        let id = parse_workspace(workspace_id)?;
+        Ok(self
+            .core
+            .observe_workspace_changes(&id, &ScanBudget::default(), &CancelFlag::new())?)
+    }
+
+    /// Observe all active, unpaused workspaces. Used by the desktop background loop.
+    pub fn observe_active_workspaces(
+        &self,
+    ) -> Result<Vec<hark_core::WorkspaceObservationReport>, ShellError> {
+        let workspaces = self.core.list_workspaces()?;
+        let mut reports = Vec::new();
+        for ws in workspaces {
+            if self.quit_requested() {
+                break;
+            }
+            if self.is_observer_paused(&ws.id).unwrap_or(true) {
+                continue;
+            }
+            if let Ok(report) = self.core.observe_workspace_changes(
+                &ws.id,
+                &ScanBudget::default(),
+                &CancelFlag::new(),
+            ) {
+                reports.push(report);
+            }
+        }
+        Ok(reports)
+    }
+
+    pub fn list_attention_items(
+        &self,
+        workspace_id: &str,
+    ) -> Result<Vec<hark_core::AttentionItem>, ShellError> {
+        Ok(self
+            .core
+            .list_attention_items(&parse_workspace(workspace_id)?)?)
+    }
+
+    pub fn dismiss_attention_item(
+        &self,
+        workspace_id: &str,
+        attention_id: &str,
+    ) -> Result<bool, ShellError> {
+        Ok(self
+            .core
+            .dismiss_attention_item(&parse_workspace(workspace_id)?, attention_id)?)
+    }
+
+    pub fn set_observer_paused(
+        &self,
+        workspace_id: &str,
+        paused: bool,
+    ) -> Result<ObserverStatus, ShellError> {
+        let id = parse_workspace(workspace_id)?;
+        let ws = self.core.get_workspace(&id)?;
+        let root = self.core.get_root(&ws.root_id)?;
+        if root.status == RootStatus::Revoked {
+            return Err(ShellError::new(
+                "root_revoked",
+                "directory authorization is revoked",
+            ));
+        }
+        self.core.set_service_grant(&ServiceGrantUpdate {
+            workspace_id: id,
+            service: ServiceKind::BackgroundModel,
+            status: if paused {
+                ServiceStatus::Paused
+            } else {
+                ServiceStatus::Enabled
+            },
+            provider: None,
+            model: None,
+        })?;
+        let effective_paused = paused || root.status == RootStatus::Paused;
+        Ok(ObserverStatus {
+            workspace_id: workspace_id.to_string(),
+            observer_state: if effective_paused { "paused" } else { "active" },
+            paused: effective_paused,
+        })
+    }
+
+    pub fn is_observer_paused(&self, workspace_id: &WorkspaceId) -> Result<bool, ShellError> {
+        let ws = self.core.get_workspace(workspace_id)?;
+        let root = self.core.get_root(&ws.root_id)?;
+        if root.status != RootStatus::Active {
+            return Ok(true);
+        }
+        let grant = self
+            .core
+            .get_service_grant(workspace_id, ServiceKind::BackgroundModel)?;
+        Ok(grant.status == ServiceStatus::Paused)
+    }
+
+    pub fn get_search_config(&self) -> Result<SearchConfigResponse, ShellError> {
+        let _guard = self
+            .search_config_lock
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "search config lock"))?;
+        let path = self.search_config_path();
+        if !path.is_file() {
+            return Ok(search_config_response(SearchConfig::default()));
+        }
+        let raw =
+            fs::read_to_string(&path).map_err(|err| ShellError::new("io", err.to_string()))?;
+        let parsed: SearchConfig = serde_json::from_str(&raw).map_err(|_| {
+            ShellError::new("invalid_search_config", "search-config.json is invalid")
+        })?;
+        let sanitized = sanitize_search_config(parsed)?;
+        Ok(search_config_response(sanitized))
+    }
+
+    pub fn save_search_config(
+        &self,
+        config: SearchConfig,
+    ) -> Result<SearchConfigResponse, ShellError> {
+        let sanitized = sanitize_search_config(config)?;
+        let _guard = self
+            .search_config_lock
+            .lock()
+            .map_err(|_| ShellError::new("lock_poisoned", "search config lock"))?;
+        let path = self.search_config_path();
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|err| ShellError::new("io", err.to_string()))?;
+        }
+        let encoded = serde_json::to_string_pretty(&sanitized)
+            .map_err(|err| ShellError::new("io", err.to_string()))?;
+        let tmp = path.with_extension("json.tmp");
+        fs::write(&tmp, encoded).map_err(|err| ShellError::new("io", err.to_string()))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&tmp, fs::Permissions::from_mode(0o600))
+                .map_err(|err| ShellError::new("io", err.to_string()))?;
+        }
+        fs::rename(&tmp, &path).map_err(|err| ShellError::new("io", err.to_string()))?;
+        Ok(search_config_response(sanitized))
+    }
+
+    fn search_config_path(&self) -> PathBuf {
+        self.app_data_dir.join("hark-r1").join("search-config.json")
+    }
+
     fn provider_slot_path(&self) -> PathBuf {
         self.app_data_dir.join("hark-r1").join("provider-slot.json")
     }
@@ -1103,6 +1370,147 @@ impl NativeShell {
         self.sidecar.conversation(request, progress)
     }
 
+    /// Trusted native callers only. Not exposed as a Tauri command; callers must
+    /// derive the snapshot from the final request and validate its provenance.
+    /// Staging or approving here never authorizes a model call.
+    pub fn stage_outbound_review(
+        &self,
+        request: ReviewRequest,
+        ttl: Duration,
+    ) -> Result<String, ShellError> {
+        let model = self.require_active_review_run(&request.workspace_id, &request.run_id)?;
+        if request.model != model {
+            return Err(review_not_active());
+        }
+        self.pending_reviews
+            .insert(request, ttl)
+            .map_err(review_queue_error)
+    }
+
+    pub fn get_outbound_review(
+        &self,
+        workspace_id: &str,
+        run_id: &str,
+        review_id: &str,
+    ) -> Result<Arc<ReviewSnapshot>, ShellError> {
+        let workspace = parse_workspace(workspace_id)?;
+        let run = parse_run(run_id)?;
+        let snapshot = self
+            .pending_reviews
+            .get(review_id, &workspace, &run)
+            .map_err(review_queue_error)?;
+        if self.require_active_review_run(&workspace, &run)? != snapshot.model() {
+            return Err(review_not_active());
+        }
+        Ok(snapshot)
+    }
+
+    /// Records an in-memory user decision only; this is not persisted approval
+    /// and must not be used as permission to send.
+    pub fn decide_outbound_review(
+        &self,
+        workspace_id: &str,
+        run_id: &str,
+        review_id: &str,
+        decision: ReviewDecision,
+    ) -> Result<(), ShellError> {
+        let workspace = parse_workspace(workspace_id)?;
+        let run = parse_run(run_id)?;
+        if decision == ReviewDecision::Approve {
+            let snapshot = self
+                .pending_reviews
+                .get(review_id, &workspace, &run)
+                .map_err(review_queue_error)?;
+            if self.require_active_review_run(&workspace, &run)? != snapshot.model() {
+                return Err(review_not_active());
+            }
+        }
+        self.pending_reviews
+            .decide(review_id, &workspace, &run, decision)
+            .map_err(review_queue_error)?;
+        self.sidecar.synthetic_review_decision(
+            workspace_id,
+            run_id,
+            review_id,
+            decision == ReviewDecision::Approve,
+        )
+    }
+
+    /// Trusted Native callers only. The result still requires durable approval,
+    /// current authorization and validation at the eventual sending boundary.
+    pub fn take_approved_outbound_review(
+        &self,
+        workspace_id: &str,
+        run_id: &str,
+        review_id: &str,
+    ) -> Result<Arc<ReviewSnapshot>, ShellError> {
+        let workspace = parse_workspace(workspace_id)?;
+        let run = parse_run(run_id)?;
+        let model = self.require_active_review_run(&workspace, &run)?;
+        let snapshot = self
+            .pending_reviews
+            .take_approved(review_id, &workspace, &run)
+            .map_err(review_queue_error)?;
+        if snapshot.model() != model {
+            return Err(review_not_active());
+        }
+        Ok(snapshot)
+    }
+
+    /// Admission only: database and queue use separate locks, so this check
+    /// does not replace durable authorization at the eventual send boundary.
+    fn require_active_review_run(
+        &self,
+        workspace_id: &WorkspaceId,
+        run_id: &RunId,
+    ) -> Result<String, ShellError> {
+        let workspace = self.core.get_workspace(workspace_id)?;
+        let root = self.core.get_root(&workspace.root_id)?;
+        let grant = self
+            .core
+            .get_service_grant(workspace_id, ServiceKind::Model)?;
+        if root.status != RootStatus::Active || grant.status != ServiceStatus::Enabled {
+            return Err(review_not_active());
+        }
+        let (provider, model, root_version, grant_version) = match self
+            .core
+            .get_conversation_run(workspace_id, run_id)
+        {
+            Ok(run) if matches!(run.state.as_str(), "pending" | "running") => (
+                run.provider,
+                run.model,
+                run.root_updated_at,
+                run.grant_updated_at,
+            ),
+            Err(error) if error.code_str() == "run_mismatch" => {
+                let opening = self.core.onboarding(workspace_id)?;
+                if opening.state != "analyzing" || opening.active_run_id.as_ref() != Some(run_id) {
+                    return Err(review_not_active());
+                }
+                match (
+                    opening.auth_provider,
+                    opening.auth_model,
+                    opening.auth_root_updated_at,
+                    opening.auth_grant_updated_at,
+                ) {
+                    (Some(provider), Some(model), Some(root_version), Some(grant_version)) => {
+                        (provider, model, root_version, grant_version)
+                    }
+                    _ => return Err(review_not_active()),
+                }
+            }
+            _ => return Err(review_not_active()),
+        };
+        if root.updated_at != root_version
+            || grant.updated_at != grant_version
+            || grant.provider.as_deref() != Some(provider.as_str())
+            || grant.model.as_deref() != Some(model.as_str())
+        {
+            return Err(review_not_active());
+        }
+        Ok(model)
+    }
+
     pub fn agent_turn_status(
         &self,
         workspace_id: &str,
@@ -1143,9 +1551,12 @@ impl NativeShell {
         workspace_id: &str,
         run_id: &str,
     ) -> Result<AgentTurnStatus, ShellError> {
-        let _ = self.sidecar.cancel_turn(workspace_id, run_id);
         let ws = parse_workspace(workspace_id)?;
         let id = parse_run(run_id)?;
+        self.pending_reviews
+            .cancel_run(&ws, &id)
+            .map_err(review_queue_error)?;
+        let _ = self.sidecar.cancel_turn(workspace_id, run_id);
         match self.core.cancel_conversation_run(&ws, &id) {
             Ok(run) => Ok(map_agent_turn_status(&run)),
             Err(_) => self.agent_turn_status(workspace_id, run_id),
@@ -1175,6 +1586,11 @@ impl NativeShell {
     /// Test injection. Not a Tauri command.
     pub fn set_before_tool_reply_hook(&self, hook: Option<Arc<dyn Fn(&str) + Send + Sync>>) {
         self.sidecar.set_before_tool_reply(hook);
+    }
+
+    /// Rust-only fixture: never exposed as a Tauri command or a send permit.
+    pub fn enable_synthetic_review_fixture(&self) {
+        self.sidecar.enable_synthetic_review_fixture();
     }
 
     /// Test injection. Not a Tauri command.
@@ -1232,6 +1648,23 @@ impl NativeShell {
             .latest_ordinary_session(&parse_workspace(workspace_id)?)?
             .map(|hint| hint.session_ref))
     }
+}
+
+fn review_queue_error(error: ReviewQueueError) -> ShellError {
+    match error {
+        ReviewQueueError::Poisoned => ShellError::new("lock_poisoned", "review queue"),
+        ReviewQueueError::Full => ShellError::new("review_queue_full", "待审请求过多"),
+        ReviewQueueError::Invalid => ShellError::new("invalid_review", "待审请求无效"),
+        ReviewQueueError::NotAvailable
+        | ReviewQueueError::NotPending
+        | ReviewQueueError::NotApproved => {
+            ShellError::new("review_unavailable", "待审请求不存在或已结束")
+        }
+    }
+}
+
+fn review_not_active() -> ShellError {
+    ShellError::new("review_unavailable", "待审请求不存在或已结束")
 }
 
 /// One published cancel flag per key. A duplicate call is rejected under this
@@ -1310,4 +1743,82 @@ fn parse_run(value: &str) -> Result<RunId, ShellError> {
 
 fn parse_source(value: &str) -> Result<SourceId, ShellError> {
     SourceId::parse(value).map_err(|_| ShellError::new("invalid_id", "source id"))
+}
+
+fn validate_search_provider(provider: &str) -> Result<String, ShellError> {
+    let normalized = provider.trim().to_ascii_lowercase();
+    if VALID_SEARCH_PROVIDERS.contains(&normalized.as_str()) {
+        Ok(normalized)
+    } else {
+        Err(ShellError::new(
+            "invalid_search_provider",
+            "unsupported search provider",
+        ))
+    }
+}
+
+fn sanitize_search_config(config: SearchConfig) -> Result<SearchConfig, ShellError> {
+    let active_provider = validate_search_provider(&config.active_provider)?;
+    let mut providers = BTreeMap::new();
+    for (raw_provider, creds) in config.providers {
+        let provider = validate_search_provider(&raw_provider)?;
+        let api_key = match creds.api_key {
+            Some(raw) => {
+                let trimmed = raw.trim();
+                if trimmed.is_empty() {
+                    None
+                } else if trimmed.chars().any(|ch| ch.is_control()) || trimmed.len() > 512 {
+                    return Err(ShellError::new(
+                        "invalid_search_config",
+                        "search api key contains invalid characters or exceeds limit",
+                    ));
+                } else {
+                    Some(trimmed.to_string())
+                }
+            }
+            None => None,
+        };
+        let endpoint = match creds.endpoint {
+            Some(raw) => {
+                let trimmed = raw.trim();
+                if trimmed.is_empty() {
+                    None
+                } else if trimmed.chars().any(|ch| ch.is_control()) || trimmed.len() > 256 {
+                    return Err(ShellError::new(
+                        "invalid_search_config",
+                        "search endpoint contains invalid characters or exceeds limit",
+                    ));
+                } else {
+                    Some(trimmed.to_string())
+                }
+            }
+            None => None,
+        };
+        if api_key.is_some() || endpoint.is_some() {
+            providers.insert(provider, SearchProviderCredentials { api_key, endpoint });
+        }
+    }
+    Ok(SearchConfig {
+        active_provider,
+        providers,
+    })
+}
+
+fn search_config_response(config: SearchConfig) -> SearchConfigResponse {
+    let configured_providers = config
+        .providers
+        .iter()
+        .filter(|(_, creds)| {
+            creds
+                .api_key
+                .as_deref()
+                .is_some_and(|key| !key.trim().is_empty())
+        })
+        .map(|(name, _)| name.clone())
+        .collect();
+    SearchConfigResponse {
+        active_provider: config.active_provider,
+        configured_providers,
+        providers: config.providers,
+    }
 }

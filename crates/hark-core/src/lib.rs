@@ -23,6 +23,7 @@ mod reader;
 mod reader;
 mod scan;
 mod search;
+mod soul;
 mod support;
 mod workspace;
 
@@ -67,6 +68,10 @@ pub use reader::{
 };
 pub use scan::{CandidateRole, IgnoredEntry, InitialScan, ScanBudget, ScanCandidate, ScanStatus};
 pub use search::{MemorySearchInput, MemorySearchItem, MemorySearchPage};
+pub use soul::{
+    AttentionItem, ContextPack, ContextSnapshot, FlameStage, NarrativeAvailability, NarrativeState,
+    ObservationStatus, ObservedFileChange, SourceFreshness, WorkspaceObservationReport,
+};
 pub use workspace::{
     ConfirmImport, ConfirmResult, ImportMode, ServiceGrant, ServiceGrantUpdate, ServiceKind,
     ServiceStatus, Workspace,

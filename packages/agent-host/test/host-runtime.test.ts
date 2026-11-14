@@ -1,17 +1,19 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { test } from "node:test";
+import type { Message } from "@earendil-works/pi-ai";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { installCredentialPathDeny, isClosedCredentialPath } from "../src/credentials/path-deny.ts";
-import { COMPACTION_SUMMARY_PREFIX } from "../src/context-pack.ts";
-import { runStartPayloadSchema, type ProviderConfig } from "../src/dto.ts";
+import { applyContextPack, COMPACTION_SUMMARY_PREFIX, PACK_SECTION, renderContextPack } from "../src/context-pack.ts";
+import { authorizationSnapshotSchema, runStartPayloadSchema, type ProviderConfig } from "../src/dto.ts";
 import { encodeFrame, mintId, NdjsonParser, type Frame } from "../src/ipc.ts";
 import { createGuardedFetch, sseText, sseToolCall } from "../src/provider.ts";
-import { HostRuntime, loadProviderConfig } from "../src/runtime.ts";
+import { HostRuntime, loadProviderConfig, requireVerifiedWireEvidence, type ReviewedRunContext } from "../src/runtime.ts";
 import type { OutboundRequestSnapshot } from "../src/outbound-request.ts";
 
 const KEY = "synthetic-key-do-not-log";
@@ -57,7 +59,9 @@ function startHarness(options: {
   scripted?: boolean;
   hookShouldThrow?: () => boolean;
   failPack?: () => boolean;
-  reviewedDispatch?: (snapshot: OutboundRequestSnapshot, run: { workspaceId: string; runId: string }, signal: AbortSignal) => Promise<Response>;
+  reviewedDispatch?: (snapshot: OutboundRequestSnapshot, run: ReviewedRunContext, signal: AbortSignal) => Promise<Response>;
+  provenanceMode?: "valid" | "missing-overview" | "missing-read" | "wrong-run" | "wrong-workspace" | "wrong-text" | "wrong-frame";
+  syntheticReviewIpc?: { waitMs: number };
   auth?: Partial<{ current: boolean; grantUpdatedAt: string; revision: string; sourceVersion: string; overviewText: string }>;
 }): Harness {
   const input = new PassThrough();
@@ -102,6 +106,7 @@ function startHarness(options: {
       return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
     },
     ...(options.reviewedDispatch ? { reviewedDispatch: options.reviewedDispatch } : {}),
+    ...(options.syntheticReviewIpc ? { syntheticReviewIpc: options.syntheticReviewIpc } : {}),
     ...(options.hookShouldThrow ? { hookShouldThrow: options.hookShouldThrow } : {}),
     ...(options.failPack ? { failPack: options.failPack } : {}),
     log: (line) => logs.push(line),
@@ -132,8 +137,17 @@ function startHarness(options: {
       }
       if (frame.method === "tool.request" && frame.kind === "request") {
         const tool = frame.payload.tool;
+        const text = "SYNTHETIC_FILE";
+        const digest = createHash("sha256").update(text).digest("hex");
+        const provenance = {
+          workspaceId: options.provenanceMode === "wrong-workspace" ? `ws_${hex(999)}` : frame.workspaceId,
+          runId: options.provenanceMode === "wrong-run" ? `run_${hex(999)}` : frame.runId,
+          complete: true,
+          sources: tool === "workspace.read_file" ? [{ sourceId: `src_${hex(9)}`, path: "README.md", version: digest, byteLen: Buffer.byteLength(text), truncated: false }] : [],
+        };
         const payload = tool === "workspace.read_file"
-          ? { relativePath: "README.md", text: "SYNTHETIC_FILE", synthetic: true }
+          ? { relativePath: "README.md", text, sourceId: `src_${hex(9)}`, unavailable: false, truncated: false, complete: true, synthetic: true,
+              ...(options.reviewedDispatch && options.provenanceMode !== "missing-read" ? { provenance: { ...provenance, exposedTextSha256: options.provenanceMode === "wrong-text" ? "f".repeat(64) : digest, exposedTextByteLen: Buffer.byteLength(text), exposedTextTruncated: false } } : {}) }
           : {
               authorization: {
                 runId: frame.runId,
@@ -150,9 +164,11 @@ function startHarness(options: {
               contextPackRevision: auth.revision,
               overviewText: auth.overviewText,
               synthetic: true,
+              ...(options.reviewedDispatch && options.provenanceMode !== "missing-overview" ? { provenance } : {}),
             };
         input.write(encodeFrame({
           ...frame,
+          ...(options.provenanceMode === "wrong-frame" ? { runId: `run_${hex(999)}` } : {}),
           kind: "response",
           replyTo: frame.id,
           method: "tool.result",
@@ -291,11 +307,13 @@ test("closed provider slot does not send and does not accept a model-filled gran
 test("each SDK request reaches the review dispatch, including a new request after a file read", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "hark-host-review-"));
   const snapshots: OutboundRequestSnapshot[] = [];
+  const contexts: ReviewedRunContext[] = [];
   const harness = startHarness({ dir, reviewedDispatch: async (snapshot, run, signal) => {
     assert.equal(run.workspaceId, `ws_${hex(1)}`);
     assert.equal(run.runId, `run_${hex(211)}`);
     assert.equal(signal.aborted, false);
     snapshots.push(snapshot);
+    contexts.push(run);
     if (snapshots.length === 1) {
       return new Response(sseToolCall("workspace.read_file", { relativePath: "README.md" }), { headers: { "content-type": "text/event-stream" } });
     }
@@ -309,11 +327,178 @@ test("each SDK request reaches the review dispatch, including a new request afte
     assert.notEqual(snapshots[0]?.bodySha256, snapshots[1]?.bodySha256);
     assert.equal(snapshots[0]?.body.includes("SYNTHETIC_FILE"), false);
     assert.equal(snapshots[1]?.body.includes("SYNTHETIC_FILE"), true);
+    assert.equal(contexts[0]?.sources.length, 0);
+    assert.equal(contexts[1]?.sources.length, 1);
+    assert.equal(contexts[1]?.sources[0]?.sourceId, `src_${hex(9)}`);
+    assert.equal(contexts[1]?.sources[0]?.excerpts[0]?.textSha256, createHash("sha256").update("SYNTHETIC_FILE").digest("hex"));
+    assert.equal(contexts[1]?.sources[0]?.excerpts[0]?.textByteLen, Buffer.byteLength("SYNTHETIC_FILE"));
+    assert.equal(Object.isFrozen(contexts[1]?.sources[0]?.excerpts), true);
     assert.equal(JSON.stringify(snapshots).includes(KEY), false);
     assert.equal(harness.fetches.length, 0);
     assert.equal(harness.frames.some((frame) => frame.method === "stream.done"), false);
   } finally {
     await harness.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("reviewed dispatch refuses missing or cross-run provenance", async () => {
+  for (const mode of ["missing-overview", "wrong-run", "wrong-workspace", "wrong-frame"] as const) {
+    const dir = mkdtempSync(path.join(tmpdir(), "hark-provenance-"));
+    let calls = 0;
+    const harness = startHarness({ dir, provenanceMode: mode, reviewedDispatch: async () => {
+      calls += 1;
+      return new Response(sseText("synthetic"), { headers: { "content-type": "text/event-stream" } });
+    } });
+    try {
+      const started = runStart(20);
+      harness.input.write(encodeFrame(started));
+      await waitFor(harness.frames, (frame) => frame.kind === "error" && frame.runId === started.runId);
+      assert.equal(calls, 0, mode);
+      assert.equal(harness.fetches.length, 0);
+    } finally { await harness.close(); rmSync(dir, { recursive: true, force: true }); }
+  }
+});
+
+test("cancelling a reviewed dispatch aborts its bound signal and cannot complete", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "hark-provenance-cancel-"));
+  let called = false;
+  let observedAbort = false;
+  const harness = startHarness({ dir, reviewedDispatch: async (_snapshot, _run, signal) => {
+    called = true;
+    return await new Promise((_resolve, reject) => {
+      signal.addEventListener("abort", () => { observedAbort = true; reject(new Error("synthetic cancellation")); }, { once: true });
+    });
+  } });
+  try {
+    const started = runStart(25);
+    harness.input.write(encodeFrame(started));
+    const began = Date.now();
+    while (!called && Date.now() - began < 3000) await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(called, true);
+    harness.input.write(encodeFrame({ v: 1, kind: "request", id: `req_${hex(925)}`, replyTo: null,
+      workspaceId: started.workspaceId, runId: started.runId, method: "run.cancel", deadlineUnixMs: Date.now() + 5000,
+      payload: { targetRequestId: started.id }, error: null }));
+    await waitFor(harness.frames, (frame) => frame.kind === "error" && frame.replyTo === started.id);
+    assert.equal(observedAbort, true);
+    assert.equal(harness.frames.some((frame) => frame.method === "stream.done" && frame.runId === started.runId), false);
+    assert.equal(harness.fetches.length, 0);
+  } finally { await harness.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("new tool content without matching source and excerpt metadata cannot be dispatched", async () => {
+  for (const mode of ["missing-read", "wrong-text"] as const) {
+    const dir = mkdtempSync(path.join(tmpdir(), "hark-provenance-read-"));
+    let calls = 0;
+    const harness = startHarness({ dir, provenanceMode: mode, reviewedDispatch: async () => {
+      calls += 1;
+      return new Response(sseToolCall("workspace.read_file", { relativePath: "README.md" }), { headers: { "content-type": "text/event-stream" } });
+    } });
+    try {
+      const started = runStart(21);
+      harness.input.write(encodeFrame(started));
+      await waitFor(harness.frames, (frame) => frame.kind === "error" && frame.runId === started.runId);
+      assert.equal(calls, 1, mode);
+      assert.equal(harness.fetches.length, 0);
+      assert.equal(harness.frames.some((frame) => frame.method === "stream.done"), false);
+    } finally { await harness.close(); rmSync(dir, { recursive: true, force: true }); }
+  }
+});
+
+test("reviewed dispatch refuses resumed sessions and unattested history", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "hark-provenance-history-"));
+  let calls = 0;
+  const harness = startHarness({ dir, reviewedDispatch: async () => {
+    calls += 1;
+    return new Response(sseText("synthetic"), { headers: { "content-type": "text/event-stream" } });
+  } });
+  try {
+    const first = runStart(22);
+    harness.input.write(encodeFrame(first));
+    await waitFor(harness.frames, (frame) => frame.method === "stream.done" && frame.runId === first.runId);
+    const second = runStart(23);
+    harness.input.write(encodeFrame(second));
+    await waitFor(harness.frames, (frame) => frame.kind === "error" && frame.runId === second.runId);
+    assert.equal(calls, 1);
+    assert.equal(harness.frames.some((frame) => frame.method === "stream.done" && frame.runId === second.runId), false);
+  } finally { await harness.close(); rmSync(dir, { recursive: true, force: true }); }
+
+  const dir2 = mkdtempSync(path.join(tmpdir(), "hark-provenance-handoff-"));
+  let handoffCalls = 0;
+  const handoff = startHarness({ dir: dir2, reviewedDispatch: async () => { handoffCalls += 1; return new Response(); } });
+  try {
+    const started = runStart(24, { handoffId: "legacy", recentMessages: [{ messageId: `msg_${hex(400)}`, role: "assistant", text: "unattested history", createdAtUnixMs: 0 }] });
+    handoff.input.write(encodeFrame(started));
+    await waitFor(handoff.frames, (frame) => frame.kind === "error" && frame.runId === started.runId);
+    assert.equal(handoffCalls, 0);
+  } finally { await handoff.close(); rmSync(dir2, { recursive: true, force: true }); }
+});
+
+test("synthetic review IPC waits for a correlated decision without real fetch", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "hark-host-ipc-review-"));
+  const harness = startHarness({ dir, syntheticReviewIpc: { waitMs: 3_000 } });
+  try {
+    const started = runStart(12);
+    harness.input.write(encodeFrame(started));
+    const review = await waitFor(harness.frames, (frame) => frame.method === "synthetic.outbound_review" && frame.kind === "request");
+    assert.equal(review.workspaceId, started.workspaceId);
+    assert.equal(review.runId, started.runId);
+    assert.equal(review.payload.synthetic, true);
+    assert.equal(typeof review.payload.bodySha256, "string");
+    assert.equal(JSON.stringify(review.payload).includes(KEY), false);
+    assert.equal(harness.fetches.length, 0);
+    assert.equal(harness.frames.some((frame) => frame.method === "stream.done"), false);
+    harness.input.write(encodeFrame({ ...review, kind: "response", replyTo: review.id, payload: { synthetic: true, approved: true } }));
+    const done = await waitFor(harness.frames, (frame) => frame.method === "stream.done" && frame.runId === started.runId);
+    assert.equal(done.payload.text, "synthetic-review-approved");
+    assert.equal(harness.fetches.length, 0);
+  } finally {
+    await harness.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("synthetic review IPC cancellation releases the waiter and ignores late approval", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "hark-host-ipc-cancel-"));
+  const harness = startHarness({ dir, syntheticReviewIpc: { waitMs: 3_000 } });
+  try {
+    const started = runStart(13);
+    harness.input.write(encodeFrame(started));
+    const review = await waitFor(harness.frames, (frame) => frame.method === "synthetic.outbound_review" && frame.kind === "request");
+    harness.input.write(encodeFrame({ v: 1, kind: "request", id: `req_${hex(913)}`, replyTo: null,
+      workspaceId: started.workspaceId, runId: started.runId, method: "run.cancel", deadlineUnixMs: Date.now() + 5_000,
+      payload: { targetRequestId: started.id }, error: null }));
+    await waitFor(harness.frames, (frame) => frame.method === "run.cancel" && frame.kind === "response");
+    harness.input.write(encodeFrame({ ...review, kind: "response", replyTo: review.id, payload: { synthetic: true, approved: true } }));
+    await waitFor(harness.frames, (frame) => frame.kind === "error" && frame.replyTo === started.id);
+    assert.equal(harness.fetches.length, 0);
+    assert.equal(harness.frames.some((frame) => frame.method === "stream.done"), false);
+  } finally {
+    await harness.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("synthetic review IPC fails closed for a non-synthetic run and expiry", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "hark-host-ipc-closed-"));
+  const first = startHarness({ dir, syntheticReviewIpc: { waitMs: 50 } });
+  try {
+    const started = runStart(14, { syntheticCore: false });
+    first.input.write(encodeFrame(started));
+    await waitFor(first.frames, (frame) => frame.kind === "error" && frame.runId === started.runId);
+    assert.equal(first.frames.some((frame) => frame.method === "synthetic.outbound_review"), false);
+    assert.equal(first.fetches.length, 0);
+  } finally { await first.close(); }
+  const second = startHarness({ dir, syntheticReviewIpc: { waitMs: 50 } });
+  try {
+    const started = runStart(15);
+    second.input.write(encodeFrame(started));
+    await waitFor(second.frames, (frame) => frame.method === "synthetic.outbound_review" && frame.kind === "request");
+    await waitFor(second.frames, (frame) => frame.kind === "error" && frame.runId === started.runId);
+    assert.equal(second.fetches.length, 0);
+    assert.equal(second.frames.some((frame) => frame.method === "stream.done"), false);
+  } finally {
+    await second.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -992,4 +1177,236 @@ test("stdin EOF aborts an in-flight run without a stream busy-loop", async () =>
   assert.equal(host.fetchCount.n, scriptCalls);
   for (const callback of held) callback();
   rmSync(dir, { recursive: true, force: true });
+});
+
+test("web_search refuses execution unless authorization.searchGrantStatus is active, and proceeds when active", async () => {
+  const baseAuth = {
+    runId: `run_${hex(1)}`,
+    provider: "hark-byok",
+    model: "local-model",
+    rootId: `root_${hex(2)}`,
+    rootUpdatedAt: "root-v1",
+    grantUpdatedAt: "grant-v1",
+    directoryStatus: "active" as const,
+    modelGrantStatus: "active" as const,
+    current: true,
+  };
+  for (const status of ["active", "paused", "revoked", "missing"] as const) {
+    assert.equal(authorizationSnapshotSchema.safeParse({ ...baseAuth, searchGrantStatus: status }).success, true);
+  }
+  assert.equal(authorizationSnapshotSchema.safeParse(baseAuth).success, true);
+  assert.equal(authorizationSnapshotSchema.safeParse({ ...baseAuth, searchGrantStatus: "unknown" }).success, false);
+
+  const SEARCH_KEY = "tvly-synthetic-secret-do-not-log";
+  const cases: Array<undefined | "missing" | "paused" | "revoked" | "active"> = [
+    undefined,
+    "missing",
+    "paused",
+    "revoked",
+    "active",
+  ];
+
+  for (let idx = 0; idx < cases.length; idx += 1) {
+    const status = cases[idx];
+    const dir = mkdtempSync(path.join(tmpdir(), "hark-host-websearch-"));
+    const input = new PassThrough();
+    const output = new PassThrough();
+    const frames: Frame[] = [];
+    const logs: string[] = [];
+    const parser = new NdjsonParser();
+    let llmStep = 0;
+    const llmBodies: string[] = [];
+    let tavilyCalls = 0;
+
+    const host = new HostRuntime({
+      appDataDir: dir,
+      input,
+      output,
+      providerConfig: provider(),
+      searchConfig: {
+        activeProvider: "tavily",
+        providers: { tavily: { apiKey: SEARCH_KEY } },
+      },
+      fetchImpl: async (url, init) => {
+        const target = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+        if (target === "https://api.tavily.com/search") {
+          tavilyCalls += 1;
+          const body = JSON.parse(String(init?.body ?? "{}")) as { api_key?: string; query?: string; max_results?: number };
+          assert.equal(body.api_key, SEARCH_KEY);
+          assert.equal(body.query, "hark desktop architecture");
+          assert.equal(body.max_results, 3);
+          return new Response(
+            JSON.stringify({
+              query: "hark desktop architecture",
+              answer: "Hark uses Rust core + agent-host.",
+              results: [
+                {
+                  title: "Hark Architecture",
+                  url: "https://example.invalid/hark-arch",
+                  content: "Structured L0/L1 memory with fd-safe core.",
+                  score: 0.99,
+                },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+        llmStep += 1;
+        llmBodies.push(String(init?.body ?? ""));
+        const responseBody =
+          llmStep === 1
+            ? sseToolCall("web_search", { query: "hark desktop architecture", maxResults: 3 })
+            : sseText(status === "active" ? "search-ok" : "search-blocked");
+        return new Response(responseBody, { status: 200, headers: { "content-type": "text/event-stream" } });
+      },
+      log: (line) => logs.push(line),
+    });
+
+    output.on("data", (chunk: Buffer) => {
+      for (const frame of parser.push(chunk)) {
+        frames.push(frame);
+        if (frame.method === "host.ready" && frame.kind === "request") {
+          input.write(encodeFrame({ ...frame, kind: "response", replyTo: frame.id, payload: { synthetic: true } }));
+        }
+        if (frame.method === "tool.request" && frame.kind === "request") {
+          input.write(encodeFrame({
+            ...frame,
+            kind: "response",
+            replyTo: frame.id,
+            method: "tool.result",
+            payload: {
+              authorization: {
+                runId: frame.runId,
+                provider: "hark-byok",
+                model: "local-model",
+                rootId: `root_${hex(3)}`,
+                rootUpdatedAt: "root-v1",
+                grantUpdatedAt: "grant-v1",
+                directoryStatus: "active",
+                modelGrantStatus: "active",
+                ...(status !== undefined ? { searchGrantStatus: status } : {}),
+                current: true,
+              },
+              sourceVersion: "src-a",
+              contextPackRevision: "rev-a",
+              overviewText: "overview-a",
+              synthetic: true,
+            },
+          }));
+        }
+      }
+    });
+
+    try {
+      void host.start();
+      const seq = 30 + idx;
+      input.write(encodeFrame(runStart(seq, {
+        authorization: {
+          runId: `run_${hex(200 + seq)}`,
+          provider: "hark-byok",
+          model: "local-model",
+          rootId: `root_${hex(3)}`,
+          rootUpdatedAt: "root-v1",
+          grantUpdatedAt: "grant-v1",
+          directoryStatus: "active",
+          modelGrantStatus: "active",
+          ...(status !== undefined ? { searchGrantStatus: status } : {}),
+          current: true,
+        },
+      })));
+      const done = await waitFor(frames, (frame) => frame.method === "stream.done" && frame.runId === `run_${hex(200 + seq)}`);
+      assert.equal(llmBodies.length, 2);
+      const secondLlmBody = llmBodies[1] ?? "";
+      if (status === "active") {
+        assert.equal(tavilyCalls, 1);
+        assert.equal(done.payload.text, "search-ok");
+        assert.equal(secondLlmBody.includes("untrusted web search data; provider=tavily"), true);
+        assert.equal(secondLlmBody.includes("https://example.invalid/hark-arch"), true);
+      } else {
+        assert.equal(tavilyCalls, 0);
+        assert.equal(done.payload.text, "search-blocked");
+        assert.equal(secondLlmBody.includes("联网搜索尚未在该工作空间启用（请在项目权限中开启联网搜索授权）"), true);
+      }
+      assert.equal(JSON.stringify(frames).includes(SEARCH_KEY), false);
+      assert.equal(logs.join("\n").includes(SEARCH_KEY), false);
+      assert.equal(host.payloads.join("\n").includes(SEARCH_KEY), false);
+    } finally {
+      input.end();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test("renderContextPack and applyContextPack format structured L0/L1 memory context when empty is false", () => {
+  const emptyPack = renderContextPack(
+    {
+      contextPackRevision: "rev-empty",
+      sourceVersion: "src-empty",
+      empty: true,
+    },
+    false,
+  );
+  assert.equal(emptyPack.includes("empty: true"), true);
+  assert.equal(emptyPack.includes("Memory engine is not available. No long-term facts were supplied."), true);
+  assert.equal(emptyPack.includes("[L0 Identity & Long-Term Memory]"), false);
+
+  const identity = "[identity]\n- [mem_01 r1 active] Hark desktop project\n[decision]\n- [mem_02 r2 active] Keep Pi Host stateless";
+  const overview = "workspace: Hark (ws_01) rootStatus:active\n[local_fact]\n- [src_01 README.md sha:deadbeef fresh] Hark overview\n[opinions:active]\n- [op_01 r1 active] Outbound review is enforced";
+  const populatedPack = renderContextPack(
+    {
+      contextPackRevision: "rev-l0l1",
+      sourceVersion: "src-l0l1",
+      empty: false,
+      identity,
+      overview,
+    },
+    true,
+  );
+
+  assert.equal(populatedPack.includes("Hark request context pack."), true);
+  assert.equal(populatedPack.includes("empty: false"), true);
+  assert.equal(populatedPack.includes("Memory engine is not available."), false);
+  assert.equal(populatedPack.includes("[L0 Identity & Long-Term Memory]"), true);
+  assert.equal(populatedPack.includes(`identity: ${identity}`), true);
+  assert.equal(populatedPack.includes("[L1 Workspace Overview, Opinions & Local Facts]"), true);
+  assert.equal(populatedPack.includes(`overview: ${overview}`), true);
+  assert.equal(populatedPack.includes("A prior compaction or snapshot is not the current source. Use this revision only."), true);
+
+  const initialMessages = [
+    {
+      role: "system",
+      content: "STATIC_PROMPT",
+      toolsAdded: [{ name: "workspace.read_file", description: "read", parameters: {} }],
+      sections: {},
+    },
+    {
+      role: "system",
+      content: "Hark request context pack stale old",
+    },
+    {
+      role: "user",
+      content: "hello",
+      timestamp: 1,
+    },
+    {
+      role: "user",
+      content: `${COMPACTION_SUMMARY_PREFIX}old compacted summary`,
+      timestamp: 2,
+    },
+  ] as unknown as Message[];
+
+  const rewritten = applyContextPack(initialMessages, populatedPack);
+  assert.equal(rewritten.length, 2);
+  const head = rewritten[0] as unknown as { role: string; sections?: Record<string, string> };
+  assert.equal(head.role, "system");
+  assert.equal(head.sections?.[PACK_SECTION], populatedPack);
+  assert.equal((rewritten[1] as { content: unknown }).content, "hello");
+
+  // Wire evidence verification must continue to accept the structured overview pack marker.
+  const wireBody = JSON.stringify({
+    system: populatedPack,
+    messages: [{ role: "user", content: "hello" }],
+  });
+  assert.doesNotThrow(() => requireVerifiedWireEvidence(wireBody, [], overview));
 });

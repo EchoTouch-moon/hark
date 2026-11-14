@@ -33,6 +33,8 @@ fn main() {
             "get_agent_turn",
             "get_agent_turn_by_request",
             "cancel_agent_turn",
+            "get_outbound_review",
+            "decide_outbound_review",
             "hide_window",
             "quit_app",
             "shell_snapshot",
@@ -47,6 +49,14 @@ fn main() {
             "search_workspace_memory",
             "get_message_evidence",
             "list_memory_receipts",
+            "get_narrative_state",
+            "observe_workspace",
+            "list_attention_items",
+            "dismiss_attention_item",
+            "set_search_grant",
+            "get_search_config",
+            "save_search_config",
+            "set_observer_paused",
         ]));
     tauri_build::try_build(attributes).expect("failed to run tauri-build");
 }

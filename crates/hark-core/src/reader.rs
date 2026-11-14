@@ -463,6 +463,71 @@ pub(crate) fn read_within_workspace(
     read_fd(file_fd, st.st_size, max_bytes, gate, file_rel)
 }
 
+/// Read `.git/HEAD` safely inside the verified workspace (or its authorized root
+/// when the workspace is a subdirectory), enforcing `O_NOFOLLOW`, same-dev,
+/// regular-file, link-count, and Finder-alias checks. Returns `Ok(None)` when
+/// `.git` or `.git/HEAD` is absent.
+pub(crate) fn read_git_head_within_workspace(
+    root: &Path,
+    root_expected: &DirIdentity,
+    workspace_rel: &str,
+    workspace_expected: &DirIdentity,
+    max_bytes: u64,
+    gate: &IoGate<'_>,
+) -> Result<Option<ReadBytes>> {
+    ensure_supported()?;
+    let root_fd = reopen_root_admitted(root, root_expected, gate)?;
+    let root_dev = root_dev(&root_fd)?;
+    let ws_fd = walk_dir(&root_fd, &root_dev, split_relative(workspace_rel)?, gate)?;
+    let ws_st = fstat(&ws_fd)?;
+    ensure_dir(&ws_st)?;
+    if identity_of(&ws_st) != *workspace_expected {
+        return Err(CoreError::new(
+            ErrorCode::GrantIdentityMismatch,
+            "workspace directory inode changed",
+        ));
+    }
+    reject_alias(ws_fd.as_raw_fd())?;
+    if let Some(read) = read_git_head_in_dir(&ws_fd, &root_dev, max_bytes, gate)? {
+        return Ok(Some(read));
+    }
+    if !workspace_rel.is_empty() {
+        return read_git_head_in_dir(&root_fd, &root_dev, max_bytes, gate);
+    }
+    Ok(None)
+}
+
+fn read_git_head_in_dir(
+    dir_fd: &OwnedFd,
+    root_dev: &str,
+    max_bytes: u64,
+    gate: &IoGate<'_>,
+) -> Result<Option<ReadBytes>> {
+    let git_fd = match open_child(dir_fd, ".git", true, gate) {
+        Ok(fd) => fd,
+        Err(err) if err.code == ErrorCode::NotFound => return Ok(None),
+        Err(err) => return Err(err),
+    };
+    let git_st = fstat(&git_fd)?;
+    ensure_dir(&git_st)?;
+    if identity_of(&git_st).dev != root_dev {
+        return Err(CoreError::new(
+            ErrorCode::CrossDeviceRejected,
+            "refusing cross-device .git",
+        ));
+    }
+    reject_alias(git_fd.as_raw_fd())?;
+    let head_fd = match open_child(&git_fd, "HEAD", false, gate) {
+        Ok(fd) => fd,
+        Err(err) if err.code == ErrorCode::NotFound => return Ok(None),
+        Err(err) => return Err(err),
+    };
+    let st = fstat(&head_fd)?;
+    classify_file(&st, root_dev, "HEAD")?;
+    reject_alias(head_fd.as_raw_fd())?;
+    read_fd(head_fd, st.st_size, max_bytes, gate, ".git/HEAD").map(Some)
+}
+
 fn read_fd(
     file_fd: OwnedFd,
     size: i64,

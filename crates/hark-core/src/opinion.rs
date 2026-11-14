@@ -151,25 +151,7 @@ impl Core {
     }
 
     pub fn list_workspace_opinions(&self, workspace_id: &WorkspaceId) -> Result<Vec<OpinionView>> {
-        self.with_conn(|conn| {
-            memory::require_workspace(conn, workspace_id)?;
-            let mut stmt = conn.prepare(
-                "SELECT id FROM opinions WHERE workspace_id = ?1 ORDER BY created_at, id LIMIT ?2",
-            )?;
-            let ids: Vec<String> = stmt
-                .query_map(
-                    params![workspace_id.as_str(), MAX_MEMORY_LIST as i64],
-                    |row| row.get(0),
-                )?
-                .collect::<std::result::Result<_, _>>()?;
-            let mut views = Vec::new();
-            for id in ids {
-                if let Some(view) = load_view(conn, workspace_id, &id, None, false)? {
-                    views.push(view);
-                }
-            }
-            Ok(views)
-        })
+        self.with_conn(|conn| load_workspace_opinions(conn, workspace_id))
     }
 
     /// Local user feedback. Does not require a model grant and does not write a decision.
@@ -177,6 +159,64 @@ impl Core {
         let request_id = memory::validate_operation_key(&input.request_id)?;
         self.with_tx(|tx| feedback_tx(tx, input, &request_id))
     }
+}
+
+pub(crate) fn load_workspace_opinions(
+    conn: &Connection,
+    workspace_id: &WorkspaceId,
+) -> Result<Vec<OpinionView>> {
+    memory::require_workspace(conn, workspace_id)?;
+    let mut stmt = conn.prepare(
+        "SELECT id FROM opinions WHERE workspace_id = ?1 ORDER BY created_at, id LIMIT ?2",
+    )?;
+    let ids: Vec<String> = stmt
+        .query_map(
+            params![workspace_id.as_str(), MAX_MEMORY_LIST as i64],
+            |row| row.get(0),
+        )?
+        .collect::<std::result::Result<_, _>>()?;
+    let mut views = Vec::new();
+    for id in ids {
+        if let Some(view) = load_view(conn, workspace_id, &id, None, false)? {
+            views.push(view);
+        }
+    }
+    Ok(views)
+}
+
+/// Append a non-judgment `stale` revision when underlying evidence changed, preserving full history.
+/// Returns `Ok(true)` if a new revision was appended, `Ok(false)` if already stale/shelved/retracted.
+pub(crate) fn mark_opinion_stale_tx(
+    tx: &Transaction<'_>,
+    workspace_id: &WorkspaceId,
+    opinion_id: &str,
+    operation_id: &str,
+    note: &str,
+) -> Result<bool> {
+    let head = require_head(tx, workspace_id, opinion_id)?;
+    if !matches!(
+        head.status.as_str(),
+        "active" | "disputed" | "pending_revision"
+    ) {
+        return Ok(false);
+    }
+    append_opinion(
+        tx,
+        workspace_id,
+        &head.id,
+        &head,
+        operation_id,
+        "observer",
+        "REVISE",
+        "stale",
+        &head.summary,
+        &head.evidence_json,
+        &head.counter_json,
+        &head.uncertainty_json,
+        note,
+        false,
+    )?;
+    Ok(true)
 }
 
 pub(crate) fn revert_committed(
@@ -1215,6 +1255,7 @@ fn opinion_label(status: &str, historical: bool, judgment_generated: bool) -> St
     }
     match status {
         "pending_revision" => "待修订：只记录了用户意见，未生成新判断".to_string(),
+        "stale" => "依据已变化，待复核更新".to_string(),
         "shelved" => "已搁置，不是否定事实".to_string(),
         "disputed" => "有争议，不是已核实事实".to_string(),
         "retracted" => "已撤回，历史仍在".to_string(),

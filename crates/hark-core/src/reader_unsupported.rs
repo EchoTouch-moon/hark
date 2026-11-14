@@ -121,6 +121,17 @@ pub(crate) fn read_within_workspace(
     unsupported()
 }
 
+pub(crate) fn read_git_head_within_workspace(
+    _root: &Path,
+    _root_expected: &DirIdentity,
+    _workspace_rel: &str,
+    _workspace_expected: &DirIdentity,
+    _max_bytes: u64,
+    _gate: &crate::grant::IoGate<'_>,
+) -> Result<Option<ReadBytes>> {
+    unsupported()
+}
+
 fn unsupported<T>() -> Result<T> {
     Err(CoreError::new(
         ErrorCode::ReaderUnsupportedPlatform,

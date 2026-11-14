@@ -1,7 +1,15 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
-import type { HarkBridge, HarkUIError, RunStreamEvent } from "./HarkBridge.ts";
+import { listen } from "@tauri-apps/api/event";
+import type { AppEvent, HarkBridge, HarkUIError, RunStreamEvent } from "./HarkBridge.ts";
 import { DevPreviewHarkBridge } from "./dev-preview.ts";
-import { createTauriHarkBridge, selectBridge, uiError, type InvokeFn, type TurnChannelFactory } from "./native-adapter.ts";
+import {
+  createTauriHarkBridge,
+  selectBridge,
+  uiError,
+  type AppEventListener,
+  type InvokeFn,
+  type TurnChannelFactory,
+} from "./native-adapter.ts";
 
 /**
  * Native default is strict Tauri IPC.
@@ -28,6 +36,21 @@ export const tauriTurnChannel: TurnChannelFactory = (onEvent: (event: RunStreamE
   const channel = new Channel<RunStreamEvent>();
   channel.onmessage = onEvent;
   return channel;
+};
+
+export const tauriListenAppEvents: AppEventListener = async (onEvent) => {
+  if (!isTauriHostAvailable()) {
+    return () => {};
+  }
+  try {
+    return await listen<AppEvent>("hark://app-event", (event) => {
+      if (event?.payload && typeof event.payload === "object" && "type" in event.payload) {
+        onEvent(event.payload);
+      }
+    });
+  } catch {
+    return () => {};
+  }
 };
 
 class StrictUnavailableTauriBridge implements HarkBridge {
@@ -106,6 +129,18 @@ class StrictUnavailableTauriBridge implements HarkBridge {
   async getNarrativeState(): Promise<never> {
     throw this.createError();
   }
+  async observeWorkspace(): Promise<never> {
+    throw this.createError();
+  }
+  async dismissAttentionItem(): Promise<never> {
+    throw this.createError();
+  }
+  async getSearchConfig(): Promise<never> {
+    throw this.createError();
+  }
+  async saveSearchConfig(): Promise<never> {
+    throw this.createError();
+  }
   async getRuntimeStatus(): Promise<never> {
     throw this.createError();
   }
@@ -149,9 +184,13 @@ export function getHarkBridge(mode: "dev_preview_synthetic" | "strict_tauri_ipc"
     devPreview: singletonDevBridge,
     unavailable: singletonStrictTauriBridge,
     turnChannel: tauriTurnChannel,
+    listenAppEvents: tauriListenAppEvents,
   });
 }
 
 export function createNativeBridge(invoke: InvokeFn = tauriInvoke): HarkBridge {
-  return createTauriHarkBridge(invoke, { turnChannel: tauriTurnChannel });
+  return createTauriHarkBridge(invoke, {
+    turnChannel: tauriTurnChannel,
+    listenAppEvents: tauriListenAppEvents,
+  });
 }

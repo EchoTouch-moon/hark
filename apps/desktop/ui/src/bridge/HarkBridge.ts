@@ -415,6 +415,7 @@ export type RunStreamEventType =
   | "tool_started"
   | "tool_completed"
   | "memory_committed"
+  | "outbound_review_requested"
   | "run_completed"
   | "run_cancelled"
   | "run_failed";
@@ -435,6 +436,7 @@ export interface RunStreamEvent {
     opinionCreatedId?: ID;
     persistenceVerified?: boolean;
     error?: HarkUIError;
+    reviewId?: ID;
   };
 }
 
@@ -448,6 +450,21 @@ export interface AppEvent {
   workspaceId?: WorkspaceId;
   runId?: RunId;
   timestamp: ISODateTime;
+}
+
+export interface OutboundReviewRef {
+  workspaceId: WorkspaceId;
+  runId: RunId;
+  reviewId: ID;
+}
+
+/** A Native-owned snapshot; neither the decision nor its contents authorize sending. */
+export interface OutboundReviewSnapshot extends OutboundReviewRef {
+  recipient: string;
+  model: string;
+  limits: { label: string; value: string }[];
+  sources: { sourceId: string; path: string; version: string; byteLen: number; truncated: boolean }[];
+  body: string;
 }
 
 export interface HarkBridge {
@@ -468,6 +485,8 @@ export interface HarkBridge {
   getRunStatus(runId: RunId): Promise<RunStatus>;
   getRunStatusByRequest?(workspaceId: WorkspaceId, conversationId: ConversationId, requestId: ID): Promise<RunStatus | null>;
   cancelAgentTurn(runId: RunId): Promise<RunStatus>;
+  getOutboundReview?(ref: OutboundReviewRef): Promise<OutboundReviewSnapshot>;
+  decideOutboundReview?(ref: OutboundReviewRef, decision: "approve" | "reject"): Promise<void>;
   getOpinion(opinionId: ID): Promise<OpinionView>;
   listWorkspaceOpinions(workspaceId: WorkspaceId): Promise<OpinionView[]>;
   submitOpinionFeedback(input: OpinionFeedbackInput): Promise<OpinionView>;
@@ -478,6 +497,8 @@ export interface HarkBridge {
   getWorkspacePermissions(id: WorkspaceId): Promise<WorkspacePermissions>;
   setWorkspacePermissions(input: WorkspacePermissionsUpdate): Promise<WorkspacePermissions>;
   getNarrativeState(id: WorkspaceId): Promise<NarrativeState>;
+  observeWorkspace?(workspaceId: WorkspaceId): Promise<void>;
+  dismissAttentionItem?(workspaceId: WorkspaceId, attentionId: ID): Promise<void>;
   getRuntimeStatus(): Promise<RuntimeStatus>;
   updateRuntimePreference(patch: Partial<Pick<RuntimeStatus, "windowBehaviorOnClose" | "launchAtLogin" | "notificationsEnabled" | "stepFunConfigured" | "piSidecarStatus">>): Promise<RuntimeStatus>;
   subscribeAppEvents(onEvent: (event: AppEvent) => void): Promise<() => void>;
@@ -493,8 +514,24 @@ export interface HarkBridge {
   configureStepFunSession?(apiKey: string): Promise<StepFunSessionStatus>;
   clearStepFunSession?(): Promise<StepFunSessionStatus>;
   stepFunSessionStatus?(): Promise<StepFunSessionStatus>;
+  /** Multi-provider web search configuration. */
+  getSearchConfig?(): Promise<SearchProviderConfig>;
+  saveSearchConfig?(config: SearchProviderConfig): Promise<void>;
+  testSearchConnection?(provider: SearchProviderType, apiKey: string, endpoint?: string): Promise<{ success: boolean; message: string }>;
   /** Existing opening entry. Only after the user explicitly asks for a first read. */
   startConfiguredOpening?(workspaceId: WorkspaceId): Promise<void>;
+}
+
+export type SearchProviderType = "tavily" | "zhipu_mcp" | "bing" | "serper" | "duckduckgo";
+
+export interface SearchProviderCredentials {
+  apiKey?: string;
+  endpoint?: string;
+}
+
+export interface SearchProviderConfig {
+  activeProvider: SearchProviderType;
+  providers: Partial<Record<SearchProviderType, SearchProviderCredentials>>;
 }
 
 export interface StepFunSessionStatus {

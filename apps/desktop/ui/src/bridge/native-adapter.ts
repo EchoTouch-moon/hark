@@ -1,10 +1,13 @@
 import type {
+  AppEvent,
   AppSnapshot,
+  AttentionItem,
   ConfirmImportInput,
   ConfirmImportResult,
   ConversationMessage,
   EvidenceDetail,
   EvidenceRef,
+  FlameStage,
   HarkBridge,
   HarkErrorCode,
   HarkUIError,
@@ -13,6 +16,7 @@ import type {
   MemorySearchItem,
   MemorySearchPage,
   OpinionView,
+  OutboundReviewRef,
   NarrativeState,
   OnboardingRun,
   OnboardingStage,
@@ -21,6 +25,8 @@ import type {
   RunStatus,
   RunStreamEvent,
   RuntimeStatus,
+  SearchProviderConfig,
+  SearchProviderType,
   ServicePermission,
   WorkspaceDetail,
   WorkspaceSummary,
@@ -32,11 +38,15 @@ import type {
  */
 
 import { projectMemoryReceipts, type StoredMemoryReceipt } from "./receipt-projection.ts";
+import { z } from "zod";
 
 export type InvokeFn = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
 
 /** Created before invoke so a per-turn Channel can deliver events early. */
 export type TurnChannelFactory = (onEvent: (event: RunStreamEvent) => void) => unknown;
+
+/** Optional Tauri app-event listener injected by tauri-bridge. */
+export type AppEventListener = (onEvent: (event: AppEvent) => void) => Promise<() => void>;
 
 export interface NativeShellError {
   code: string;
@@ -201,7 +211,58 @@ export interface SelectiveReadReportDto {
   skipped: string[];
 }
 
+export interface NarrativeStateDto {
+  availability: string;
+  flame: string;
+  stageLabel: string;
+  narrativeReason: string;
+  basisRefs?: string[];
+  observedAt?: string | null;
+  stale?: boolean;
+}
+
+export interface AttentionItemDto {
+  id: string;
+  workspaceId: string;
+  workspaceName: string;
+  conversationId: string;
+  headline: string;
+  whyNow: string;
+  targetOpinionId?: string | null;
+  targetEvidenceId?: string | null;
+  createdAt: string;
+  dismissed?: boolean;
+}
+
+export interface ObserverStatusDto {
+  workspaceId: string;
+  observerState: string;
+  paused: boolean;
+}
+
+export interface SearchConfigResponseDto {
+  activeProvider: string;
+  configuredProviders?: string[];
+  providers?: Record<string, { apiKey?: string | null; endpoint?: string | null }>;
+}
+
 const ID_RE = /^[a-z]+_[0-9a-fA-F]{32}$/;
+const outboundReviewSchema = z.object({
+  reviewId: z.string().regex(/^review_[0-9a-f]{32}$/),
+  workspaceId: z.string().regex(/^ws_[0-9a-f]{32}$/),
+  runId: z.string().regex(/^run_[0-9a-f]{32}$/),
+  recipient: z.string().min(1).max(2048),
+  model: z.string().min(1).max(256),
+  limits: z.array(z.object({ label: z.string().min(1).max(256), value: z.string().max(1024) }).strict()).max(32),
+  sources: z.array(z.object({ sourceId: z.string().min(1).max(128), path: z.string().min(1).max(1024), version: z.string().min(1).max(256), byteLen: z.number().int().nonnegative().safe(), truncated: z.boolean() }).strict()).max(128),
+  body: z.string().min(1).max(512 * 1024),
+}).strict();
+
+function assertOutboundRef(ref: OutboundReviewRef): void {
+  if (!isHarkId(ref.workspaceId, "ws") || !isHarkId(ref.runId, "run") || !/^review_[0-9a-f]{32}$/.test(ref.reviewId)) {
+    throw uiError("SCOPE_DENIED", "无法确认待审请求的所属项目和运行。", false);
+  }
+}
 
 export function isHarkId(value: string, prefix: string): boolean {
   return ID_RE.test(value) && value.startsWith(`${prefix}_`);
@@ -389,6 +450,19 @@ function permissionFromGrant(grants: ServiceGrant[] | undefined, service: string
   return "unavailable";
 }
 
+export function deriveObserverState(
+  directoryStatus?: AuthorizedRoot["status"],
+  grants?: ServiceGrant[],
+): WorkspaceSummary["observerState"] {
+  if (directoryStatus === "revoked") return "unauthorized";
+  if (directoryStatus === "paused") return "paused";
+  if (!grants) return "unavailable";
+  const bgGrant = grants.find((item) => item.service === "background_model");
+  if (bgGrant?.status === "paused") return "paused";
+  if (bgGrant?.status === "revoked") return "unauthorized";
+  return "active";
+}
+
 export function mapWorkspaceSummary(
   workspace: NativeWorkspace,
   roots: AuthorizedRoot[],
@@ -412,7 +486,46 @@ export function mapWorkspaceSummary(
     overviewFreshness: overview ? "fresh" : "unknown",
     modelPermission: permissionFromGrant(grants, "model"),
     searchPermission: permissionFromGrant(grants, "search"),
-    observerState: "unavailable",
+    observerState: deriveObserverState(root?.status, grants),
+  };
+}
+
+const VALID_FLAMES: ReadonlySet<FlameStage> = new Set([
+  "neutral",
+  "ember",
+  "gentle",
+  "bright",
+  "milestone",
+]);
+
+export function mapNarrativeState(dto: NarrativeStateDto): NarrativeState {
+  const availability = dto.availability === "known" ? "known" : "unknown";
+  const flame: FlameStage = VALID_FLAMES.has(dto.flame as FlameStage)
+    ? (dto.flame as FlameStage)
+    : "neutral";
+  return {
+    availability,
+    flame,
+    stageLabel: dto.stageLabel || "尚无叙事状态",
+    narrativeReason: dto.narrativeReason || "等待更多项目资料。",
+    basisRefs: Array.isArray(dto.basisRefs) ? dto.basisRefs : [],
+    ...(dto.observedAt ? { observedAt: dto.observedAt } : {}),
+    stale: Boolean(dto.stale),
+  };
+}
+
+export function mapAttentionItem(dto: AttentionItemDto): AttentionItem {
+  return {
+    id: dto.id,
+    workspaceId: dto.workspaceId,
+    workspaceName: dto.workspaceName,
+    conversationId: dto.conversationId,
+    headline: dto.headline,
+    whyNow: dto.whyNow,
+    ...(dto.targetOpinionId ? { targetOpinionId: dto.targetOpinionId } : {}),
+    ...(dto.targetEvidenceId ? { targetEvidenceId: dto.targetEvidenceId } : {}),
+    createdAt: dto.createdAt,
+    dismissed: Boolean(dto.dismissed),
   };
 }
 
@@ -439,6 +552,9 @@ export function mapCheckpoint(checkpoint: OnboardingCheckpointDto): OnboardingRu
 }
 
 function mapOnboardingStage(checkpoint: OnboardingCheckpointDto): OnboardingStage {
+  if (checkpoint.openingPresented) {
+    return "completed";
+  }
   switch (checkpoint.state) {
     case "cancelled":
       return "cancelled";
@@ -668,7 +784,11 @@ export function assertNoClosedFields(value: Record<string, unknown>): void {
   }
 }
 
-export function mapAppSnapshot(snapshot: ShellSnapshotDto, workspaces: NativeWorkspace[]): AppSnapshot {
+export function mapAppSnapshot(
+  snapshot: ShellSnapshotDto,
+  workspaces: NativeWorkspace[],
+  attentionItems: AttentionItem[] = [],
+): AppSnapshot {
   const ordered = [...workspaces].sort((left, right) => (left.createdAt < right.createdAt ? 1 : -1));
   return {
     schemaVersion: "hark.ui.v1",
@@ -676,7 +796,7 @@ export function mapAppSnapshot(snapshot: ShellSnapshotDto, workspaces: NativeWor
     workspaces: ordered.map((workspace) => mapWorkspaceSummary(workspace, snapshot.roots)),
     currentWorkspaceId: ordered[0]?.id,
     runtime: mapRuntime(snapshot),
-    attentionItems: [],
+    attentionItems,
   };
 }
 
@@ -743,11 +863,25 @@ function assertTurnInput(input: {
   }
 }
 
+const VALID_SEARCH_PROVIDERS: ReadonlySet<string> = new Set([
+  "tavily",
+  "zhipu_mcp",
+  "bing",
+  "serper",
+  "duckduckgo",
+]);
+
+function normalizeSearchProvider(value: string | undefined): SearchProviderType {
+  const lower = (value ?? "").trim().toLowerCase();
+  return VALID_SEARCH_PROVIDERS.has(lower) ? (lower as SearchProviderType) : "tavily";
+}
+
 export function createTauriHarkBridge(
   invoke: InvokeFn,
-  options?: { turnChannel?: TurnChannelFactory },
+  options?: { turnChannel?: TurnChannelFactory; listenAppEvents?: AppEventListener },
 ): HarkBridge {
   const turnChannel = options?.turnChannel;
+  const listenAppEvents = options?.listenAppEvents;
   const cache = {
     roots: [] as AuthorizedRoot[],
     workspaces: [] as NativeWorkspace[],
@@ -806,7 +940,29 @@ export function createTauriHarkBridge(
       const snapshot = await call<ShellSnapshotDto>("shell_snapshot");
       const workspaces = await call<NativeWorkspace[]>("list_workspaces");
       remember(snapshot.roots, workspaces, snapshot);
-      return mapAppSnapshot(snapshot, workspaces);
+      const perWorkspaceAttention = await Promise.all(
+        workspaces.map(async (workspace) => {
+          try {
+            const items = await call<AttentionItemDto[]>("list_attention_items", {
+              workspaceId: workspace.id,
+            });
+            return items
+              .map(mapAttentionItem)
+              .filter((item) => !item.dismissed)
+              .map((item) => ({
+                ...item,
+                workspaceName: item.workspaceName ?? workspace.displayName,
+                conversationId: item.conversationId ?? workspace.conversationId,
+              }));
+          } catch {
+            return [] as AttentionItem[];
+          }
+        }),
+      );
+      const attentionItems = perWorkspaceAttention
+        .flat()
+        .sort((left, right) => (left.createdAt < right.createdAt ? 1 : -1));
+      return mapAppSnapshot(snapshot, workspaces, attentionItems);
     },
     async previewRoot() {
       throw uiError(
@@ -864,27 +1020,43 @@ export function createTauriHarkBridge(
     async getWorkspace(workspaceId) {
       cache.focusWorkspaceId = workspaceId;
       const workspace = await workspaceById(workspaceId);
-      const [overview, grants, checkpoint, sources, roots] = await Promise.all([
+      const [overview, grants, checkpoint, sources, narrativeDto, roots] = await Promise.all([
         call<WorkspaceOverviewDto>("workspace_overview", { workspaceId }),
         call<ServiceGrant[]>("service_grants", { workspaceId }),
         call<OnboardingCheckpointDto>("onboarding", { workspaceId }),
         call<SourceRefDto[]>("list_source_refs", { workspaceId }),
+        call<NarrativeStateDto>("get_narrative_state", { workspaceId }),
         ensureRoots(),
       ]);
+      const narrative = mapNarrativeState(narrativeDto);
       const summary = mapWorkspaceSummary(workspace, roots, grants, overview);
+      if (narrative.observedAt) {
+        summary.lastObservedAt = narrative.observedAt;
+      }
       const detail: WorkspaceDetail = {
         summary,
         excludedPaths: [],
         readOnlyPaths: sources.map((source) => source.relativePath).filter((path) => path.length > 0),
-        narrative: unknownNarrative(overview.sourceIds),
+        narrative,
         activeOnboardingRunId: checkpoint.activeRunId ?? `checkpoint:${workspaceId}`,
         rootId: workspace.rootId,
         directoryStatus: roots.find((root) => root.id === workspace.rootId)?.status,
       };
       return detail;
     },
-    async updateWorkspaceState() {
-      throw unavailable("文件观察器");
+    async updateWorkspaceState(workspaceId, observerState) {
+      const status = await call<ObserverStatusDto>("set_observer_paused", {
+        workspaceId,
+        paused: observerState === "paused",
+      });
+      const [workspace, grants, roots] = await Promise.all([
+        workspaceById(workspaceId),
+        call<ServiceGrant[]>("service_grants", { workspaceId }),
+        ensureRoots(),
+      ]);
+      const summary = mapWorkspaceSummary(workspace, roots, grants);
+      summary.observerState = status.paused ? "paused" : "active";
+      return summary;
     },
     async getOnboardingRun(runId) {
       const workspaceId = runId.startsWith("checkpoint:") ? runId.slice("checkpoint:".length) : runId;
@@ -945,6 +1117,20 @@ export function createTauriHarkBridge(
         runId: result.runId,
         acceptedUserMessage: mapConversationEvent(result.acceptedUserMessage, [], false),
       };
+    },
+    async getOutboundReview(ref) {
+      assertOutboundRef(ref);
+      const raw = await call<unknown>("get_outbound_review", { request: ref });
+      const parsed = outboundReviewSchema.safeParse(raw);
+      if (!parsed.success || parsed.data.reviewId !== ref.reviewId || parsed.data.workspaceId !== ref.workspaceId || parsed.data.runId !== ref.runId) {
+        throw uiError("SCOPE_DENIED", "待审请求与当前运行不匹配。", false);
+      }
+      return parsed.data;
+    },
+    async decideOutboundReview(ref, decision) {
+      assertOutboundRef(ref);
+      if (decision !== "approve" && decision !== "reject") throw uiError("SCOPE_DENIED", "审阅决定无效。", false);
+      await call("decide_outbound_review", { request: { ...ref, decision } });
     },
     async getRunStatusByRequest(workspaceId, conversationId, requestId) {
       const status = await call<AgentTurnStatusDto | null>("get_agent_turn_by_request", {
@@ -1054,6 +1240,8 @@ export function createTauriHarkBridge(
     },
     async getWorkspacePermissions(workspaceId) {
       const grants = await call<ServiceGrant[]>("service_grants", { workspaceId });
+      const cachedWs = cache.workspaces.find((item) => item.id === workspaceId);
+      const cachedRoot = cachedWs ? cache.roots.find((item) => item.id === cachedWs.rootId) : undefined;
       return {
         workspaceId,
         revision: 0,
@@ -1061,22 +1249,53 @@ export function createTauriHarkBridge(
         excludedPaths: [],
         modelPermission: permissionFromGrant(grants, "model"),
         searchPermission: permissionFromGrant(grants, "search"),
-        observerState: "unavailable" as const,
+        observerState: deriveObserverState(cachedRoot?.status, grants),
       };
     },
     async setWorkspacePermissions(input) {
-      const extra = input.searchPermission !== undefined || input.observerState !== undefined || input.excludedPaths !== undefined;
-      if (extra || (input.modelPermission !== "enabled" && input.modelPermission !== "disabled")) {
-        throw unavailable("搜索、观察或路径授权");
+      if (input.excludedPaths !== undefined) {
+        throw unavailable("路径排除授权");
       }
-      await call("set_model_grant", {
-        request: { workspaceId: input.workspaceId, enabled: input.modelPermission === "enabled" },
-      });
+      if (input.modelPermission !== undefined && input.modelPermission !== "enabled" && input.modelPermission !== "disabled") {
+        throw unavailable("模型授权");
+      }
+      if (input.searchPermission !== undefined && input.searchPermission !== "enabled" && input.searchPermission !== "disabled") {
+        throw unavailable("搜索授权");
+      }
+      if (input.observerState !== undefined && input.observerState !== "active" && input.observerState !== "paused") {
+        throw unavailable("观察器状态");
+      }
+      if (input.modelPermission === undefined && input.searchPermission === undefined && input.observerState === undefined) {
+        throw unavailable("空权限更新");
+      }
+      if (input.modelPermission !== undefined) {
+        await call("set_model_grant", {
+          request: { workspaceId: input.workspaceId, enabled: input.modelPermission === "enabled" },
+        });
+      }
+      if (input.searchPermission !== undefined) {
+        await call("set_search_grant", {
+          workspaceId: input.workspaceId,
+          enabled: input.searchPermission === "enabled",
+        });
+      }
+      if (input.observerState !== undefined) {
+        await call("set_observer_paused", {
+          workspaceId: input.workspaceId,
+          paused: input.observerState === "paused",
+        });
+      }
       return this.getWorkspacePermissions(input.workspaceId);
     },
     async getNarrativeState(workspaceId) {
-      const overview = await call<WorkspaceOverviewDto>("workspace_overview", { workspaceId });
-      return unknownNarrative(overview.sourceIds);
+      const dto = await call<NarrativeStateDto>("get_narrative_state", { workspaceId });
+      return mapNarrativeState(dto);
+    },
+    async observeWorkspace(workspaceId) {
+      await call("observe_workspace", { workspaceId });
+    },
+    async dismissAttentionItem(workspaceId, attentionId) {
+      await call<boolean>("dismiss_attention_item", { workspaceId, attentionId });
     },
     async getRuntimeStatus() {
       const snapshot = await call<ShellSnapshotDto>("shell_snapshot");
@@ -1087,7 +1306,10 @@ export function createTauriHarkBridge(
     async updateRuntimePreference() {
       throw unavailable("前端拨动模型、Sidecar 或窗口偏好开关");
     },
-    async subscribeAppEvents() {
+    async subscribeAppEvents(onEvent) {
+      if (listenAppEvents) {
+        return listenAppEvents(onEvent);
+      }
       return () => {};
     },
     async hideWindow() {
@@ -1117,6 +1339,154 @@ export function createTauriHarkBridge(
     async startConfiguredOpening(workspaceId) {
       await call("start_configured_opening", { request: { workspaceId } });
     },
+    async getSearchConfig(): Promise<SearchProviderConfig> {
+      const res = await call<SearchConfigResponseDto>("get_search_config");
+      const providers: SearchProviderConfig["providers"] = {};
+      if (res.providers && typeof res.providers === "object") {
+        for (const [key, creds] of Object.entries(res.providers)) {
+          if (!VALID_SEARCH_PROVIDERS.has(key) || !creds) continue;
+          providers[key as SearchProviderType] = {
+            ...(creds.apiKey ? { apiKey: creds.apiKey } : {}),
+            ...(creds.endpoint ? { endpoint: creds.endpoint } : {}),
+          };
+        }
+      }
+      return {
+        activeProvider: normalizeSearchProvider(res.activeProvider),
+        providers,
+      };
+    },
+    async saveSearchConfig(config: SearchProviderConfig): Promise<void> {
+      const providers: Record<string, { apiKey?: string; endpoint?: string }> = {};
+      for (const [key, creds] of Object.entries(config.providers ?? {})) {
+        if (!VALID_SEARCH_PROVIDERS.has(key) || !creds) continue;
+        const apiKey = creds.apiKey?.trim();
+        const endpoint = creds.endpoint?.trim();
+        if (apiKey || endpoint) {
+          providers[key] = {
+            ...(apiKey ? { apiKey } : {}),
+            ...(endpoint ? { endpoint } : {}),
+          };
+        }
+      }
+      await call<SearchConfigResponseDto>("save_search_config", {
+        config: {
+          activeProvider: normalizeSearchProvider(config.activeProvider),
+          providers,
+        },
+      });
+    },
+    async testSearchConnection(provider: SearchProviderType, apiKey: string, endpoint?: string): Promise<{ success: boolean; message: string }> {
+      if (!apiKey || !apiKey.trim()) return { success: false, message: "请输入有效的 API Key" };
+      if (provider === "tavily") {
+        try {
+          const res = await fetch("https://api.tavily.com/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ api_key: apiKey.trim(), query: "test", max_results: 1 }),
+          });
+          if (res.ok) return { success: true, message: "连接成功！Tavily API 密钥有效。" };
+          if (res.status === 401) return { success: false, message: "Tavily API Key 鉴权失败，请检查密钥是否正确。" };
+          return { success: false, message: `Tavily 返回状态码 ${res.status}` };
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return { success: false, message: `网络连接异常: ${msg}` };
+        }
+      }
+      if (provider === "zhipu_mcp") {
+        const target = endpoint?.trim() || "https://open.bigmodel.cn/api/mcp/web_search_prime/mcp";
+        const authHeader = `Bearer ${apiKey.trim()}`;
+        const parsePayload = (raw: string): Record<string, unknown> => {
+          const trimmed = raw.trim();
+          if (!trimmed) return {};
+          if (!trimmed.startsWith("data:") && !trimmed.includes("\ndata:")) {
+            return JSON.parse(trimmed) as Record<string, unknown>;
+          }
+          const lines = trimmed.split(/\r?\n/);
+          for (let i = lines.length - 1; i >= 0; i--) {
+            const line = lines[i] ?? "";
+            if (line.startsWith("data:")) {
+              const jsonPart = line.slice(5).trim();
+              if (jsonPart && jsonPart !== "[DONE]") {
+                return JSON.parse(jsonPart) as Record<string, unknown>;
+              }
+            }
+          }
+          return {};
+        };
+        try {
+          const initRes = await fetch(target, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json, text/event-stream",
+              Authorization: authHeader,
+            },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "initialize",
+              params: {
+                protocolVersion: "2025-03-26",
+                capabilities: {},
+                clientInfo: { name: "hark-desktop", version: "0.1.0" },
+              },
+            }),
+          });
+          if (initRes.status === 401 || initRes.status === 403) {
+            return { success: false, message: "智谱 MCP 鉴权失败，请核对 Coding Plan 专属 API Key。" };
+          }
+          if (!initRes.ok) {
+            return { success: false, message: `智谱 MCP 返回状态码 ${initRes.status}` };
+          }
+          const sessionId = initRes.headers.get("mcp-session-id");
+          const initPayload = parsePayload(await initRes.text());
+          if (
+            initPayload.success === false ||
+            (typeof initPayload.code === "number" && initPayload.code !== 200 && initPayload.code !== 0)
+          ) {
+            return {
+              success: false,
+              message: `智谱 MCP 鉴权或调用失败（${String(initPayload.code ?? "error")}）：${String(initPayload.msg ?? initPayload.message ?? "未知错误")}`,
+            };
+          }
+          if (initPayload.error && typeof initPayload.error === "object") {
+            const errObj = initPayload.error as { message?: string };
+            return { success: false, message: `智谱 MCP 初始化失败: ${errObj.message || "未知错误"}` };
+          }
+
+          const listHeaders: Record<string, string> = {
+            "Content-Type": "application/json",
+            Accept: "application/json, text/event-stream",
+            Authorization: authHeader,
+          };
+          if (sessionId) listHeaders["mcp-session-id"] = sessionId;
+
+          const listRes = await fetch(target, {
+            method: "POST",
+            headers: listHeaders,
+            body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
+          });
+          if (!listRes.ok) {
+            return { success: false, message: `智谱 MCP tools/list 返回状态码 ${listRes.status}` };
+          }
+          const listPayload = parsePayload(await listRes.text());
+          const resultObj = listPayload.result as { tools?: Array<{ name?: string }> } | undefined;
+          const tools = Array.isArray(resultObj?.tools) ? resultObj.tools : [];
+          const toolNames = tools.map((t) => t.name).filter(Boolean).join(", ");
+          return {
+            success: true,
+            message: toolNames
+              ? `连接成功！智谱 MCP 鉴权通过，可用工具: ${toolNames}`
+              : "连接成功！智谱 MCP 握手鉴权通过。",
+          };
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return { success: false, message: `智谱 MCP 连接异常: ${msg}` };
+        }
+      }
+      return { success: true, message: `已验证 ${provider} 提供商格式。` };
+    },
   };
 
   return bridge;
@@ -1129,6 +1499,7 @@ export function selectBridge(input: {
   devPreview: HarkBridge;
   unavailable: HarkBridge;
   turnChannel?: TurnChannelFactory;
+  listenAppEvents?: AppEventListener;
 }): HarkBridge {
   if (input.mode === "dev_preview_synthetic") {
     return input.devPreview;
@@ -1136,5 +1507,8 @@ export function selectBridge(input: {
   if (!input.hostAvailable) {
     return input.unavailable;
   }
-  return createTauriHarkBridge(input.invoke, { turnChannel: input.turnChannel });
+  return createTauriHarkBridge(input.invoke, {
+    turnChannel: input.turnChannel,
+    listenAppEvents: input.listenAppEvents,
+  });
 }

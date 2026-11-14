@@ -11,6 +11,7 @@ import {
   Sparkles,
   Loader2,
   AlertTriangle,
+  Flame,
 } from "lucide-react";
 import {
   ConversationMessage,
@@ -22,6 +23,7 @@ import {
 } from "../../bridge/HarkBridge";
 import { OpinionInlineCard } from "../opinions/OpinionInlineCard";
 import { StreamAccumulatorState } from "../../bridge/schemas";
+import { MarkdownContent } from "../../components/markdown/MarkdownContent";
 
 interface ConversationTimelineProps {
   workspaceId?: string;
@@ -39,6 +41,7 @@ interface ConversationTimelineProps {
   ) => Promise<void>;
   onRevertMemory: (operationId: ID) => Promise<void>;
   onPrefillCorrection: (promptText: string) => void;
+  onTriggerAnalysis?: (promptText: string) => void;
   onEnableModelAuth?: () => void;
 }
 
@@ -61,6 +64,7 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
   onSubmitOpinionFeedback,
   onRevertMemory,
   onPrefillCorrection,
+  onTriggerAnalysis,
   onEnableModelAuth,
 }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -97,6 +101,89 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
       data-testid="conversation-timeline"
       className="space-y-8 pb-10"
     >
+      {messages.length === 0 && standaloneOpinions.length === 0 && !streamState && (
+        <div
+          data-testid="timeline-empty-hearth"
+          className="my-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-solid)]/70 p-7 sm:p-9 text-center space-y-6 shadow-xs backdrop-blur-md animate-hearth-fade-up"
+        >
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e88e47]/10 text-[#c27537] shadow-inner">
+            <Flame className="h-7 w-7 animate-pulse" />
+          </div>
+          <div className="space-y-2 max-w-md mx-auto">
+            <h3 className="font-serif-narrative text-lg font-semibold text-[var(--text-primary)]">
+              {workspaceName} · 专属于你的本地项目对话炉心
+            </h3>
+            <p className="text-xs leading-relaxed text-[var(--text-muted)]">
+              用于本地项目的持续追踪、架构解析与演进思路提供。立即启动项目全景分析，或选择下方方向深入探讨：
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                const prompt = `请结合当前项目文件（先调用 workspace.overview 再调用 workspace.read_file 读取关键源码与配置），像 hark.com 一样以【主动诊断不足、提出切实改进意见】的原则对「${workspaceName}」做全景分析与构建演进建议：\n1. 【核心骨架与现状】：2 句话简要概括架构与核心模块；\n2. 【主动发掘的核心不足与瓶颈】：结合代码事实，分 2~3 条直接指出项目中潜在的性能瓶颈、数据结构冗余、未处理边界或架构缺陷（注明具体文件或模块）；\n3. 【笃定的改进意见与重构方案】：针对上述不足，分 3 条列出高价值演进建议（每条先给出加粗核心要点，再给 1 句简明建议，无需向我反问）。`;
+                if (onTriggerAnalysis) {
+                  onTriggerAnalysis(prompt);
+                } else {
+                  onPrefillCorrection(prompt);
+                }
+              }}
+              data-testid="trigger-project-analysis-btn"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#c27537] to-[#e88e47] px-5 py-2.5 text-xs font-semibold text-white shadow-md hover:from-[#b0672c] hover:to-[#d47c35] active:scale-98 transition-all"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>✨ 启动项目不足排查与演进诊断</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl mx-auto pt-2">
+            {[
+              {
+                title: "主动诊断项目硬伤与不足",
+                desc: "深入源码分条揪出设计缺陷与性能瓶颈",
+                prompt: `请结合「${workspaceName}」的关键文件与代码实现，像资深架构师一样主动排查项目当前的不足、潜在瓶颈与架构隐患，并直接给出重构意见。`,
+              },
+              {
+                title: "检索关键依据与技术边界",
+                desc: "提取核心事实、技术依赖与约束",
+                prompt: `请检索并分条梳理「${workspaceName}」已有的决策依据、关键技术边界与重要事实。`,
+              },
+              {
+                title: "探索后续架构演进思路",
+                desc: "给出 3 条高价值重构与演进建议",
+                prompt: `针对「${workspaceName}」目前的工程实现与薄弱点，请给出 3 条最关键的架构演进或功能改进建议（每条加粗要点+一句话具体实施方案），直接给出判断，严禁向我反问。`,
+              },
+            ].map((item, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => {
+                  if (onTriggerAnalysis) {
+                    onTriggerAnalysis(item.prompt);
+                  } else {
+                    onPrefillCorrection(item.prompt);
+                  }
+                }}
+                className="group flex flex-col justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-3.5 text-left transition-all hover:border-[#c27537]/60 hover:bg-[#c27537]/5 hover:shadow-sm focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
+              >
+                <div>
+                  <div className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-[#c27537]">
+                    {item.title}
+                  </div>
+                  <div className="mt-1 text-[11px] leading-snug text-[var(--text-muted)]">
+                    {item.desc}
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center text-[10px] font-medium text-[#c27537] opacity-0 group-hover:opacity-100 transition-opacity">
+                  立即探讨 <span className="ml-1">→</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {messages.map((msg) => {
         const isUser = msg.role === "user";
         const isSystem = msg.role === "system_notice";
@@ -356,8 +443,8 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
               </div>
 
               {/* 消息正文 */}
-              <div className="text-[15px] text-[var(--text-primary)] whitespace-pre-wrap leading-[1.72]">
-                {msg.content}
+              <div className="text-[15px] text-[var(--text-primary)] leading-[1.72]">
+                <MarkdownContent content={msg.content} />
               </div>
 
               {/* 行内证据引用列表（区分只见摘要 / 原文 / 过期 / 移出当前范围） */}
@@ -472,26 +559,33 @@ export const ConversationTimeline: React.FC<ConversationTimelineProps> = ({
         <div
           aria-live="polite"
           data-testid="active-stream-bubble"
-          className="rounded-[var(--corner-md)] border border-[#e88e47]/45 hearth-surface p-5 space-y-3 animate-hearth-fade-up"
+          className="rounded-[var(--corner-md)] border border-[#e88e47]/60 shadow-[0_0_32px_-4px_rgba(232,142,71,0.24)] bg-gradient-to-b from-[#e88e47]/[0.07] via-[var(--surface-elevated)] to-[var(--surface-elevated)] hearth-surface p-6 space-y-4 animate-hearth-fade-up transition-all"
         >
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
             <div className="flex items-center gap-2">
-              <Loader2 className="w-3.5 h-3.5 text-[#e88e47] animate-spin" />
-              <span className="font-medium text-[var(--text-primary)]">
-                Hark 正在思考
+              <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[#e88e47]/15 text-[#e88e47]">
+                <Flame className="w-3.5 h-3.5 animate-pulse" />
+              </div>
+              <span className="font-serif-narrative font-medium text-[var(--text-primary)]">
+                Hark 对话炉心 · 正在深度推演中…
               </span>
             </div>
+            <Loader2 className="w-3.5 h-3.5 text-[#e88e47] animate-spin" />
           </div>
 
           {streamState.activeToolLabel && (
-            <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.04] px-3.5 py-2 text-xs text-[#c27537] dark:text-[#f1bb7c] font-mono">
-              正在查看资料
+            <div className="inline-flex items-center gap-2 rounded-lg bg-[#e88e47]/10 border border-[#e88e47]/20 px-3 py-1.5 text-xs text-[#c27537] dark:text-[#f1bb7c] font-mono animate-pulse">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>正在调阅项目资料与上下文…</span>
             </div>
           )}
 
           {streamState.streamingText && (
-            <div className="text-[15px] text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">
-              {streamState.streamingText}
+            <div className="text-[15px] text-[var(--text-primary)] leading-relaxed">
+              <MarkdownContent
+                content={streamState.streamingText}
+                isStreaming={true}
+              />
             </div>
           )}
         </div>

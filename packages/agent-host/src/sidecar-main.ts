@@ -27,6 +27,7 @@ export async function runSidecarMain(argv: readonly string[], sessionKey?: strin
     output: process.stdout,
     providerConfig: provider,
     scriptedTransport: scripted,
+    ...(typeof fetch !== "undefined" ? { fetchImpl: fetch } : {}),
     log: (line) => {
       process.stderr.write(`${redactText(line, secrets)}\n`);
     },

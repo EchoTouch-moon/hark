@@ -208,6 +208,21 @@ pub(crate) fn mark_historical(tx: &Transaction<'_>, doc_id: &str, label: &str) -
     Ok(())
 }
 
+/// Mark an indexed `local_fact` (`src:<id>`) search doc as stale/historical if present.
+/// Binary or empty-excerpt sources are not indexed in `memory_search_docs`, so 0 rows is fine.
+pub(crate) fn mark_source_stale_if_indexed(
+    tx: &Transaction<'_>,
+    source_id: &str,
+    label: &str,
+) -> Result<()> {
+    let doc_id = format!("src:{source_id}");
+    tx.execute(
+        "UPDATE memory_search_docs SET historical = 1, status_label = ?1 WHERE id = ?2",
+        params![label, doc_id],
+    )?;
+    Ok(())
+}
+
 pub(crate) fn backfill_existing(tx: &Transaction<'_>) -> Result<()> {
     let mut events = tx.prepare(
         "SELECT id, workspace_id, conversation_id, kind, body, created_at

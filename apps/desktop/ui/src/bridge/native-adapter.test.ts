@@ -29,6 +29,30 @@ const WS = "ws_0123456789abcdef0123456789abcdef";
 const CONV = "conv_0123456789abcdef0123456789abcdef";
 const SRC = "src_0123456789abcdef0123456789abcdef";
 const MSG = "msg_0123456789abcdef0123456789abcdef";
+const REVIEW = "review_0123456789abcdef0123456789abcdef";
+const REVIEW_RUN = "run_0123456789abcdef0123456789abcdef";
+
+test("outbound review retrieves the Native snapshot and decides by identity only", async () => {
+  const ref = { workspaceId: WS, runId: REVIEW_RUN, reviewId: REVIEW };
+  const snapshot = { ...ref, recipient: "https://example.invalid/messages", model: "synthetic", limits: [{ label: "最大输出", value: "200" }], sources: [{ sourceId: SRC, path: "README.md", version: "synthetic-v1", byteLen: 3, truncated: false }], body: "{ \"synthetic\": true }" };
+  const { invoke, calls } = recorder({ get_outbound_review: () => snapshot, decide_outbound_review: () => null });
+  const bridge = createTauriHarkBridge(invoke);
+  assert.deepEqual(await bridge.getOutboundReview!(ref), snapshot);
+  await bridge.decideOutboundReview!(ref, "approve");
+  assert.deepEqual(calls.map((call) => call.args), [{ request: ref }, { request: { ...ref, decision: "approve" } }]);
+});
+
+test("outbound review refuses mismatched identities and unexpected fields", async () => {
+  const ref = { workspaceId: WS, runId: REVIEW_RUN, reviewId: REVIEW };
+  const snapshot = { ...ref, recipient: "https://example.invalid/messages", model: "synthetic", limits: [], sources: [], body: "{}" };
+  const wrong = recorder({ get_outbound_review: () => ({ ...snapshot, workspaceId: "ws_00000000000000000000000000000000" }) });
+  await assert.rejects(createTauriHarkBridge(wrong.invoke).getOutboundReview!(ref));
+  const extra = recorder({ get_outbound_review: () => ({ ...snapshot, headers: { authorization: "synthetic-secret" } }) });
+  await assert.rejects(createTauriHarkBridge(extra.invoke).getOutboundReview!(ref));
+  const bad = recorder({});
+  await assert.rejects(createTauriHarkBridge(bad.invoke).getOutboundReview!({ ...ref, reviewId: "bad" }));
+  assert.equal(bad.calls.length, 0);
+});
 
 function storedReceipt(): StoredMemoryReceipt {
   return { operationId: "op-saved", workspaceId: WS, recorded: true, reverted: false,
@@ -583,19 +607,43 @@ test("native channel converts the closed transport failure into an actionable co
   assert.equal(events[0]?.payload.error?.message.includes("network guard"), false);
 });
 
-test("snapshot load uses shell_snapshot and list_workspaces and does not mark the model configured", async () => {
+test("snapshot load uses shell_snapshot, list_workspaces, and list_attention_items and does not mark the model configured", async () => {
   const { invoke, calls } = recorder({
     shell_snapshot: () => snapshot(),
     list_workspaces: () => [workspace()],
+    list_attention_items: () => [
+      {
+        id: "att-1",
+        workspaceId: WS,
+        reason: "3 recent changes need your review",
+        sourceRef: "recent:0",
+        createdAt: 1700000005,
+        dismissed: false,
+      },
+      {
+        id: "att-old",
+        workspaceId: WS,
+        reason: "already dismissed",
+        sourceRef: "recent:1",
+        createdAt: 1700000001,
+        dismissed: true,
+      },
+    ],
   });
   const bridge = createTauriHarkBridge(invoke);
   const app = await bridge.getAppSnapshot();
-  assert.deepEqual(calls.map((call) => call.cmd), ["shell_snapshot", "list_workspaces"]);
+  assert.deepEqual(
+    calls.map((call) => call.cmd),
+    ["shell_snapshot", "list_workspaces", "list_attention_items"],
+  );
   assert.equal(app.runtime.stepFunConfigured, false);
   assert.equal(app.runtime.piSidecarStatus, "unavailable");
   assert.equal(app.currentWorkspaceId, WS);
   assert.equal(app.workspaces[0]?.observerState, "unavailable");
-  assert.equal(app.attentionItems.length, 0);
+  assert.equal(app.attentionItems.length, 1);
+  assert.equal(app.attentionItems[0]?.id, "att-1");
+  assert.equal(app.attentionItems[0]?.workspaceName, "炉心样本");
+  assert.equal(app.attentionItems[0]?.conversationId, CONV);
 });
 
 test("configured session key remains visible when the sidecar is disconnected", async () => {
@@ -629,7 +677,7 @@ test("unknown model transport is not treated as a configured key", async () => {
   assert.equal(app.runtime.stepFunConfigured, false);
 });
 
-test("unfinished child workspace and remote search surfaces do not invoke", async () => {
+test("unfinished child workspace and excludedPaths surfaces do not invoke", async () => {
   const { invoke, calls } = recorder({});
   const bridge = createTauriHarkBridge(invoke);
   await assert.rejects(() =>
@@ -647,7 +695,7 @@ test("unfinished child workspace and remote search surfaces do not invoke", asyn
       requestId: "x",
       workspaceId: WS,
       expectedRevision: 1,
-      searchPermission: "enabled",
+      excludedPaths: ["tmp/"],
     }),
   );
   assert.equal(calls.length, 0);
@@ -734,4 +782,238 @@ test("credential storage capability and recovery errors are visible in runtime s
   assert.equal(app.runtime.credentialPersistenceAvailable, true);
   assert.match(app.runtime.credentialError ?? "", /无法读取/);
   assert.equal(app.runtime.stepFunConfigured, false);
+});
+
+test("getNarrativeState and getWorkspace map real Soul narrative state and observer status", async () => {
+  const { invoke, calls } = recorder({
+    get_workspace: () => workspace(),
+    workspace_overview: () => ({
+      workspace: workspace(),
+      root: root(),
+      sourcesCount: 1,
+      opinionsCount: 0,
+      messagesCount: 0,
+      pendingMemoryCount: 0,
+    }),
+    service_grants: () => [
+      {
+        id: "grn_1",
+        workspaceId: WS,
+        service: "model",
+        status: "enabled",
+        provider: "stepfun",
+        model: "step-3.7-flash",
+        updatedAt: "2026-11-06T00:00:00Z",
+      },
+      {
+        id: "grn_2",
+        workspaceId: WS,
+        service: "background_model",
+        status: "paused",
+        provider: null,
+        model: null,
+        updatedAt: "2026-11-06T00:00:00Z",
+      },
+    ],
+    onboarding: () => ({ modelAnalyzed: false }),
+    list_source_refs: () => [],
+    list_roots: () => [root()],
+    get_narrative_state: () => ({
+      workspaceId: WS,
+      flame: "bright",
+      availability: "known",
+      stageLabel: "active iteration",
+      narrativeReason: "2 recent commits and active edits",
+      basisRefs: ["git:abc", "file:src/main.rs"],
+      observedAt: 1700000100,
+      stale: false,
+    }),
+  });
+  const bridge = createTauriHarkBridge(invoke);
+  const narrative = await bridge.getNarrativeState(WS);
+  assert.equal(narrative.flame, "bright");
+  assert.equal(narrative.availability, "known");
+  assert.equal(narrative.stageLabel, "active iteration");
+  assert.deepEqual(narrative.basisRefs, ["git:abc", "file:src/main.rs"]);
+  assert.equal(narrative.observedAt, 1700000100);
+  assert.equal(narrative.stale, false);
+
+  const detail = await bridge.getWorkspace(WS);
+  assert.equal(detail.narrative.flame, "bright");
+  assert.equal(detail.narrative.availability, "known");
+  assert.equal(detail.summary.observerState, "paused");
+  assert.equal(detail.summary.lastObservedAt, 1700000100);
+  assert.ok(calls.some((c) => c.cmd === "get_narrative_state"));
+});
+
+test("getAppSnapshot isolates list_attention_items errors per workspace", async () => {
+  const ws2 = "ws_22222222222222222222222222222222";
+  const { invoke } = recorder({
+    shell_snapshot: () => snapshot(),
+    list_workspaces: () => [
+      workspace(),
+      { ...workspace(), id: ws2, displayName: "beta", conversationId: "conv_22222222222222222222222222222222" },
+    ],
+    list_attention_items: (args) => {
+      if ((args as { workspaceId?: string }).workspaceId === WS) {
+        throw new Error("boom");
+      }
+      return [
+        {
+          id: "att-beta",
+          workspaceId: ws2,
+          reason: "Pending changes in beta",
+          sourceRef: "git:head",
+          createdAt: 1700000200,
+          dismissed: false,
+        },
+      ];
+    },
+  });
+  const app = await createTauriHarkBridge(invoke).getAppSnapshot();
+  assert.equal(app.attentionItems.length, 1);
+  assert.equal(app.attentionItems[0]?.id, "att-beta");
+  assert.equal(app.attentionItems[0]?.workspaceName, "beta");
+  assert.equal(app.attentionItems[0]?.conversationId, "conv_22222222222222222222222222222222");
+});
+
+test("observer, attention, search grant, and search config commands invoke exact native contracts", async () => {
+  const { invoke, calls } = recorder({
+    dismiss_attention_item: () => undefined,
+    observe_workspace: () => ({ workspaceId: WS, changedCount: 2 }),
+    set_observer_paused: () => ({ paused: true }),
+    get_workspace: () => workspace(),
+    list_roots: () => [root()],
+    set_search_grant: () => ({
+      id: "grn_search",
+      workspaceId: WS,
+      service: "search",
+      status: "enabled",
+      provider: null,
+      model: null,
+      updatedAt: "2026-11-06T00:00:00Z",
+    }),
+    service_grants: () => [
+      {
+        id: "grn_search",
+        workspaceId: WS,
+        service: "search",
+        status: "enabled",
+        provider: null,
+        model: null,
+        updatedAt: "2026-11-06T00:00:00Z",
+      },
+      {
+        id: "grn_bg",
+        workspaceId: WS,
+        service: "background_model",
+        status: "paused",
+        provider: null,
+        model: null,
+        updatedAt: "2026-11-06T00:00:00Z",
+      },
+    ],
+    list_workspaces: () => [workspace()],
+    get_search_config: () => ({
+      activeProvider: "tavily",
+      providers: {
+        tavily: { apiKey: "tvly-***", endpoint: "https://api.tavily.com" },
+      },
+    }),
+    save_search_config: () => ({
+      activeProvider: "serper",
+      providers: {
+        serper: { apiKey: "srp-***" },
+      },
+    }),
+  });
+  const bridge = createTauriHarkBridge(invoke);
+
+  await bridge.dismissAttentionItem?.(WS, "att-1");
+  await bridge.observeWorkspace?.(WS);
+  const pausedSummary = await bridge.updateWorkspaceState(WS, "paused");
+  assert.equal(pausedSummary.observerState, "paused");
+
+  const perms = await bridge.setWorkspacePermissions({
+    requestId: "req-1",
+    workspaceId: WS,
+    expectedRevision: 1,
+    searchPermission: "enabled",
+    observerState: "paused",
+  });
+  assert.equal(perms.searchPermission, "enabled");
+  assert.equal(perms.observerState, "paused");
+
+  const loadedCfg = await bridge.getSearchConfig?.();
+  assert.equal(loadedCfg?.activeProvider, "tavily");
+  assert.equal(loadedCfg?.providers?.tavily?.apiKey, "tvly-***");
+  assert.equal(loadedCfg?.providers?.tavily?.endpoint, "https://api.tavily.com");
+
+  await bridge.saveSearchConfig?.({
+    activeProvider: "serper",
+    providers: { serper: { apiKey: "secret-key" } },
+  });
+
+  await bridge.saveSearchConfig?.({
+    activeProvider: "zhipu_mcp",
+    providers: {
+      zhipu_mcp: {
+        apiKey: "zp-coding-secret",
+        endpoint: "https://open.bigmodel.cn/api/mcp/web_search_prime/mcp",
+      },
+    },
+  });
+
+  const dismissCall = calls.find((c) => c.cmd === "dismiss_attention_item");
+  const observeCall = calls.find((c) => c.cmd === "observe_workspace");
+  const pausedCalls = calls.filter((c) => c.cmd === "set_observer_paused");
+  const searchGrantCall = calls.find((c) => c.cmd === "set_search_grant");
+  const saveSearchCalls = calls.filter((c) => c.cmd === "save_search_config");
+  assert.deepEqual(dismissCall?.args, { workspaceId: WS, attentionId: "att-1" });
+  assert.deepEqual(observeCall?.args, { workspaceId: WS });
+  assert.equal(pausedCalls.length, 2);
+  assert.deepEqual(pausedCalls[0]?.args, { workspaceId: WS, paused: true });
+  assert.deepEqual(pausedCalls[1]?.args, { workspaceId: WS, paused: true });
+  assert.deepEqual(searchGrantCall?.args, { workspaceId: WS, enabled: true });
+  assert.equal(saveSearchCalls.length, 2);
+  assert.deepEqual(saveSearchCalls[0]?.args, {
+    config: { activeProvider: "serper", providers: { serper: { apiKey: "secret-key" } } },
+  });
+  assert.deepEqual(saveSearchCalls[1]?.args, {
+    config: {
+      activeProvider: "zhipu_mcp",
+      providers: {
+        zhipu_mcp: {
+          apiKey: "zp-coding-secret",
+          endpoint: "https://open.bigmodel.cn/api/mcp/web_search_prime/mcp",
+        },
+      },
+    },
+  });
+});
+
+test("startConfiguredOpening invokes start_configured_opening and subscribeAppEvents delegates to listener", async () => {
+  const { invoke, calls } = recorder({
+    start_configured_opening: () => undefined,
+  });
+  let received: unknown = null;
+  let unsubscribed = false;
+  const bridge = createTauriHarkBridge(invoke, {
+    listenAppEvents: async (listener) => {
+      listener({ type: "attention_triggered", workspaceId: WS, timestamp: "2026-11-13T02:00:00Z" });
+      return () => {
+        unsubscribed = true;
+      };
+    },
+  });
+
+  await bridge.startConfiguredOpening?.(WS);
+  assert.deepEqual(calls[0], { cmd: "start_configured_opening", args: { request: { workspaceId: WS } } });
+
+  const unsub = await bridge.subscribeAppEvents((event) => {
+    received = event;
+  });
+  assert.deepEqual(received, { type: "attention_triggered", workspaceId: WS, timestamp: "2026-11-13T02:00:00Z" });
+  unsub();
+  assert.equal(unsubscribed, true);
 });

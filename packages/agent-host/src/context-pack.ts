@@ -22,9 +22,24 @@ export function renderContextPack(snapshot: ContextSnapshot, stale: boolean): st
   ];
   if (snapshot.empty) {
     lines.push("Memory engine is not available. No long-term facts were supplied.");
+    if (snapshot.identity) lines.push(`identity: ${snapshot.identity}`);
+    if (snapshot.overview) lines.push(`overview: ${snapshot.overview}`);
+  } else {
+    lines.push(
+      "Structured L0/L1 workspace memory context (verify live disk state with workspace.read_file / workspace.overview before citing current files):",
+    );
+    if (snapshot.identity) {
+      lines.push("[L0 Identity & Long-Term Memory]");
+      lines.push(`identity: ${snapshot.identity}`);
+    }
+    if (snapshot.overview) {
+      lines.push("[L1 Workspace Overview, Opinions & Local Facts]");
+      lines.push(`overview: ${snapshot.overview}`);
+    }
+    if (!snapshot.identity && !snapshot.overview) {
+      lines.push("No L0/L1 memory sections were populated in this snapshot.");
+    }
   }
-  if (snapshot.identity) lines.push(`identity: ${snapshot.identity}`);
-  if (snapshot.overview) lines.push(`overview: ${snapshot.overview}`);
   if (stale) {
     lines.push("A prior compaction or snapshot is not the current source. Use this revision only.");
   }

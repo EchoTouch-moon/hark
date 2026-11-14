@@ -242,26 +242,7 @@ impl Core {
     }
 
     pub fn list_workspace_memories(&self, workspace_id: &WorkspaceId) -> Result<Vec<MemoryNote>> {
-        self.with_conn(|conn| {
-            require_workspace(conn, workspace_id)?;
-            let mut stmt = conn.prepare(
-                "SELECT id FROM workspace_memories WHERE workspace_id = ?1
-                 ORDER BY created_at, id LIMIT ?2",
-            )?;
-            let ids: Vec<String> = stmt
-                .query_map(
-                    params![workspace_id.as_str(), MAX_MEMORY_LIST as i64],
-                    |row| row.get(0),
-                )?
-                .collect::<std::result::Result<_, _>>()?;
-            let mut notes = Vec::new();
-            for id in ids {
-                if let Some(note) = load_note(conn, workspace_id, &id)? {
-                    notes.push(note);
-                }
-            }
-            Ok(notes)
-        })
+        self.with_conn(|conn| load_workspace_memories(conn, workspace_id))
     }
 
     pub fn memory_receipt_by_operation(
@@ -326,6 +307,30 @@ pub(crate) fn validate_operation_key(value: &str) -> Result<String> {
         ));
     }
     Ok(trimmed.to_string())
+}
+
+pub(crate) fn load_workspace_memories(
+    conn: &Connection,
+    workspace_id: &WorkspaceId,
+) -> Result<Vec<MemoryNote>> {
+    require_workspace(conn, workspace_id)?;
+    let mut stmt = conn.prepare(
+        "SELECT id FROM workspace_memories WHERE workspace_id = ?1
+         ORDER BY created_at, id LIMIT ?2",
+    )?;
+    let ids: Vec<String> = stmt
+        .query_map(
+            params![workspace_id.as_str(), MAX_MEMORY_LIST as i64],
+            |row| row.get(0),
+        )?
+        .collect::<std::result::Result<_, _>>()?;
+    let mut notes = Vec::new();
+    for id in ids {
+        if let Some(note) = load_note(conn, workspace_id, &id)? {
+            notes.push(note);
+        }
+    }
+    Ok(notes)
 }
 
 pub(crate) fn require_workspace(conn: &Connection, workspace_id: &WorkspaceId) -> Result<()> {

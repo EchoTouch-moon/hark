@@ -617,7 +617,7 @@ impl Core {
         })
     }
 
-    fn workspace_and_root(
+    pub(crate) fn workspace_and_root(
         &self,
         workspace_id: &WorkspaceId,
     ) -> Result<(Workspace, AuthorizedRoot)> {
@@ -631,19 +631,19 @@ impl Core {
     }
 }
 
-struct ReadBytesOwned {
-    bytes: Vec<u8>,
-    truncated: bool,
+pub(crate) struct ReadBytesOwned {
+    pub(crate) bytes: Vec<u8>,
+    pub(crate) truncated: bool,
 }
 
-fn grant_stopped(err: &CoreError) -> bool {
+pub(crate) fn grant_stopped(err: &CoreError) -> bool {
     matches!(
         err.code,
         ErrorCode::RootRevoked | ErrorCode::RootPaused | ErrorCode::GrantIdentityMismatch
     )
 }
 
-fn read_checked(
+pub(crate) fn read_checked(
     core: &Core,
     root: &AuthorizedRoot,
     ws: &Workspace,
@@ -695,14 +695,14 @@ fn compose_rel(workspace_rel: &str, file_rel: &str) -> Result<String> {
     Ok(join_relative(&parts))
 }
 
-fn root_identity(root: &AuthorizedRoot) -> DirIdentity {
+pub(crate) fn root_identity(root: &AuthorizedRoot) -> DirIdentity {
     DirIdentity {
         dev: root.dev.clone(),
         ino: root.ino.clone(),
     }
 }
 
-fn insert_source(
+pub(crate) fn insert_source(
     tx: &rusqlite::Transaction<'_>,
     ws: &Workspace,
     relative_path: &str,
@@ -1117,7 +1117,7 @@ pub(crate) fn map_event(row: &rusqlite::Row<'_>) -> rusqlite::Result<Conversatio
     })
 }
 
-fn load_checkpoint(
+pub(crate) fn load_checkpoint(
     conn: &rusqlite::Connection,
     workspace_id: &WorkspaceId,
 ) -> Result<OnboardingCheckpoint> {
@@ -1154,7 +1154,7 @@ fn load_checkpoint(
     .ok_or_else(|| CoreError::new(ErrorCode::OnboardingNotFound, workspace_id.as_str()))
 }
 
-fn load_sources(
+pub(crate) fn load_sources(
     conn: &rusqlite::Connection,
     workspace_id: &WorkspaceId,
     available: bool,

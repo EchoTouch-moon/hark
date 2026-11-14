@@ -5,8 +5,56 @@ use hark_native_shell::{
 };
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{Manager, WindowEvent};
+use tauri::{Emitter, Manager, WindowEvent};
 use tauri_plugin_dialog::DialogExt;
+
+const APP_EVENT_NAME: &str = "hark://app-event";
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AppEventPayload {
+    #[serde(rename = "type")]
+    event_type: &'static str,
+    workspace_id: String,
+    timestamp: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct OutboundReviewRef {
+    workspace_id: String,
+    run_id: String,
+    review_id: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum OutboundDecision {
+    Approve,
+    Reject,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct OutboundReviewDecision {
+    workspace_id: String,
+    run_id: String,
+    review_id: String,
+    decision: OutboundDecision,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OutboundReviewView {
+    review_id: String,
+    workspace_id: String,
+    run_id: String,
+    recipient: String,
+    model: String,
+    limits: Vec<hark_native_shell::ReviewLimit>,
+    sources: Vec<hark_native_shell::ReviewSource>,
+    body: String,
+}
 
 #[tauri::command(rename_all = "camelCase", async)]
 fn pick_directory(app: tauri::AppHandle) -> Result<hark_native_shell::PickTicket, ShellError> {
@@ -258,6 +306,42 @@ fn cancel_agent_turn(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+fn get_outbound_review(
+    shell: tauri::State<'_, NativeShell>,
+    request: OutboundReviewRef,
+) -> Result<OutboundReviewView, ShellError> {
+    let review =
+        shell.get_outbound_review(&request.workspace_id, &request.run_id, &request.review_id)?;
+    Ok(OutboundReviewView {
+        review_id: review.review_id().to_owned(),
+        workspace_id: review.workspace_id().as_str().to_owned(),
+        run_id: review.run_id().as_str().to_owned(),
+        recipient: review.recipient().to_owned(),
+        model: review.model().to_owned(),
+        limits: review.limits().to_vec(),
+        sources: review.sources().to_vec(),
+        body: review.body().to_owned(),
+    })
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn decide_outbound_review(
+    shell: tauri::State<'_, NativeShell>,
+    request: OutboundReviewDecision,
+) -> Result<(), ShellError> {
+    let decision = match request.decision {
+        OutboundDecision::Approve => hark_native_shell::ReviewDecision::Approve,
+        OutboundDecision::Reject => hark_native_shell::ReviewDecision::Reject,
+    };
+    shell.decide_outbound_review(
+        &request.workspace_id,
+        &request.run_id,
+        &request.review_id,
+        decision,
+    )
+}
+
+#[tauri::command(rename_all = "camelCase")]
 fn shell_snapshot(
     shell: tauri::State<'_, NativeShell>,
 ) -> Result<hark_native_shell::ShellSnapshot, ShellError> {
@@ -351,6 +435,75 @@ fn set_model_grant(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+fn get_narrative_state(
+    shell: tauri::State<'_, NativeShell>,
+    workspace_id: String,
+) -> Result<hark_native_shell::NarrativeState, ShellError> {
+    shell.get_narrative_state(&workspace_id)
+}
+
+#[tauri::command(rename_all = "camelCase", async)]
+fn observe_workspace(
+    app: tauri::AppHandle,
+    shell: tauri::State<'_, NativeShell>,
+    workspace_id: String,
+) -> Result<hark_native_shell::WorkspaceObservationReport, ShellError> {
+    let report = shell.observe_workspace(&workspace_id)?;
+    emit_observation_events(&app, &report, None);
+    Ok(report)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn list_attention_items(
+    shell: tauri::State<'_, NativeShell>,
+    workspace_id: String,
+) -> Result<Vec<hark_native_shell::AttentionItem>, ShellError> {
+    shell.list_attention_items(&workspace_id)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn dismiss_attention_item(
+    shell: tauri::State<'_, NativeShell>,
+    workspace_id: String,
+    attention_id: String,
+) -> Result<bool, ShellError> {
+    shell.dismiss_attention_item(&workspace_id, &attention_id)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn set_search_grant(
+    shell: tauri::State<'_, NativeShell>,
+    workspace_id: String,
+    enabled: bool,
+) -> Result<hark_native_shell::ServiceGrant, ShellError> {
+    shell.set_search_grant(&workspace_id, enabled)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn get_search_config(
+    shell: tauri::State<'_, NativeShell>,
+) -> Result<hark_native_shell::SearchConfigResponse, ShellError> {
+    shell.get_search_config()
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn save_search_config(
+    shell: tauri::State<'_, NativeShell>,
+    config: hark_native_shell::SearchConfig,
+) -> Result<hark_native_shell::SearchConfigResponse, ShellError> {
+    shell.save_search_config(config)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn set_observer_paused(
+    shell: tauri::State<'_, NativeShell>,
+    workspace_id: String,
+    paused: bool,
+) -> Result<hark_native_shell::ObserverStatus, ShellError> {
+    shell.set_observer_paused(&workspace_id, paused)
+}
+
+#[tauri::command(rename_all = "camelCase")]
 fn hide_window(app: tauri::AppHandle) -> Result<(), ShellError> {
     let window = app
         .get_webview_window("main")
@@ -406,6 +559,106 @@ fn install_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
+fn emit_observation_events(
+    app: &tauri::AppHandle,
+    report: &hark_native_shell::WorkspaceObservationReport,
+    seen_attention: Option<&mut std::collections::HashSet<String>>,
+) {
+    if report.status != hark_native_shell::ObservationStatus::Observed {
+        return;
+    }
+    let has_changes = !report.changed_files.is_empty()
+        || !report.stale_opinion_ids.is_empty()
+        || report.git_head_changed;
+    if has_changes {
+        let _ = app.emit(
+            APP_EVENT_NAME,
+            AppEventPayload {
+                event_type: "workspace_updated",
+                workspace_id: report.workspace_id.as_str().to_string(),
+                timestamp: report.observed_at.clone(),
+            },
+        );
+    }
+    let active_ids: Vec<&str> = report
+        .attention_items
+        .iter()
+        .filter(|item| !item.dismissed)
+        .map(|item| item.id.as_str())
+        .collect();
+    if active_ids.is_empty() {
+        return;
+    }
+    let should_emit_attention = match seen_attention {
+        Some(seen) => {
+            let has_new = active_ids.iter().any(|id| !seen.contains(*id));
+            for id in &active_ids {
+                seen.insert((*id).to_string());
+            }
+            has_changes || has_new
+        }
+        None => true,
+    };
+    if should_emit_attention {
+        let _ = app.emit(
+            APP_EVENT_NAME,
+            AppEventPayload {
+                event_type: "attention_triggered",
+                workspace_id: report.workspace_id.as_str().to_string(),
+                timestamp: report.observed_at.clone(),
+            },
+        );
+    }
+}
+
+fn sleep_until_next_tick(shell: &NativeShell, total: std::time::Duration) -> bool {
+    let step = std::time::Duration::from_secs(1);
+    let mut elapsed = std::time::Duration::ZERO;
+    while elapsed < total {
+        if shell.quit_requested() {
+            return false;
+        }
+        let chunk = step.min(total - elapsed);
+        std::thread::sleep(chunk);
+        elapsed += chunk;
+    }
+    !shell.quit_requested()
+}
+
+fn run_background_observer(app: tauri::AppHandle) {
+    let mut seen_attention = std::collections::HashSet::<String>::new();
+    let initial_delay = std::time::Duration::from_secs(5);
+    let tick_interval = std::time::Duration::from_secs(300);
+
+    let Some(shell) = app.try_state::<NativeShell>() else {
+        return;
+    };
+    if !sleep_until_next_tick(&shell, initial_delay) {
+        return;
+    }
+
+    loop {
+        if shell.quit_requested() {
+            break;
+        }
+        if let Ok(reports) = shell.observe_active_workspaces() {
+            let mut live_ids = std::collections::HashSet::new();
+            for report in &reports {
+                for item in &report.attention_items {
+                    if !item.dismissed {
+                        live_ids.insert(item.id.clone());
+                    }
+                }
+                emit_observation_events(&app, report, Some(&mut seen_attention));
+            }
+            seen_attention.retain(|id| live_ids.contains(id));
+        }
+        if !sleep_until_next_tick(&shell, tick_interval) {
+            break;
+        }
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -416,6 +669,10 @@ pub fn run() {
                     .map_err(|err| -> Box<dyn std::error::Error> { err.into() })?,
             );
             install_tray(app.handle())?;
+            let observer_app = app.handle().clone();
+            std::thread::spawn(move || {
+                run_background_observer(observer_app);
+            });
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -460,6 +717,8 @@ pub fn run() {
             get_agent_turn,
             get_agent_turn_by_request,
             cancel_agent_turn,
+            get_outbound_review,
+            decide_outbound_review,
             shell_snapshot,
             hide_window,
             quit_app,
@@ -473,8 +732,44 @@ pub fn run() {
             revert_memory_operation,
             search_workspace_memory,
             get_message_evidence,
-            list_memory_receipts
+            list_memory_receipts,
+            get_narrative_state,
+            observe_workspace,
+            list_attention_items,
+            dismiss_attention_item,
+            set_search_grant,
+            get_search_config,
+            save_search_config,
+            set_observer_paused
         ])
         .run(tauri::generate_context!())
         .expect("hark desktop failed to start");
+}
+
+#[cfg(test)]
+mod outbound_review_tests {
+    use super::{OutboundReviewDecision, OutboundReviewRef};
+
+    #[test]
+    fn review_commands_reject_replacement_contents_and_unknown_decisions() {
+        assert!(serde_json::from_str::<OutboundReviewRef>(
+            r#"{"workspaceId":"ws","runId":"run","reviewId":"review"}"#
+        )
+        .is_ok());
+        assert!(serde_json::from_str::<OutboundReviewDecision>(
+            r#"{"workspaceId":"ws","runId":"run","reviewId":"review","decision":"approve"}"#
+        )
+        .is_ok());
+        assert!(serde_json::from_str::<OutboundReviewRef>(
+            r#"{"workspaceId":"ws","runId":"run","reviewId":"review","body":"replacement"}"#
+        )
+        .is_err());
+        assert!(serde_json::from_str::<OutboundReviewDecision>(
+            r#"{"workspaceId":"ws","runId":"run","reviewId":"review","decision":"approve","recipient":"https://attacker.invalid"}"#
+        ).is_err());
+        assert!(serde_json::from_str::<OutboundReviewDecision>(
+            r#"{"workspaceId":"ws","runId":"run","reviewId":"review","decision":"send"}"#
+        )
+        .is_err());
+    }
 }

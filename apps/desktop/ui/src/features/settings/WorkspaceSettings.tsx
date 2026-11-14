@@ -137,7 +137,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
 
         <div className="p-5 max-h-[75vh] overflow-y-auto space-y-5 text-xs">
           {/* 1. 后台文件观察状态 */}
-          {!nativeLocked && <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-4 flex items-center justify-between gap-4">
+          <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-4 flex items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
                 <Eye className="w-3.5 h-3.5 text-[#e88e47]" />
@@ -145,23 +145,23 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
                   文件观察器状态：
                   {summary.observerState === "active"
                     ? "正在观察 (active)"
-                    : summary.observerState === "unavailable"
-                      ? "未完成 (unavailable)"
-                      : "已暂停观察 (paused)"}
+                    : summary.observerState === "paused"
+                      ? "已暂停观察 (paused)"
+                      : summary.observerState === "unauthorized"
+                        ? "目录未授权 (unauthorized)"
+                        : "未就绪 (unavailable)"}
                 </span>
               </div>
               <p className="text-[var(--text-muted)] leading-relaxed">
-                {nativeLocked
-                  ? "文件观察器未完成。目录暂停、恢复、撤销走已有 Native 命令，不会把观察器显示成 active。"
-                  : "暂停观察后，Rust 后台不再监听文件变动；观察暂停不会让背景火光变暗冒充项目停滞。"}
+                暂停观察后，Rust 后台不再监听文件变动；观察暂停不会让背景火光变暗冒充项目停滞。
               </p>
             </div>
             <button
               type="button"
-              disabled={saving || nativeLocked}
+              disabled={saving || summary.observerState === "unauthorized" || summary.observerState === "unavailable"}
               onClick={handleToggleObserver}
               data-testid="toggle-observer-button"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium border border-[var(--border-strong)] bg-[var(--surface-solid)] text-[var(--text-primary)] hover:border-[#e88e47] transition-colors whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium border border-[var(--border-strong)] bg-[var(--surface-solid)] text-[var(--text-primary)] hover:border-[#e88e47] transition-colors whitespace-nowrap shrink-0 disabled:opacity-50"
             >
               {summary.observerState === "active" ? (
                 <>
@@ -171,11 +171,11 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
               ) : (
                 <>
                   <PlayCircle className="w-3.5 h-3.5 text-[#3d8068]" />
-                  <span>{nativeLocked ? "观察器未完成" : "恢复观察"}</span>
+                  <span>{summary.observerState === "unauthorized" ? "目录未授权" : "恢复观察"}</span>
                 </>
               )}
             </button>
-          </div>}
+          </div>
 
           {nativeLocked && workspace.rootId && (
             <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-4 space-y-2">
@@ -224,18 +224,18 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
               </button>
             </div>
 
-            {!nativeLocked && <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-3.5 flex items-center justify-between gap-3">
+            <div className="rounded-[var(--corner-sm)] border border-[var(--border-subtle)] bg-[var(--surface)] p-3.5 flex items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="font-medium text-[var(--text-primary)]">
                   MCP 联网搜索权限 ({summary.searchPermission})
                 </div>
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  控制 Pi Agent 是否可调用外部搜索并在对话中附上 web_snippet / web_fulltext 证据。
+                  控制 Agent 是否可调用 Tavily 等外部搜索服务并在对话中附上网页事实来源。
                 </p>
               </div>
               <button
                 type="button"
-                disabled={saving || nativeLocked}
+                disabled={saving}
                 onClick={() => handleTogglePermission("searchPermission", summary.searchPermission)}
                 className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap shrink-0 ${
                   summary.searchPermission === "enabled"
@@ -245,7 +245,7 @@ export const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({
               >
                 {summary.searchPermission === "enabled" ? "已启用 · 点击关闭" : "未启用 · 点击开启"}
               </button>
-            </div>}
+            </div>
           </div>
 
           {/* 3. 只读目录与排除路径 */}

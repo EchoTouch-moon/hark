@@ -34,6 +34,8 @@
     "allow-get-agent-turn",
     "allow-get-agent-turn-by-request",
     "allow-cancel-agent-turn",
+    "allow-get-outbound-review",
+    "allow-decide-outbound-review",
     "allow-hide-window",
     "allow-quit-app",
     "allow-shell-snapshot",
@@ -47,6 +49,14 @@
     "allow-revert-memory-operation",
     "allow-search-workspace-memory",
     "allow-get-message-evidence",
-    "allow-list-memory-receipts"
+    "allow-list-memory-receipts",
+    "allow-get-narrative-state",
+    "allow-observe-workspace",
+    "allow-list-attention-items",
+    "allow-dismiss-attention-item",
+    "allow-set-search-grant",
+    "allow-get-search-config",
+    "allow-save-search-config",
+    "allow-set-observer-paused"
   ]
 }

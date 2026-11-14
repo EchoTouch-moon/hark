@@ -24,6 +24,8 @@ import {
   RunStatus,
   RunStreamEvent,
   RuntimeStatus,
+  SearchProviderConfig,
+  SearchProviderType,
   StartAgentTurnInput,
   StartAgentTurnResult,
   WorkspaceDetail,
@@ -461,6 +463,7 @@ export class DevPreviewHarkBridge implements HarkBridge {
   private rootPreviews: Record<ID, RootPreview> = {};
   private activeRuns: Record<RunId, { cancelled: boolean; status: RunStatus }> = {};
   private listeners: Set<(event: AppEvent) => void> = new Set();
+  private searchConfig: SearchProviderConfig = { activeProvider: "tavily", providers: {} };
 
   private runtime: RuntimeStatus = {
     bridgeMode: "dev_preview_synthetic",
@@ -1631,5 +1634,31 @@ export class DevPreviewHarkBridge implements HarkBridge {
     return () => {
       this.listeners.delete(onEvent);
     };
+  }
+
+  async observeWorkspace(workspaceId: WorkspaceId): Promise<void> {
+    const ws = this.workspaces[workspaceId];
+    if (!ws || ws.summary.observerState !== "active") return;
+    ws.summary.lastObservedAt = new Date().toISOString();
+  }
+
+  async dismissAttentionItem(workspaceId: WorkspaceId, attentionId: ID): Promise<void> {
+    for (const item of this.attentionItems) {
+      if (item.workspaceId === workspaceId && item.id === attentionId) {
+        item.dismissed = true;
+      }
+    }
+  }
+
+  async getSearchConfig(): Promise<SearchProviderConfig> {
+    return structuredClone(this.searchConfig);
+  }
+
+  async saveSearchConfig(config: SearchProviderConfig): Promise<void> {
+    this.searchConfig = structuredClone(config);
+  }
+
+  async testSearchConnection(_provider: SearchProviderType, _apiKey: string): Promise<{ success: boolean; message: string }> {
+    return { success: true, message: "模拟连接测试通过" };
   }
 }

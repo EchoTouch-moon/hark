@@ -10,6 +10,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
@@ -17,6 +18,8 @@ import { applyContextPack } from "./context-pack.ts";
 import { createMemoryTools } from "./memory-tools.ts";
 import { closeBuiltinCredentialProbes } from "./credentials/close-runtime.ts";
 import { createMemoryCredentialStore } from "./memory-credentials.ts";
+import { SearchManager } from "./search/search-manager.ts";
+import type { SearchConfig } from "./search/types.ts";
 import {
   CLOSED_MEMORY_TOOLS,
   FORBIDDEN_TOOL_NAMES,
@@ -27,6 +30,8 @@ import {
   readFileResultSchema,
   runStartPayloadSchema,
   scriptedTransportSchema,
+  type TrustedProvenance,
+  type TrustedSource,
   type HarkToolName,
   type ProviderConfig,
   type RunStartPayload,
@@ -45,7 +50,7 @@ import {
 } from "./ipc.ts";
 import { createEmptyResourceLoader } from "./empty-resource-loader.ts";
 import { createIsolatedSettings } from "./isolated-session.ts";
-import { createExplicitProvider, endpointOf, scriptedResponse, type ProviderGate } from "./provider.ts";
+import { createExplicitProvider, endpointOf, scriptedResponse, sseText, type ProviderGate } from "./provider.ts";
 import type { OutboundRequestSnapshot } from "./outbound-request.ts";
 
 const sessionRefSchema = z.string().regex(/^pi:[0-9a-f-]{36}$/);
@@ -71,6 +76,28 @@ interface ActiveRun {
   completed: boolean;
   sessionRef: string;
   toolRequestIds: string[];
+  provenanceError: boolean;
+  packSources: TrustedSource[];
+  packMarker: string | null;
+  toolSources: Map<string, ReviewedSource>;
+  toolMarkers: Map<string, string[]>;
+}
+
+export interface ReviewedExcerpt {
+  readonly textSha256: string;
+  readonly textByteLen: number;
+  readonly truncated: boolean;
+}
+
+export interface ReviewedSource extends TrustedSource {
+  readonly excerpts: readonly ReviewedExcerpt[];
+}
+
+export interface ReviewedRunContext {
+  readonly workspaceId: string;
+  readonly runId: string;
+  /** Only sources attested by Native in this run; no model-invented identifiers. */
+  readonly sources: readonly ReviewedSource[];
 }
 
 export interface HostOptions {
@@ -79,9 +106,12 @@ export interface HostOptions {
   output: NodeJS.WritableStream;
   providerConfig?: ProviderConfig | null;
   scriptedTransport?: ScriptedTransport | null;
+  searchConfig?: SearchConfig | null;
   fetchImpl?: typeof fetch;
   /** Only a trusted sender which owns review and the final send may implement this. */
-  reviewedDispatch?: (snapshot: OutboundRequestSnapshot, run: { workspaceId: string; runId: string }, signal: AbortSignal) => Promise<Response>;
+  reviewedDispatch?: (snapshot: OutboundRequestSnapshot, run: ReviewedRunContext, signal: AbortSignal) => Promise<Response>;
+  /** Isolated test harness only; production sidecar never enables this option. */
+  syntheticReviewIpc?: { waitMs: number };
   now?: () => number;
   log?: (line: string) => void;
   hookShouldThrow?: () => boolean;
@@ -104,6 +134,42 @@ function relativePathAllowed(value: string): boolean {
   if (!value || value.startsWith("/") || value.includes("\\") || value.includes("\0")) return false;
   const parts = value.split("/");
   return parts.every((part) => part.length > 0 && part !== "." && part !== "..");
+}
+
+/** Require trusted tool/overview text in the actual serialized SDK request. */
+export function requireVerifiedWireEvidence(body: string, markers: readonly string[], packMarker: string | null): void {
+  let wire: unknown;
+  try { wire = JSON.parse(body); } catch { throw new Error("review body invalid"); }
+  const root = wire && typeof wire === "object" && !Array.isArray(wire) ? wire as Record<string, unknown> : {};
+  const messages = Array.isArray(root.messages) ? root.messages : [];
+  const textParts = (value: unknown): string => {
+    if (typeof value === "string") return value;
+    if (Array.isArray(value)) return value.map(textParts).join("");
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const obj = value as Record<string, unknown>;
+      return typeof obj.text === "string" ? obj.text : "";
+    }
+    return "";
+  };
+  const toolTexts: string[] = [];
+  const systemTexts: string[] = [textParts(root.system)];
+  for (const message of messages) {
+    if (!message || typeof message !== "object" || Array.isArray(message)) continue;
+    const entry = message as Record<string, unknown>;
+    if (entry.role === "tool") toolTexts.push(textParts(entry.content));
+    if (entry.role === "system") systemTexts.push(textParts(entry.content));
+    if (entry.role === "user" && Array.isArray(entry.content)) {
+      for (const block of entry.content) {
+        if (!block || typeof block !== "object" || Array.isArray(block)) continue;
+        const part = block as Record<string, unknown>;
+        if (part.type === "tool_result") toolTexts.push(textParts(part.content));
+      }
+    }
+  }
+  if (markers.some((marker) => !toolTexts.includes(marker))) throw new Error("trusted tool source missing from review body");
+  if (packMarker && !systemTexts.some((text) => text.includes("Hark request context pack.") && text.includes(`overview: ${packMarker}`))) {
+    throw new Error("trusted overview source missing from review body");
+  }
 }
 
 function assistantText(message: AssistantMessage | undefined): string {
@@ -142,14 +208,23 @@ export class HostRuntime {
   private backpressureTimer: ReturnType<typeof setTimeout> | null = null;
   private unblockTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly toolTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  readonly searchManager: SearchManager;
 
   constructor(options: HostOptions) {
+    if (options.syntheticReviewIpc && options.reviewedDispatch) throw new Error("conflicting review transports");
+    if (options.syntheticReviewIpc && (!Number.isSafeInteger(options.syntheticReviewIpc.waitMs) || options.syntheticReviewIpc.waitMs < 1 || options.syntheticReviewIpc.waitMs > 30_000)) throw new Error("invalid synthetic review timeout");
     this.options = options;
     this.appDataDir = assertSafeDir("appDataDir", options.appDataDir);
     this.now = options.now ?? Date.now;
     this.providerConfig = options.providerConfig ?? null;
     this.scripted = options.scriptedTransport ?? null;
+    this.searchManager = new SearchManager({
+      appDataDir: this.appDataDir,
+      ...(options.searchConfig ? { searchConfig: options.searchConfig } : {}),
+      ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+    });
     this.secrets = this.providerConfig ? [this.providerConfig.apiKey] : [];
+    this.syncSearchSecrets();
     this.log = (line) => options.log?.(redactText(line, this.secrets));
     this.providerGate = {
       cancelled: false,
@@ -163,6 +238,20 @@ export class HostRuntime {
         this.payloads.push(redactText(body, this.secrets));
       },
     };
+  }
+
+  private syncSearchSecrets(): void {
+    const providers = this.searchManager.getConfig().providers;
+    for (const creds of Object.values(providers)) {
+      const key = creds?.apiKey?.trim();
+      if (key && !this.secrets.includes(key)) {
+        this.secrets.push(key);
+      }
+    }
+    const envKey = process.env.TAVILY_API_KEY?.trim();
+    if (envKey && !this.secrets.includes(envKey)) {
+      this.secrets.push(envKey);
+    }
   }
 
   async start(): Promise<void> {
@@ -455,6 +544,11 @@ export class HostRuntime {
       completed: false,
       sessionRef: "",
       toolRequestIds: [],
+      provenanceError: false,
+      packSources: [],
+      packMarker: null,
+      toolSources: new Map(),
+      toolMarkers: new Map(),
     };
     this.active.set(frame.workspaceId, run);
     const deadline = this.gate.deadlineOf(frame.id);
@@ -464,6 +558,9 @@ export class HostRuntime {
     }, Math.max(0, deadline - this.now()));
     try {
       const opened = this.openSession(run);
+      if (this.options.reviewedDispatch && (opened.resumed || opened.handoffApplied || opened.contextPolicy !== "request-pack" || (run.payload.recentMessages?.length ?? 0) > 0 || run.payload.contextSnapshot.identity)) {
+        throw new Error("review provenance unavailable for session history");
+      }
       run.sessionRef = opened.sessionRef;
       this.send({
         v: 1,
@@ -616,17 +713,21 @@ export class HostRuntime {
         {
           config: slot,
           secrets: this.secrets,
-          ...(this.options.fetchImpl ? { fetchImpl: this.options.fetchImpl } : {}),
-          ...(this.options.reviewedDispatch ? {
+          ...(this.options.fetchImpl
+            ? { fetchImpl: this.options.fetchImpl }
+            : typeof fetch !== "undefined"
+            ? { fetchImpl: fetch }
+            : {}),
+          ...(this.options.reviewedDispatch || this.options.syntheticReviewIpc ? {
             reviewedDispatch: async (snapshot: OutboundRequestSnapshot, signal: AbortSignal | undefined) => {
               const run = [...this.active.values()][0];
               if (!run || run.cancelled || run.timedOut || run.abort.signal.aborted || this.shuttingDown) {
                 throw new Error("review dispatch refused: run closed");
               }
-              const dispatch = this.options.reviewedDispatch;
-              if (!dispatch) throw new Error("review dispatch unavailable");
               const combined = signal ? AbortSignal.any([run.abort.signal, signal]) : run.abort.signal;
-              const response = await dispatch(snapshot, { workspaceId: run.workspaceId, runId: run.runId }, combined);
+              const response = this.options.reviewedDispatch
+                ? await this.options.reviewedDispatch(snapshot, this.reviewedRunContext(run, snapshot), combined)
+                : await this.syntheticReviewRequest(run, snapshot, combined);
               if (combined.aborted || run.cancelled || run.timedOut || this.shuttingDown) {
                 throw new Error("review dispatch refused: run closed");
               }
@@ -806,6 +907,70 @@ export class HostRuntime {
     }
   }
 
+  private checkedProvenance(run: ActiveRun, provenance: TrustedProvenance | undefined): TrustedSource[] {
+    if (!provenance || provenance.workspaceId !== run.workspaceId || provenance.runId !== run.runId || provenance.complete !== true) {
+      throw new Error("trusted source provenance missing or mismatched");
+    }
+    const seen = new Set<string>();
+    let bytes = 0;
+    for (const source of provenance.sources) {
+      if (!relativePathAllowed(source.path) || seen.has(source.sourceId) || source.byteLen > 1_048_576) {
+        throw new Error("trusted source provenance invalid");
+      }
+      bytes += source.byteLen;
+      if (bytes > 8 * 1_048_576) throw new Error("trusted source provenance exceeds budget");
+      seen.add(source.sourceId);
+    }
+    return provenance.sources.map((source) => ({ ...source }));
+  }
+
+  private addToolSources(run: ActiveRun, sources: TrustedSource[], marker: string, excerpt?: ReviewedExcerpt): void {
+    for (const source of sources) {
+      const existing = run.toolSources.get(source.sourceId);
+      if (existing && (existing.path !== source.path || existing.version !== source.version || existing.byteLen !== source.byteLen || existing.truncated !== source.truncated)) {
+        throw new Error("trusted source provenance changed");
+      }
+      const excerpts = [...(existing?.excerpts ?? [])];
+      if (excerpt && !excerpts.some((item) => item.textSha256 === excerpt.textSha256 && item.textByteLen === excerpt.textByteLen && item.truncated === excerpt.truncated)) excerpts.push({ ...excerpt });
+      run.toolSources.set(source.sourceId, { ...source, excerpts });
+      const markers = run.toolMarkers.get(source.sourceId) ?? [];
+      if (!markers.includes(marker)) markers.push(marker);
+      run.toolMarkers.set(source.sourceId, markers);
+      if (run.toolSources.size > 128) throw new Error("trusted source provenance exceeds budget");
+    }
+  }
+
+  private reviewedRunContext(run: ActiveRun, snapshot: OutboundRequestSnapshot): ReviewedRunContext {
+    if (run.provenanceError || run.cancelled || run.timedOut || run.abort.signal.aborted) {
+      throw new Error("trusted source provenance unavailable");
+    }
+    // Verify the exact Native-derived tool text is still present in a tool
+    // result in the final serialized body. An ID appearing in user/model/file
+    // text is not evidence, and removed/compacted results fail closed.
+    if (run.packSources.length > 0 && !run.packMarker) throw new Error("trusted overview source missing from review body");
+    requireVerifiedWireEvidence(snapshot.body, [...run.toolMarkers.values()].flat(), run.packMarker);
+    const sources = new Map<string, ReviewedSource>();
+    for (const source of run.packSources) sources.set(source.sourceId, { ...source, excerpts: [] });
+    for (const source of run.toolSources.values()) {
+      const existing = sources.get(source.sourceId);
+      if (existing && (existing.path !== source.path || existing.version !== source.version || existing.byteLen !== source.byteLen || existing.truncated !== source.truncated)) {
+        throw new Error("trusted source provenance changed");
+      }
+      sources.set(source.sourceId, source);
+    }
+    const result = [...sources.values()].sort((a, b) => a.sourceId.localeCompare(b.sourceId));
+    const bytes = result.reduce((total, source) => total + source.byteLen, 0);
+    if (result.length > 128 || bytes > 8 * 1_048_576) throw new Error("trusted source provenance exceeds budget");
+    return Object.freeze({
+      workspaceId: run.workspaceId,
+      runId: run.runId,
+      sources: Object.freeze(result.map((source) => Object.freeze({
+        ...source,
+        excerpts: Object.freeze(source.excerpts.map((item) => Object.freeze({ ...item }))),
+      }))),
+    });
+  }
+
   private async recheck(run: ActiveRun): Promise<{ revision: string; sourceVersion: string; empty: boolean; identity?: string; overview?: string; stale: boolean } | null> {
     if (run.cancelled || run.timedOut || run.abort.signal.aborted) return null;
     this.providerGate.cancelled = run.cancelled;
@@ -814,6 +979,19 @@ export class HostRuntime {
     if (frame.kind === "error") return null;
     const parsed = overviewResultSchema.safeParse(frame.payload);
     if (!parsed.success) return null;
+    if (this.options.reviewedDispatch) {
+      try {
+        // The startup overview has no source attestation. It cannot be used as
+        // a fallback if the current Native overview is absent.
+        if (run.payload.contextSnapshot.overview && !parsed.data.overviewText) throw new Error("startup overview not attested");
+        run.packSources = this.checkedProvenance(run, parsed.data.provenance);
+        if (run.packSources.length > 0 && !parsed.data.overviewText) throw new Error("sourced overview has no text");
+        run.packMarker = run.packSources.length > 0 ? parsed.data.overviewText! : null;
+      } catch {
+        run.provenanceError = true;
+        return null;
+      }
+    }
     const auth = parsed.data.authorization;
     if (auth.current !== true) return null;
     if (auth.directoryStatus !== "active" || auth.modelGrantStatus !== "active") return null;
@@ -853,6 +1031,7 @@ export class HostRuntime {
 
   private createTools(run: ActiveRun) {
     const call = (tool: HarkToolName, input: Record<string, unknown>) => this.callTool(run, tool, input);
+    const host = this;
     const read = defineTool({
       name: "workspace.read_file",
       label: "Read workspace file",
@@ -868,10 +1047,35 @@ export class HostRuntime {
         const frame = await call("workspace.read_file", { relativePath: params.relativePath });
         const parsed = readFileResultSchema.safeParse(frame.payload);
         if (!parsed.success || frame.kind === "error") {
+          if (host.options.reviewedDispatch && frame.kind !== "error") run.provenanceError = true;
           return { content: [{ type: "text" as const, text: "read failed" }], details: { untrusted: true as const }, isError: true };
         }
+        const toolText = `untrusted reader data; sourceId=${parsed.data.sourceId ?? "unavailable"}\n${parsed.data.text}`;
+        if (host.options.reviewedDispatch) {
+          try {
+            if (parsed.data.relativePath !== params.relativePath) throw new Error("read path mismatch");
+            if (parsed.data.unavailable === true) {
+              if (parsed.data.text.length !== 0) throw new Error("unavailable read carried text");
+              return { content: [{ type: "text" as const, text: "read failed" }], details: { untrusted: true as const }, isError: true };
+            }
+            const provenance = parsed.data.provenance;
+            const sources = host.checkedProvenance(run, provenance);
+            const source = sources[0];
+            const textBytes = Buffer.byteLength(parsed.data.text, "utf8");
+            const textHash = createHash("sha256").update(parsed.data.text, "utf8").digest("hex");
+            if (!provenance || sources.length !== 1 || !source || source.sourceId !== parsed.data.sourceId || source.path !== params.relativePath ||
+                provenance.exposedTextSha256 !== textHash || provenance.exposedTextByteLen !== textBytes ||
+                typeof parsed.data.truncated !== "boolean" || provenance.exposedTextTruncated !== parsed.data.truncated) {
+              throw new Error("read source or excerpt provenance mismatch");
+            }
+            host.addToolSources(run, sources, toolText, { textSha256: textHash, textByteLen: textBytes, truncated: provenance.exposedTextTruncated });
+          } catch {
+            run.provenanceError = true;
+            return { content: [{ type: "text" as const, text: "read failed" }], details: { untrusted: true as const }, isError: true };
+          }
+        }
         return {
-          content: [{ type: "text" as const, text: `untrusted reader data; sourceId=${parsed.data.sourceId ?? "unavailable"}\n${parsed.data.text}` }],
+          content: [{ type: "text" as const, text: toolText }],
           details: { untrusted: true as const },
         };
       },
@@ -891,16 +1095,96 @@ export class HostRuntime {
           run.abort.abort();
           return { content: [{ type: "text" as const, text: "overview unavailable" }], details: { untrusted: true }, isError: true };
         }
+        let sourceIds = parsed.data.sourceIds ?? [];
+        if (host.options.reviewedDispatch) {
+          try {
+            const sources = host.checkedProvenance(run, parsed.data.provenance);
+            // Legacy sourceIds can contain all historical refs. Only include
+            // sources Native attests as actually relevant to this overview.
+            sourceIds = sources.map((source) => source.sourceId);
+            host.addToolSources(run, sources, `untrusted overview data; sourceIds=${JSON.stringify(sourceIds)}\n${parsed.data.overviewText ?? ""}`);
+          } catch {
+            run.provenanceError = true;
+            return { content: [{ type: "text" as const, text: "overview unavailable" }], details: { untrusted: true as const }, isError: true };
+          }
+        }
         return {
-          content: [{ type: "text" as const, text: `untrusted overview data; sourceIds=${JSON.stringify(parsed.data.sourceIds ?? [])}\n${parsed.data.overviewText ?? ""}` }],
+          content: [{ type: "text" as const, text: `untrusted overview data; sourceIds=${JSON.stringify(sourceIds)}\n${parsed.data.overviewText ?? ""}` }],
           details: { untrusted: true as const },
         };
       },
     });
-    return [read, overview, ...createMemoryTools({
+
+    const webSearch = defineTool({
+      name: "web_search",
+      label: "Search the web",
+      description: "Search the web for up-to-date technical documentation, open source frameworks, library releases, or external reference solutions. Returns verified titles, URLs, and summaries.",
+      parameters: Type.Object({
+        query: Type.String({ minLength: 1, maxLength: 400 }),
+        maxResults: Type.Optional(Type.Integer({ minimum: 1, maximum: 10 })),
+      }, { additionalProperties: false }),
+      async execute(_id, params, signal) {
+        if (signal?.aborted || run.cancelled || run.timedOut) throw new Error("run is closed");
+        const record = params as Record<string, unknown>;
+        if ("workspaceId" in record || "runId" in record || "operationId" in record) {
+          throw new Error("authorization parameters are not model inputs");
+        }
+        if (run.payload.authorization.searchGrantStatus !== "active") {
+          const status = run.payload.authorization.searchGrantStatus ?? "missing";
+          return {
+            content: [{
+              type: "text" as const,
+              text: `【联网搜索未授权】联网搜索尚未在该工作空间启用（请在项目权限中开启联网搜索授权）。当前状态：${status}。`,
+            }],
+            details: { untrusted: true as const },
+            isError: true,
+          };
+        }
+        if (!host.searchManager.isConfigured()) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: "【搜索服务未就绪】尚未配置联网搜索 API Key。请用户在 Hark 应用设置中配置搜索服务（如 Tavily 或智谱 MCP）后再使用联网搜索。",
+            }],
+            details: { untrusted: true as const },
+            isError: true,
+          };
+        }
+        host.syncSearchSecrets();
+        try {
+          const searchRes = await host.searchManager.search({
+            query: params.query,
+            maxResults: params.maxResults ?? 5,
+            ...(signal ? { signal } : {}),
+          });
+          return {
+            content: [{
+              type: "text" as const,
+              text: `untrusted web search data; provider=${searchRes.provider}\n${searchRes.rawSummaryText}`,
+            }],
+            details: { untrusted: true as const },
+          };
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return {
+            content: [{ type: "text" as const, text: `联网搜索失败: ${msg}` }],
+            details: { untrusted: true as const },
+            isError: true,
+          };
+        }
+      },
+    });
+
+    return [read, overview, webSearch, ...createMemoryTools({
       workspaceId: run.workspaceId, runId: run.runId, purpose: run.payload.purpose,
       closed: () => this.shuttingDown || run.cancelled || run.timedOut,
-    }, (name, input, operationId) => this.callTool(run, name, input, operationId))];
+    }, async (name, input, operationId) => {
+      const frame = await this.callTool(run, name, input, operationId);
+      // Existing memory replies have no exact source manifest. Refuse the next
+      // external request until that provenance can be supplied by Native.
+      if (this.options.reviewedDispatch && frame.kind !== "error") run.provenanceError = true;
+      return frame;
+    })];
   }
 
   private callTool(run: ActiveRun, tool: HarkToolName, input: Record<string, unknown>, stableOperationId?: string): Promise<Frame> {
@@ -926,8 +1210,74 @@ export class HostRuntime {
           reject(new IpcError(run.cancelled || this.shuttingDown ? "cancelled" : "timeout", "late tool result ignored"));
           return;
         }
+        if (this.options.reviewedDispatch && (response.workspaceId !== run.workspaceId || response.runId !== run.runId)) {
+          run.provenanceError = true;
+          reject(new IpcError("correlation_rejected", "tool result identity mismatch"));
+          return;
+        }
         resolve(response);
       });
+    });
+  }
+
+  /**
+   * IPC exercise with synthetic fixture data only. An approval here produces a
+   * local synthetic SSE response, never a network call or a durable permit.
+   * It deliberately does not claim to pause the existing run deadline.
+   */
+  private syntheticReviewRequest(run: ActiveRun, snapshot: OutboundRequestSnapshot, signal: AbortSignal): Promise<Response> {
+    const fixture = this.options.syntheticReviewIpc;
+    const config = this.providerConfig;
+    if (!fixture || run.payload.syntheticCore !== true || !config ||
+        config.providerId !== "hark-byok" || config.modelId !== "local-model" ||
+        config.baseUrl !== "http://127.0.0.1:9/v1" || config.wire !== "openai-completions") {
+      return Promise.reject(new IpcError("model_not_authorized", "synthetic review fixture required"));
+    }
+    if (signal.aborted || run.cancelled || run.timedOut || this.shuttingDown) {
+      return Promise.reject(new IpcError("cancelled", "review cancelled"));
+    }
+    if (Buffer.byteLength(snapshot.body, "utf8") > 512 * 1024) {
+      return Promise.reject(new IpcError("frame_too_large", "review body exceeds fixture limit"));
+    }
+    const runDeadline = this.gate.deadlineOf(run.requestId);
+    if (runDeadline === null) return Promise.reject(new IpcError("timeout", "review run has no deadline"));
+    const deadline = Math.min(runDeadline, this.now() + fixture.waitMs);
+    if (deadline <= this.now()) return Promise.reject(new IpcError("timeout", "review deadline expired"));
+    const frame = this.requestFrame(run.workspaceId, run.runId, "synthetic.outbound_review", {
+      synthetic: true, endpoint: snapshot.endpoint, model: snapshot.model,
+      body: snapshot.body, bodySha256: snapshot.bodySha256,
+    }, deadline);
+    this.gate.registerRequest(frame, this.now());
+    run.toolRequestIds.push(frame.id);
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (error?: IpcError, response?: Response) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        signal.removeEventListener("abort", abort);
+        this.toolTimers.delete(frame.id);
+        this.pending.delete(frame.id);
+        if (error) reject(error); else if (response) resolve(response); else reject(new IpcError("invalid_frame", "review response missing"));
+      };
+      const abort = () => finish(new IpcError("cancelled", "review cancelled"));
+      const timer = setTimeout(() => finish(new IpcError("timeout", "review timed out")), Math.max(1, deadline - this.now()));
+      this.toolTimers.set(frame.id, timer);
+      this.pending.set(frame.id, (response) => {
+        if (response.kind !== "response" || response.method !== "synthetic.outbound_review" || signal.aborted || run.cancelled || run.timedOut) {
+          finish(new IpcError("cancelled", "review not approved"));
+          return;
+        }
+        const parsed = z.object({ synthetic: z.literal(true), approved: z.boolean() }).strict().safeParse(response.payload);
+        if (!parsed.success || !parsed.data.approved) {
+          finish(new IpcError("model_not_authorized", "review not approved"));
+          return;
+        }
+        finish(undefined, new Response(sseText("synthetic-review-approved"), { headers: { "content-type": "text/event-stream" } }));
+      });
+      signal.addEventListener("abort", abort, { once: true });
+      if (signal.aborted) { abort(); return; }
+      try { this.send(frame); } catch { finish(new IpcError("queue_overflow", "review queue unavailable")); }
     });
   }
 }

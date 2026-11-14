@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { Sparkles, ArrowDown, Compass, Globe } from "lucide-react";
 import {
   AttentionItem,
   ConfirmImportInput,
@@ -13,6 +14,7 @@ import {
   OnboardingRun,
   OpinionFeedbackAction,
   OpinionView,
+  OutboundReviewSnapshot,
   RunStreamEvent,
   RuntimeStatus,
   WorkspaceDetail,
@@ -43,6 +45,7 @@ import { FolderOnboarding } from "../features/onboarding/FolderOnboarding";
 import { OnboardingProgress } from "../features/onboarding/OnboardingProgress";
 import { ConversationTimeline } from "../features/conversation/ConversationTimeline";
 import { Composer } from "../features/conversation/Composer";
+import { OutboundReviewDialog } from "../features/conversation/OutboundReviewDialog";
 import { EvidenceInspector } from "../features/evidence/EvidenceInspector";
 import { WorkspacePicker } from "../features/workspace/WorkspacePicker";
 import { HistorySearch } from "../features/memory/HistorySearch";
@@ -59,6 +62,7 @@ interface InFlightTurn {
   reconciling: boolean;
   acceptTimer?: ReturnType<typeof setTimeout>;
   watchdog?: ReturnType<typeof setTimeout>;
+  reviewTimer?: ReturnType<typeof setTimeout>;
   reconcile?: (cancelRunning: boolean) => Promise<void>;
   abandon?: () => void;
 }
@@ -105,6 +109,8 @@ export const AppShell: React.FC = () => {
   });
   const [attentionItems, setAttentionItems] = useState<AttentionItem[]>([]);
   const [activeError, setActiveError] = useState<HarkUIError | null>(null);
+  const [pendingReview, setPendingReview] = useState<OutboundReviewSnapshot | null>(null);
+  const pendingReviewIdRef = useRef<string | null>(null);
 
   // 本地 UI 状态（按 Workspace 隔离的草稿、流式临时状态、按需抽屉/弹窗）
   const [draftStore, setDraftStore] = useState<DraftStore>({});
@@ -115,6 +121,11 @@ export const AppShell: React.FC = () => {
   const workspaceLoadVersionRef = useRef(0);
   const flightRef = useRef<InFlightTurn | null>(null);
   const [flightView, setFlightView] = useState<Pick<InFlightTurn, "workspaceId" | "phase" | "runId"> | null>(null);
+  const runtimeRef = useRef<RuntimeStatus>(runtime);
+  const openingInFlightRef = useRef<Set<string>>(new Set());
+  const openingAttemptedRef = useRef<Set<string>>(new Set());
+  const lastObservedAtRef = useRef<Map<string, number>>(new Map());
+  const observeInFlightRef = useRef<Set<string>>(new Set());
 
   // 按需打开的辅助面板（On-demand Surfaces）
   const [showOnboardingFlow, setShowOnboardingFlow] = useState(false);
@@ -125,7 +136,53 @@ export const AppShell: React.FC = () => {
   const [inspectedEvidence, setInspectedEvidence] = useState<EvidenceDetail | null>(null);
   const [showProjectOverview, setShowProjectOverview] = useState(false);
 
+  // 视口平滑跟随与自动置底逻辑（解决流式生成时不自动滚动的体验痛点）
+  const bottomAnchorRef = useRef<HTMLDivElement>(null);
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    const doScroll = () => {
+      bottomAnchorRef.current?.scrollIntoView?.({
+        behavior: smooth ? "smooth" : "auto",
+        block: "end",
+      });
+    };
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(doScroll);
+    } else {
+      doScroll();
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+      const clientHeight = window.innerHeight || document.documentElement.clientHeight;
+      const distance = scrollHeight - (scrollTop + clientHeight);
+      // 只有当用户向上滑动超过 260px 时才展示回到底部按钮；在底部或正常阅读最新消息时严禁遮挡
+      setUserScrolledUp(distance > 260);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!userScrolledUp) {
+      scrollToBottom(false);
+    }
+  }, [messages, streamState?.streamingText, streamState?.activeToolLabel, streamState?.status, userScrolledUp, scrollToBottom]);
+
   // 1. 昼夜环境光同步（PRD §6.4 + Dual-Theme 规范）
+  useEffect(() => {
+    runtimeRef.current = runtime;
+  }, [runtime]);
+
+  useEffect(() => {
+    openingAttemptedRef.current.clear();
+    lastObservedAtRef.current.clear();
+  }, [bridge]);
+
   useEffect(() => {
     const computeIsDark = () => {
       if (themePref === "dark") return true;
@@ -151,9 +208,95 @@ export const AppShell: React.FC = () => {
     }
   }, [pauseMotion]);
 
+  const OBSERVE_THROTTLE_MS = 15_000;
+
+  const triggerWorkspaceObservation = useCallback(
+    (wsId: WorkspaceId) => {
+      if (bridgeMode !== "strict_tauri_ipc" || !bridge.observeWorkspace) return;
+      if (observeInFlightRef.current.has(wsId)) return;
+      const now = Date.now();
+      const last = lastObservedAtRef.current.get(wsId) ?? 0;
+      if (now - last < OBSERVE_THROTTLE_MS) return;
+      observeInFlightRef.current.add(wsId);
+      lastObservedAtRef.current.set(wsId, now);
+      void bridge
+        .observeWorkspace(wsId)
+        .catch(() => {})
+        .finally(() => {
+          observeInFlightRef.current.delete(wsId);
+        });
+    },
+    [bridge, bridgeMode]
+  );
+
+  const maybeStartConfiguredOpening = useCallback(
+    async (
+      wsId: WorkspaceId,
+      detail: WorkspaceDetail,
+      run: OnboardingRun | null,
+      rt: RuntimeStatus
+    ) => {
+      if (
+        bridgeMode !== "strict_tauri_ipc" ||
+        !bridge.startConfiguredOpening ||
+        !rt.stepFunConfigured ||
+        rt.piSidecarStatus !== "ready" ||
+        rt.modelTransportAvailable === false ||
+        detail.summary.modelPermission !== "enabled" ||
+        detail.directoryStatus === "paused" ||
+        detail.directoryStatus === "revoked" ||
+        !run ||
+        run.stage === "completed" ||
+        run.stage === "cancelled" ||
+        run.stage === "failed" ||
+        openingInFlightRef.current.has(wsId) ||
+        openingAttemptedRef.current.has(wsId)
+      ) {
+        return;
+      }
+
+      openingInFlightRef.current.add(wsId);
+      openingAttemptedRef.current.add(wsId);
+      try {
+        await bridge.startConfiguredOpening(wsId);
+        const updatedDetail = await bridge.getWorkspace(wsId);
+        const [evList, opList, convPage, updatedRun, updatedWorkspaces] = await Promise.all([
+          bridge.listWorkspaceEvidence(wsId),
+          bridge.listWorkspaceOpinions(wsId),
+          updatedDetail.summary.currentConversationId
+            ? bridge.getConversation(updatedDetail.summary.currentConversationId)
+            : Promise.resolve(null),
+          updatedDetail.activeOnboardingRunId
+            ? bridge.getOnboardingRun(updatedDetail.activeOnboardingRunId)
+            : Promise.resolve(null),
+          bridge.listWorkspaces(),
+        ]);
+        setWorkspaces(updatedWorkspaces);
+        if (activeStreamWorkspaceRef.current !== wsId) return;
+        setCurrentWorkspaceDetail(updatedDetail);
+        const nextEvMap: Record<ID, EvidenceRef> = {};
+        for (const ev of evList) nextEvMap[ev.id] = ev;
+        setEvidenceMap(nextEvMap);
+        const nextOpMap: Record<ID, OpinionView> = {};
+        for (const op of opList) nextOpMap[op.id] = op;
+        setOpinionsMap(nextOpMap);
+        if (convPage) setMessages(convPage.messages);
+        setOnboardingRun(updatedRun);
+        setTransientSpreadKey((k) => k + 1);
+      } catch (err) {
+        if (activeStreamWorkspaceRef.current === wsId) {
+          setActiveError(asUiError(err));
+        }
+      } finally {
+        openingInFlightRef.current.delete(wsId);
+      }
+    },
+    [bridge, bridgeMode]
+  );
+
   // 2. 加载指定 Workspace 的完整快照（严格按 WorkspaceId 隔离）
   const loadWorkspaceContext = useCallback(
-    async (wsId: WorkspaceId) => {
+    async (wsId: WorkspaceId, runtimeOverride?: RuntimeStatus) => {
       const version = ++workspaceLoadVersionRef.current;
       activeStreamWorkspaceRef.current = wsId;
       const current = () => workspaceLoadVersionRef.current === version && activeStreamWorkspaceRef.current === wsId;
@@ -161,6 +304,7 @@ export const AppShell: React.FC = () => {
         setActiveError(null);
         const detail = await bridge.getWorkspace(wsId);
         if (!current()) return;
+
         setCurrentWorkspaceDetail(detail);
 
         const [evList, opList] = await Promise.all([
@@ -185,18 +329,34 @@ export const AppShell: React.FC = () => {
           setMessages([]);
         }
 
+        let run: OnboardingRun | null = null;
         if (detail.activeOnboardingRunId) {
-          const run = await bridge.getOnboardingRun(detail.activeOnboardingRunId);
+          run = await bridge.getOnboardingRun(detail.activeOnboardingRunId);
           if (!current()) return;
           setOnboardingRun(run);
         } else {
           setOnboardingRun(null);
         }
+
+        if (
+          detail.directoryStatus !== "paused" &&
+          detail.directoryStatus !== "revoked" &&
+          detail.summary.observerState !== "paused"
+        ) {
+          triggerWorkspaceObservation(wsId);
+        }
+
+        await maybeStartConfiguredOpening(
+          wsId,
+          detail,
+          run,
+          runtimeOverride ?? runtimeRef.current
+        );
       } catch (err) {
         if (current()) setActiveError(asUiError(err));
       }
     },
-    [bridge]
+    [bridge, maybeStartConfiguredOpening, triggerWorkspaceObservation]
   );
 
   // 3. 初始化应用基线快照（AppSnapshot）
@@ -206,6 +366,7 @@ export const AppShell: React.FC = () => {
         setActiveError(null);
         const snap = await bridge.getAppSnapshot();
         setWorkspaces(snap.workspaces);
+        runtimeRef.current = snap.runtime;
         setRuntime(snap.runtime);
         setAttentionItems(snap.attentionItems);
         if (snap.runtime.activeError) {
@@ -216,7 +377,7 @@ export const AppShell: React.FC = () => {
           preferredWorkspaceId || currentWorkspaceId || snap.currentWorkspaceId;
         if (targetWsId) {
           setCurrentWorkspaceId(targetWsId);
-          await loadWorkspaceContext(targetWsId);
+          await loadWorkspaceContext(targetWsId, snap.runtime);
         } else {
           setShowOnboardingFlow(true);
         }
@@ -230,6 +391,83 @@ export const AppShell: React.FC = () => {
   useEffect(() => {
     syncAppSnapshot();
   }, [bridgeMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    void bridge
+      .subscribeAppEvents((ev) => {
+        if (disposed) return;
+        if (
+          ev.type !== "attention_triggered" &&
+          ev.type !== "workspace_updated" &&
+          ev.type !== "permissions_changed"
+        ) {
+          return;
+        }
+        void bridge
+          .getAppSnapshot()
+          .then((snap) => {
+            if (disposed) return;
+            setWorkspaces(snap.workspaces);
+            runtimeRef.current = snap.runtime;
+            setRuntime(snap.runtime);
+            setAttentionItems(snap.attentionItems);
+          })
+          .catch(() => {});
+
+        const activeWsId = activeStreamWorkspaceRef.current;
+        if (activeWsId && (!ev.workspaceId || ev.workspaceId === activeWsId)) {
+          void Promise.all([
+            bridge.getWorkspace(activeWsId),
+            bridge.listWorkspaceEvidence(activeWsId),
+            bridge.listWorkspaceOpinions(activeWsId),
+          ])
+            .then(([detail, evList, opList]) => {
+              if (disposed || activeStreamWorkspaceRef.current !== activeWsId) return;
+              setCurrentWorkspaceDetail(detail);
+              const nextEvMap: Record<ID, EvidenceRef> = {};
+              for (const item of evList) nextEvMap[item.id] = item;
+              setEvidenceMap(nextEvMap);
+              const nextOpMap: Record<ID, OpinionView> = {};
+              for (const op of opList) nextOpMap[op.id] = op;
+              setOpinionsMap(nextOpMap);
+              setTransientSpreadKey((k) => k + 1);
+            })
+            .catch(() => {});
+        }
+      })
+      .then((fn) => {
+        if (disposed) {
+          fn();
+        } else {
+          unlisten = fn;
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [bridge]);
+
+  useEffect(() => {
+    if (bridgeMode !== "strict_tauri_ipc") return;
+    const handleFocus = () => {
+      if (
+        currentWorkspaceId &&
+        currentWorkspaceDetail?.directoryStatus !== "paused" &&
+        currentWorkspaceDetail?.directoryStatus !== "revoked" &&
+        currentWorkspaceDetail?.summary.observerState !== "paused"
+      ) {
+        triggerWorkspaceObservation(currentWorkspaceId);
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [bridgeMode, currentWorkspaceId, currentWorkspaceDetail?.directoryStatus, currentWorkspaceDetail?.summary.observerState, triggerWorkspaceObservation]);
 
   // 4. 切换 Workspace（PRD §4.5 & §6.3: 柔和过渡，解除旧工作空间的 UI Stream 展示）
   const handleSelectWorkspace = async (wsId: WorkspaceId) => {
@@ -309,14 +547,13 @@ export const AppShell: React.FC = () => {
           throw asUiError(new Error("选择性读取未接线"));
         }
         await bridge.continueLocalRecognition(res.focusedWorkspaceId);
-        if (input.enableModelInitialRead && bridge.startConfiguredOpening) {
+        if (input.enableModelInitialRead) {
           await bridge.setWorkspacePermissions({
             requestId: `req-open-${Date.now()}`,
             workspaceId: res.focusedWorkspaceId,
             expectedRevision: 1,
             modelPermission: "enabled",
           });
-          await bridge.startConfiguredOpening(res.focusedWorkspaceId);
         }
       }
       const list = await bridge.listWorkspaces();
@@ -360,10 +597,15 @@ export const AppShell: React.FC = () => {
   };
 
   // 9. 发起一次真实流式 Agent 对话轮次（PRD §4.2 & §7.6）
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (directText?: string) => {
     if (flightRef.current || !currentWorkspaceId || !currentWorkspaceDetail?.summary.currentConversationId) return;
-    const prompt = getWorkspaceDraft(draftStore, currentWorkspaceId).trim();
+    const prompt = (directText ?? getWorkspaceDraft(draftStore, currentWorkspaceId)).trim();
     if (!prompt) return;
+    setUserScrolledUp(false);
+    scrollToBottom(false);
+    if (directText) {
+      setDraftStore((prev) => setWorkspaceDraft(prev, currentWorkspaceId, ""));
+    }
 
     const convId = currentWorkspaceDetail.summary.currentConversationId;
     const targetWsId = currentWorkspaceId;
@@ -376,6 +618,8 @@ export const AppShell: React.FC = () => {
     const bufferedEvents: RunStreamEvent[] = [];
     let resolvedRunId: string | null = null;
     let accumulated: StreamAccumulatorState | null = null;
+    let reviewAwaiting = false;
+    let reviewGeneration = 0;
     const visible = () => activeStreamWorkspaceRef.current === targetWsId;
     const ownsFlight = () => flightRef.current === flight && !flight.finished;
     const showPhase = (phase: InFlightTurn["phase"]) => {
@@ -386,7 +630,11 @@ export const AppShell: React.FC = () => {
     const release = () => {
       if (flight.acceptTimer) clearTimeout(flight.acceptTimer);
       if (flight.watchdog) clearTimeout(flight.watchdog);
+      if (flight.reviewTimer) clearTimeout(flight.reviewTimer);
       flight.finished = true;
+      reviewGeneration += 1;
+      pendingReviewIdRef.current = null;
+      setPendingReview((review) => review?.runId === flight.runId ? null : review);
       if (flightRef.current === flight) { flightRef.current = null; setFlightView(null); }
     };
     const markUncertain = () => {
@@ -489,6 +737,37 @@ export const AppShell: React.FC = () => {
       if (previous.seenSeqs.includes(ev.seq) || !accumulated.seenSeqs.includes(ev.seq)) return;
       if (visible()) setStreamState(accumulated);
 
+      if (ev.type === "outbound_review_requested") {
+        const reviewId = ev.payload.reviewId;
+        if (!reviewId || !bridge.getOutboundReview || !bridge.decideOutboundReview) {
+          if (visible()) setActiveError({ code: "CONNECTION_LOST", message: "无法打开请求审阅，请停止当前请求后重试。", retryable: false });
+          return;
+        }
+        reviewAwaiting = true;
+        const generation = ++reviewGeneration;
+        pendingReviewIdRef.current = reviewId;
+        setPendingReview(null);
+        if (flight.watchdog) clearTimeout(flight.watchdog);
+        if (flight.reviewTimer) clearTimeout(flight.reviewTimer);
+        flight.reviewTimer = setTimeout(() => {
+          if (!ownsFlight() || reviewGeneration !== generation) return;
+          pendingReviewIdRef.current = null;
+          setPendingReview((current) => current?.reviewId === reviewId ? null : current);
+          if (visible()) setActiveError({ code: "CONNECTION_LOST", message: "请求审阅已超时，正在结束本次请求。", retryable: false });
+          void flight.reconcile?.(true);
+        }, 120_000);
+        void bridge.getOutboundReview({ workspaceId: targetWsId, runId: resolvedRunId, reviewId }).then((review) => {
+          if (ownsFlight() && flight.runId === review.runId && reviewGeneration === generation) setPendingReview(review);
+        }).catch((error) => {
+          if (!ownsFlight() || reviewGeneration !== generation) return;
+          reviewAwaiting = false;
+          pendingReviewIdRef.current = null;
+          if (flight.reviewTimer) clearTimeout(flight.reviewTimer);
+          flight.watchdog = setTimeout(() => void flight.reconcile?.(true), 65_000);
+          if (visible()) setActiveError(asUiError(error));
+        });
+      }
+
       if (ev.type === "run_failed" || ev.type === "run_cancelled") {
         if (visible() && ev.type === "run_failed") setActiveError(ev.payload.error || { code: "CONNECTION_LOST", message: "消息处理失败，请检查连接后重试。", retryable: true });
         // A memory tool may have committed before the subsequent model request failed.
@@ -531,7 +810,7 @@ export const AppShell: React.FC = () => {
       accumulated ||= createInitialStreamState(targetWsId, result.runId);
       if (visible()) setStreamState(accumulated);
       bufferedEvents.sort((a, b) => a.seq - b.seq).forEach(handleStreamEvent);
-      if (ownsFlight()) flight.watchdog = setTimeout(() => void flight.reconcile?.(true), 65_000);
+      if (ownsFlight() && !reviewAwaiting) flight.watchdog = setTimeout(() => void flight.reconcile?.(true), 65_000);
     } catch (err) {
       if (!ownsFlight()) return;
       const error = asUiError(err);
@@ -604,7 +883,7 @@ export const AppShell: React.FC = () => {
       setWorkspaces(list);
       await loadWorkspaceContext(currentWorkspaceId);
     } catch (err) {
-      setActiveError(err as HarkUIError);
+      setActiveError(asUiError(err));
     }
   };
 
@@ -623,6 +902,7 @@ export const AppShell: React.FC = () => {
   ) => {
     try {
       const nextRuntime = await bridge.updateRuntimePreference(patch);
+      runtimeRef.current = nextRuntime;
       setRuntime(nextRuntime);
       setActiveError(nextRuntime.activeError || null);
     } catch (err) {
@@ -711,6 +991,9 @@ export const AppShell: React.FC = () => {
         status={getHeaderContextStatus()}
         busy={Boolean(streamState?.status === "streaming" || onboardingRun?.stage === "reading" || onboardingRun?.stage === "analyzing")}
         synthetic={bridgeMode === "dev_preview_synthetic"}
+        flameStage={flameVisual.stage}
+        flameLabel={flameVisual.badgeText}
+        flameReason={flameVisual.description}
         onChooseProject={() => setShowWorkspacePicker(true)}
         onOverview={() => setShowProjectOverview(true)}
         onSearch={() => setShowHistorySearch(true)}
@@ -772,12 +1055,9 @@ export const AppShell: React.FC = () => {
                   ? async (apiKey) => {
                       const status = await bridge.configureStepFunSession!(apiKey);
                       if (!status.configured || status.restartRequiresKey) throw new Error("模型配置未保存");
-                      setRuntime((prev) => ({
-                        ...prev,
-                        stepFunConfigured: status.configured,
-                        piSidecarStatus: status.sidecarConnected ? "ready" : "unavailable",
-                        credentialError: status.credentialError,
-                      }));
+                      const nextRuntime = await bridge.getRuntimeStatus();
+                      runtimeRef.current = nextRuntime;
+                      setRuntime(nextRuntime);
                     }
                   : undefined
               }
@@ -795,9 +1075,13 @@ export const AppShell: React.FC = () => {
                 items={attentionItems}
                 currentWorkspaceId={currentWorkspaceId}
                 onJumpToAttention={handleJumpToAttention}
-                onDismiss={(id) =>
-                  setAttentionItems((prev) => prev.filter((item) => item.id !== id))
-                }
+                onDismiss={(id) => {
+                  const target = attentionItems.find((item) => item.id === id);
+                  setAttentionItems((prev) => prev.filter((item) => item.id !== id));
+                  if (target) {
+                    void bridge.dismissAttentionItem?.(target.workspaceId, target.id).catch(() => {});
+                  }
+                }}
               />
 
               <ProjectOverviewSheet open={showProjectOverview} onClose={() => setShowProjectOverview(false)}>
@@ -820,6 +1104,21 @@ export const AppShell: React.FC = () => {
                   <p className="pt-2 leading-relaxed">{flameVisual.description}</p>
                   <p className="pt-2 leading-relaxed">火光不按聊天次数或点击次数增长，未有项目依据时保持中性。</p>
                 </details>
+                <div className="mt-5 pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                  <span className="text-xs text-[var(--text-muted)]">想要获取项目架构与演进思路？</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProjectOverview(false);
+                      const prompt = `请全面结合当前项目的本地文件（README、配置清单及关键入口源码），像 hark.com 一样主动发掘「${currentSummary?.name || "当前项目"}」的不足、代码硬伤与性能隐患，并分条给出笃定的重构改进意见与演进方案。`;
+                      void handleSendMessage(prompt);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#c27537] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#b0672c] transition-all"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>深度分析项目演进</span>
+                  </button>
+                </div>
               </ProjectOverviewSheet>
 
               {/* FE-05 · 中央对话时间线（含首条主动开场、观点卡、记忆回执、分级证据引用） */}
@@ -844,8 +1143,12 @@ export const AppShell: React.FC = () => {
                     );
                   }
                 }}
+                onTriggerAnalysis={(prompt) => void handleSendMessage(prompt)}
                 onEnableModelAuth={() => setShowWorkspaceSettings(true)}
               />
+              {/* 底部缓冲留白与智能吸附锚点：预留 240px 留白空间，彻底避免最后一条消息被粘性停靠的 Composer 和快捷按钮遮挡 */}
+              <div className="h-60 w-full pointer-events-none" aria-hidden="true" />
+              <div ref={bottomAnchorRef} data-testid="timeline-bottom-anchor" className="h-2 w-full pointer-events-none" aria-hidden="true" />
             </div>
           )}
         </div>
@@ -859,6 +1162,22 @@ export const AppShell: React.FC = () => {
                 : "mx-auto"
             }`}
           >
+            {userScrolledUp && (
+              <div className="flex justify-center -mb-2 relative z-30 pointer-events-auto">
+                <button
+                  type="button"
+                  data-testid="scroll-to-bottom-button"
+                  onClick={() => {
+                    scrollToBottom(true);
+                    setUserScrolledUp(false);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-[var(--surface-elevated)] backdrop-blur-md text-[var(--text-primary)] border border-[var(--border-strong)] shadow-lg hover:border-[#c27537] hover:text-[#c27537] active:scale-95 transition-all cursor-pointer animate-hearth-pop"
+                >
+                  <ArrowDown className="w-3.5 h-3.5 text-[#c27537]" />
+                  <span>滚动至最新</span>
+                </button>
+              </div>
+            )}
             <Composer
               workspaceName={currentSummary.name}
               draft={currentDraft}
@@ -889,7 +1208,9 @@ export const AppShell: React.FC = () => {
                   setShowWorkspaceSettings(true);
                 }
               }}
+              onOpenSearch={() => setShowHistorySearch(true)}
               onFocusChange={setIsComposerFocused}
+              onQuickAction={(prompt) => void handleSendMessage(prompt)}
             />
           </div>
         )}
@@ -909,6 +1230,37 @@ export const AppShell: React.FC = () => {
           });
         }}
       />
+
+      {pendingReview && pendingReview.workspaceId === currentWorkspaceId && bridge.decideOutboundReview && (
+        <OutboundReviewDialog
+          key={pendingReview.reviewId}
+          request={pendingReview}
+          onApprove={async () => {
+            const ref = { workspaceId: pendingReview.workspaceId, runId: pendingReview.runId, reviewId: pendingReview.reviewId };
+            const active = flightRef.current;
+            if (!active || active.finished || active.runId !== ref.runId || pendingReviewIdRef.current !== ref.reviewId || activeStreamWorkspaceRef.current !== ref.workspaceId) throw new Error("review expired");
+            await bridge.decideOutboundReview!(ref, "approve");
+            if (pendingReviewIdRef.current !== ref.reviewId) return;
+            pendingReviewIdRef.current = null;
+            if (active.reviewTimer) clearTimeout(active.reviewTimer);
+            setPendingReview((current) => current?.reviewId === ref.reviewId ? null : current);
+            const flight = flightRef.current;
+            if (flight && !flight.finished && flight.runId === ref.runId) flight.watchdog = setTimeout(() => void flight.reconcile?.(true), 65_000);
+          }}
+          onReject={async () => {
+            const ref = { workspaceId: pendingReview.workspaceId, runId: pendingReview.runId, reviewId: pendingReview.reviewId };
+            const active = flightRef.current;
+            if (!active || active.finished || active.runId !== ref.runId || pendingReviewIdRef.current !== ref.reviewId || activeStreamWorkspaceRef.current !== ref.workspaceId) throw new Error("review expired");
+            await bridge.decideOutboundReview!(ref, "reject");
+            if (pendingReviewIdRef.current !== ref.reviewId) return;
+            pendingReviewIdRef.current = null;
+            if (active.reviewTimer) clearTimeout(active.reviewTimer);
+            setPendingReview((current) => current?.reviewId === ref.reviewId ? null : current);
+            const flight = flightRef.current;
+            if (flight && !flight.finished && flight.runId === ref.runId) flight.watchdog = setTimeout(() => void flight.reconcile?.(true), 65_000);
+          }}
+        />
+      )}
 
       {/* FE-02 · WorkspacePicker 弹窗 */}
       <WorkspacePicker
@@ -938,6 +1290,13 @@ export const AppShell: React.FC = () => {
           onSelectResult={(item: MemorySearchItem) => {
             if (item.sourceRefId) {
               handleInspectEvidence(item.sourceRefId);
+            }
+          }}
+          onQuoteResult={(item: MemorySearchItem) => {
+            if (currentWorkspaceId) {
+              const prev = getWorkspaceDraft(draftStore, currentWorkspaceId);
+              const quote = `【参考项目记忆/依据 · ${item.title}】\n${item.snippet}\n`;
+              setDraftStore((d) => setWorkspaceDraft(d, currentWorkspaceId, prev ? `${prev}\n${quote}` : quote));
             }
           }}
           onClose={() => setShowHistorySearch(false)}
@@ -980,12 +1339,20 @@ export const AppShell: React.FC = () => {
           void handleHideWindow();
         }}
         nativeLocked={bridgeMode === "strict_tauri_ipc"}
+        onLoadSearchConfig={bridge.getSearchConfig ? () => bridge.getSearchConfig!() : undefined}
+        onSaveSearchConfig={bridge.saveSearchConfig ? (cfg) => bridge.saveSearchConfig!(cfg) : undefined}
+        onTestSearchConnection={bridge.testSearchConnection ? (provider, apiKey, endpoint) => bridge.testSearchConnection!(provider, apiKey, endpoint) : undefined}
         onSaveStepFunKey={
           bridge.configureStepFunSession
             ? async (apiKey) => {
                 const status = await bridge.configureStepFunSession!(apiKey);
                 if (!status.configured || status.restartRequiresKey) throw new Error("模型配置未保存");
-                setRuntime((prev) => ({ ...prev, stepFunConfigured: status.configured, piSidecarStatus: status.sidecarConnected ? "ready" : "unavailable", credentialError: status.credentialError }));
+                const nextRuntime = await bridge.getRuntimeStatus();
+                runtimeRef.current = nextRuntime;
+                setRuntime(nextRuntime);
+                if (currentWorkspaceId && !showOnboardingFlow) {
+                  await loadWorkspaceContext(currentWorkspaceId, nextRuntime);
+                }
               }
             : undefined
         }
@@ -995,7 +1362,15 @@ export const AppShell: React.FC = () => {
                 try {
                   const status = await bridge.clearStepFunSession!();
                   if (status.configured) throw new Error("模型配置未移除");
-                  setRuntime((prev) => ({ ...prev, stepFunConfigured: false, piSidecarStatus: "unavailable", credentialError: status.credentialError }));
+                  const nextRuntime: RuntimeStatus = {
+                    ...runtimeRef.current,
+                    stepFunConfigured: false,
+                    piSidecarStatus: "unavailable",
+                    modelTransportAvailable: false,
+                    credentialError: status.credentialError,
+                  };
+                  runtimeRef.current = nextRuntime;
+                  setRuntime(nextRuntime);
                 } catch (error) {
                   await syncAppSnapshot(currentWorkspaceId);
                   throw error;
